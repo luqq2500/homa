@@ -23,6 +23,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 - Integration events
 - Build order
 - Testing approach
+- Decisions made while building
 - Open questions
 
 ## Conventions for the domain phase
@@ -44,7 +45,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 | `policy` | Homa-set values and their versions | `HomaPolicy` |
 | `account` | Customer and provider accounts, helpers, phone and eKYC verification status, payout account status | `CustomerAccount`, `ProviderAccount`, `Helper`, `PhoneVerification` |
 | `offering` | What a provider sells: profile, jobs, tools, pricing, hours, helpers range, cities, cancellation tier, going live | `ProviderListing` |
-| `availability` | When a provider can work: availability windows, synced busy blocks, accepted reservations | `ProviderCalendar` |
+| `availability` | When a provider can work: availability windows, synced busy blocks, accepted reservations, buffer between jobs | `ProviderCalendar` |
 | `discovery` | Matching a search to providers: exact and close matches | `SearchCriteria`, `MatchClassifier` |
 | `reservation` | Enquiries and the reservation lifecycle: pricing, request, accept, cancel, team, check-in, no-shows, completion, reports, dispute window, settlements | `Enquiry`, `Reservation` |
 | `payment` | Money movement: authorise, hold, release, refund, payouts, fines and fine deductions | `Payment`, `Payout`, `Fine` |
@@ -138,7 +139,7 @@ Feature: Shelves
 Values held: service fee 15%; duration 1–6 h; helpers per search 1–10; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%.
 
 ```java
-HomaPolicy.initial() : HomaPolicy               // the values above, version 1
+HomaPolicy.initial(Instant now) : HomaPolicy    // the values above, version 1, in force from now
 HomaPolicy.change(PolicyValue value, Instant now) : HomaPolicy  // new version
 HomaPolicy.snapshot() : PolicySnapshot
 ```
@@ -171,7 +172,7 @@ Feature: Homa-set values
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `CustomerAccount` | Aggregate | Verified phone, address with city |
+| `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
 | `ProviderAccount` | Aggregate | Individual provider: eKYC status, payout account status, whether they include themselves as a helper |
 | `Helper` | Aggregate | Belongs to one provider: name, photo, eKYC status |
@@ -181,7 +182,7 @@ Feature: Homa-set values
 ```java
 PhoneVerification.start(PhoneNumber phone, String code, Instant now)
 PhoneVerification.confirm(String code, Instant now) : boolean
-CustomerAccount.register(PhoneVerification verified, Address address)
+CustomerAccount.register(PhoneVerification verified, String name, Address address)
 CustomerAccount.changeAddress(Address address)
 
 ProviderAccount.register(PhoneVerification verified, String legalName)
@@ -190,8 +191,9 @@ ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.includeSelfAsHelper(boolean include)
 ProviderAccount.isReadyForGoLive() : boolean    // own eKYC verified and payout account ready
 
-Helper.add(ProviderId provider, String name, Photo photo)
+Helper.add(String providerId, String name, Photo photo)
 Helper.recordEkycResult(VerificationStatus result)
+Helper.remove()                                  // off the team; behind HelperRemovedIE
 ```
 
 ```gherkin
@@ -251,16 +253,16 @@ Feature: Helpers
 | `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster |
 
 ```java
-ProviderListing.draft(ProviderId provider)
+ProviderListing.draft(String providerId)
 ProviderListing.setProfile(Profile profile)
 ProviderListing.offerJobs(Set<JobCode> jobs, Set<JobCode> activeCatalogueJobs)
 ProviderListing.bringTools(Set<ToolCode> tools, Set<ToolCode> activeCatalogueTools)
 ProviderListing.setPricing(HourlyRate rate, TravelFee travelFee)
-ProviderListing.setHours(HoursRange hours, PolicySnapshot policy)
-ProviderListing.setHelpers(HelpersRange helpers)
+ProviderListing.setHours(HoursRange hours, HomaLimits limits)       // offering's own view of the Homa-set ranges
+ProviderListing.setHelpers(HelpersRange helpers, HomaLimits limits)
 ProviderListing.coverCities(Set<City> cities, ServiceAreaView area)
 ProviderListing.chooseCancellationTier(CancellationTier tier)
-ProviderListing.updateRoster(TeamRoster roster)    // shrinks max helpers if the team shrinks
+ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the team; an empty team takes a live listing offline
 ProviderListing.goLive(boolean providerReady, boolean allHelpersVerified)
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
@@ -332,7 +334,7 @@ Feature: Going live
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `ProviderCalendar` | Aggregate | Availability windows, busy blocks, reservation holds |
+| `ProviderCalendar` | Aggregate | Availability windows, busy blocks, reservation holds, buffer between jobs |
 | `TimeSlot` | Value object | Start and end; start on a 15-minute step |
 | `AvailabilityWindow` | Value object | When the provider says they can work |
 | `BusyBlock` | Value object | From Google or Apple Calendar sync |
@@ -341,8 +343,9 @@ Feature: Going live
 ```java
 ProviderCalendar.setWindows(List<AvailabilityWindow> windows)
 ProviderCalendar.replaceBusyBlocks(List<BusyBlock> blocks)    // each sync replaces the last
-ProviderCalendar.hold(ReservationId id, TimeSlot slot)
-ProviderCalendar.release(ReservationId id)
+ProviderCalendar.setBufferBetweenJobs(Duration buffer)        // kept free before and after each held slot
+ProviderCalendar.hold(String reservationId, TimeSlot slot)
+ProviderCalendar.release(String reservationId)
 ProviderCalendar.isAvailable(TimeSlot slot) : boolean
 ProviderCalendar.nearestAvailableStart(TimeSlot wanted, Duration within) : Optional<Instant>
 ```
@@ -375,6 +378,32 @@ Feature: Provider availability
   Scenario: A slot partly outside the window is not available
     Given the provider is available Saturday 08:00 to 12:00
     Then Saturday 10:00 to 13:00 is not available
+
+Feature: Buffer between jobs
+  Background:
+    Given the provider is available Saturday 08:00 to 18:00
+    And reservation R1 holds Saturday 10:00 to 13:00
+    And the provider keeps a buffer of 30 minutes between jobs
+
+  Scenario: A job cannot start within the buffer after another job
+    Then Saturday 13:00 to 14:00 is not available
+    And Saturday 13:30 to 14:30 is available
+
+  Scenario: A job cannot end within the buffer before another job
+    Then Saturday 08:30 to 09:45 is not available
+    And Saturday 08:30 to 09:30 is available
+
+  Scenario: Holding a slot inside the buffer is rejected
+    When reservation R2 tries to hold Saturday 13:15 to 15:15
+    Then it is rejected with SlotNotAvailableException
+
+  Scenario: The buffer is kept around jobs, not around synced busy blocks
+    Given a synced busy block Saturday 14:00 to 15:00
+    Then Saturday 15:00 to 16:00 is available
+
+  Scenario: The buffer cannot be negative
+    When the provider sets a buffer of minus 15 minutes
+    Then it is rejected with NegativeBufferBetweenJobsException
 ```
 
 
@@ -387,7 +416,8 @@ Feature: Provider availability
 | Object | Kind | Responsibility |
 |---|---|---|
 | `SearchCriteria` | Value object | Jobs, start, duration, helpers, customer city; validated against Homa's ranges |
-| `ProviderCandidate` | Value object | Read model: jobs, hours range, helpers range, cities, availability answer |
+| `SearchLimits` | Value object | Discovery's own view of the Homa-set values a search respects |
+| `ProviderCandidate` | Value object | Read model: jobs, hours range, helpers range, cities, and `nearestFreeStart`, the nearest free start within 2 hours either side, from availability |
 | `MatchClassifier` | Domain service | Returns `EXACT`, `CLOSE` or `NONE` with the reason |
 
 **Exact match:** covers the city, offers every chosen job, the helpers and duration are within its ranges, and it's free at the chosen time.
@@ -395,7 +425,7 @@ Feature: Provider availability
 **No match:** doesn't cover the city, helpers or duration outside its ranges, offers none of the jobs, or not free near the time.
 
 ```java
-SearchCriteria.of(Set<JobCode> jobs, Instant start, int hours, int helpers, City city, Instant now, PolicySnapshot policy)
+SearchCriteria.of(Set<JobCode> jobs, Instant start, int hours, int helpers, City city, Instant now, SearchLimits limits)
 MatchClassifier.classify(SearchCriteria criteria, ProviderCandidate candidate) : MatchResult
 ```
 
@@ -454,7 +484,7 @@ Feature: Matching
 |---|---|---|
 | `Enquiry` | Aggregate | Chosen details before requesting; closes when its date passes; one reservation per enquiry |
 | `Reservation` | Aggregate | The lifecycle below and all its rules |
-| `ReservationDetails` | Value object | Jobs, start, hours, helpers, address, payment method |
+| `ReservationDetails` | Value object | Jobs, start, hours, helpers, address. The payment method is passed to `request` separately, since an enquiry has the same details but no payment |
 | `PriceBreakdown` | Value object | Hours fee, travel fee, provider price, service fee, total |
 | `ReservationStatus` | Enum | `REQUESTED`, `RESERVED`, `DECLINED`, `EXPIRED`, `CANCELLED`, `DISPUTED`, `COMPLETED` |
 | `TeamAssignment` | Value object | Lead and helpers named for this reservation |
@@ -465,6 +495,7 @@ Feature: Matching
 | `Settlement` | Value object | Who gets what: customer refund, provider earning, Homa service fee, when it's released |
 | `FineCharge` | Value object | Provider fine amount and reason |
 | `CaseDecision` | Value object | The founders' decision, received from `resolution` |
+| `CancellationTerms` | Value object | What the review page shows: free until, the fee from then, the locked period, the cost after check-in |
 
 ### Lifecycle
 
@@ -482,14 +513,14 @@ REQUESTED ──accept──► RESERVED ──dispute window closes, no report�
 
 ```java
 // Enquiry
-Enquiry.create(CustomerId c, ProviderId p, ReservationDetails details, Instant now)
+Enquiry.create(String customerId, String providerId, ReservationDetails details, Instant now)
 Enquiry.bookAgainFrom(Enquiry past, Instant newStart, Instant now)
 Enquiry.isClosed(Instant now) : boolean
-Enquiry.markRequested(ReservationId id)
+Enquiry.markRequested(String reservationId)   // behind EnquiryRequestedIE
 
 // Request
-Reservation.request(CustomerId c, ReservationDetails d, OfferingSnapshot o, PolicySnapshot p,
-                    Optional<EnquiryId> enquiry, Instant now)
+Reservation.request(String customerId, ReservationDetails d, OfferingSnapshot o, PolicySnapshot p,
+                    Optional<String> enquiryId, PaymentMethod method, Instant now)
 Reservation.price() : PriceBreakdown
 Reservation.requestExpiresAt() : Instant
 Reservation.edit(ReservationDetails d, Instant now) : PriceChange
@@ -515,7 +546,7 @@ Reservation.disputeWindowEndsAt() : Optional<Instant>
 Reservation.fileReport(Party party, ReportType type, String reason, List<EvidenceRef> evidence, Instant now)
 Reservation.missCompletionDeadline(Instant now)
 Reservation.closeDisputeWindow(Instant now) : Settlement
-Reservation.resolve(CaseDecision decision) : Settlement   // ends COMPLETED, or CANCELLED for a challenged no-show
+Reservation.resolve(CaseDecision decision, Instant now) : Settlement   // ends COMPLETED, or CANCELLED for a challenged no-show
 
 // Reminders (queries for the scheduler)
 Reservation.isTeamReminderDue(Instant now) : boolean
@@ -954,26 +985,26 @@ Feature: Enquiries
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `Payment` | Aggregate | One per reservation: method, amount, states `AUTHORISED` (card only), `HELD`, `RELEASED`, `REFUNDED`, with a record of each part |
+| `Payment` | Aggregate | One per reservation: method, amount, states `AUTHORISED` (card only), `AUTHORISATION_RELEASED` (card only: ended before acceptance, nothing charged), `HELD`, `RELEASED`, `REFUNDED`, with a record of each part |
 | `PaymentMethod` | Enum | `CARD`, `FPX` |
 | `Payout` | Aggregate | One per reservation that pays the provider: gross earning, fine deductions, net |
 | `Fine` | Aggregate | Amount, reason, deducted so far, waived |
 | `FineDeductionPolicy` | Domain service | Applies outstanding fines oldest first, at most 50% of a payout |
 
 ```java
-Payment.authoriseCard(ReservationId r, Money total, Instant now)
-Payment.payUpfrontByFpx(ReservationId r, Money total, Instant now)
-Payment.capture(Instant now)                         // card, on accept
+Payment.authoriseCard(String reservationId, Money total, Instant now)
+Payment.payUpfrontByFpx(String reservationId, Money total, Instant now)
+Payment.capture(Instant now)                         // on accept: a card is charged; FPX, already held, is kept for the booking
 Payment.adjustTotal(Money newTotal) : Money           // edit while requested; returns the difference
-Payment.cancelBeforeAcceptance() : PaymentInstruction // card: release authorisation; FPX: refund
-Payment.settle(Settlement s) : List<PaymentInstruction>  // release and refund parts
+Payment.cancelBeforeAcceptance(Instant now) : PaymentInstruction // card: release authorisation (AUTHORISATION_RELEASED); FPX: refund
+Payment.settle(Settlement s, Instant now) : List<PaymentInstruction>  // refund now, release from the settlement's release time; once only
 Payment.isFullyAccounted() : boolean                 // released + refunded == charged
 
-Fine.charge(ProviderId p, FineCharge charge, Instant now)
+Fine.charge(String providerId, FineCharge charge, Instant now)
 Fine.waive(String reason, Instant now)
 Fine.outstanding() : Money
 
-Payout.create(ProviderId p, ReservationId r, Money earning)
+Payout.create(String providerId, String reservationId, Money earning, PayoutKind kind)   // fines come off COMPLETED_JOB payouts only
 FineDeductionPolicy.apply(Payout payout, List<Fine> outstanding, Percentage cap) : Payout
 ```
 
@@ -997,6 +1028,7 @@ Feature: Taking payment
     When the request ends before acceptance
     Then the instruction is to release the authorisation
     And no refund is made
+    And the payment is AUTHORISATION_RELEASED
 
   Scenario: A declined FPX request is refunded in full
     Given a HELD FPX payment of RM230.00 not yet accepted
@@ -1070,8 +1102,11 @@ Feature: Fines and payouts
 | `Decision` | Value object | `release()`, `partialRefund(providerReceives)`, `fullRefund()`, plus a required reason |
 
 ```java
-Case.open(ReservationId r, CaseSource source, List<EvidenceRef> evidence, Money providerPrice, Instant now)
+Case.open(String reservationId, CaseSource source, List<EvidenceRef> evidence, Money atStake, Instant now)
+    // atStake: the provider price for a job, the customer no-show fee for a challenged no-show
+Case.addEvidence(List<EvidenceRef> more)          // while open, for example when the other party also reports
 Case.decide(Decision decision, String reason, Instant now)
+Case.providerReceives() : Optional<Money>         // behind CaseDecidedIE
 Case.isOpen() : boolean
 ```
 
@@ -1117,9 +1152,11 @@ Feature: Deciding a case
 | `Message` | Entity | Sender, text, time |
 
 ```java
-Conversation.startByCustomer(EnquiryId or ReservationId subject, CustomerId c, ProviderId p, Message first)
+Conversation.start(Party startedBy, ChatSubject subject, String customerId, String providerId, String firstMessage, Instant now)
+    // a provider start is rejected; startByCustomer(...) is the usual entry point
+Conversation.startByCustomer(ChatSubject subject, String customerId, String providerId, String firstMessage, Instant now)
 Conversation.post(Party sender, String text, Instant now)
-Conversation.linkReservation(ReservationId r)   // when the enquiry is requested; same chat carries on
+Conversation.linkReservation(String reservationId)   // when the enquiry is requested; same chat carries on; once
 Conversation.archive(Instant now)               // enquiry closed without a request
 ```
 
@@ -1315,6 +1352,168 @@ class ReservationCustomerCancellationTest {
 - **Money invariants as tests.** For every ending, provider earning + service fee + customer refund = total; no cancellation fee above the no-show fee.
 - **Gates per context (domain phase):** unit tests, CRAP below 6, mutation 90% or more for `kernel/` and `domain` (with the ratchet), dependency rule. The startup-budget gate applies later, at `app/`.
 
+## Decisions made while building
+
+These are folded in from the build. The method blocks and object tables above already match them;
+this section records the reasoning and the edge cases.
+
+All decisions below are confirmed by the product owner, including: customers have a name; `HomaLimits` for hours and helpers; a live
+listing whose verified team becomes empty is no longer live; every decision listed under the
+reservation and payment details below; touching
+windows, touching blocks and the later-start tie-break in availability, plus a buffer between jobs;
+`Helper.remove()`.
+
+Open questions answered: #1 the customer no-show wait starts from the later of the booked start and
+check-in; #2 percentages round half-up and the refund is computed last; #3 editing a request does not
+reset its expiry; #6 the lead is one of the named helpers, and a provider who is their own helper can
+be the lead; #5 SMS codes are 6 digits, valid 5 minutes, with a new code after 5 wrong attempts; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
+hours either side.
+
+- **`HomaPolicy.initial(Instant now)`** takes the time version 1 takes effect, following the "time is
+  passed in" convention. Each version records when it took effect, and a change cannot take effect
+  before the version in force.
+- **Snapshots across contexts.** A domain cannot import another context's domain, so `reservation`
+  cannot take policy's `PolicySnapshot` or offering's `OfferingSnapshot` types directly. Each consuming
+  context defines its own snapshot value holding just what it needs, and its usecase layer fills it in.
+- **`City` per context.** `City` is not in the kernel. Each context that needs one defines its own,
+  as `catalogue` does.
+- **Rules added from the spec:**
+  - The Flexible tier stays at 0%, because the spec defines Flexible as free cancellation.
+  - The provider no-show fine is never below the late cancellation fine ("not showing up is never
+    cheaper than cancelling late").
+  - The no-show ceiling is checked in both directions: a tier fee can't rise above the customer
+    no-show fee, and the customer no-show fee can't drop below a tier fee.
+- **Catalogue details:** codes are upper-case words joined by underscores (`KITCHEN_GREASE`); a job or
+  tool is retired only once and its code is never reused; shelves are ordered from 1. A preset search
+  needs at least one job, hour and helper. Homa's upper limits (6 hours, 10 helpers) can change, so
+  they are checked when the search runs, in `discovery`.
+- **Account details:**
+  - Customers register with a name as well as a phone number and address, because the spec says
+    providers see "the customer's name, address and reservation details".
+  - Phone numbers are Malaysian mobiles (`+601` then 8 or 9 digits).
+  - The SMS code (open question 5) is 6 digits and expires 5 minutes after it is sent, exactly at the
+    5-minute mark. After 5 wrong codes, a new code is needed.
+  - An eKYC result is `VERIFIED` or `REJECTED`; a rejected provider can be verified on a later attempt.
+  - A provider is their own helper by default.
+  - `Helper.remove()` is added, so `HelperRemovedIE` has a domain method behind it.
+- **Offering details:**
+  - `setHours` and `setHelpers` both take `HomaLimits`, offering's own view of Homa's duration range and
+    helpers per search, since the 10-helper cap is a Homa-set value.
+  - A listing offers at least one job and covers at least one city. Bringing no tools is allowed.
+  - A separate travel fee is above zero; charging none means travel is included.
+  - When the team shrinks, max helpers shrinks to the team size, and min helpers with it if needed. A
+    growing team doesn't widen the range. A live listing whose verified team becomes empty is no
+    longer live.
+  - Go-live lists every missing requirement, including the provider's own verification and the
+    helpers' verification. Only a live listing gives an `OfferingSnapshot`, and a live listing doesn't
+    go live twice.
+- **Availability details:**
+  - Windows that touch or overlap count as one stretch.
+  - A busy block or hold that only touches a slot (ending at 10:00 for a 10:00 start) leaves it
+    available.
+  - A hold also needs the slot to be inside the windows.
+  - Each reservation holds one slot, and releasing a reservation that holds nothing is an error.
+  - A provider can set a buffer between jobs. A new slot can't start within the buffer after a held
+    slot, or end within it before one. The buffer is kept around reservation holds only, not around
+    synced busy blocks, and changing it doesn't affect slots already held.
+  - `nearestAvailableStart` searches in 15-minute steps outward from the wanted start, up to the given
+    distance either side, and takes the later start when two are equally near.
+- **Reservation details:**
+  - `reservation` defines its own `OfferingSnapshot` and `PolicySnapshot`, with only what it needs.
+  - The payment method is a separate argument to `Reservation.request`, not part of
+    `ReservationDetails`, because an enquiry has the same details but no payment.
+  - The provider's late cancellation fine applies inside the policy's 24-hour fee window.
+  - Times at the edges:
+    - A request is expired at its expiry time: accepting at Friday 09:00 is rejected.
+    - The check-in period includes its last moment (10:15), so a provider no-show is marked only
+      after it.
+    - The no-show report window and the dispute window exclude their end, the moment the money is
+      released.
+  - Customer cancellation:
+    - Cancelling a reserved booking after the check-in period with no check-in is rejected. The
+      reservation ends as a provider no-show instead.
+    - Cancelling after an early check-in, even before the booked start, counts as a customer no-show.
+  - After completion, the customer can't cancel, the provider can't cancel, and no customer no-show
+    can be reported.
+  - Reports and decisions:
+    - Either party can still file their one report while a dispute from a report or a missed
+      completion is open. A challenged no-show takes no reports.
+    - For a challenged no-show, "release" and "partial refund" are measured against the no-show fee.
+    - `Reservation.resolve` takes `now`, so the settlement has a release time.
+  - `Reservation.cancellationTerms()` gives what the review page shows: when the fee starts (the booked
+    start on Flexible), the fee from then, the period when cancelling is locked, and the customer no-show
+    fee once checked in. `cancelByCustomer` reads its fee from the same terms.
+  - Who checks in is not recorded or checked (confirmed). Helpers have no accounts and the provider is
+    accountable either way.
+  - Report evidence is optional and a reason is required (confirmed). The spec now says "with a reason,
+    and evidence where available".
+  - Availability at request and at acceptance is checked by the usecases, not by `Reservation`
+    (confirmed).
+  - **Payment phase note:** a customer no-show settlement is released when the report window ends.
+    If it is challenged, Homa's decision gives a final settlement that replaces it.
+  - The team reminder is a new Homa-set value, 6 hours (confirmed; changed from 24 hours).
+    `isTeamReminderDue` is true while the booking is reserved and the team is not named, from 6 hours
+    before the booked start until the
+    start, when the team locks.
+- **Payment details:**
+  - `capture` runs on acceptance for both methods. A card is charged; an FPX payment, already held, is
+    kept for the booking.
+  - Edits and endings before acceptance are only allowed while the card is authorised or the FPX payment
+    is held. An FPX edit collects an increase or refunds a decrease; a card edit just moves the
+    authorisation.
+  - A card request that ends before acceptance moves to `AUTHORISATION_RELEASED`, a fifth state beside
+    the spec's four, since nothing was charged.
+  - `settle` takes `now`. Refunds go out at `now`; the provider's earning and Homa's fee are released
+    from the settlement's release time.
+  - A payment is settled exactly once, and the settlement must add up to its total. **Usecase note:**
+    send a customer no-show settlement to `payment` only when the report window ends unchallenged. If
+    it is challenged, Homa's decision is the only settlement sent.
+  - Fines (open question #7): a payout records its `PayoutKind`, and fines come off payouts for
+    completed jobs only. They are taken oldest first, up to the cap, which rounds in the provider's
+    favour.
+  - A fine is waived once, with a reason. A fully deducted fine has nothing left to waive.
+- **Resolution details:** a case is opened with the amount at stake: the provider price for a job, or
+  the customer no-show fee for a challenged no-show. A partial refund must be within that amount.
+  Evidence can be added while the case is open, for example when the other party also reports.
+- **Conversation details:**
+  - `Conversation.start(Party, ...)` lets the rule "only the customer starts a chat" be enforced;
+    `startByCustomer` is the usual entry point.
+  - A chat is linked to a reservation once.
+  - Only an enquiry's chat is archived, once. A reservation's chat stays open.
+- **Discovery details:**
+  - `SearchCriteria.of` takes `SearchLimits`, discovery's own view of the Homa-set values.
+  - A `ProviderCandidate` carries `nearestFreeStart`, the answer from availability's
+    `nearestAvailableStart` within 2 hours either side (open question #4, confirmed). Equal to the chosen start means free at the chosen time; another start means a
+    close match; empty means no match.
+  - A match result lists every reason it is not exact.
+- **Integration events (`ie/`):**
+  - Seven publishing contexts each have an event interface in `ie/port`, and the 38 events in the
+    plan's table are records in `ie/events`. Availability, conversation and discovery only listen.
+  - Every event carries `occurredAt`, which the usecase supplies.
+  - The rule (confirmed, and the same in `docs/`): events carry primitives, Strings, kernel types and
+    JDK value types (`Instant`, `Duration`, immutable `List`/`Set`); never domain objects; no `Optional`
+    fields. Enums go across as their names. Collections are copied in each record's
+    compact constructor. A contract test checks every field's type.
+  - Rather than nullable fields, events are split so every value is always present:
+    - Listing events carry `travelIncluded` and a `travelFee` that is RM0 when travel is included.
+    - `ListingChangedIE` is for live listings only. `ListingWentOfflineIE` covers a live listing that
+      stops being live.
+    - `EnquiryRequestedIE` (from `Enquiry.markRequested`) links the chat, instead of an optional
+      enquiry id on `ReservationRequestedIE`.
+    - `CaseDecidedIE.providerReceives` is always set, from `Case.providerReceives`.
+  - `HomaPolicyChangedIE` carries every Homa-set value, so listeners keep a full copy. The listing
+    events carry the whole listing that search needs. `ReportFiledIE`, `NoShowChallengedIE` and
+    `CompletionDeadlineMissedIE` carry the amount at stake for the case.
+  - One event per outcome (confirmed): `ProviderVerifiedIE` and `HelperVerifiedIE` mean verified,
+    nothing else. A rejection has its own event, `ProviderVerificationRejectedIE` or
+    `HelperVerificationRejectedIE`, so the provider is told to redo eKYC.
+  - The tests check that each event can't be built with a required field missing, can't be changed
+    after it is built, and belongs to its context's interface. ArchUnit checks that `ie` imports only
+    `kernel` and Java and that no domain imports `ie`. The mutation gate doesn't apply to `ie`.
+- **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
+  with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
+- **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
+
 ## Open questions
 
 ### Decided
@@ -1329,15 +1528,15 @@ class ReservationCustomerCancellationTest {
 - **Report evidence:** optional. A reason is required; evidence is encouraged, since some problems (a helper not turning up) have nothing to photograph, and Homa weighs missing evidence when deciding.
 - **Cancellation terms:** `Reservation.cancellationTerms()` gives what the review page shows, using the same base as the cancel rule.
 
-### Still open
+### Answered while building
 
-These came up while turning the spec into rules. Until answered, the plan uses the assumption shown.
+These came up while turning the spec into rules. All are now decided by the product owner.
 
-1. **Where the customer no-show wait starts** (slice 6). *Assumption:* from the later of the booked start and the check-in time.
-2. **Rounding** (slice 1). Percentages of RM amounts can produce half sen. *Assumption:* round half-up to the sen, and compute the customer refund last so the parts always add up to the total.
-3. **Does editing a request reset its expiry?** (slice 2). *Assumption:* no, the expiry stays from the original request.
-4. **What "near the chosen time" means for close matches** (discovery). *Assumption:* the provider is free for the same duration starting within 2 hours before or after.
+1. **Where the customer no-show wait starts** (slice 6). *Decided:* from the later of the booked start and the check-in time.
+2. **Rounding** (slice 1). Percentages of RM amounts can produce half sen. *Decided:* round half-up to the sen, and compute the customer refund last so the parts always add up to the total.
+3. **Does editing a request reset its expiry?** (slice 2). *Decided:* no, the expiry stays from the original request.
+4. **What "near the chosen time" means for close matches** (discovery). *Decided:* the provider is free for the same duration starting within 2 hours before or after.
 5. **SMS code rules** (account). *Decided:* 6 digits, valid 5 minutes, 5 wrong attempts then a new code is needed.
-6. **Is the lead one of the helpers?** (slice 5). *Assumption:* yes, the lead is one of the named helpers.
-7. **Fine deductions: which payouts count?** The spec says "next successful reservations". *Assumption:* only payouts from Completed reservations, not cancellation or no-show fee payouts.
-8. **Changes to an offering while a request is open.** *Assumption:* the request keeps the offering snapshot it was made with; the provider's change affects new requests only.
+6. **Is the lead one of the helpers?** (slice 5). *Decided:* yes, the lead is one of the named helpers, and a provider who is their own helper can be the lead.
+7. **Fine deductions: which payouts count?** The spec says "next successful reservations". *Decided:* only payouts from Completed reservations, not cancellation or no-show fee payouts.
+8. **Changes to an offering while a request is open.** *Decided:* the request keeps the offering snapshot it was made with; the provider's change affects new requests only.

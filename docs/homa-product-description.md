@@ -86,7 +86,7 @@ There are no quotes. Choosing fewer jobs within a booking does not change the pr
 
 A reservation stays **Reserved** through the job and the dispute window. If a report is filed, or the provider misses the completion deadline, it becomes **Disputed**. **Completed** is the last status, reached when the dispute window ends with no report or when Homa resolves a review. A challenged customer no-show is the one exception: after Homa's review it ends **Cancelled**, whether Homa upholds the no-show or refunds the customer in full. The provider marking the job completed with evidence is an action and does not change the status.
 
-Payment has its own states, separate from the reservation status: **authorised** (card only: checked and nothing charged yet), **held** (paid and held by Homa), **released** and **refunded**.
+Payment has its own states, separate from the reservation status: **authorised** (card only: checked and nothing charged yet), **authorisation released** (card only: the request was declined, expired or cancelled before acceptance, so the authorisation was let go and nothing was charged), **held** (paid and held by Homa), **released** and **refunded**.
 
 ## Policies
 
@@ -154,14 +154,14 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 - Every provider is an individual and is verified through eKYC.
 - A provider who adds helpers runs a team. Every helper must also be KYC verified. Helpers have no accounts, so the provider sends each helper an eKYC verification link from the provider app.
-- Customers register with their phone number, verified by an SMS code.
+- Customers register with their phone number, verified by an SMS code, and their name.
 
 ### Privacy Policy
 
 Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 2024.
 
 - **What Homa collects and why:**
-  - Customers: phone number and address, to sign in, match providers by city and locate check-in.
+  - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
   - Providers and helpers: eKYC identity data, name and photo, to verify them and show customers who is coming; providers' payout details, handled by Stripe.
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
@@ -243,7 +243,7 @@ These are the values Homa sets for the policies above. They are the same for eve
 
 ### Account
 
-Customers register with their phone number and add their address, which Homa uses to match providers by city and to locate check-in. The account shows the customer's payments and refunds with their status.
+Customers register with their phone number, their name and their address. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in. The account shows the customer's payments and refunds with their status.
 
 ### Homepage
 
@@ -261,7 +261,7 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 
 ### Availability
 
-Providers manage their availability in the app and sync with their calendar (Google Calendar or Apple Calendar), so results reflect when a provider can actually work.
+Providers manage their availability in the app and sync with their calendar (Google Calendar or Apple Calendar), so results reflect when a provider can actually work. A provider can also set a **buffer between jobs**, time kept free before and after each accepted reservation, for example to travel: a new booking cannot start within the buffer after another job or end within it before one. The buffer applies around Homa jobs only, not around synced calendar events, and changing it does not affect bookings already accepted.
 
 ### Chat
 
@@ -299,7 +299,7 @@ a provider who adds helpers manages them in Homa and chooses whether to include 
 ### After going live
 
 - **Reservations:** accept or decline requests, name the lead and helpers for each reservation, check in on the job day, and mark jobs completed with photo or video evidence.
-- **Calendar:** manage availability and sync with Google Calendar or Apple Calendar.
+- **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
 - **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 

@@ -16,7 +16,7 @@ paused at the product owner's request, so the repository holds the domain module
 | Measure | Result |
 |---|---|
 | Bounded contexts with a domain layer | 10 of 10, plus `kernel` and `ie` |
-| Gherkin scenarios in the plan with a matching test | 122 of 122 |
+| Gherkin scenarios in the plan with a matching test | 127 of 127 (122 at closing, plus five for the buffer between jobs added to the plan afterwards) |
 | Unit tests | 827, all passing |
 | Mutants | 1,040, all killed: 100% mutation score and test strength in every context |
 | Worst CRAP score | 5.0 (limit: below 6) |
@@ -69,7 +69,7 @@ Surviving mutants also caught problems while the code was being built:
 
 ## 4. Coverage of the plan and the spec
 
-- **Scenarios:** all 122 Gherkin scenarios in the plan have a test, named by the convention. Every row
+- **Scenarios:** all 127 Gherkin scenarios in the plan have a test, named by the convention. Every row
   of the 12 Scenario Outlines is a test case, and most rules are also tested on the other side of their
   boundary. The scenario-to-test mapping is in `docs/domain-audit.md`, section 1.
 - **Money invariants:** for every ending, on every tier and at several rates that force rounding, the

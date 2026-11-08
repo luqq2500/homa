@@ -63,11 +63,11 @@ class ProviderCalendarBufferTest {
 
     @Test
     void theBufferIsKeptAroundJobsNotAroundSyncedBusyBlocks() {
-        ProviderCalendar calendar = anOpenSaturday();
-        calendar.setBufferBetweenJobs(HALF_AN_HOUR);
-        calendar.replaceBusyBlocks(List.of(busy("09:00", "10:00")));
+        ProviderCalendar calendar = aCalendarWithR1From10To13AndABufferOf(HALF_AN_HOUR);
+        calendar.replaceBusyBlocks(List.of(busy("14:00", "15:00")));
 
-        assertThat(calendar.isAvailable(slot("10:00", "13:00"))).isTrue();
+        assertThat(calendar.isAvailable(slot("15:00", "16:00"))).isTrue();
+        assertThat(calendar.isAvailable(slot("13:30", "14:00"))).isTrue();
     }
 
     @Test
