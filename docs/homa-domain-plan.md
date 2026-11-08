@@ -1204,7 +1204,7 @@ Feature: Chat
 | `Rating` | Aggregate | One per Completed reservation: the provider rating, helper ratings, when it was submitted, hidden flag and reason |
 | `RateableReservation` | Value object | feedback's own snapshot: reservation id, status, customer, provider, named helpers, when it became Completed, and whether it has already been rated |
 | `Stars` | Value object | A whole number from 1 to 5 |
-| `ProviderRating` | Value object | Overall `Stars` (required), `Stars` per `ProviderCategory` (at least one), written feedback (optional, up to 1,000 characters) |
+| `ProviderRating` | Value object | Overall `Stars` (required), `Stars` per `ProviderCategory` (optional, any number), written feedback (optional, up to 1,000 characters) |
 | `ProviderCategory` | Enum | `QUALITY_OF_WORK`, `PUNCTUALITY`, `COMMUNICATION`, `CARE_FOR_THE_HOME` |
 | `HelperRating` | Value object | Overall `Stars` (required) and `Stars` per `HelperCategory` (optional) for one helper; no text |
 | `HelperCategory` | Enum | `FRIENDLINESS`, `HARD_WORK`, `CARE_WITH_BELONGINGS`, `COOPERATION`, `THOROUGHNESS` |
@@ -1274,9 +1274,9 @@ Feature: Rating a completed reservation
     When C1 gives P1 5 stars overall and 5 stars for PUNCTUALITY, with no written feedback
     Then the rating is recorded
 
-  Scenario: The provider needs at least one category rating
+  Scenario: Provider category stars are optional
     When C1 gives P1 4 stars overall and no category stars
-    Then it is rejected with CategoryRatingRequiredException
+    Then the rating is recorded
 
   Scenario: The provider rating needs overall stars
     When C1 gives P1 stars for QUALITY_OF_WORK only, with no overall stars

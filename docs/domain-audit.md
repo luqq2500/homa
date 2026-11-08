@@ -163,7 +163,7 @@ Two scenarios map to more than one test:
 | 131 | Rating a completed reservation | Ratings are accepted only within the rating window (outline) | `RatingSubmissionTest` | `ratingsAreAcceptedOnlyWithinTheRatingWindow` |
 | 132 | Rating a completed reservation | Stars are whole numbers from 1 to 5 (outline) | `RatingSubmissionTest` | `starsAreWholeNumbersFromOneToFive`, `starsOutsideOneToFiveAreRejected` |
 | 133 | Rating a completed reservation | Written feedback is optional | `RatingSubmissionTest` | `writtenFeedbackIsOptional` |
-| 134 | Rating a completed reservation | The provider needs at least one category rating | `RatingSubmissionTest` | `theProviderNeedsAtLeastOneCategoryRating` |
+| 134 | Rating a completed reservation | Provider category stars are optional | `RatingSubmissionTest` | `providerCategoryStarsAreOptional` |
 | 135 | Rating a completed reservation | The provider rating needs overall stars | `RatingSubmissionTest` | `theProviderRatingNeedsOverallStars` |
 | 136 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
 | 137 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
@@ -267,13 +267,13 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
 | discovery | 5.0 | 100% | 100% | 70 | `DiscoveryArchitectureTest` |
-| feedback | 5.0 | 100% | 100% | 104 | `FeedbackArchitectureTest` |
+| feedback | 4.0 | 100% | 100% | 105 | `FeedbackArchitectureTest` |
 | ie | 1.0 | n/a (exempt in the plan) | n/a | – | `IntegrationEventArchitectureTest` |
 
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, reservation, payment and
   discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1146 of 1146 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1147 of 1147 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.

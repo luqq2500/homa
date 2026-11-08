@@ -215,20 +215,20 @@ Added after the phase closed, from the updated product description (Rating Polic
     ratings, because customers may skip categories.
   - The value objects:
     - stars
-    - provider ratings: overall stars, stars for at least one of four provider categories, and written
-      feedback
+    - provider ratings: overall stars, optional stars for any of four provider categories, and
+      optional written feedback
     - helper ratings: overall stars, and optional stars for five helper categories
     - the two category lists
     - the reservation as feedback knows it
     - the limits
-  - 27 source files, 659 lines, 15 exceptions.
+  - 26 source files, 651 lines, 14 exceptions.
 - **`ie/`:** `RatingSubmittedIE` and `RatingHiddenIE`, published by a new `FeedbackIE` interface.
   `HomaPolicyChangedIE` also carries the two new values. That makes 40 events.
 - **Scenarios:** all 24 feedback scenarios in the plan map to a test, named by the convention. The audit's
   scenario table now has 151 of 151.
 - **Gates:**
-  - `feedback.domain`: 104 mutants, all killed (100% score and test strength), worst CRAP 5.0.
-  - Whole build: 900 tests, 1,146 mutants, all killed.
+  - `feedback.domain`: 105 mutants, all killed (100% score and test strength), worst CRAP 4.0.
+  - Whole build: 901 tests, 1,147 mutants, all killed.
   - The dependency rule passes for `feedback`.
 - **Decisions while building:**
   - `RateableReservation` also carries whether the reservation is already rated, so "a reservation is
@@ -241,8 +241,8 @@ Added after the phase closed, from the updated product description (Rating Polic
     feedback, and the rated helper ids. Category stars stay in `feedback`.
 - **Revised after review:** the rating model changed twice. First, starred provider categories became
   highlights picked without stars. Then the final model replaced highlights and compliments with
-  star-rated categories for both providers and helpers. The provider needs at least one category, and
-  the helper categories are optional.
+  star-rated categories for both providers and helpers. Only the overall stars are required; category
+  stars are optional for both providers and helpers.
 
   All of these are in the plan under "Decisions made while building". The feedback length limit and the
   window's last minute are also in the spec.

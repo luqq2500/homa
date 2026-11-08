@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import feedback.domain.exception.AlreadyRatedException;
-import feedback.domain.exception.CategoryRatingRequiredException;
 import feedback.domain.exception.FeedbackTooLongException;
 import feedback.domain.exception.HelperNotOnReservationException;
 import feedback.domain.exception.NotTheReservationCustomerException;
@@ -78,9 +77,20 @@ class RatingSubmissionTest {
         }
 
         @Test
-        void theProviderNeedsAtLeastOneCategoryRating() {
-            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Map.of(), ""))
-                    .isInstanceOf(CategoryRatingRequiredException.class);
+        void providerCategoryStarsAreOptional() {
+            Rating rating = rate(ProviderRating.of(Stars.of(4)), Map.of(), sunday("10:00"));
+
+            assertThat(rating.provider().overall()).isEqualTo(Stars.of(4));
+            assertThat(rating.provider().categories()).isEmpty();
+            assertThat(rating.provider().hasWrittenFeedback()).isFalse();
+        }
+
+        @Test
+        void overallStarsAndTextWithoutCategoryStarsAreRecorded() {
+            Rating rating = rate(ProviderRating.of(Stars.of(3), Map.of(), " Arrived late "), Map.of(), sunday("10:00"));
+
+            assertThat(rating.provider().categories()).isEmpty();
+            assertThat(rating.provider().writtenFeedback()).isEqualTo("Arrived late");
         }
 
         @Test

@@ -163,7 +163,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 - **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count.
 - **When:** within the **rating window** after the reservation becomes Completed, including its last minute. A disputed reservation can be rated only after Homa's decision, because it becomes Completed only then.
-- **Rating the provider:** overall stars from 1 to 5 (required), stars for each **provider category** (at least one required), and written feedback (optional, up to 1,000 characters).
+- **Rating the provider:** overall stars from 1 to 5 (required), stars for any number of **provider categories** (optional), and written feedback (optional, up to 1,000 characters).
 - **Rating helpers:** rating helpers is optional. For each helper the customer rates, overall stars from 1 to 5 are required, and stars for each **helper category** are optional. There is no written feedback for helpers, so no one writes comments about an individual worker.
 - **Showing ratings:** a provider's or helper's overall average is shown only once they have at least the **minimum ratings to show**. Until then, the count is shown with "New". Each category's average is shown once that category has its own minimum ratings to show, because customers may skip categories.
 - **Ratings and reports are separate.** A rating is an opinion and never changes a payout, a fine or a decision. A problem that needs Homa's decision is a report.
@@ -303,7 +303,7 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 
 ### Ratings
 
-After a reservation becomes Completed, the customer is asked to rate it: overall stars and category stars for the provider, optional written feedback, and, for any helper they choose, overall stars and optional category stars. When the provider names who is coming, the customer sees each helper's overall average.
+After a reservation becomes Completed, the customer is asked to rate it: overall stars and optional category stars for the provider, optional written feedback, and, for any helper they choose, overall stars and optional category stars. When the provider names who is coming, the customer sees each helper's overall average.
 
 ### Availability
 
