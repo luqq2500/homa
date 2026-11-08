@@ -29,11 +29,11 @@
         <pitest.junit5.version>1.2.2</pitest.junit5.version>
 
         <!--
-            PIT's whole-project floor is the lowest layer threshold (usecase, 80%). tools/quality_gates.py applies
-            each layer's own threshold per context: at least 90% for kernel and domain, at least 80% for usecase,
-            with the ratchet in quality/ratchet.json (Discipline §9).
+            Mutation gate for kernel and domain (Discipline §9): at least 90%. tools/quality_gates.py applies each
+            layer's threshold per context, with the ratchet in quality/ratchet.json. When the usecase layer is built,
+            lower this project-wide floor to 80%, the usecase threshold; the script keeps domain at 90%.
         -->
-        <mutation.threshold>80</mutation.threshold>
+        <mutation.threshold>90</mutation.threshold>
     </properties>
 
     <dependencyManagement>

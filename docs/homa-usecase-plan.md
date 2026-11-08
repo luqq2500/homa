@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** draft. `catalogue` is built as the reference pattern. The other contexts wait for review of this plan and the open questions at the end.
+**Status:** draft, paused. Nothing in the usecase layer is built. The domain phase comes first; this plan waits for review, with the open questions at the end.
 
 ## Conventions
 
@@ -59,7 +59,7 @@ Availability is the exception: a request needs a live answer (see U1).
 
 `→` shows the event published.
 
-**catalogue** (built)
+**catalogue**
 - `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob` → `JobAddedIE`, `JobRetiredIE`
 - `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRetiredIE`
 - `HomaCreateShelf`
@@ -140,8 +140,8 @@ tests across contexts.
    should end the request. *Recommendation:* payment publishes `PaymentFailedIE`, and reservation ends
    the request with a new domain method, `Reservation.paymentFailed`, so it is not left waiting for the
    provider.
-6. **U6. `JobAddedIE` and `ToolAddedIE`** (added with catalogue). Offering can't know a job exists
-   without them; the domain plan's event table only had the retired events.
+6. **U6. `JobAddedIE` and `ToolAddedIE`.** These are already in `ie/` and in the domain plan's event table.
+   Offering can't know a job exists without them; the table had only the retired events.
 7. **U7. Loading aggregates from storage.** Domain constructors are private and generate new ids. The
    infra phase will need a way to rebuild an aggregate as it was saved. *Recommendation:* decide in the
    infra phase. Usecase tests keep the objects in memory.
