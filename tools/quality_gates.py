@@ -9,7 +9,8 @@ where a context is a top-level package under src/main/java (kernel, catalogue, p
   * Mutation score and test strength of at least 90% for each context, not just overall.
   * Mutation ratchet: a context's score and test strength may never drop below its last passing
     score, stored in quality/ratchet.json. Pass --update to raise the ratchet after a pass.
-  * Every context is in PIT's targetClasses in pom.xml, so a new context cannot skip the gate.
+  * Every context is in PIT's targetClasses in pom.xml, so a new context cannot skip the gate. The
+    integration event contracts in ie/ have no logic and are exempt from the mutation gate.
 
 Usage: python3 tools/quality_gates.py [--update]
 """
@@ -26,6 +27,8 @@ JACOCO = ROOT / "target" / "site" / "jacoco" / "jacoco.xml"
 PIT = ROOT / "target" / "pit-reports" / "mutations.xml"
 RATCHET = ROOT / "quality" / "ratchet.json"
 CRAP_LIMIT = 6.0
+# Event records have no logic, so the mutation gate does not apply to them (domain plan, Integration events).
+NO_MUTATION_GATE = {"ie"}
 MUTATION_THRESHOLD = 90.0
 
 
@@ -96,6 +99,9 @@ def main(update):
     print(f"{'context':<14}{'worst CRAP':>12}{'mutation':>11}{'strength':>11}{'ratchet':>10}")
     for context in contexts():
         last = ratchet.get(context, {"score": 0.0, "strength": 0.0})
+        if context in NO_MUTATION_GATE:
+            print(f"{context:<14}{worst[context]:>12.1f}{'n/a':>11}{'n/a':>11}{'n/a':>10}")
+            continue
         if context not in targets:
             failures.append(f"{context}: not in PIT targetClasses in pom.xml")
         scores = mutation.get(context)

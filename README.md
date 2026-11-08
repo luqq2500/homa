@@ -22,6 +22,8 @@ src/main/java/
   resolution/domain/            the founders' case queue and decisions
   conversation/domain/          chats for enquiries and reservations
   discovery/domain/             search criteria and exact, close or no matches
+  ie/port/                      one integration event interface per publishing context
+  ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
@@ -62,7 +64,9 @@ Build order from the domain plan:
 | 8 | `resolution` | Done |
 | 9 | `conversation` | Done |
 | 10 | `discovery` | Done |
-| 11 | `ie/` integration event contracts | Next |
+| 11 | `ie/` integration event contracts | Done |
+
+The domain phase is complete. Next by the discipline: the usecase layer.
 
 ### Decisions taken while building (to fold back into the plan)
 
@@ -185,6 +189,20 @@ hours either side.
     `nearestAvailableStart` within 2 hours either side (open question #4, confirmed). Equal to the chosen start means free at the chosen time; another start means a
     close match; empty means no match.
   - A match result lists every reason it is not exact.
+- **Integration events (`ie/`):**
+  - Seven publishing contexts each have an event interface in `ie/port`, and the 32 events in the
+    plan's table are records in `ie/events`. Availability, conversation and discovery only listen.
+  - Every event carries `occurredAt`, which the usecase supplies.
+  - Besides primitives, Strings and kernel types, events use JDK value types: `Instant`, `Duration`,
+    and immutable `Set`, `List` and `Optional`. They carry no domain object; enums go across as their
+    names.
+  - `HomaPolicyChangedIE` carries every Homa-set value, so listeners keep a full copy. The listing
+    events carry the whole listing that search needs. `ReportFiledIE`, `NoShowChallengedIE` and
+    `CompletionDeadlineMissedIE` carry the amount at stake for the case.
+  - `ProviderVerifiedIE` and `HelperVerifiedIE` are published for a `VERIFIED` result only.
+  - The tests check that each event can't be built with a required field missing, can't be changed
+    after it is built, and belongs to its context's interface. ArchUnit checks that `ie` imports only
+    `kernel` and Java and that no domain imports `ie`. The mutation gate doesn't apply to `ie`.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
