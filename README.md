@@ -14,6 +14,7 @@ kernel/                 shared kernel: Money, Percentage (Java standard library 
 catalogue/              job list, tool list, service area, homepage shelves
 policy/                 Homa-set values and their versions
 account/                customer and provider accounts, helpers, phone and eKYC verification
+offering/               a provider's listing and the rules for going live
 tools/quality_gates.py  CRAP gate and mutation ratchet
 quality/ratchet.json    last passing mutation score per module
 ```
@@ -43,8 +44,9 @@ Build order from the domain plan:
 | 1 | `catalogue` | Done |
 | 2 | `policy` | Done |
 | 3 | `account` | Done |
-| 4 | `offering` | Next |
-| 5–10 | `availability`, `reservation`, `payment`, `resolution`, `conversation`, `discovery` | To do |
+| 4 | `offering` | Done |
+| 5 | `availability` | Next |
+| 6–10 | `reservation`, `payment`, `resolution`, `conversation`, `discovery` | To do |
 | 11 | `ie/` integration event contracts | To do, after every context passes its gates |
 
 ### Decisions taken while building (to fold back into the plan)
@@ -76,6 +78,17 @@ Build order from the domain plan:
   - An eKYC result is `VERIFIED` or `REJECTED`; a rejected provider can be verified on a later attempt.
   - A provider is their own helper by default.
   - `Helper.remove()` is added, so `HelperRemovedIE` has a domain method behind it.
+- **Offering details:**
+  - `setHours` and `setHelpers` both take `HomaLimits`, offering's own view of Homa's duration range and
+    helpers per search, since the 10-helper cap is a Homa-set value.
+  - A listing offers at least one job and covers at least one city. Bringing no tools is allowed.
+  - A separate travel fee is above zero; charging none means travel is included.
+  - When the team shrinks, max helpers shrinks to the team size, and min helpers with it if needed. A
+    growing team doesn't widen the range. A live listing whose verified team becomes empty is no
+    longer live.
+  - Go-live lists every missing requirement, including the provider's own verification and the
+    helpers' verification. Only a live listing gives an `OfferingSnapshot`, and a live listing doesn't
+    go live twice.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.

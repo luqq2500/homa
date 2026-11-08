@@ -19,6 +19,7 @@
         <module>catalogue</module>
         <module>policy</module>
         <module>account</module>
+        <module>offering</module>
     </modules>
 
     <properties>
