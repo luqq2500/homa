@@ -47,8 +47,9 @@ fed by event handlers and stored behind its own out port:
 |---|---|---|
 | offering | active catalogue jobs and tools | `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE` |
 | offering | Homa's hours and helpers limits | `HomaPolicyChangedIE` |
-| offering | provider readiness and the verified roster | `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `HelperVerifiedIE`, `HelperVerificationRejectedIE`, `HelperRemovedIE` |
-| reservation | each live listing's `OfferingSnapshot` | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE` |
+| offering | provider readiness and the team roster | `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `HelperJoinedTeamIE`, `HelperReverifiedIE`, `HelperLapsedIE`, `HelperRemovedIE` |
+| offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
+| reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
 | discovery | each live listing's search fields | the listing events |
 | conversation | customer names | `CustomerRegisteredIE` |
@@ -73,14 +74,15 @@ Availability is the exception: a request needs a live answer (see U1).
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
 - Provider: `ProviderRegisterAccount`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`
-- Helpers: `ProviderAddHelper`, `ProviderSendHelperEkycLink`, `ProviderRemoveHelper` → `HelperRemovedIE`
-- Kenal reporting back: `KenalRecordProviderResult` → `ProviderVerifiedIE` or `ProviderVerificationRejectedIE`; `KenalRecordHelperResult` → `HelperVerifiedIE` or `HelperVerificationRejectedIE`
+- Helpers: `ProviderInviteHelper` → `HelperInvitedIE`, `ProviderSendHelperEkycLink`, `ProviderRemoveHelper` → `HelperRemovedIE`
+- Kenal reporting back: `KenalRecordProviderResult` and `KenalRecordHelperResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
+- Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `HelperLapsedIE` or `ProviderVerificationLapsedIE`
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
 **offering**
 - `ProviderDraftListing`, `ProviderSetProfile`, `ProviderOfferJobs`, `ProviderBringTools`, `ProviderSetPricing`, `ProviderSetHours`, `ProviderSetHelpers`, `ProviderCoverCities`, `ProviderChooseCancellationTier` → `ListingChangedIE` when live
 - `ProviderGoLive` → `ListingWentLiveIE`
-- Handlers: the catalogue, policy and account events above. A roster change can lead to `ListingWentOfflineIE`.
+- Handlers: the catalogue, policy and account events above. A roster change can lead to `ListingWentOfflineIE`. `ProviderVerificationLapsedIE` pauses a live listing → `ListingPausedIE`; `ProviderReverifiedIE` resumes a paused one → `ListingResumedIE`.
 
 **availability**
 - `ProviderSetWindows`, `ProviderSetBuffer`, `CalendarSyncBusyBlocks` (scheduled)
@@ -89,7 +91,7 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **reservation**
 - Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation`; `CustomerChallengeNoShow` → `NoShowChallengedIE`
-- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE`; `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
+- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
@@ -112,6 +114,39 @@ Availability is the exception: a request needs a live answer (see U1).
 **discovery**
 - `CustomerSearchProviders`: the listing projection, the policy projection, and U1 for availability
 - Handlers: the listing events, `HomaPolicyChangedIE`
+
+## Required rules
+
+These rules come from decisions made after the domain phase. Each one needs a usecase test.
+
+1. **R1. One event per eKYC outcome.** `KenalRecordProviderResult` and `KenalRecordHelperResult`
+   publish the event for the `EkycOutcome` the domain returns, and nothing for `UNCHANGED`:
+
+   | Outcome | Helper | Provider |
+   |---|---|---|
+   | `VERIFIED` | `HelperJoinedTeamIE` | `ProviderVerifiedIE` |
+   | `REJECTED` | `HelperInviteRejectedIE` | `ProviderVerificationRejectedIE` |
+   | `REVERIFIED` | `HelperReverifiedIE` | `ProviderReverifiedIE` |
+   | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
+   | `UNCHANGED` | none | none |
+
+2. **R2. A paused provider can't accept.** `ProviderAcceptRequest` refuses with
+   `ListingPausedException` while reservation's listing projection says the listing is paused, from
+   `ListingPausedIE` until `ListingResumedIE`. This covers requests made before the pause, whose
+   snapshots still say the listing takes requests.
+   - Such a request stays Requested and expires normally (`HomaExpireRequests` is unchanged).
+   - If the provider re-verifies before the expiry, they can accept it.
+   - Accepted reservations go ahead: no handler of `ListingPausedIE` changes a reservation.
+   - The domain stays as it is. The pause lives in offering, so only the usecase can see it at
+     acceptance.
+3. **R3. Going offline never touches accepted reservations.** `ListingWentOfflineIE` and
+   `ListingPausedIE` update projections only. No handler cancels or changes a reservation because of
+   them.
+4. **R4. The roster holds team members only.** offering builds a provider's `TeamRoster` from helpers
+   where `isTeamMember()` is true, plus the provider if they include themselves. It rebuilds the roster
+   on `HelperJoinedTeamIE`, `HelperReverifiedIE`, `HelperLapsedIE` and `HelperRemovedIE`.
+5. **R5. A lapsed helper named on an upcoming reservation.** The provider must name someone else before
+   the start, and the reservation's existing "team must be on the roster" rule then applies.
 
 ## Build order
 

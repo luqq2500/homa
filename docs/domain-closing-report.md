@@ -300,11 +300,13 @@ through eKYC every **3 months**, counted from their own last successful verifica
   - `pause()` and `resume()`: a paused listing stays live but takes no new requests.
   - `takesRequests()` is copied into the snapshot.
 - **`reservation`:** `Reservation.request` refuses a paused listing with `ListingPausedException`.
-- **`ie/`:** the plan's five events, plus `ListingPausedIE` and `ListingResumedIE`. That makes 48
-  events.
+- **`ie/`:** the plan's five events, plus `ListingPausedIE`, `ListingResumedIE` and `RecheckFailedIE`.
+  That makes 49 events.
 - **Scenarios:** the two re-verification features add 14 scenarios, and the audit maps 170 of 170.
-- **Gates:** whole build 1,022 tests, 1,241 mutants, all killed. `account.domain` has 156 mutants and
+- **Gates:** whole build 1,026 tests, 1,241 mutants, all killed. `account.domain` has 156 mutants and
   `offering.domain` 177, both at 100%.
-- **To confirm:** a request already waiting when the listing pauses can still be accepted. The
-  decisions made while building are listed in the plan, under "Change after the domain phase: periodic
-  re-verification".
+- **Decisions:** the decisions made while building are confirmed and listed in the plan, under "Change
+  after the domain phase: periodic re-verification". A paused provider can't accept any request,
+  including one made before the pause. The request stays Requested and expires normally unless the
+  provider re-verifies in time. The accept usecase enforces this (required rule R2 in the usecase
+  plan); the domain is unchanged.

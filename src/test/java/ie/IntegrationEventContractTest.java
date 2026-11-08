@@ -33,6 +33,7 @@ import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
 import ie.events.RatingHiddenIE;
 import ie.events.RatingSubmittedIE;
+import ie.events.RecheckFailedIE;
 import ie.events.RecheckOpenedIE;
 import ie.events.ProviderCheckedInIE;
 import ie.events.ProviderReverifiedIE;
@@ -105,6 +106,7 @@ class IntegrationEventContractTest {
                 Arguments.of(HelperInviteRejectedIE.class, AccountIE.class),
                 Arguments.of(HelperRemovedIE.class, AccountIE.class),
                 Arguments.of(RecheckOpenedIE.class, AccountIE.class),
+                Arguments.of(RecheckFailedIE.class, AccountIE.class),
                 Arguments.of(HelperReverifiedIE.class, AccountIE.class),
                 Arguments.of(HelperLapsedIE.class, AccountIE.class),
                 Arguments.of(ProviderReverifiedIE.class, AccountIE.class),
@@ -209,7 +211,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(48);
+        assertThat(events().count()).isEqualTo(49);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

@@ -334,5 +334,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
   - With re-verification, `RecheckOpenedIE`, `HelperReverifiedIE`, `HelperLapsedIE`,
     `ProviderReverifiedIE` and `ProviderVerificationLapsedIE` were added from the plan. Two more were
     added while building: `ListingPausedIE` and `ListingResumedIE`, so search can leave a paused
-    listing out. `HomaPolicyChangedIE` now carries the three re-verification values.
-  - The contract test now covers 48 events.
+    listing out. Then `RecheckFailedIE`, so the provider is asked to have the person retry.
+    `HomaPolicyChangedIE` now carries the three re-verification values.
+  - The contract test now covers 49 events.

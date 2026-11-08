@@ -1451,6 +1451,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `HelperJoinedTeamIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` (now a `MEMBER`) |
 | `HelperInviteRejectedIE` | account | (notifications) | `Helper.recordEkycResult` with `REJECTED` |
 | `RecheckOpenedIE` | account | (notifications) | `Helper.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
+| `RecheckFailedIE` | account | (notifications) | `Helper.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
 | `HelperReverifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
 | `HelperLapsedIE` | account | offering | `Helper.lapse` |
 | `ProviderReverifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
@@ -1459,8 +1460,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
 | `ListingWentOfflineIE` | offering | discovery | `ProviderListing.updateRoster` leaving a live listing with no verified team |
-| `ListingPausedIE` | offering | discovery | `ProviderListing.pause` |
-| `ListingResumedIE` | offering | discovery | `ProviderListing.resume` |
+| `ListingPausedIE` | offering | discovery, reservation | `ProviderListing.pause` |
+| `ListingResumedIE` | offering | discovery, reservation | `ProviderListing.resume` |
 | `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgainFrom` |
 | `EnquiryRequestedIE` | reservation | conversation | `Enquiry.markRequested` |
 | `EnquiryClosedIE` | reservation | conversation | `Enquiry.isClosed` turning true |
@@ -1724,7 +1725,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 48 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 49 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -1823,15 +1824,23 @@ Helper.verification() : Verification
 
 **`ie/`:** `RecheckOpenedIE` (provider and team member, for the reminder), `HelperReverifiedIE`, `HelperLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`. `offering` listens to `HelperLapsedIE` and `HelperJoinedTeamIE`/`HelperReverifiedIE` to rebuild the roster, and to `ProviderVerificationLapsedIE`/`ProviderReverifiedIE` to pause and resume.
 
-**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies.
+**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies. This rule and the other rules from this change are listed as required rules R1 to R5 in `docs/homa-usecase-plan.md`.
 
-**Decided while building:**
+**Decided while building** (all confirmed by the product owner):
 
 - **Outcomes:** `recordEkycResult` returns an `EkycOutcome`, so the usecase publishes one event per
   outcome and nothing for a duplicate. The outcomes are `VERIFIED` (first pass: the provider is
   verified, or the invite joins the team), `REJECTED` (first attempt failed), `REVERIFIED`,
   `RECHECK_FAILED` (a re-check or lapsed person failed; nothing changes) and `UNCHANGED` (a repeated
-  `VERIFIED` with no re-check open).
+  `VERIFIED` with no re-check open). Each outcome but `UNCHANGED` has one event:
+
+  | Outcome | Helper | Provider |
+  |---|---|---|
+  | `VERIFIED` | `HelperJoinedTeamIE` | `ProviderVerifiedIE` |
+  | `REJECTED` | `HelperInviteRejectedIE` | `ProviderVerificationRejectedIE` |
+  | `REVERIFIED` | `HelperReverifiedIE` | `ProviderReverifiedIE` |
+  | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
+  | `UNCHANGED` | none | none |
 - **Months on Malaysian dates:** the due date is the last verification plus the period in months,
   counted on `Asia/Kuala_Lumpur` dates. A date with no match in the later month lands on that month's
   last day, so 30 November gives 29 February in a leap year.
@@ -1864,16 +1873,25 @@ Helper.verification() : Verification
     (`ListingAlreadyPausedException`). `resume()` needs a paused listing (`ListingNotPausedException`).
   - A team change keeps the pause. A listing that goes offline is no longer paused, and `goLive`
     already needs a provider who is not lapsed.
+  - Going offline, like pausing, changes only the listing. It never touches an accepted reservation,
+    which keeps its own snapshot.
   - `takesRequests()` is live and not paused, and the snapshot copies it.
 - **Search needs to know:**
-  - `ListingPausedIE` and `ListingResumedIE` were added (offering to discovery), so search can leave
-    paused listings out. That makes 48 events.
+  - `ListingPausedIE` and `ListingResumedIE` were added (offering to discovery and reservation), so
+    search can leave paused listings out and reservation knows when acceptance is blocked.
+  - `RecheckFailedIE` was added, so the provider is asked to have the person retry. It carries
+    `providerId`, `helperId` (empty for the provider's own re-check) and `dueAt`. That makes 49 events.
   - `RecheckOpenedIE` carries `providerId`, `helperId` (empty for the provider's own re-check),
     `dueAt` and `earlyRecheckReason` (empty for the regular re-check).
 - **`reservation`:**
-  - Only `Reservation.request` checks the pause.
-  - A request already waiting when the listing pauses keeps its snapshot, so it can still be edited
-    and accepted. *To confirm.*
+  - In the domain, only `Reservation.request` checks the pause, through the snapshot's
+    `takesRequests`.
+  - A paused provider can't accept any request, including one made before the pause. That request
+    stays Requested and expires normally, unless the provider re-verifies in time and then accepts it.
+    Accepted reservations go ahead.
+  - The pause lives in offering, and a waiting request's snapshot is from before the pause. So this is
+    a required usecase rule, and the domain stays as it is: `ProviderAcceptRequest` refuses with
+    `ListingPausedException` while the listing is paused (see `docs/homa-usecase-plan.md`).
 
 ```gherkin
 Feature: Periodic re-verification

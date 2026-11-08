@@ -69,7 +69,7 @@ Build order from the domain plan:
 | 11 | `ie/` integration event contracts | Done |
 | 12 | `feedback`, added after closing: two Homa-set values in `policy`, the `feedback` domain, `RatingSubmittedIE` and `RatingHiddenIE` | Done |
 | 13 | Team membership, changed after closing: helpers join a provider's team only once their eKYC is verified; `HelperInvitedIE`, `HelperJoinedTeamIE` and `HelperInviteRejectedIE` | Done |
-| 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; seven new events | Done |
+| 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; eight new events | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership and re-verification.
 
@@ -77,11 +77,11 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 Paused: the repository holds the domain modules only for now. The draft plan,
 `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases, how one context gets
-another's data, and open questions U1 to U7. It waits for review.
+another's data, the required rules R1 to R5, and open questions U1 to U7. It waits for review.
 
 ### Decisions taken while building
 
 All of them are confirmed by the product owner, and recorded in the domain plan under "Decisions made
 while building" (`docs/homa-domain-plan.md`). The plan's method blocks and object tables match the code.
 The re-verification decisions are listed under "Change after the domain phase: periodic
-re-verification" in the plan. They are waiting for confirmation.
+re-verification" in the plan, and are confirmed too.
