@@ -135,7 +135,7 @@ Feature: Shelves
 | `PolicySnapshot` | Value object | Immutable copy of one version, handed to `reservation` |
 | `CancellationTier` | Enum | `FLEXIBLE`, `STANDARD`, `FIRM` with their percentages |
 
-Values held: service fee 15%; duration 1–6 h; helpers per search 1–10; minimum notice 2 h; booking horizon 30 days; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%.
+Values held: service fee 15%; duration 1–6 h; helpers per search 1–10; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%.
 
 ```java
 HomaPolicy.initial() : HomaPolicy               // the values above, version 1

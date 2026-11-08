@@ -53,7 +53,7 @@ public final class HomaPolicy {
             new ProviderLateCancellationFine(Percentage.of(20)),
             new ProviderNoShowFine(Percentage.of(30)),
             new FineDeductionCap(Percentage.of(50)),
-            new TeamReminder(Duration.ofHours(24)),
+            new TeamReminder(Duration.ofHours(6)),
             new EarliestCheckIn(Duration.ofMinutes(15)),
             new CheckInPeriod(Duration.ofMinutes(15)),
             new CheckInRadius(300),

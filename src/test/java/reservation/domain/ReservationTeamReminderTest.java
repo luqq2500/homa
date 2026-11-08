@@ -19,15 +19,16 @@ class ReservationTeamReminderTest {
 
     static Stream<Arguments> reminders() {
         return Stream.of(
-                Arguments.of(friday("09:59"), false),
-                Arguments.of(friday("10:00"), true),
+                Arguments.of(friday("12:00"), false),
+                Arguments.of(saturday("03:59"), false),
+                Arguments.of(saturday("04:00"), true),
                 Arguments.of(saturday("09:59"), true),
                 Arguments.of(saturday("10:00"), false));
     }
 
     @ParameterizedTest(name = "the team reminder is due at {0}: {1}")
     @MethodSource("reminders")
-    void theTeamReminderIsDueFrom24HoursBeforeTheStartUntilTheStart(Instant at, boolean due) {
+    void theTeamReminderIsDueFromSixHoursBeforeTheStartUntilTheStart(Instant at, boolean due) {
         assertThat(aReservation().reserved().isTeamReminderDue(at)).isEqualTo(due);
     }
 
@@ -36,15 +37,15 @@ class ReservationTeamReminderTest {
         Reservation reservation = aReservation().reserved();
         reservation.nameTeam(TeamAssignment.of("aina", "aina", "ben"), ROSTER, friday("12:00"));
 
-        assertThat(reservation.isTeamReminderDue(friday("12:00"))).isFalse();
+        assertThat(reservation.isTeamReminderDue(saturday("05:00"))).isFalse();
     }
 
     @Test
     void noReminderForARequestOrACancelledBooking() {
-        assertThat(aReservation().requested().isTeamReminderDue(friday("12:00"))).isFalse();
+        assertThat(aReservation().requested().isTeamReminderDue(saturday("05:00"))).isFalse();
 
         Reservation cancelled = aReservation().reserved();
         cancelled.cancelByCustomer(thursday("12:00"));
-        assertThat(cancelled.isTeamReminderDue(friday("12:00"))).isFalse();
+        assertThat(cancelled.isTeamReminderDue(saturday("05:00"))).isFalse();
     }
 }

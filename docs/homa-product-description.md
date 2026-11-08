@@ -118,7 +118,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Check-in Policy
 
-- **Who is coming:** before the booked start, the provider names the **lead** (the person in charge on site) and the helpers for the reservation, matching the number of helpers booked. The customer does not pick the helpers but sees each one's name and photo, and who the lead is. Homa reminds the provider ahead of time, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
+- **Who is coming:** before the booked start, the provider names the **lead** (the person in charge on site) and the helpers for the reservation, matching the number of helpers booked. The customer does not pick the helpers but sees each one's name and photo, and who the lead is. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
 - The provider is responsible for check-in and job completion. The lead must be at the customer's location with the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
 - Check-in is **location-based**. Homa enables the check-in action only when the device is within the **check-in radius** of the customer's location, and the provider then marks check-in.
 - Homa uses the device's location only at the moment of check-in, not continuously.
@@ -221,6 +221,7 @@ These are the values Homa sets for the policies above. They are the same for eve
 | **Helpers per search** | How Homa Works | 1 to 10 |
 | **Minimum notice** | How Homa Works | The start time must be at least 2 hours from now |
 | **Booking horizon** | How Homa Works | Up to 30 days ahead |
+| **Team reminder time** | Check-in Policy | 6 hours before the booked start, while the team is not named |
 | **Earliest check-in** | Check-in Policy | 15 minutes before the booked start |
 | **Check-in period** | Check-in Policy | 15 minutes after the booked start |
 | **Check-in radius** | Check-in Policy | 300 metres |

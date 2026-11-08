@@ -171,8 +171,9 @@ hours either side.
     (confirmed).
   - **Payment phase note:** a customer no-show settlement is released when the report window ends.
     If it is challenged, Homa's decision gives a final settlement that replaces it.
-  - The team reminder is a new Homa-set value, 24 hours (confirmed). `isTeamReminderDue` is true while
-    the booking is reserved and the team is not named, from 24 hours before the booked start until the
+  - The team reminder is a new Homa-set value, 6 hours (confirmed; changed from 24 hours).
+    `isTeamReminderDue` is true while the booking is reserved and the team is not named, from 6 hours
+    before the booked start until the
     start, when the team locks.
 - **Payment details:**
   - `capture` runs on acceptance for both methods. A card is charged; an FPX payment, already held, is

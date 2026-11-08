@@ -94,8 +94,8 @@ All of these were agreed with the product owner as they came up.
 
 **Domain behaviour added**
 - A provider can set a buffer between jobs (`availability`).
-- The team reminder: a new Homa-set value, 24 hours before the booked start, and
-  `Reservation.isTeamReminderDue`.
+- The team reminder: a new Homa-set value, 6 hours before the booked start (changed from 24 hours
+  after the report was first written), and `Reservation.isTeamReminderDue`.
 - `Reservation.cancellationTerms()`, from audit gap G1.
 - `Helper.remove()`, so `HelperRemovedIE` has a domain method behind it.
 - `Case.providerReceives()`, behind `CaseDecidedIE`.

@@ -69,8 +69,8 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
-        void theProviderIsRemindedToNameTheTeamADayAhead() {
-            assertThat(launch.teamReminder()).isEqualTo(Duration.ofHours(24));
+        void theProviderIsRemindedToNameTheTeamSixHoursAhead() {
+            assertThat(launch.teamReminder()).isEqualTo(Duration.ofHours(6));
         }
 
         @Test
