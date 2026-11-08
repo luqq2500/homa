@@ -25,7 +25,7 @@ src/main/java/
   ie/port/                      one integration event interface per publishing context
   ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
-docs/                           the product description, the domain plan, the module discipline and the domain audit
+docs/                           the product description, the plans, the module discipline, the domain audit and the domain closing report
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per layer
 ```
@@ -67,7 +67,7 @@ Build order from the domain plan:
 | 10 | `discovery` | Done |
 | 11 | `ie/` integration event contracts | Done |
 
-The domain phase is complete.
+The domain phase is complete: see `docs/domain-closing-report.md`.
 
 ### Usecase phase
 

@@ -1,0 +1,202 @@
+# Homa domain business logic: closing report
+
+**Phase:** domain (Backend Module Discipline §8, step 1)
+**Status:** complete
+**Closed:** 8 November 2026, at commit `24a771e` on `main`
+**Sources:** `docs/homa-product-description.md`, `docs/homa-domain-plan.md`, `docs/backend_module_discipline.md`
+**Evidence:** `docs/domain-audit.md`
+
+## 1. Summary
+
+The domain layer of every bounded context in the plan is built, tested and passing its gates. It covers
+the shared kernel, ten bounded contexts and the integration event contracts. Every product question
+raised along the way has been answered by the product owner. The usecase phase was started and then
+paused at the product owner's request, so the repository holds the domain modules only.
+
+| Measure | Result |
+|---|---|
+| Bounded contexts with a domain layer | 10 of 10, plus `kernel` and `ie` |
+| Gherkin scenarios in the plan with a matching test | 122 of 122 |
+| Unit tests | 827, all passing |
+| Mutants | 1,040, all killed: 100% mutation score and test strength in every context |
+| Worst CRAP score | 5.0 (limit: below 6) |
+| Dependency rule | Passing in every context, and proven by planted violations |
+| Integration events | 38, all with contract tests |
+| Open product questions for the domain | 0 |
+
+## 2. What was built
+
+| Context | Owns | Main objects | Source files | Lines | Tests | Mutants | Worst CRAP |
+|---|---|---|---|---|---|---|---|
+| `kernel` | Money and shares, shared by every domain | `Money` (whole sen), `Percentage` (basis points, half-up) | 2 | 136 | 59 | 37 | 3.0 |
+| `catalogue` | Homa's job and tool lists, launch cities, homepage shelves | `JobList`, `ToolList`, `ServiceArea`, `Shelf` | 29 | 626 | 64 | 80 | 4.0 |
+| `policy` | The Homa-set values and their versions | `HomaPolicy`, `PolicySnapshot`, one `PolicyValue` per value | 13 | 613 | 70 | 58 | 3.0 |
+| `account` | Customers, providers, helpers, phone and eKYC verification | `PhoneVerification`, `CustomerAccount`, `ProviderAccount`, `Helper` | 28 | 576 | 65 | 86 | 5.0 |
+| `offering` | A provider's listing and going live | `ProviderListing`, `OfferingSnapshot` | 36 | 783 | 67 | 158 | 4.0 |
+| `availability` | Windows, synced busy blocks, holds, buffer between jobs | `ProviderCalendar` | 16 | 343 | 46 | 66 | 4.0 |
+| `reservation` | Enquiries and the reservation lifecycle, with every time and money rule | `Enquiry`, `Reservation`, `Settlement`, `CancellationTerms` | 69 | 1,590 | 187 | 280 | 5.0 |
+| `payment` | Money movement, fines and payouts | `Payment`, `Fine`, `Payout`, `FineDeductionPolicy` | 32 | 752 | 50 | 127 | 5.0 |
+| `resolution` | The founders' case queue | `Case` | 11 | 250 | 17 | 40 | 3.0 |
+| `conversation` | Chats for enquiries and reservations | `Conversation` | 13 | 273 | 13 | 38 | 3.0 |
+| `discovery` | Search criteria and matching | `SearchCriteria`, `MatchClassifier` | 18 | 332 | 32 | 70 | 5.0 |
+| `ie` | Integration event contracts | 7 event interfaces, 38 event records | 45 | 921 | 157 | n/a | 1.0 |
+| **Total** | | | **312** | **7,195** | **827** | **1,040** | **5.0** |
+
+Every business rule violation has its own exception, named for the rule, in its context's
+`domain/exception` package: 134 in all.
+
+## 3. Quality gates
+
+All gates run on every build: `mvn verify`, then `python3 tools/quality_gates.py`.
+
+| Gate | Threshold | Result | How it is enforced |
+|---|---|---|---|
+| Unit tests | Robust and intent-focused | 827 passing | JUnit 5, framework-free, one fixed clock per test, shared builders in test-support files |
+| CRAP index | Below 6 for every method | Worst 5.0 | `tools/quality_gates.py` reads JaCoCo's report |
+| Mutation, `kernel/` and domain | At least 90%, with the ratchet | 100% score and test strength in every context | PIT with STRONGER mutators. The script gates each context, and `quality/ratchet.json` holds each at 100% |
+| Dependency rule | Domain imports only `kernel/`; `ie/` imports only `kernel/`; `kernel/` imports only the JDK | Passing | ArchUnit in each context's test package, plus `KernelArchitectureTest` and `IntegrationEventArchitectureTest` |
+| Startup budget | | Not applicable yet | Applies at `app/`, a later phase |
+
+The dependency rule also stops one context importing another. A planted `offering → policy` import and
+a planted `payment → ie` import each failed the build, so the rules are proven to work.
+
+Surviving mutants also caught problems while the code was being built:
+- **One design flaw:** discovery's two booleans for "free at the chosen time" and "free near it"
+  overlapped, so no test could tell them apart. They became a single `nearestFreeStart`.
+- **Missing tests:** for example, a card edit downward that must refund nothing, a request that takes
+  no reports, a draft listing staying a draft when its team changes, and a team shrinking to one helper.
+  Each was added before the gate passed.
+
+## 4. Coverage of the plan and the spec
+
+- **Scenarios:** all 122 Gherkin scenarios in the plan have a test, named by the convention. Every row
+  of the 12 Scenario Outlines is a test case, and most rules are also tested on the other side of their
+  boundary. The scenario-to-test mapping is in `docs/domain-audit.md`, section 1.
+- **Money invariants:** for every ending, on every tier and at several rates that force rounding, the
+  provider earning plus the service fee plus the customer refund equals the total. No cancellation fee
+  is above the customer no-show fee.
+- **Spec rules with no domain test:** the audit found four. All are closed:
+  - G1, the cancellation fee shown on the review page: built as `Reservation.cancellationTerms()`.
+  - G2, who checks in: no rule. Helpers have no accounts and the provider is accountable either way.
+  - G3, availability at request and acceptance: belongs in the usecases.
+  - G4, report evidence: optional. The spec now says "with a reason, and evidence where available".
+- **Rules outside the domain phase** are listed in the audit, section 2b: notifications, read models,
+  schedulers, payment and storage infra, and privacy.
+
+## 5. Changes from the original plan
+
+All of these were agreed with the product owner as they came up.
+
+**Repository structure**
+- One Maven project with a single source tree, `src/main/java/<context>/domain`, instead of a module per
+  context. Context isolation, which the compiler had enforced, is now enforced by ArchUnit.
+- The product description, plan and discipline are kept in `docs/`.
+
+**Domain behaviour added**
+- A provider can set a buffer between jobs (`availability`).
+- The team reminder: a new Homa-set value, 24 hours before the booked start, and
+  `Reservation.isTeamReminderDue`.
+- `Reservation.cancellationTerms()`, from audit gap G1.
+- `Helper.remove()`, so `HelperRemovedIE` has a domain method behind it.
+- `Case.providerReceives()`, behind `CaseDecidedIE`.
+- Customers have a name, since providers see it.
+
+**Signatures adjusted**
+- `HomaPolicy.initial(now)`, `Reservation.resolve(decision, now)` and `Payment.settle(settlement, now)`
+  take the time, following the "time is passed in" convention.
+- `ProviderListing.setHours` and `setHelpers` take `HomaLimits`, offering's own view of the Homa-set
+  values.
+- `Reservation.request` takes the payment method separately from `ReservationDetails`, because an
+  enquiry has the same details but no payment.
+- Ids are Strings throughout, following `XId().generate()`.
+- Contexts that consume another context's data define their own snapshot types, such as reservation's
+  `OfferingSnapshot` and `PolicySnapshot`. A domain may not import another context.
+
+**Payment**
+- A fifth state, `AUTHORISATION_RELEASED`, for a card request that ends before acceptance.
+- `PayoutKind`, so fines come off completed-job payouts only.
+
+**Integration events**
+- There are 38, up from the plan's 32. The new ones are `JobAddedIE`, `ToolAddedIE`,
+  `ListingWentOfflineIE`, `EnquiryRequestedIE`, `ProviderVerificationRejectedIE` and
+  `HelperVerificationRejectedIE`.
+- The event rule now reads: primitives, Strings, kernel types and JDK value types (`Instant`,
+  `Duration`, immutable `List`/`Set`); never domain objects; no `Optional` fields.
+- Collections are copied in each record's constructor, and there is one event per outcome.
+- Events were split so every field is always present.
+- The plan, the discipline and the README all state the same rule.
+
+**Documents updated**
+- Domain plan: the new methods, values and events, the event table, and the decided open questions.
+- Discipline: the event rule.
+- Product description: the Dispute Policy evidence wording.
+
+## 6. Decisions on record
+
+All eight open questions from the plan are confirmed:
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Where the customer no-show wait starts | From the later of the booked start and the check-in |
+| 2 | Rounding | Half-up to the sen, with the customer refund worked out last. The fine cap rounds in the provider's favour |
+| 3 | Does editing a request reset its expiry? | No |
+| 4 | What "near the chosen time" means | Free for the same duration within 2 hours either side |
+| 5 | SMS code rules | 6 digits, valid 5 minutes, a new code after 5 wrong attempts |
+| 6 | Is the lead one of the helpers? | Yes, and a provider who is their own helper can lead |
+| 7 | Which payouts have fines deducted | Payouts for completed jobs only |
+| 8 | Changes to an offering while a request is open | The request keeps the snapshot it was made with |
+
+The full list of smaller decisions, such as boundary times, edge cases and payment states, is in the
+README under "Decisions taken while building". All of them are confirmed.
+
+## 7. Carried forward
+
+**Usecase phase** (paused; draft plan in `docs/homa-usecase-plan.md`)
+- **Open questions U1 to U7** need review before it starts. U1 is how reservation and discovery check
+  availability. U4 is cancelling a request, and U5 is a payment that fails at request.
+- **Obligations the domain leaves to the usecases:**
+  - Check availability on request and on acceptance (G3).
+  - Send a customer no-show settlement to payment only when the report window ends unchallenged.
+  - Run the schedulers for expiry, provider no-show, reminders, completion deadline, dispute window and
+    enquiry closing.
+  - Keep each context's projections of another's data up to date from events.
+
+**Infra phase**
+- **U7:** rebuilding aggregates from storage. The domain constructors are private and generate new
+  ids.
+- **Services and jobs:** evidence retention, refunds to the original payment method, geoservice
+  distance, Kenal and Stripe callbacks, notifications, and read models such as provider page stats and
+  admin tracking.
+
+**Housekeeping**
+- **Fold the decisions into the plan:** most of the README's decisions are reflected in the plan, but
+  some smaller ones (boundary times, edge cases) are only in the README.
+- **Build time:** a full mutation run takes about two to three minutes. PIT's incremental analysis would
+  help once the usecase layer adds more code.
+
+## 8. Timeline
+
+| Commit | Step |
+|---|---|
+| `8612e79` | Build setup and gates; steps 0–2: `kernel`, `catalogue`, `policy` |
+| `5d4e9b7` | Step 3: `account` |
+| `63c1b3d` | Step 4: `offering` |
+| `24a3bc8` | Step 5: `availability` |
+| `4bea4cb` | Restructured into one source tree |
+| `6427035` | Buffer between jobs |
+| `b263275`, `b0a0a10`, `456d4fc` | Step 6: `reservation`, slices 1–2, 3–6 and 7 |
+| `c8a9bb7` | Step 7: `payment` |
+| `c9bd427`, `f0a12e4`, `c0f9d02` | Steps 8–10: `resolution`, `conversation`, `discovery` |
+| `45d66be` | Team reminder |
+| `5ca1962`, `17015a2`, `219d592` | Step 11: `ie/`; no `Optional` fields; verification rejected events |
+| `1a3bf33`, `96a0377` | Domain audit; `cancellationTerms`; decisions recorded |
+| `1fd646f`, `24a771e` | Usecase phase started, then paused and removed |
+
+## 9. How to verify
+
+```bash
+mvn clean verify                 # 827 tests, ArchUnit dependency rules, PIT mutation
+python3 tools/quality_gates.py   # CRAP < 6, mutation >= 90% per context, ratchet
+```
+
+Reports: `target/site/jacoco/` for coverage and `target/pit-reports/` for mutation.
