@@ -16,7 +16,8 @@ src/main/java/
   policy/domain/                Homa-set values and their versions
   account/domain/               customer and provider accounts, helpers, phone and eKYC verification
   offering/domain/              a provider's listing and the rules for going live
-  availability/domain/          a provider's windows, synced busy blocks and reservation holds
+  availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
+  reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
 src/test/java/                  the same packages, one test class per feature
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
@@ -52,8 +53,9 @@ Build order from the domain plan:
 | 3 | `account` | Done |
 | 4 | `offering` | Done |
 | 5 | `availability` | Done |
-| 6 | `reservation`, slice by slice | Next |
-| 7–10 | `payment`, `resolution`, `conversation`, `discovery` | To do |
+| 6 | `reservation`, all seven slices | Done, except the team reminder (see below) |
+| 7 | `payment` | Next |
+| 8–10 | `resolution`, `conversation`, `discovery` | To do |
 | 11 | `ie/` integration event contracts | To do, after every context passes its gates |
 
 ### Decisions taken while building (to fold back into the plan)
@@ -116,6 +118,32 @@ be the lead; #8 a request keeps the offering snapshot it was made with.
     synced busy blocks, and changing it doesn't affect slots already held.
   - `nearestAvailableStart` searches in 15-minute steps outward from the wanted start, up to the given
     distance either side, and takes the later start when two are equally near.
+- **Reservation details:**
+  - `reservation` defines its own `OfferingSnapshot` and `PolicySnapshot`, with only what it needs.
+  - The payment method is a separate argument to `Reservation.request`, not part of
+    `ReservationDetails`, because an enquiry has the same details but no payment.
+  - The provider's late cancellation fine applies inside the policy's 24-hour fee window.
+  - Times at the edges:
+    - A request is expired at its expiry time: accepting at Friday 09:00 is rejected.
+    - The check-in period includes its last moment (10:15), so a provider no-show is marked only
+      after it.
+    - The no-show report window and the dispute window exclude their end, the moment the money is
+      released.
+  - Customer cancellation:
+    - Cancelling a reserved booking after the check-in period with no check-in is rejected. The
+      reservation ends as a provider no-show instead.
+    - Cancelling after an early check-in, even before the booked start, counts as a customer no-show.
+  - After completion, the customer can't cancel, the provider can't cancel, and no customer no-show
+    can be reported.
+  - Reports and decisions:
+    - Either party can still file their one report while a dispute from a report or a missed
+      completion is open. A challenged no-show takes no reports.
+    - For a challenged no-show, "release" and "partial refund" are measured against the no-show fee.
+    - `Reservation.resolve` takes `now`, so the settlement has a release time.
+  - **Payment phase note:** a customer no-show settlement is released when the report window ends.
+    If it is challenged, Homa's decision gives a final settlement that replaces it.
+  - **Waiting on the product owner:** the spec says Homa reminds the provider to name the team "ahead
+    of time", but no Homa-set value says how far ahead, so `isTeamReminderDue` is not built yet.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.

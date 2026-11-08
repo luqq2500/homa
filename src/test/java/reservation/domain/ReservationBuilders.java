@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -87,6 +88,8 @@ final class ReservationBuilders {
                 Duration.ofHours(24),
                 Duration.ofHours(1));
     }
+
+    static final EvidenceRef A_PHOTO = EvidenceRef.of("evidence/kitchen-after.jpg");
 
     /** The provider's verified roster: Aina, Ben and Chan. */
     static final TeamRoster ROSTER = TeamRoster.of("aina", "ben", "chan");
@@ -226,6 +229,13 @@ final class ReservationBuilders {
         Reservation reservedWithTeamNamed() {
             Reservation reservation = reserved();
             reservation.nameTeam(TeamAssignment.of("aina", "aina", "ben"), ROSTER, requestedAt.plus(Duration.ofHours(2)));
+            return reservation;
+        }
+
+        /** Checked in at Saturday 10:00, with completion submitted at {@code at} with a photo. */
+        Reservation completedAt(Instant at) {
+            Reservation reservation = checkedInAt(saturday("10:00"));
+            reservation.submitCompletion(List.of(A_PHOTO), at);
             return reservation;
         }
 

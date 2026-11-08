@@ -2,6 +2,9 @@ package reservation.domain;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import kernel.Money;
@@ -12,6 +15,11 @@ import reservation.domain.exception.CheckInPeriodNotOverException;
 import reservation.domain.exception.CheckInPeriodOverException;
 import reservation.domain.exception.CheckInTooEarlyException;
 import reservation.domain.exception.CityNotCoveredException;
+import reservation.domain.exception.CompletionAlreadySubmittedException;
+import reservation.domain.exception.CompletionDeadlineNotReachedException;
+import reservation.domain.exception.CompletionNotSubmittedException;
+import reservation.domain.exception.DisputeWindowStillOpenException;
+import reservation.domain.exception.EvidenceRequiredException;
 import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
@@ -20,6 +28,7 @@ import reservation.domain.exception.JobNotOfferedException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
 import reservation.domain.exception.ProviderMissedCheckInException;
+import reservation.domain.exception.ReportAlreadyFiledException;
 import reservation.domain.exception.ReportWindowClosedException;
 import reservation.domain.exception.RequestExpiredException;
 import reservation.domain.exception.RequestNotYetExpiredException;
@@ -54,6 +63,8 @@ public final class Reservation {
     private CheckIn checkIn;
     private Ending ending;
     private Instant noShowReportedAt;
+    private Completion completion;
+    private final Map<Party, Report> reports = new EnumMap<>(Party.class);
 
     private Reservation(
             String customerId,
@@ -163,6 +174,7 @@ public final class Reservation {
      */
     public CancellationResult cancelByProvider(Instant now) {
         requireStatus(ReservationStatus.RESERVED, "cancelled by the provider");
+        requireNoCompletion();
         Optional<FineCharge> fine = providerCancellationFine(now);
         return new CancellationResult(endCancelled(Ending.PROVIDER_CANCELLED, Money.ZERO, now), fine);
     }
@@ -216,9 +228,8 @@ public final class Reservation {
      */
     public Settlement reportCustomerNoShow(Instant now) {
         requireStatus(ReservationStatus.RESERVED, "reported as a customer no-show");
-        if (checkIn == null) {
-            throw new NotCheckedInException();
-        }
+        requireCheckedIn();
+        requireNoCompletion();
         if (now.isBefore(noShowWaitEndsAt())) {
             throw new NoShowWaitNotOverException(noShowWaitEndsAt());
         }
@@ -238,6 +249,89 @@ public final class Reservation {
             throw new ReportWindowClosedException("the no-show report window ended at " + windowEnds);
         }
         status = ReservationStatus.DISPUTED;
+    }
+
+    /** The provider marks the job completed, with photo or video evidence. There is no automatic completion. */
+    public void submitCompletion(List<EvidenceRef> evidence, Instant now) {
+        requireStatus(ReservationStatus.RESERVED, "completed");
+        requireCheckedIn();
+        requireNoCompletion();
+        if (evidence.isEmpty()) {
+            throw new EvidenceRequiredException();
+        }
+        completion = new Completion(now, evidence);
+    }
+
+    // ---- After the job ----
+
+    /**
+     * The dispute window ends the dispute window extension after the later of the booked end and the
+     * completion. Until completion is submitted it has no end.
+     */
+    public Optional<Instant> disputeWindowEndsAt() {
+        return Optional.ofNullable(completion)
+                .map(done -> done.at().isAfter(end()) ? done.at() : end())
+                .map(later -> later.plus(policy.disputeWindowExtension()));
+    }
+
+    /**
+     * The customer or the provider files a report, from the booked start until the dispute window ends.
+     * Each files at most one. A report sends the reservation to Homa.
+     */
+    public void fileReport(Party party, ReportType type, String reason, List<EvidenceRef> evidence, Instant now) {
+        requireReportable();
+        requireInsideDisputeWindow(now);
+        if (reports.containsKey(party)) {
+            throw new ReportAlreadyFiledException(party);
+        }
+        reports.put(party, new Report(party, type, reason, evidence, now));
+        status = ReservationStatus.DISPUTED;
+    }
+
+    /** No completion by the completion deadline: Homa reviews the reservation. */
+    public void missCompletionDeadline(Instant now) {
+        requireStatus(ReservationStatus.RESERVED, "sent to Homa for a missed completion");
+        requireNoCompletion();
+        Instant deadline = end().plus(policy.completionDeadline());
+        if (now.isBefore(deadline)) {
+            throw new CompletionDeadlineNotReachedException(deadline);
+        }
+        status = ReservationStatus.DISPUTED;
+    }
+
+    /** The dispute window ended with no report: the job is completed and the payment is released. */
+    public Settlement closeDisputeWindow(Instant now) {
+        requireStatus(ReservationStatus.RESERVED, "completed");
+        Instant windowEnds = disputeWindowEndsAt().orElseThrow(CompletionNotSubmittedException::new);
+        if (now.isBefore(windowEnds)) {
+            throw new DisputeWindowStillOpenException(windowEnds);
+        }
+        status = ReservationStatus.COMPLETED;
+        ending = Ending.COMPLETED;
+        return settle(price.providerPrice(), now);
+    }
+
+    /**
+     * Carries out Homa's decision on a disputed reservation. A job dispute ends completed, with the
+     * provider price at stake. A challenged customer no-show ends cancelled, with the no-show fee at stake.
+     */
+    public Settlement resolve(CaseDecision decision, Instant now) {
+        requireStatus(ReservationStatus.DISPUTED, "resolved");
+        boolean challengedNoShow = ending == Ending.CUSTOMER_NO_SHOW;
+        Money atStake = challengedNoShow ? customerNoShowFee() : price.providerPrice();
+        Money earning = decision.providerEarning(atStake);
+        status = challengedNoShow ? ReservationStatus.CANCELLED : ReservationStatus.COMPLETED;
+        ending = Ending.DECIDED_BY_HOMA;
+        return settle(earning, now);
+    }
+
+    // ---- Reminders ----
+
+    /** Homa reminds the provider to submit completion from the completion reminder time after the booked end. */
+    public boolean isCompletionReminderDue(Instant now) {
+        return status == ReservationStatus.RESERVED
+                && completion == null
+                && !now.isBefore(end().plus(policy.completionReminder()));
     }
 
     // ---- What the reservation holds ----
@@ -294,10 +388,22 @@ public final class Reservation {
         return Optional.ofNullable(ending);
     }
 
+    public Optional<Completion> completion() {
+        return Optional.ofNullable(completion);
+    }
+
+    public List<Report> reports() {
+        return List.copyOf(reports.values());
+    }
+
     // ---- Times ----
 
     private Instant start() {
         return details.start();
+    }
+
+    private Instant end() {
+        return details.end();
     }
 
     private Instant feeWindowOpensAt() {
@@ -346,6 +452,7 @@ public final class Reservation {
     // ---- Rules ----
 
     private Settlement cancelReservedByCustomer(Instant now) {
+        requireNoCompletion();
         if (checkIn != null) {
             return endCancelled(Ending.CUSTOMER_CANCELLED_AFTER_CHECK_IN, customerNoShowFee(), now);
         }
@@ -373,6 +480,35 @@ public final class Reservation {
             return fine(FineReason.LATE_CANCELLATION, policy.providerLateCancellationFine());
         }
         return Optional.empty();
+    }
+
+    private void requireCheckedIn() {
+        if (checkIn == null) {
+            throw new NotCheckedInException();
+        }
+    }
+
+    private void requireNoCompletion() {
+        if (completion != null) {
+            throw new CompletionAlreadySubmittedException(completion.at());
+        }
+    }
+
+    /** A reserved booking, or one already disputed over the job, takes reports. A challenged no-show does not. */
+    private void requireReportable() {
+        boolean jobDispute = status == ReservationStatus.DISPUTED && ending == null;
+        if (status != ReservationStatus.RESERVED && !jobDispute) {
+            throw new InvalidStatusTransitionException(status, "reported");
+        }
+    }
+
+    private void requireInsideDisputeWindow(Instant now) {
+        if (now.isBefore(start())) {
+            throw new ReportWindowClosedException("reports open at the booked start, " + start());
+        }
+        disputeWindowEndsAt().filter(windowEnds -> !now.isBefore(windowEnds)).ifPresent(windowEnds -> {
+            throw new ReportWindowClosedException("the dispute window ended at " + windowEnds);
+        });
     }
 
     private void requireNotCheckedIn() {
