@@ -88,6 +88,9 @@ final class ReservationBuilders {
                 Duration.ofHours(1));
     }
 
+    /** The provider's verified roster: Aina, Ben and Chan. */
+    static final TeamRoster ROSTER = TeamRoster.of("aina", "ben", "chan");
+
     static OfferingBuilder anOffering() {
         return new OfferingBuilder();
     }
@@ -216,6 +219,20 @@ final class ReservationBuilders {
         Reservation reserved() {
             Reservation reservation = requested();
             reservation.accept(requestedAt.plus(Duration.ofHours(1)));
+            return reservation;
+        }
+
+        /** Reserved, with Aina as lead and Aina and Ben named as the two helpers. */
+        Reservation reservedWithTeamNamed() {
+            Reservation reservation = reserved();
+            reservation.nameTeam(TeamAssignment.of("aina", "aina", "ben"), ROSTER, requestedAt.plus(Duration.ofHours(2)));
+            return reservation;
+        }
+
+        /** Reserved with the team named, and the lead checked in 120 metres away at {@code at}. */
+        Reservation checkedInAt(Instant at) {
+            Reservation reservation = reservedWithTeamNamed();
+            reservation.checkIn(120, at);
             return reservation;
         }
     }
