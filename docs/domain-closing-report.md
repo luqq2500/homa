@@ -224,8 +224,8 @@ Added after the phase closed, from the updated product description (Rating Polic
   - 26 source files, 651 lines, 14 exceptions.
 - **`ie/`:** `RatingSubmittedIE` and `RatingHiddenIE`, published by a new `FeedbackIE` interface.
   `HomaPolicyChangedIE` also carries the two new values. That makes 40 events.
-- **Scenarios:** all 24 feedback scenarios in the plan map to a test, named by the convention. The audit's
-  scenario table now has 151 of 151.
+- **Scenarios:** all 25 feedback scenarios in the plan map to a test, named by the convention. The audit's
+  scenario table now has 152 of 152.
 - **Gates:**
   - `feedback.domain`: 105 mutants, all killed (100% score and test strength), worst CRAP 4.0.
   - Whole build: 901 tests, 1,147 mutants, all killed.

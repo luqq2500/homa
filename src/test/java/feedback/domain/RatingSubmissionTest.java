@@ -100,7 +100,7 @@ class RatingSubmissionTest {
         }
 
         @Test
-        void everyCategoryCanBeRatedTogetherWithWrittenFeedback() {
+        void anyNumberOfProviderCategoriesCanBeRated() {
             ProviderRating given = ProviderRating.of(Stars.of(4), Map.of(
                     ProviderCategory.QUALITY_OF_WORK, Stars.of(5),
                     ProviderCategory.PUNCTUALITY, Stars.of(3),
@@ -109,6 +109,7 @@ class RatingSubmissionTest {
 
             Rating rating = rate(given, Map.of(), sunday("10:00"));
 
+            assertThat(rating.provider().overall()).isEqualTo(Stars.of(4));
             assertThat(rating.provider().categories()).hasSize(4).containsEntry(ProviderCategory.PUNCTUALITY, Stars.of(3));
             assertThat(rating.provider().writtenFeedback()).isEqualTo("Spotless kitchen");
             assertThat(rating.provider().hasWrittenFeedback()).isTrue();

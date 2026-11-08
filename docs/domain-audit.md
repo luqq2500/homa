@@ -5,8 +5,8 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **151 of 151** scenarios in the plan have a test. That is the original 122, plus five in the
-"Buffer between jobs" feature and 24 in the four `feedback` features, both added to the plan later. The script that checks this maps each scenario
+All **152 of 152** scenarios in the plan have a test. That is the original 122, plus five in the
+"Buffer between jobs" feature and 25 in the four `feedback` features, both added to the plan later. The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -164,23 +164,24 @@ Two scenarios map to more than one test:
 | 132 | Rating a completed reservation | Stars are whole numbers from 1 to 5 (outline) | `RatingSubmissionTest` | `starsAreWholeNumbersFromOneToFive`, `starsOutsideOneToFiveAreRejected` |
 | 133 | Rating a completed reservation | Written feedback is optional | `RatingSubmissionTest` | `writtenFeedbackIsOptional` |
 | 134 | Rating a completed reservation | Provider category stars are optional | `RatingSubmissionTest` | `providerCategoryStarsAreOptional` |
-| 135 | Rating a completed reservation | The provider rating needs overall stars | `RatingSubmissionTest` | `theProviderRatingNeedsOverallStars` |
-| 136 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
-| 137 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
-| 138 | Rating a completed reservation | Helper ratings are optional | `RatingSubmissionTest` | `helperRatingsAreOptional` |
-| 139 | Rating a completed reservation | A helper can receive overall and category stars | `RatingSubmissionTest` | `aHelperCanReceiveOverallAndCategoryStars` |
-| 140 | Rating a completed reservation | A rated helper needs overall stars | `RatingSubmissionTest` | `aRatedHelperNeedsOverallStars` |
-| 141 | Rating a completed reservation | Helper category stars are optional | `RatingSubmissionTest` | `helperCategoryStarsAreOptional` |
-| 142 | What can be rated | Only Completed reservations can be rated (outline) | `RatingEligibilityTest` | `onlyCompletedReservationsCanBeRated` |
-| 143 | Hiding a rating | Homa hides a rating with a reason | `RatingHidingTest` | `homaHidesARatingWithAReason` |
-| 144 | Hiding a rating | Hiding needs a reason | `RatingHidingTest` | `hidingNeedsAReason` |
-| 145 | Hiding a rating | A rating is hidden once | `RatingHidingTest` | `aRatingIsHiddenOnce` |
-| 146 | Rating summaries | The overall average is shown only after the minimum number of ratings (outline) | `RatingSummaryAveragingTest` | `theOverallAverageIsShownOnlyAfterTheMinimumNumberOfRatings` |
-| 147 | Rating summaries | The average is rounded to one decimal place | `RatingSummaryAveragingTest` | `theAverageIsRoundedToOneDecimalPlace` |
-| 148 | Rating summaries | Withdrawing a hidden rating removes it from the averages | `RatingSummaryAveragingTest` | `withdrawingAHiddenRatingRemovesItFromTheAverages` |
-| 149 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
-| 150 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
-| 151 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
+| 135 | Rating a completed reservation | Any number of provider categories can be rated | `RatingSubmissionTest` | `anyNumberOfProviderCategoriesCanBeRated` |
+| 136 | Rating a completed reservation | The provider rating needs overall stars | `RatingSubmissionTest` | `theProviderRatingNeedsOverallStars` |
+| 137 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
+| 138 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
+| 139 | Rating a completed reservation | Helper ratings are optional | `RatingSubmissionTest` | `helperRatingsAreOptional` |
+| 140 | Rating a completed reservation | A helper can receive overall and category stars | `RatingSubmissionTest` | `aHelperCanReceiveOverallAndCategoryStars` |
+| 141 | Rating a completed reservation | A rated helper needs overall stars | `RatingSubmissionTest` | `aRatedHelperNeedsOverallStars` |
+| 142 | Rating a completed reservation | Helper category stars are optional | `RatingSubmissionTest` | `helperCategoryStarsAreOptional` |
+| 143 | What can be rated | Only Completed reservations can be rated (outline) | `RatingEligibilityTest` | `onlyCompletedReservationsCanBeRated` |
+| 144 | Hiding a rating | Homa hides a rating with a reason | `RatingHidingTest` | `homaHidesARatingWithAReason` |
+| 145 | Hiding a rating | Hiding needs a reason | `RatingHidingTest` | `hidingNeedsAReason` |
+| 146 | Hiding a rating | A rating is hidden once | `RatingHidingTest` | `aRatingIsHiddenOnce` |
+| 147 | Rating summaries | The overall average is shown only after the minimum number of ratings (outline) | `RatingSummaryAveragingTest` | `theOverallAverageIsShownOnlyAfterTheMinimumNumberOfRatings` |
+| 148 | Rating summaries | The average is rounded to one decimal place | `RatingSummaryAveragingTest` | `theAverageIsRoundedToOneDecimalPlace` |
+| 149 | Rating summaries | Withdrawing a hidden rating removes it from the averages | `RatingSummaryAveragingTest` | `withdrawingAHiddenRatingRemovesItFromTheAverages` |
+| 150 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
+| 151 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
+| 152 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
 
 ## 2. Product spec rules with no test
 

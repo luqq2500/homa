@@ -171,7 +171,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 #### Rating categories
 
-Every category is rated from 1 to 5 stars.
+Every category is rated from 1 to 5 stars, and every category is optional. A customer can rate any number of them, or none: only the overall stars are required, for the provider and for each helper they rate.
 
 | For | Category | What it rates |
 |---|---|---|
@@ -297,7 +297,7 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
 - The provider's team: every helper's name, photo and average stars, so you know who may come
-- Ratings: the average for each provider category, and written feedback from customers, newest first
+- Ratings: the average for each provider category once it has the minimum ratings to show, and written feedback from customers, newest first
 - A **Verified ID** badge: every provider and helper is verified through eKYC
 
 

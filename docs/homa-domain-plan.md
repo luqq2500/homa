@@ -1212,6 +1212,11 @@ Feature: Chat
 | `FeedbackLimits` | Value object | feedback's view of the Homa-set values: rating window, minimum ratings to show |
 
 ```java
+ProviderRating.of(Stars overall)                                    // overall stars only: no category stars, no text
+ProviderRating.of(Stars overall, Map<ProviderCategory, Stars> categories, String writtenFeedback)   // categories and text optional
+HelperRating.of(Stars overall)                                      // overall stars only
+HelperRating.of(Stars overall, Map<HelperCategory, Stars> categories) // categories optional
+
 Rating.submit(RateableReservation r, String customerId, ProviderRating provider,
               Map<String, HelperRating> helpers, FeedbackLimits limits, Instant now)
 Rating.hide(String reason, Instant now)
@@ -1277,6 +1282,10 @@ Feature: Rating a completed reservation
   Scenario: Provider category stars are optional
     When C1 gives P1 4 stars overall and no category stars
     Then the rating is recorded
+
+  Scenario: Any number of provider categories can be rated
+    When C1 gives P1 4 stars overall, 5 for QUALITY_OF_WORK, 3 for PUNCTUALITY, 4 for COMMUNICATION and 5 for CARE_FOR_THE_HOME, with written feedback
+    Then the rating has 4 stars overall and 4 category ratings
 
   Scenario: The provider rating needs overall stars
     When C1 gives P1 stars for QUALITY_OF_WORK only, with no overall stars
@@ -1705,6 +1714,8 @@ hours either side.
   - The rating window includes its last moment: 14 days after 14:00 is still in, 14:01 is not.
   - Checks run in this order: the reservation is Completed, the customer is its customer, it is not
     rated yet, the window is open, and every rated helper was named.
+  - Only the overall stars are required, for the provider and for each rated helper. Category stars (any
+    number, or none) and the provider's written feedback are optional.
   - Written feedback is counted in characters, not bytes, and kept without surrounding spaces. Empty
     means none.
   - A summary is rated only on its own categories: provider categories for a provider, helper
