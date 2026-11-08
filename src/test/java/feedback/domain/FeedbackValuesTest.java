@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import feedback.domain.exception.StarsOutOfRangeException;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Stars, provider and helper ratings, and the Homa-set values feedback uses. */
@@ -22,36 +22,17 @@ class FeedbackValuesTest {
 
     @Test
     void aRatingKeepsWhatWasGivenEvenIfTheOriginalChanges() {
-        Set<Highlight> highlights = new HashSet<>(Set.of(Highlight.ON_TIME));
-        Set<Compliment> compliments = new HashSet<>(Set.of(Compliment.FRIENDLY));
-        ProviderRating provider = ProviderRating.of(Stars.of(4), highlights, null);
-        HelperRating helper = new HelperRating(Stars.of(5), compliments);
+        Map<ProviderCategory, Stars> providerCategories = new HashMap<>(Map.of(ProviderCategory.PUNCTUALITY, Stars.of(3)));
+        Map<HelperCategory, Stars> helperCategories = new HashMap<>(Map.of(HelperCategory.FRIENDLINESS, Stars.of(5)));
+        ProviderRating provider = ProviderRating.of(Stars.of(4), providerCategories, null);
+        HelperRating helper = HelperRating.of(Stars.of(5), helperCategories);
 
-        highlights.clear();
-        compliments.clear();
+        providerCategories.clear();
+        helperCategories.clear();
 
-        assertThat(provider.highlights()).containsExactly(Highlight.ON_TIME);
+        assertThat(provider.categories()).hasSize(1);
         assertThat(provider.writtenFeedback()).isEmpty();
-        assertThat(helper.compliments()).containsExactly(Compliment.FRIENDLY);
-    }
-
-    @Test
-    void aProviderRatingNeedsOverallStars() {
-        assertThatThrownBy(() -> ProviderRating.of(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new HelperRating(null, Set.of())).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    void aPickCountNamesItsPick() {
-        assertThat(new PickCount("ON_TIME", 8).count()).isEqualTo(8);
-        assertThatThrownBy(() -> new PickCount(null, 1)).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    void providersArePickedForHighlightsAndHelpersForComplimentsInTheirListedOrder() {
-        assertThat(RatingSummary.Subject.PROVIDER.picks()).containsExactly("GREAT_WORK", "ON_TIME", "RESPONSIVE", "CAREFUL_WITH_THE_HOME");
-        assertThat(RatingSummary.Subject.HELPER.picks())
-                .containsExactly("FRIENDLY", "HARDWORKING", "CAREFUL_WITH_BELONGINGS", "COOPERATIVE", "THOROUGH");
+        assertThat(helper.categories()).containsOnlyKeys(HelperCategory.FRIENDLINESS);
     }
 
     @Test

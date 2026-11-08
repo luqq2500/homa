@@ -35,8 +35,9 @@ final class FeedbackBuilders {
         return RateableReservation.completed("R1", "C1", "P1", Set.of("aina", "ben"), saturday("14:00"));
     }
 
+    /** Overall stars, and the same stars for quality of work, with no written feedback. */
     static ProviderRating stars(int overall) {
-        return ProviderRating.of(Stars.of(overall));
+        return ProviderRating.of(Stars.of(overall), Map.of(ProviderCategory.QUALITY_OF_WORK, Stars.of(overall)), "");
     }
 
     /** C1 rates the reservation with the given provider stars and no helpers, on Sunday 10:00. */

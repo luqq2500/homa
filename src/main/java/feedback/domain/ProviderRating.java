@@ -1,20 +1,26 @@
 package feedback.domain;
 
+import feedback.domain.exception.CategoryRatingRequiredException;
 import feedback.domain.exception.FeedbackTooLongException;
-import java.util.Objects;
-import java.util.Set;
+import feedback.domain.exception.OverallStarsRequiredException;
+import java.util.Map;
 
 /**
- * What the customer says about the provider: stars (required), any number of highlights (optional), and
- * written feedback (optional, up to 1,000 characters; empty when there is none).
+ * What the customer says about the provider: overall stars (required), stars for at least one provider
+ * category, and written feedback (optional, up to 1,000 characters; empty when there is none).
  */
-public record ProviderRating(Stars stars, Set<Highlight> highlights, String writtenFeedback) {
+public record ProviderRating(Stars overall, Map<ProviderCategory, Stars> categories, String writtenFeedback) {
 
     public static final int FEEDBACK_LIMIT = 1_000;
 
     public ProviderRating {
-        Objects.requireNonNull(stars);
-        highlights = Set.copyOf(highlights);
+        if (overall == null) {
+            throw new OverallStarsRequiredException();
+        }
+        categories = Map.copyOf(categories);
+        if (categories.isEmpty()) {
+            throw new CategoryRatingRequiredException();
+        }
         writtenFeedback = writtenFeedback == null ? "" : writtenFeedback.strip();
         int length = writtenFeedback.codePointCount(0, writtenFeedback.length());
         if (length > FEEDBACK_LIMIT) {
@@ -22,13 +28,8 @@ public record ProviderRating(Stars stars, Set<Highlight> highlights, String writ
         }
     }
 
-    /** Stars only, with no highlights and no written feedback. */
-    public static ProviderRating of(Stars stars) {
-        return new ProviderRating(stars, Set.of(), "");
-    }
-
-    public static ProviderRating of(Stars stars, Set<Highlight> highlights, String writtenFeedback) {
-        return new ProviderRating(stars, highlights, writtenFeedback);
+    public static ProviderRating of(Stars overall, Map<ProviderCategory, Stars> categories, String writtenFeedback) {
+        return new ProviderRating(overall, categories, writtenFeedback);
     }
 
     public boolean hasWrittenFeedback() {

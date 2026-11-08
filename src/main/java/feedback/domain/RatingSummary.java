@@ -5,41 +5,38 @@ import feedback.domain.exception.RatingDoesNotFitSummaryException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * What is shown for one provider or one helper: how many ratings, the average stars, and how often each
- * highlight (for a provider) or compliment (for a helper) was picked. Picks are counted, not averaged. A
- * hidden rating is withdrawn so it no longer counts.
+ * What is shown for one provider or one helper: the overall count and average, and a count and average
+ * for each category. A category counts only the ratings that rated it, since customers may skip
+ * categories. A hidden rating is withdrawn so it no longer counts.
  */
 public final class RatingSummary {
 
-    /** Whom the summary is about. Providers are picked for highlights; helpers for compliments. */
+    /** Whom the summary is about, and the categories it can be rated on. */
     public enum Subject {
-        PROVIDER(Arrays.stream(Highlight.values()).map(Enum::name).toList()),
-        HELPER(Arrays.stream(Compliment.values()).map(Enum::name).toList());
+        PROVIDER(Arrays.stream(ProviderCategory.values()).map(Enum::name).toList()),
+        HELPER(Arrays.stream(HelperCategory.values()).map(Enum::name).toList());
 
-        private final List<String> picks;
+        private final List<String> categories;
 
-        Subject(List<String> picks) {
-            this.picks = picks;
+        Subject(List<String> categories) {
+            this.categories = categories;
         }
 
-        /** The picks this subject can be given, in the order they are listed. */
-        public List<String> picks() {
-            return picks;
+        /** The category names this subject is rated on, in the order they are listed. */
+        public List<String> categories() {
+            return categories;
         }
     }
 
     private final Subject subject;
     private final String subjectId;
-    private int count;
-    private long starsTotal;
-    private final Map<String, Integer> picked = new HashMap<>();
+    private final Tally overall = new Tally();
+    private final Map<String, Tally> categories = new HashMap<>();
 
     private RatingSummary(Subject subject, String subjectId) {
         this.subject = subject;
@@ -54,51 +51,52 @@ public final class RatingSummary {
         return new RatingSummary(Subject.HELPER, FeedbackText.require(helperId, "A helper id"));
     }
 
-    /** Counts one rating: its stars, and each highlight or compliment it picked. */
-    public void record(Stars stars, Set<String> picks) {
-        requireFits(picks);
-        count++;
-        starsTotal += stars.value();
-        picks.forEach(pick -> picked.merge(pick, 1, Integer::sum));
+    /** Counts one rating: its overall stars, and the stars of each category it rated. */
+    public void record(Stars overallStars, Map<String, Stars> categoryStars) {
+        categoryStars.keySet().forEach(this::requireCategory);
+        overall.add(overallStars.value());
+        categoryStars.forEach((category, stars) -> categories.computeIfAbsent(category, any -> new Tally()).add(stars.value()));
     }
 
     /** Takes back a rating that was counted, for example one Homa hid. */
-    public void withdraw(Stars stars, Set<String> picks) {
-        requireFits(picks);
-        if (count == 0 || !picked.keySet().containsAll(picks)) {
+    public void withdraw(Stars overallStars, Map<String, Stars> categoryStars) {
+        categoryStars.keySet().forEach(this::requireCategory);
+        if (overall.count == 0 || !categories.keySet().containsAll(categoryStars.keySet())) {
             throw new NoRatingToWithdrawException(subject.name().toLowerCase() + " " + subjectId);
         }
-        count--;
-        starsTotal -= stars.value();
-        picks.forEach(pick -> picked.merge(pick, -1, Integer::sum));
-        picked.values().removeIf(times -> times == 0);
+        overall.remove(overallStars.value());
+        categoryStars.forEach((category, stars) -> categories.get(category).remove(stars.value()));
+        categories.values().removeIf(tally -> tally.count == 0);
     }
 
-    /** The average stars, to one decimal place, rounded half-up. Zero before any rating. */
-    public BigDecimal averageStars() {
-        if (count == 0) {
-            return BigDecimal.ZERO.setScale(1);
-        }
-        return BigDecimal.valueOf(starsTotal).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP);
+    /** The overall average, to one decimal place, rounded half-up. Zero before any rating. */
+    public BigDecimal overallAverage() {
+        return overall.average();
     }
 
-    /** Whether the average is shown yet: only from the minimum ratings to show. Until then it shows as "New". */
-    public boolean isShown(FeedbackLimits limits) {
-        return count >= limits.minimumRatingsToShow();
+    /** The average of one category, counting only the ratings that rated it. Zero before any did. */
+    public BigDecimal categoryAverage(String category) {
+        return tallyOf(category).average();
     }
 
-    /** The most-picked highlights or compliments with their counts, most first; ties keep the listed order. */
-    public List<PickCount> topPicks(int n) {
-        return picked.entrySet().stream()
-                .map(entry -> new PickCount(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparingInt(PickCount::count).reversed()
-                        .thenComparingInt(pick -> subject.picks().indexOf(pick.pick())))
-                .limit(n)
-                .toList();
+    /** How many ratings rated this category. */
+    public int categoryCount(String category) {
+        return tallyOf(category).count;
     }
 
+    /** Whether the overall average is shown yet: only from the minimum ratings to show. Until then it shows as "New". */
+    public boolean isOverallShown(FeedbackLimits limits) {
+        return overall.count >= limits.minimumRatingsToShow();
+    }
+
+    /** Whether a category's average is shown yet: once that category has its own minimum ratings to show. */
+    public boolean isCategoryShown(String category, FeedbackLimits limits) {
+        return categoryCount(category) >= limits.minimumRatingsToShow();
+    }
+
+    /** How many ratings this summary counts. */
     public int ratingCount() {
-        return count;
+        return overall.count;
     }
 
     public Subject subject() {
@@ -109,11 +107,39 @@ public final class RatingSummary {
         return subjectId;
     }
 
-    /** A provider is picked only for highlights, and a helper only for compliments. */
-    private void requireFits(Set<String> picks) {
-        picks.stream().filter(pick -> !subject.picks().contains(pick)).findFirst().ifPresent(pick -> {
+    private Tally tallyOf(String category) {
+        requireCategory(category);
+        return categories.getOrDefault(category, new Tally());
+    }
+
+    /** A provider summary is rated only on provider categories, and a helper summary only on helper categories. */
+    private void requireCategory(String category) {
+        if (!subject.categories().contains(category)) {
             throw new RatingDoesNotFitSummaryException(
-                    pick + " is not a " + (subject == Subject.PROVIDER ? "highlight" : "compliment"));
-        });
+                    category + " is not a " + subject.name().toLowerCase() + " category");
+        }
+    }
+
+    /** Running count and total of stars. */
+    private static final class Tally {
+        private int count;
+        private long total;
+
+        void add(int stars) {
+            count++;
+            total += stars;
+        }
+
+        void remove(int stars) {
+            count--;
+            total -= stars;
+        }
+
+        BigDecimal average() {
+            if (count == 0) {
+                return BigDecimal.ZERO.setScale(1);
+            }
+            return BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP);
+        }
     }
 }

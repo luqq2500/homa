@@ -163,29 +163,27 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 - **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count.
 - **When:** within the **rating window** after the reservation becomes Completed, including its last minute. A disputed reservation can be rated only after Homa's decision, because it becomes Completed only then.
-- **Rating the provider:** 1 to 5 stars (required), any number of **highlights** (optional), and written feedback (optional, up to 1,000 characters).
-- **Rating helpers:** for each helper who came, the customer can give 1 to 5 stars and pick **compliments**. Helper ratings are optional and have no written feedback, so no one writes comments about an individual worker.
-- **Showing ratings:** a provider's or helper's average stars are shown only once they have at least the **minimum ratings to show**. Until then, the count is shown with "New".
+- **Rating the provider:** overall stars from 1 to 5 (required), stars for each **provider category** (at least one required), and written feedback (optional, up to 1,000 characters).
+- **Rating helpers:** rating helpers is optional. For each helper the customer rates, overall stars from 1 to 5 are required, and stars for each **helper category** are optional. There is no written feedback for helpers, so no one writes comments about an individual worker.
+- **Showing ratings:** a provider's or helper's overall average is shown only once they have at least the **minimum ratings to show**. Until then, the count is shown with "New". Each category's average is shown once that category has its own minimum ratings to show, because customers may skip categories.
 - **Ratings and reports are separate.** A rating is an opinion and never changes a payout, a fine or a decision. A problem that needs Homa's decision is a report.
 - **Hiding:** Homa can hide a rating that breaks the rules (abuse, personal details, or talk of paying outside Homa), with a recorded reason. A hidden rating no longer counts. Homa never edits a rating.
 
-#### Highlights and compliments
+#### Rating categories
 
-The customer taps any that apply. Each one only ever means something went well.
+Every category is rated from 1 to 5 stars.
 
-| For | Choice | What it means |
+| For | Category | What it rates |
 |---|---|---|
-| Provider (highlight) | Great work | The booked jobs were done well |
-| Provider (highlight) | On time | The team arrived on time |
-| Provider (highlight) | Responsive | Replies in chat were clear and timely |
-| Provider (highlight) | Careful with the home | Belongings and the home were treated with care |
-| Helper (compliment) | Friendly | Pleasant and polite |
-| Helper (compliment) | Hardworking | Kept working through the booked time |
-| Helper (compliment) | Careful with belongings | Handled the home's things with care |
-| Helper (compliment) | Cooperative | Followed the customer's requests within the booked jobs |
-| Helper (compliment) | Thorough | Paid attention to detail |
-
-Highlights and compliments are positive only. Anything negative goes in the stars or the written feedback or, if it needs Homa's decision, in a report.
+| Provider | Quality of work | How well the booked jobs were done |
+| Provider | Punctuality | Whether the team arrived on time |
+| Provider | Communication | How clear and timely the replies in chat were |
+| Provider | Care for the home | How carefully the home and belongings were treated |
+| Helper | Friendliness | How pleasant and polite the helper was |
+| Helper | Hard work | How steadily the helper worked through the booked time |
+| Helper | Care with belongings | How carefully the helper handled the home's things |
+| Helper | Cooperation | How well the helper followed requests within the booked jobs |
+| Helper | Thoroughness | How much attention to detail the helper paid |
 
 ### Verification Policy
 
@@ -201,7 +199,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - **What Homa collects and why:**
   - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
   - Providers and helpers: eKYC identity data, name and photo, to verify them and show customers who is coming; providers' payout details, handled by Stripe.
-  - Ratings: customers' ratings of providers and helpers, shown to other customers as average stars, highlight and compliment counts, and written feedback. Helpers agree to being rated as part of their eKYC consent.
+  - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and the provider's written feedback. Helpers agree to being rated as part of their eKYC consent.
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.
@@ -299,13 +297,13 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
 - The provider's team: every helper's name, photo and average stars, so you know who may come
-- Ratings: the most-picked highlights with how often each was picked (for example "On time · 8"), and written feedback from customers, newest first
+- Ratings: the average for each provider category, and written feedback from customers, newest first
 - A **Verified ID** badge: every provider and helper is verified through eKYC
 
 
 ### Ratings
 
-After a reservation becomes Completed, the customer is asked to rate it: stars and optional highlights for the provider, optional written feedback, and optional stars and compliments for each helper who came. When the provider names who is coming, the customer sees each helper's average stars and most-given compliments.
+After a reservation becomes Completed, the customer is asked to rate it: overall stars and category stars for the provider, optional written feedback, and, for any helper they choose, overall stars and optional category stars. When the provider names who is coming, the customer sees each helper's overall average.
 
 ### Availability
 

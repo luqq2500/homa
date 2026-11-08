@@ -9,14 +9,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import feedback.domain.exception.AlreadyRatedException;
+import feedback.domain.exception.CategoryRatingRequiredException;
 import feedback.domain.exception.FeedbackTooLongException;
 import feedback.domain.exception.HelperNotOnReservationException;
 import feedback.domain.exception.NotTheReservationCustomerException;
+import feedback.domain.exception.OverallStarsRequiredException;
 import feedback.domain.exception.RatingWindowClosedException;
 import feedback.domain.exception.StarsOutOfRangeException;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,7 @@ class RatingSubmissionTest {
         void theCustomerRatesTheProvider() {
             Rating rating = rate(stars(4), Map.of(), sunday("10:00"));
 
-            assertThat(rating.provider().stars()).isEqualTo(Stars.of(4));
+            assertThat(rating.provider().overall()).isEqualTo(Stars.of(4));
             assertThat(rating.reservationId()).isEqualTo("R1");
             assertThat(rating.customerId()).isEqualTo("C1");
             assertThat(rating.providerId()).isEqualTo("P1");
@@ -54,7 +55,7 @@ class RatingSubmissionTest {
         @ParameterizedTest(name = "{0} stars are recorded")
         @ValueSource(ints = {1, 5})
         void starsAreWholeNumbersFromOneToFive(int given) {
-            assertThat(rate(stars(given), Map.of(), sunday("10:00")).provider().stars().value()).isEqualTo(given);
+            assertThat(rate(stars(given), Map.of(), sunday("10:00")).provider().overall().value()).isEqualTo(given);
         }
 
         @ParameterizedTest(name = "{0} stars are rejected")
@@ -66,49 +67,60 @@ class RatingSubmissionTest {
         }
 
         @Test
-        void highlightsAndWrittenFeedbackAreOptional() {
-            Rating rating = rate(stars(5), Map.of(), sunday("10:00"));
+        void writtenFeedbackIsOptional() {
+            ProviderRating given = ProviderRating.of(Stars.of(5), Map.of(ProviderCategory.PUNCTUALITY, Stars.of(5)), null);
 
-            assertThat(rating.provider().highlights()).isEmpty();
+            Rating rating = rate(given, Map.of(), sunday("10:00"));
+
+            assertThat(rating.provider().categories()).containsExactly(Map.entry(ProviderCategory.PUNCTUALITY, Stars.of(5)));
             assertThat(rating.provider().hasWrittenFeedback()).isFalse();
             assertThat(rating.provider().writtenFeedback()).isEmpty();
         }
 
         @Test
-        void theCustomerPicksAnyNumberOfHighlights() {
-            ProviderRating given = ProviderRating.of(Stars.of(4), Set.of(Highlight.ON_TIME, Highlight.RESPONSIVE), "");
-
-            Rating rating = rate(given, Map.of(), sunday("10:00"));
-
-            assertThat(rating.provider().stars()).isEqualTo(Stars.of(4));
-            assertThat(rating.provider().highlights()).containsExactlyInAnyOrder(Highlight.ON_TIME, Highlight.RESPONSIVE);
+        void theProviderNeedsAtLeastOneCategoryRating() {
+            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Map.of(), ""))
+                    .isInstanceOf(CategoryRatingRequiredException.class);
         }
 
         @Test
-        void everyHighlightCanBePickedTogetherWithWrittenFeedback() {
-            ProviderRating given = ProviderRating.of(Stars.of(5), Set.of(Highlight.values()), " Spotless kitchen, on time ");
+        void theProviderRatingNeedsOverallStars() {
+            assertThatThrownBy(() -> ProviderRating.of(null, Map.of(ProviderCategory.QUALITY_OF_WORK, Stars.of(4)), ""))
+                    .isInstanceOf(OverallStarsRequiredException.class);
+        }
+
+        @Test
+        void everyCategoryCanBeRatedTogetherWithWrittenFeedback() {
+            ProviderRating given = ProviderRating.of(Stars.of(4), Map.of(
+                    ProviderCategory.QUALITY_OF_WORK, Stars.of(5),
+                    ProviderCategory.PUNCTUALITY, Stars.of(3),
+                    ProviderCategory.COMMUNICATION, Stars.of(4),
+                    ProviderCategory.CARE_FOR_THE_HOME, Stars.of(5)), " Spotless kitchen ");
 
             Rating rating = rate(given, Map.of(), sunday("10:00"));
 
-            assertThat(rating.provider().highlights()).hasSize(4);
-            assertThat(rating.provider().writtenFeedback()).isEqualTo("Spotless kitchen, on time");
+            assertThat(rating.provider().categories()).hasSize(4).containsEntry(ProviderCategory.PUNCTUALITY, Stars.of(3));
+            assertThat(rating.provider().writtenFeedback()).isEqualTo("Spotless kitchen");
             assertThat(rating.provider().hasWrittenFeedback()).isTrue();
         }
 
         @Test
         void writtenFeedbackHasALengthLimit() {
-            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Set.of(), "a".repeat(1_001)))
+            Map<ProviderCategory, Stars> punctuality = Map.of(ProviderCategory.PUNCTUALITY, Stars.of(4));
+
+            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), punctuality, "a".repeat(1_001)))
                     .isInstanceOf(FeedbackTooLongException.class)
                     .hasMessageContaining("1001");
-            assertThat(ProviderRating.of(Stars.of(4), Set.of(), "a".repeat(1_000)).writtenFeedback()).hasSize(1_000);
+            assertThat(ProviderRating.of(Stars.of(4), punctuality, "a".repeat(1_000)).writtenFeedback()).hasSize(1_000);
         }
 
         @Test
         void theLengthLimitCountsCharactersNotBytes() {
             String emoji = "😊";
+            Map<ProviderCategory, Stars> punctuality = Map.of(ProviderCategory.PUNCTUALITY, Stars.of(4));
 
-            assertThat(ProviderRating.of(Stars.of(4), Set.of(), emoji.repeat(1_000)).hasWrittenFeedback()).isTrue();
-            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Set.of(), emoji.repeat(1_001)))
+            assertThat(ProviderRating.of(Stars.of(4), punctuality, emoji.repeat(1_000)).hasWrittenFeedback()).isTrue();
+            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), punctuality, emoji.repeat(1_001)))
                     .isInstanceOf(FeedbackTooLongException.class);
         }
     }
@@ -166,23 +178,35 @@ class RatingSubmissionTest {
         }
 
         @Test
-        void aHelperCanReceiveStarsAndCompliments() {
-            Rating rating = rate(
-                    stars(4), Map.of("aina", HelperRating.of(Stars.of(5), Compliment.FRIENDLY, Compliment.THOROUGH)), sunday("10:00"));
+        void aHelperCanReceiveOverallAndCategoryStars() {
+            HelperRating given = HelperRating.of(Stars.of(5), Map.of(
+                    HelperCategory.FRIENDLINESS, Stars.of(5), HelperCategory.THOROUGHNESS, Stars.of(4)));
 
-            HelperRating aina = rating.helpers().get("aina");
-            assertThat(aina.stars()).isEqualTo(Stars.of(5));
-            assertThat(aina.compliments()).containsExactlyInAnyOrder(Compliment.FRIENDLY, Compliment.THOROUGH);
+            HelperRating aina = rate(stars(4), Map.of("aina", given), sunday("10:00")).helpers().get("aina");
+
+            assertThat(aina.overall()).isEqualTo(Stars.of(5));
+            assertThat(aina.categories()).hasSize(2).containsEntry(HelperCategory.THOROUGHNESS, Stars.of(4));
+        }
+
+        @Test
+        void aRatedHelperNeedsOverallStars() {
+            assertThatThrownBy(() -> HelperRating.of(null, Map.of(HelperCategory.FRIENDLINESS, Stars.of(5))))
+                    .isInstanceOf(OverallStarsRequiredException.class);
+        }
+
+        @Test
+        void helperCategoryStarsAreOptional() {
+            HelperRating aina = rate(stars(4), Map.of("aina", HelperRating.of(Stars.of(4))), sunday("10:00")).helpers().get("aina");
+
+            assertThat(aina.overall()).isEqualTo(Stars.of(4));
+            assertThat(aina.categories()).isEmpty();
         }
 
         @Test
         void bothNamedHelpersCanBeRated() {
-            Rating rating = rate(stars(4), Map.of(
-                    "aina", HelperRating.of(Stars.of(5)),
-                    "ben", new HelperRating(Stars.of(3), Set.of())), sunday("10:00"));
+            Rating rating = rate(stars(4), Map.of("aina", HelperRating.of(Stars.of(5)), "ben", HelperRating.of(Stars.of(3))), sunday("10:00"));
 
             assertThat(rating.helpers()).containsOnlyKeys("aina", "ben");
-            assertThat(rating.helpers().get("ben").compliments()).isEmpty();
         }
     }
 }

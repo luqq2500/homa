@@ -8,7 +8,7 @@ import feedback.domain.exception.FeedbackDetailRequiredException;
 import feedback.domain.exception.NoRatingToWithdrawException;
 import feedback.domain.exception.RatingDoesNotFitSummaryException;
 import java.math.BigDecimal;
-import java.util.Set;
+import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,64 +17,63 @@ import org.junit.jupiter.params.provider.CsvSource;
 /** Feature: Rating summaries. */
 class RatingSummaryAveragingTest {
 
-    private static RatingSummary aProviderRated(int... stars) {
+    private static final String PUNCTUALITY = "PUNCTUALITY";
+    private static final String COMMUNICATION = "COMMUNICATION";
+
+    private static RatingSummary aProviderRated(int... overall) {
         RatingSummary summary = RatingSummary.forProvider("P1");
-        for (int given : stars) {
-            summary.record(Stars.of(given), Set.of());
+        for (int given : overall) {
+            summary.record(Stars.of(given), Map.of());
         }
         return summary;
     }
 
-    private static void pick(RatingSummary summary, int times, String pick) {
-        for (int i = 0; i < times; i++) {
-            summary.record(Stars.of(5), Set.of(pick));
-        }
-    }
-
     @Nested
-    class AverageStars {
+    class TheOverallAverage {
 
-        @ParameterizedTest(name = "with {0} ratings the average is shown: {1}")
+        @ParameterizedTest(name = "with {0} ratings the overall average is shown: {1}")
         @CsvSource({"2, false", "3, true", "4, true"})
-        void averageStarsAreShownOnlyAfterTheMinimumNumberOfRatings(int count, boolean shown) {
+        void theOverallAverageIsShownOnlyAfterTheMinimumNumberOfRatings(int count, boolean shown) {
             RatingSummary summary = RatingSummary.forProvider("P1");
             for (int i = 0; i < count; i++) {
-                summary.record(Stars.of(4), Set.of());
+                summary.record(Stars.of(4), Map.of());
             }
 
-            assertThat(summary.isShown(LAUNCH_LIMITS)).isEqualTo(shown);
+            assertThat(summary.isOverallShown(LAUNCH_LIMITS)).isEqualTo(shown);
             assertThat(summary.ratingCount()).isEqualTo(count);
         }
 
         @Test
         void theAverageIsRoundedToOneDecimalPlace() {
-            assertThat(aProviderRated(5, 4, 4).averageStars()).isEqualTo(new BigDecimal("4.3"));
+            assertThat(aProviderRated(5, 4, 4).overallAverage()).isEqualTo(new BigDecimal("4.3"));
         }
 
         @Test
         void theAverageRoundsHalfUp() {
-            assertThat(aProviderRated(5, 4, 5, 4).averageStars()).isEqualTo(new BigDecimal("4.5"));
-            assertThat(aProviderRated(5, 5, 5, 4, 4, 4, 4, 4).averageStars()).isEqualTo(new BigDecimal("4.4"));
-            assertThat(aProviderRated(5, 5, 4, 4, 4, 4, 4, 4).averageStars()).isEqualTo(new BigDecimal("4.3"));
+            assertThat(aProviderRated(5, 4, 5, 4).overallAverage()).isEqualTo(new BigDecimal("4.5"));
+            assertThat(aProviderRated(5, 5, 5, 4, 4, 4, 4, 4).overallAverage()).isEqualTo(new BigDecimal("4.4"));
+            assertThat(aProviderRated(5, 5, 4, 4, 4, 4, 4, 4).overallAverage()).isEqualTo(new BigDecimal("4.3"));
         }
 
         @Test
-        void aSummaryWithNoRatingsAveragesZeroAndIsNotShown() {
+        void aSummaryWithNoRatingsAveragesZeroAndShowsNothing() {
             RatingSummary summary = RatingSummary.forProvider("P1");
 
-            assertThat(summary.averageStars()).isEqualTo(new BigDecimal("0.0"));
-            assertThat(summary.isShown(LAUNCH_LIMITS)).isFalse();
+            assertThat(summary.overallAverage()).isEqualTo(new BigDecimal("0.0"));
+            assertThat(summary.categoryAverage(PUNCTUALITY)).isEqualTo(new BigDecimal("0.0"));
+            assertThat(summary.categoryCount(PUNCTUALITY)).isZero();
+            assertThat(summary.isOverallShown(LAUNCH_LIMITS)).isFalse();
+            assertThat(summary.isCategoryShown(PUNCTUALITY, LAUNCH_LIMITS)).isFalse();
             assertThat(summary.ratingCount()).isZero();
-            assertThat(summary.topPicks(4)).isEmpty();
         }
 
         @Test
-        void withdrawingAHiddenRatingRemovesItFromTheAverage() {
+        void withdrawingAHiddenRatingRemovesItFromTheAverages() {
             RatingSummary summary = aProviderRated(5, 4, 1);
 
-            summary.withdraw(Stars.of(1), Set.of());
+            summary.withdraw(Stars.of(1), Map.of());
 
-            assertThat(summary.averageStars()).isEqualTo(new BigDecimal("4.5"));
+            assertThat(summary.overallAverage()).isEqualTo(new BigDecimal("4.5"));
             assertThat(summary.ratingCount()).isEqualTo(2);
         }
 
@@ -82,110 +81,116 @@ class RatingSummaryAveragingTest {
         void aSummaryCannotWithdrawMoreRatingsThanItHas() {
             RatingSummary helper = RatingSummary.forHelper("aina");
 
-            assertThatThrownBy(() -> helper.withdraw(Stars.of(5), Set.of()))
+            assertThatThrownBy(() -> helper.withdraw(Stars.of(5), Map.of()))
                     .isInstanceOf(NoRatingToWithdrawException.class)
                     .hasMessageContaining("helper aina");
         }
     }
 
     @Nested
-    class Highlights {
+    class CategoryAverages {
 
-        @Test
-        void highlightsAreCountedNotAveraged() {
-            RatingSummary provider = RatingSummary.forProvider("P1");
-            provider.record(Stars.of(5), Set.of("ON_TIME"));
-            provider.record(Stars.of(4), Set.of("ON_TIME", "GREAT_WORK"));
-            provider.record(Stars.of(3), Set.of("ON_TIME"));
-            provider.record(Stars.of(4), Set.of());
-
-            assertThat(provider.topPicks(4)).containsExactly(new PickCount("ON_TIME", 3), new PickCount("GREAT_WORK", 1));
-            assertThat(provider.ratingCount()).isEqualTo(4);
+        private RatingSummary punctualityRated5And3AndTwoOthersWithout() {
+            RatingSummary summary = RatingSummary.forProvider("P1");
+            summary.record(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(5)));
+            summary.record(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(3), COMMUNICATION, Stars.of(2)));
+            summary.record(Stars.of(4), Map.of("QUALITY_OF_WORK", Stars.of(4)));
+            summary.record(Stars.of(4), Map.of("QUALITY_OF_WORK", Stars.of(5)));
+            return summary;
         }
 
         @Test
-        void withdrawingAHiddenRatingRemovesItsHighlights() {
-            RatingSummary provider = RatingSummary.forProvider("P1");
-            pick(provider, 3, "ON_TIME");
+        void categoryAveragesCountOnlyTheRatingsThatRatedThatCategory() {
+            RatingSummary summary = punctualityRated5And3AndTwoOthersWithout();
 
-            provider.withdraw(Stars.of(5), Set.of("ON_TIME"));
-
-            assertThat(provider.topPicks(4)).containsExactly(new PickCount("ON_TIME", 2));
+            assertThat(summary.categoryAverage(PUNCTUALITY)).isEqualTo(new BigDecimal("4.0"));
+            assertThat(summary.categoryCount(PUNCTUALITY)).isEqualTo(2);
+            assertThat(summary.categoryAverage("QUALITY_OF_WORK")).isEqualTo(new BigDecimal("4.5"));
+            assertThat(summary.ratingCount()).isEqualTo(4);
         }
 
         @Test
-        void aHighlightWithdrawnToNothingIsNoLongerShown() {
-            RatingSummary provider = RatingSummary.forProvider("P1");
-            provider.record(Stars.of(5), Set.of("ON_TIME", "RESPONSIVE"));
-            provider.record(Stars.of(4), Set.of("ON_TIME"));
+        void aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings() {
+            RatingSummary summary = RatingSummary.forProvider("P1");
+            summary.record(Stars.of(4), Map.of(COMMUNICATION, Stars.of(4)));
+            summary.record(Stars.of(4), Map.of(COMMUNICATION, Stars.of(5)));
+            summary.record(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(4)));
+            summary.record(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(4)));
+            summary.record(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(4)));
 
-            provider.withdraw(Stars.of(5), Set.of("ON_TIME", "RESPONSIVE"));
-
-            assertThat(provider.topPicks(4)).containsExactly(new PickCount("ON_TIME", 1));
-            assertThat(provider.averageStars()).isEqualTo(new BigDecimal("4.0"));
+            assertThat(summary.isOverallShown(LAUNCH_LIMITS)).isTrue();
+            assertThat(summary.isCategoryShown(COMMUNICATION, LAUNCH_LIMITS)).isFalse();
+            assertThat(summary.isCategoryShown(PUNCTUALITY, LAUNCH_LIMITS)).isTrue();
         }
 
         @Test
-        void aHighlightThatWasNeverPickedCannotBeWithdrawn() {
-            RatingSummary provider = RatingSummary.forProvider("P1");
-            provider.record(Stars.of(4), Set.of("ON_TIME"));
+        void withdrawingARatingTakesBackItsCategoryStars() {
+            RatingSummary summary = punctualityRated5And3AndTwoOthersWithout();
 
-            assertThatThrownBy(() -> provider.withdraw(Stars.of(4), Set.of("RESPONSIVE")))
+            summary.withdraw(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(3), COMMUNICATION, Stars.of(2)));
+
+            assertThat(summary.categoryAverage(PUNCTUALITY)).isEqualTo(new BigDecimal("5.0"));
+            assertThat(summary.categoryCount(PUNCTUALITY)).isEqualTo(1);
+            assertThat(summary.categoryCount(COMMUNICATION)).isZero();
+            assertThat(summary.categoryAverage(COMMUNICATION)).isEqualTo(new BigDecimal("0.0"));
+            assertThat(summary.ratingCount()).isEqualTo(3);
+        }
+
+        @Test
+        void aCategoryWithdrawnToNothingCannotBeWithdrawnAgain() {
+            RatingSummary summary = punctualityRated5And3AndTwoOthersWithout();
+            summary.withdraw(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(3), COMMUNICATION, Stars.of(2)));
+
+            assertThatThrownBy(() -> summary.withdraw(Stars.of(4), Map.of(COMMUNICATION, Stars.of(2))))
                     .isInstanceOf(NoRatingToWithdrawException.class);
-            assertThat(provider.ratingCount()).isEqualTo(1);
+            assertThat(summary.categoryCount(COMMUNICATION)).isZero();
+            assertThat(summary.ratingCount()).isEqualTo(3);
         }
 
         @Test
-        void aProviderIsPickedOnlyForHighlights() {
-            RatingSummary provider = RatingSummary.forProvider("P1");
+        void aCategoryThatWasNeverRatedCannotBeWithdrawn() {
+            RatingSummary summary = aProviderRated(4);
 
-            assertThatThrownBy(() -> provider.record(Stars.of(5), Set.of("FRIENDLY")))
-                    .isInstanceOf(RatingDoesNotFitSummaryException.class)
-                    .hasMessage("FRIENDLY is not a highlight");
-            assertThat(provider.ratingCount()).isZero();
+            assertThatThrownBy(() -> summary.withdraw(Stars.of(4), Map.of(PUNCTUALITY, Stars.of(3))))
+                    .isInstanceOf(NoRatingToWithdrawException.class);
+            assertThat(summary.ratingCount()).isEqualTo(1);
         }
     }
 
     @Nested
-    class Compliments {
+    class WhichCategories {
 
         @Test
-        void theMostGivenComplimentsComeFirst() {
-            RatingSummary helper = RatingSummary.forHelper("aina");
-            pick(helper, 1, "COOPERATIVE");
-            pick(helper, 3, "FRIENDLY");
-            pick(helper, 2, "THOROUGH");
+        void aProviderIsRatedOnlyOnProviderCategories() {
+            RatingSummary provider = RatingSummary.forProvider("P1");
 
-            assertThat(helper.topPicks(2)).containsExactly(new PickCount("FRIENDLY", 3), new PickCount("THOROUGH", 2));
-            assertThat(helper.topPicks(5)).containsExactly(
-                    new PickCount("FRIENDLY", 3), new PickCount("THOROUGH", 2), new PickCount("COOPERATIVE", 1));
-        }
-
-        @Test
-        void complimentsPickedEquallyOftenKeepTheirListedOrder() {
-            RatingSummary helper = RatingSummary.forHelper("aina");
-            pick(helper, 2, "THOROUGH");
-            pick(helper, 2, "COOPERATIVE");
-            pick(helper, 2, "FRIENDLY");
-
-            assertThat(helper.topPicks(3)).extracting(PickCount::pick).containsExactly("FRIENDLY", "COOPERATIVE", "THOROUGH");
-        }
-
-        @Test
-        void aHelperIsPickedOnlyForCompliments() {
-            assertThatThrownBy(() -> RatingSummary.forHelper("aina").record(Stars.of(5), Set.of("ON_TIME")))
+            assertThatThrownBy(() -> provider.record(Stars.of(5), Map.of("FRIENDLINESS", Stars.of(5))))
                     .isInstanceOf(RatingDoesNotFitSummaryException.class)
-                    .hasMessage("ON_TIME is not a compliment");
+                    .hasMessage("FRIENDLINESS is not a provider category");
+            assertThat(provider.ratingCount()).isZero();
+            assertThatThrownBy(() -> provider.categoryAverage("FRIENDLINESS")).isInstanceOf(RatingDoesNotFitSummaryException.class);
         }
 
         @Test
-        void aPickOfTheWrongKindCannotBeWithdrawnEither() {
+        void aHelperIsRatedOnlyOnHelperCategories() {
             RatingSummary helper = RatingSummary.forHelper("aina");
-            helper.record(Stars.of(5), Set.of("FRIENDLY"));
+            helper.record(Stars.of(5), Map.of("FRIENDLINESS", Stars.of(5)));
 
-            assertThatThrownBy(() -> helper.withdraw(Stars.of(5), Set.of("ON_TIME")))
+            assertThat(helper.categoryAverage("FRIENDLINESS")).isEqualTo(new BigDecimal("5.0"));
+            assertThatThrownBy(() -> helper.record(Stars.of(5), Map.of(PUNCTUALITY, Stars.of(5))))
+                    .isInstanceOf(RatingDoesNotFitSummaryException.class)
+                    .hasMessage("PUNCTUALITY is not a helper category");
+            assertThatThrownBy(() -> helper.withdraw(Stars.of(5), Map.of(PUNCTUALITY, Stars.of(5))))
                     .isInstanceOf(RatingDoesNotFitSummaryException.class);
             assertThat(helper.ratingCount()).isEqualTo(1);
+        }
+
+        @Test
+        void eachSubjectListsItsCategories() {
+            assertThat(RatingSummary.Subject.PROVIDER.categories())
+                    .containsExactly("QUALITY_OF_WORK", "PUNCTUALITY", "COMMUNICATION", "CARE_FOR_THE_HOME");
+            assertThat(RatingSummary.Subject.HELPER.categories())
+                    .containsExactly("FRIENDLINESS", "HARD_WORK", "CARE_WITH_BELONGINGS", "COOPERATION", "THOROUGHNESS");
         }
     }
 
