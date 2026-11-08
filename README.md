@@ -18,6 +18,7 @@ src/main/java/
   offering/domain/              a provider's listing and the rules for going live
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
+  payment/domain/               payments, fines, payouts and fine deductions
 src/test/java/                  the same packages, one test class per feature
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
@@ -54,13 +55,15 @@ Build order from the domain plan:
 | 4 | `offering` | Done |
 | 5 | `availability` | Done |
 | 6 | `reservation`, all seven slices | Done, except the team reminder (see below) |
-| 7 | `payment` | Next |
-| 8–10 | `resolution`, `conversation`, `discovery` | To do |
+| 7 | `payment` | Done |
+| 8 | `resolution` | Next |
+| 9–10 | `conversation`, `discovery` | To do |
 | 11 | `ie/` integration event contracts | To do, after every context passes its gates |
 
 ### Decisions taken while building (to fold back into the plan)
 
-Confirmed by the product owner: customers have a name; `HomaLimits` for hours and helpers; touching
+Confirmed by the product owner: customers have a name; `HomaLimits` for hours and helpers; a live
+listing whose verified team becomes empty is no longer live; touching
 windows, touching blocks and the later-start tie-break in availability, plus a buffer between jobs;
 `Helper.remove()`.
 
@@ -144,6 +147,23 @@ be the lead; #8 a request keeps the offering snapshot it was made with.
     If it is challenged, Homa's decision gives a final settlement that replaces it.
   - **Waiting on the product owner:** the spec says Homa reminds the provider to name the team "ahead
     of time", but no Homa-set value says how far ahead, so `isTeamReminderDue` is not built yet.
+- **Payment details:**
+  - `capture` runs on acceptance for both methods. A card is charged; an FPX payment, already held, is
+    kept for the booking.
+  - Edits and endings before acceptance are only allowed while the card is authorised or the FPX payment
+    is held. An FPX edit collects an increase or refunds a decrease; a card edit just moves the
+    authorisation.
+  - A card request that ends before acceptance moves to `AUTHORISATION_RELEASED`, a fifth state beside
+    the spec's four, since nothing was charged.
+  - `settle` takes `now`. Refunds go out at `now`; the provider's earning and Homa's fee are released
+    from the settlement's release time.
+  - A payment is settled exactly once, and the settlement must add up to its total. **Usecase note:**
+    send a customer no-show settlement to `payment` only when the report window ends unchallenged. If
+    it is challenged, Homa's decision is the only settlement sent.
+  - Fines (open question #7): a payout records its `PayoutKind`, and fines come off payouts for
+    completed jobs only. They are taken oldest first, up to the cap, which rounds in the provider's
+    favour.
+  - A fine is waived once, with a reason. A fully deducted fine has nothing left to waive.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.

@@ -19,6 +19,10 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "payment": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "policy": {
     "score": 100.0,
     "strength": 100.0
