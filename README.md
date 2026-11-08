@@ -68,8 +68,9 @@ Build order from the domain plan:
 | 10 | `discovery` | Done |
 | 11 | `ie/` integration event contracts | Done |
 | 12 | `feedback`, added after closing: two Homa-set values in `policy`, the `feedback` domain, `RatingSubmittedIE` and `RatingHiddenIE` | Done |
+| 13 | Team membership, changed after closing: helpers join a provider's team only once their eKYC is verified; `HelperInvitedIE`, `HelperJoinedTeamIE` and `HelperInviteRejectedIE` | Done |
 
-The domain phase is complete: see `docs/domain-closing-report.md`, and its addendum for `feedback`.
+The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback` and team membership.
 
 ### Usecase phase
 
