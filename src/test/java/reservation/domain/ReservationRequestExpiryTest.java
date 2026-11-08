@@ -2,6 +2,7 @@ package reservation.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static reservation.domain.ReservationBuilders.VERIFIED_UNTIL;
 import static reservation.domain.ReservationBuilders.aBooking;
 import static reservation.domain.ReservationBuilders.aReservation;
 import static reservation.domain.ReservationBuilders.friday;
@@ -39,8 +40,8 @@ class ReservationRequestExpiryTest {
     void theProviderCannotAcceptAnExpiredRequest() {
         Reservation reservation = aReservation().requested();
 
-        assertThatThrownBy(() -> reservation.accept(friday("09:01"))).isInstanceOf(RequestExpiredException.class);
-        assertThatThrownBy(() -> reservation.accept(friday("09:00"))).isInstanceOf(RequestExpiredException.class);
+        assertThatThrownBy(() -> reservation.accept(VERIFIED_UNTIL, friday("09:01"))).isInstanceOf(RequestExpiredException.class);
+        assertThatThrownBy(() -> reservation.accept(VERIFIED_UNTIL, friday("09:00"))).isInstanceOf(RequestExpiredException.class);
         assertThat(reservation.status()).isEqualTo(ReservationStatus.REQUESTED);
     }
 
@@ -48,7 +49,7 @@ class ReservationRequestExpiryTest {
     void theProviderCanAcceptUntilTheMomentItExpires() {
         Reservation reservation = aReservation().requested();
 
-        reservation.accept(friday("08:59:59"));
+        reservation.accept(VERIFIED_UNTIL, friday("08:59:59"));
 
         assertThat(reservation.status()).isEqualTo(ReservationStatus.RESERVED);
     }

@@ -15,5 +15,7 @@ public enum MatchReason {
     /** None: offers none of the chosen jobs. */
     NO_CHOSEN_JOBS,
     /** None: not free at or near the chosen time. */
-    NOT_FREE
+    NOT_FREE,
+    /** None: the job would end after the provider's re-verification is due. */
+    VERIFICATION_DUE_BEFORE_END
 }

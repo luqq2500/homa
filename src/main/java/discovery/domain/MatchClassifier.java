@@ -15,7 +15,8 @@ import java.util.function.Predicate;
  *       at the chosen time.
  *   <li><b>Close:</b> covers the city and fits the helpers and duration, but offers only some of the jobs,
  *       or is free only near the chosen time.
- *   <li><b>No match:</b> anything else.
+ *   <li><b>No match:</b> anything else, including a job that would end after the provider's
+ *       re-verification is due.
  * </ul>
  */
 public final class MatchClassifier {
@@ -45,6 +46,7 @@ public final class MatchClassifier {
                 candidate -> criteria.hours() >= candidate.minHours() && criteria.hours() <= candidate.maxHours());
         rules.put(MatchReason.NO_CHOSEN_JOBS, candidate -> criteria.jobs().stream().anyMatch(candidate.jobs()::contains));
         rules.put(MatchReason.NOT_FREE, candidate -> candidate.nearestFreeStart().isPresent());
+        rules.put(MatchReason.VERIFICATION_DUE_BEFORE_END, candidate -> candidate.verifiedThroughJobOf(criteria.hours()));
         return rules;
     }
 

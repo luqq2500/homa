@@ -310,3 +310,21 @@ through eKYC every **3 months**, counted from their own last successful verifica
   including one made before the pause. The request stays Requested and expires normally unless the
   provider re-verifies in time. The accept usecase enforces this (required rule R2 in the usecase
   plan); the domain is unchanged.
+
+## 13. Addendum: verified for the whole job
+
+Changed after re-verification. A provider can be requested, and can accept, only for a job that ends
+by their re-verification due date. Search leaves them out for any later job.
+
+- **`reservation`:**
+  - `request`, `edit` and `accept` take the provider's due date as it is now.
+  - A job ending after it is refused with `JobEndsAfterProviderVerificationException`. A job ending
+    exactly at it is allowed.
+  - Acceptance uses the due date at the time of accepting. So an early re-check can block it, and a
+    passed re-check unblocks it.
+- **`discovery`:** `ProviderCandidate` carries `verifiedUntil`. A job that would end after it is no
+  match, with reason `VERIFICATION_DUE_BEFORE_END`.
+- **`ie/`:** `ProviderVerifiedIE` and `ProviderReverifiedIE` carry `reverificationDueAt`. The usecase
+  plan adds required rule R6.
+- **Scenarios:** the "Verified for the whole job" feature adds five, and the audit maps 175 of 175.
+- **Gates:** whole build 1,038 tests, 1,253 mutants, all killed.

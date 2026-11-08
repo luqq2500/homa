@@ -24,6 +24,7 @@ import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
 import reservation.domain.exception.InvalidStatusTransitionException;
+import reservation.domain.exception.JobEndsAfterProviderVerificationException;
 import reservation.domain.exception.JobNotOfferedException;
 import reservation.domain.exception.ListingPausedException;
 import reservation.domain.exception.NoShowWaitNotOverException;
@@ -91,7 +92,8 @@ public final class Reservation {
 
     /**
      * Submits a request for the provider to accept, with the offering and policy in force {@code now}. A
-     * paused listing takes no new requests.
+     * paused listing takes no new requests, and the job must end by the provider's re-verification due
+     * date, {@code providerVerifiedUntil}.
      */
     public static Reservation request(
             String customerId,
@@ -100,11 +102,13 @@ public final class Reservation {
             PolicySnapshot policy,
             Optional<String> enquiryId,
             PaymentMethod paymentMethod,
+            Instant providerVerifiedUntil,
             Instant now) {
         if (!offering.takesRequests()) {
             throw new ListingPausedException(offering.providerId());
         }
         requireFits(details, offering, policy, now);
+        requireEndsByProviderVerification(details, providerVerifiedUntil);
         return new Reservation(
                 ReservationText.require(customerId, "A customer id"),
                 details,
@@ -125,22 +129,31 @@ public final class Reservation {
         return afterExpiryTime.isBefore(details.start()) ? afterExpiryTime : details.start();
     }
 
-    /** Changes the request before the provider accepts it. The expiry still runs from the original request. */
-    public PriceChange edit(ReservationDetails newDetails, Instant now) {
+    /**
+     * Changes the request before the provider accepts it. The expiry still runs from the original request,
+     * and the changed job must still end by the provider's re-verification due date.
+     */
+    public PriceChange edit(ReservationDetails newDetails, Instant providerVerifiedUntil, Instant now) {
         if (status != ReservationStatus.REQUESTED) {
             throw new ReservationNotEditableException(status);
         }
         requireNotExpired(now);
         requireFits(newDetails, offering, policy, now);
+        requireEndsByProviderVerification(newDetails, providerVerifiedUntil);
         Money previous = price.total();
         details = newDetails;
         price = priceFor(newDetails);
         return new PriceChange(previous, price.total());
     }
 
-    public void accept(Instant now) {
+    /**
+     * The provider accepts the request. They can accept only a job that ends by their re-verification due
+     * date as it is now, {@code providerVerifiedUntil}; passing a re-check moves it later.
+     */
+    public void accept(Instant providerVerifiedUntil, Instant now) {
         requireStatus(ReservationStatus.REQUESTED, "accepted");
         requireNotExpired(now);
+        requireEndsByProviderVerification(details, providerVerifiedUntil);
         status = ReservationStatus.RESERVED;
     }
 
@@ -583,6 +596,13 @@ public final class Reservation {
         });
         if (!offering.cities().contains(details.address().city())) {
             throw new CityNotCoveredException(details.address().city());
+        }
+    }
+
+    /** A job ending exactly at the due date ends in time: the provider lapses only from that moment. */
+    private static void requireEndsByProviderVerification(ReservationDetails details, Instant verifiedUntil) {
+        if (details.end().isAfter(verifiedUntil)) {
+            throw new JobEndsAfterProviderVerificationException(details.end(), verifiedUntil);
         }
     }
 

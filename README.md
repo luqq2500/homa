@@ -70,8 +70,9 @@ Build order from the domain plan:
 | 12 | `feedback`, added after closing: two Homa-set values in `policy`, the `feedback` domain, `RatingSubmittedIE` and `RatingHiddenIE` | Done |
 | 13 | Team membership, changed after closing: helpers join a provider's team only once their eKYC is verified; `HelperInvitedIE`, `HelperJoinedTeamIE` and `HelperInviteRejectedIE` | Done |
 | 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; eight new events | Done |
+| 15 | Verified for the whole job: a provider is requested, accepts and is found in search only for jobs that end by their re-verification due date | Done |
 
-The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership and re-verification.
+The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification and verified for the whole job.
 
 ### Usecase phase
 

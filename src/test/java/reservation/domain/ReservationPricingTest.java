@@ -1,6 +1,7 @@
 package reservation.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static reservation.domain.ReservationBuilders.VERIFIED_UNTIL;
 import static reservation.domain.ReservationBuilders.aBooking;
 import static reservation.domain.ReservationBuilders.aReservation;
 import static reservation.domain.ReservationBuilders.anOffering;
@@ -47,7 +48,7 @@ class ReservationPricingTest {
         Reservation reservation = aReservation().forBooking(aBooking().forJobs("KITCHEN", "LAUNDRY_FOLD")).requested();
         assertThat(reservation.price().total()).isEqualTo(rm("230.00"));
 
-        reservation.edit(aBooking().forJobs("KITCHEN").build(), thursday("10:00"));
+        reservation.edit(aBooking().forJobs("KITCHEN").build(), VERIFIED_UNTIL, thursday("10:00"));
 
         assertThat(reservation.price().total()).isEqualTo(rm("230.00"));
     }

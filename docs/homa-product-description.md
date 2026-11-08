@@ -194,6 +194,7 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 - **Re-verification:** every provider and team member is re-verified through eKYC every **re-verification period**, counted from their own last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date, with a link for each.
 - Until the due date nothing changes. A person who passes stays verified, and their next due date is counted from the new verification.
 - **Missing the due date:** a team member who isn't re-verified by their due date **lapses** and leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A provider who isn't re-verified by their due date has their listing **paused**: it takes no new requests until they pass. Reservations already accepted still go ahead.
+- **Verified for the whole job:** a provider can be requested, and can accept, only for a job that ends by their re-verification due date. Search leaves a provider out for any job that would end later. Once they pass the re-check, their next due date moves 3 months out and those dates open up.
 - **Early re-check:** Homa can ask for an early re-verification of a provider or team member, for example after a safety-related report. The due date then moves to the **early re-check deadline**, if that is sooner.
 - The **Verified ID** badge shows when each person was last verified.
 

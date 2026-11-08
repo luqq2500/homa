@@ -95,6 +95,9 @@ final class ReservationBuilders {
     /** The provider's verified roster: Aina, Ben and Chan. */
     static final TeamRoster ROSTER = TeamRoster.of("aina", "ben", "chan");
 
+    /** The provider's re-verification due date in most features: well after every booking. */
+    static final Instant VERIFIED_UNTIL = Instant.parse("2027-02-01T00:00:00Z");
+
     static OfferingBuilder anOffering() {
         return new OfferingBuilder();
     }
@@ -224,13 +227,14 @@ final class ReservationBuilders {
 
         Reservation requested() {
             return Reservation.request(
-                    "customer-1", details.build(), offering.build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, requestedAt);
+                    "customer-1", details.build(), offering.build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL,
+                    requestedAt);
         }
 
         /** Requested, then accepted an hour later. */
         Reservation reserved() {
             Reservation reservation = requested();
-            reservation.accept(requestedAt.plus(Duration.ofHours(1)));
+            reservation.accept(VERIFIED_UNTIL, requestedAt.plus(Duration.ofHours(1)));
             return reservation;
         }
 

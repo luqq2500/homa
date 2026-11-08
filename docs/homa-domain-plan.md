@@ -455,7 +455,7 @@ Feature: Buffer between jobs
 |---|---|---|
 | `SearchCriteria` | Value object | Jobs, start, duration, helpers, customer city; validated against Homa's ranges |
 | `SearchLimits` | Value object | Discovery's own view of the Homa-set values a search respects |
-| `ProviderCandidate` | Value object | Read model: jobs, hours range, helpers range, cities, and `nearestFreeStart`, the nearest free start within 2 hours either side, from availability |
+| `ProviderCandidate` | Value object | Read model: jobs, hours range, helpers range, cities, `nearestFreeStart`, the nearest free start within 2 hours either side, from availability, and `verifiedUntil`, the provider's re-verification due date |
 | `MatchClassifier` | Domain service | Returns `EXACT`, `CLOSE` or `NONE` with the reason |
 
 **Exact match:** covers the city, offers every chosen job, the helpers and duration are within its ranges, and it's free at the chosen time.
@@ -558,11 +558,11 @@ Enquiry.markRequested(String reservationId)   // behind EnquiryRequestedIE
 
 // Request
 Reservation.request(String customerId, ReservationDetails d, OfferingSnapshot o, PolicySnapshot p,
-                    Optional<String> enquiryId, PaymentMethod method, Instant now)
+                    Optional<String> enquiryId, PaymentMethod method, Instant providerVerifiedUntil, Instant now)
 Reservation.price() : PriceBreakdown
 Reservation.requestExpiresAt() : Instant
-Reservation.edit(ReservationDetails d, Instant now) : PriceChange
-Reservation.accept(Instant now)
+Reservation.edit(ReservationDetails d, Instant providerVerifiedUntil, Instant now) : PriceChange
+Reservation.accept(Instant providerVerifiedUntil, Instant now)
 Reservation.decline(Instant now)
 Reservation.expire(Instant now)
 
@@ -1444,17 +1444,17 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
-| `ProviderVerifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` |
+| `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED`, with `verification().dueAt()` |
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
 | `HelperInvitedIE` | account | (notifications) | `Helper.invite` |
 | `HelperJoinedTeamIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` (now a `MEMBER`) |
 | `HelperInviteRejectedIE` | account | (notifications) | `Helper.recordEkycResult` with `REJECTED` |
-| `RecheckOpenedIE` | account | (notifications) | `Helper.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
+| `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `Helper.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
 | `RecheckFailedIE` | account | (notifications) | `Helper.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
 | `HelperReverifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
 | `HelperLapsedIE` | account | offering | `Helper.lapse` |
-| `ProviderReverifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
+| `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed, with `verification().dueAt()` |
 | `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
 | `HelperRemovedIE` | account | offering | removing a helper |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
@@ -1975,6 +1975,75 @@ Feature: Provider re-verification
     Given a paused listing
     When the listing is resumed
     Then it takes new requests
+```
+
+## Change after the domain phase: verified for the whole job
+
+Decided after the re-verification change. A provider can be requested, and can accept, only for a job
+that **ends by** their re-verification due date. Search leaves them out for any job that would end
+later. Passing a re-check moves the due date 3 months out, and those dates open up.
+
+**`reservation`:**
+
+- `request`, `edit` and `accept` take `Instant providerVerifiedUntil`, the provider's due date as it is
+  now. A job whose end is after it is refused with `JobEndsAfterProviderVerificationException`.
+- A job ending exactly at the due date is allowed, because the provider lapses only from that moment.
+- `accept` checks the due date as it is at acceptance, not as it was at request time. So an early
+  re-check can block acceptance, and a passed re-check unblocks it.
+
+**`discovery`:**
+
+- `ProviderCandidate` carries `verifiedUntil`.
+- A job at the nearest free start that would end after it is no match, with reason
+  `VERIFICATION_DUE_BEFORE_END`. A provider with no free time stays `NOT_FREE`.
+
+**`ie/`:**
+
+- `ProviderVerifiedIE` and `ProviderReverifiedIE` carry `reverificationDueAt`.
+- reservation and discovery keep each provider's due date from those two events and from
+  `RecheckOpenedIE`, whose `dueAt` an early re-check moves sooner.
+
+**Usecase phase:** the request, edit and accept usecases pass the due date from reservation's
+projection (required rule R6 in `docs/homa-usecase-plan.md`).
+
+**Note:** bookings go up to 30 days ahead, but the regular re-check opens only 14 days before the
+due date. So from 30 to 14 days before it, a job after the due date can't be booked, and the provider
+can't yet re-verify to open those dates up.
+
+```gherkin
+Feature: Verified for the whole job
+  Background:
+    Given a booking on Saturday from 10:00 to 13:00
+
+  Scenario Outline: A job must end by the provider's due date
+    Given the provider's re-verification is due on Saturday at <due>
+    When the customer requests the booking
+    Then the result is <result>
+    Examples:
+      | due   | result                                     |
+      | 13:00 | the request is made                        |
+      | 12:59 | JobEndsAfterProviderVerificationException  |
+
+  Scenario: An edit cannot move the end past the due date
+    Given a request with the provider due on Saturday at 13:00
+    When the customer changes the booking to 4 hours
+    Then it is rejected with JobEndsAfterProviderVerificationException
+
+  Scenario: The provider cannot accept a job ending after their due date as it is now
+    Given a request
+    And an early re-check moved the provider's due date to Saturday at 12:00
+    When the provider accepts
+    Then it is rejected with JobEndsAfterProviderVerificationException
+
+  Scenario: The provider can accept once a passed re-check moves the due date later
+    Given a request the provider could not accept because of their due date
+    When the provider passes the re-check and accepts
+    Then the reservation is Reserved
+
+  Scenario: Search leaves out a provider whose due date comes before the job ends
+    Given a provider who fits the search and whose due date is a second before the job ends
+    When the customer searches
+    Then the provider is no match, because their verification is due before the job ends
 ```
 
 ## Open questions

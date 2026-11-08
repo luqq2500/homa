@@ -5,12 +5,13 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **170 of 170** scenarios in the plan have a test. That is the original 122, plus:
+All **175 of 175** scenarios in the plan have a test. That is the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
   go-live scenario
-- 14 in the two re-verification features The script that checks this maps each scenario
+- 14 in the two re-verification features
+- five in "Verified for the whole job" The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -204,6 +205,11 @@ Two scenarios map to more than one test:
 | 168 | Provider re-verification | A lapsed provider is not ready and takes no new requests | `ProviderReverificationTest` | `aLapsedProviderIsNotReadyAndTakesNoNewRequests` |
 | 169 | Provider re-verification | A paused listing refuses new requests but keeps accepted ones | `ReservationRequestTest` | `aPausedListingRefusesNewRequestsButKeepsAcceptedOnes` |
 | 170 | Provider re-verification | A paused listing resumes when the provider passes | `ProviderListingPauseTest` | `aPausedListingResumesWhenTheProviderPasses` |
+| 171 | Verified for the whole job | A job must end by the provider's due date (outline) | `ReservationProviderVerificationTest` | `aJobEndingExactlyAtTheDueDateCanBeRequested`, `aJobEndingAfterTheProvidersDueDateCannotBeRequested` |
+| 172 | Verified for the whole job | An edit cannot move the end past the due date | `ReservationProviderVerificationTest` | `anEditCannotMoveTheEndPastTheDueDate` |
+| 173 | Verified for the whole job | The provider cannot accept a job ending after their due date as it is now | `ReservationProviderVerificationTest` | `theProviderCannotAcceptAJobEndingAfterTheirDueDateAsItIsNow` |
+| 174 | Verified for the whole job | The provider can accept once a passed re-check moves the due date later | `ReservationProviderVerificationTest` | `theProviderCanAcceptOnceAPassedRecheckMovesTheDueDateLater` |
+| 175 | Verified for the whole job | Search leaves out a provider whose due date comes before the job ends | `MatchClassifierMatchingTest` | `aJobEndingAfterTheProvidersDueDateIsNoMatch` |
 
 ## 2. Product spec rules with no test
 
@@ -285,18 +291,18 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | account | 5.0 | 100% | 100% | 156 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 177 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 282 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 287 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
-| discovery | 5.0 | 100% | 100% | 70 | `DiscoveryArchitectureTest` |
+| discovery | 5.0 | 100% | 100% | 77 | `DiscoveryArchitectureTest` |
 | feedback | 4.0 | 100% | 100% | 105 | `FeedbackArchitectureTest` |
 | ie | 1.0 | n/a (exempt in the plan) | n/a | – | `IntegrationEventArchitectureTest` |
 
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,241 of 1,241 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,253 of 1,253 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -336,4 +342,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     added while building: `ListingPausedIE` and `ListingResumedIE`, so search can leave a paused
     listing out. Then `RecheckFailedIE`, so the provider is asked to have the person retry.
     `HomaPolicyChangedIE` now carries the three re-verification values.
+  - For "verified for the whole job", `ProviderVerifiedIE` and `ProviderReverifiedIE` carry
+    `reverificationDueAt`.
   - The contract test now covers 49 events.

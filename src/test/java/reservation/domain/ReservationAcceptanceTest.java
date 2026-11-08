@@ -2,6 +2,7 @@ package reservation.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static reservation.domain.ReservationBuilders.VERIFIED_UNTIL;
 import static reservation.domain.ReservationBuilders.aReservation;
 import static reservation.domain.ReservationBuilders.friday;
 import static reservation.domain.ReservationBuilders.thursday;
@@ -16,7 +17,7 @@ class ReservationAcceptanceTest {
     void theProviderAcceptsARequest() {
         Reservation reservation = aReservation().requested();
 
-        reservation.accept(thursday("12:00"));
+        reservation.accept(VERIFIED_UNTIL, thursday("12:00"));
 
         assertThat(reservation.status()).isEqualTo(ReservationStatus.RESERVED);
     }
@@ -35,7 +36,7 @@ class ReservationAcceptanceTest {
         Reservation reservation = aReservation().requested();
         reservation.decline(thursday("12:00"));
 
-        assertThatThrownBy(() -> reservation.accept(thursday("13:00")))
+        assertThatThrownBy(() -> reservation.accept(VERIFIED_UNTIL, thursday("13:00")))
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessage("A DECLINED reservation cannot be accepted");
     }

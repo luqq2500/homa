@@ -2,6 +2,7 @@ package reservation.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static reservation.domain.ReservationBuilders.VERIFIED_UNTIL;
 import static reservation.domain.ReservationBuilders.aBooking;
 import static reservation.domain.ReservationBuilders.anOffering;
 import static reservation.domain.ReservationBuilders.saturday;
@@ -36,7 +37,7 @@ class ReservationRequestTest {
 
     private static Reservation request(ReservationBuilders.DetailsBuilder booking) {
         return Reservation.request(
-                "customer-1", booking.build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, NOW);
+                "customer-1", booking.build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL, NOW);
     }
 
     static Stream<Arguments> requests() {
@@ -128,7 +129,7 @@ class ReservationRequestTest {
                 v1.teamReminder());
 
         Reservation underVersion2 = Reservation.request(
-                "customer-2", aBooking().build(), anOffering().build(), version2, Optional.empty(), PaymentMethod.CARD, NOW);
+                "customer-2", aBooking().build(), anOffering().build(), version2, Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL, NOW);
 
         assertThat(underVersion1.policy().version()).isEqualTo(1);
         assertThat(underVersion1.price().serviceFee()).isEqualTo(Money.parse("30.00"));
@@ -139,7 +140,7 @@ class ReservationRequestTest {
     @Test
     void theReservationKeepsWhoWhatAndHowItIsPaid() {
         Reservation reservation = Reservation.request(
-                "customer-1", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.of("enquiry-1"), PaymentMethod.FPX, NOW);
+                "customer-1", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.of("enquiry-1"), PaymentMethod.FPX, VERIFIED_UNTIL, NOW);
 
         assertThat(reservation.id()).isNotBlank();
         assertThat(reservation.customerId()).isEqualTo("customer-1");
@@ -154,11 +155,11 @@ class ReservationRequestTest {
     @Test
     void aPausedListingRefusesNewRequestsButKeepsAcceptedOnes() {
         Reservation accepted = request(aBooking());
-        accepted.accept(NOW.plus(Duration.ofMinutes(5)));
+        accepted.accept(VERIFIED_UNTIL, NOW.plus(Duration.ofMinutes(5)));
 
         assertThatThrownBy(() -> Reservation.request(
                         "customer-2", aBooking().build(), anOffering().paused().build(), theLaunchPolicy(), Optional.empty(),
-                        PaymentMethod.CARD, NOW))
+                        PaymentMethod.CARD, VERIFIED_UNTIL, NOW))
                 .isInstanceOf(ListingPausedException.class)
                 .hasMessageContaining("provider-1");
         assertThat(accepted.status()).isEqualTo(ReservationStatus.RESERVED);
@@ -168,10 +169,10 @@ class ReservationRequestTest {
     @Test
     void aRequestNeedsACustomerAndAPaymentMethod() {
         assertThatThrownBy(() -> Reservation.request(
-                        " ", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, NOW))
+                        " ", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL, NOW))
                 .isInstanceOf(ReservationDetailRequiredException.class);
         assertThatThrownBy(() -> Reservation.request(
-                        "customer-1", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), null, NOW))
+                        "customer-1", aBooking().build(), anOffering().build(), theLaunchPolicy(), Optional.empty(), null, VERIFIED_UNTIL, NOW))
                 .isInstanceOf(NullPointerException.class);
     }
 }

@@ -51,6 +51,7 @@ fed by event handlers and stored behind its own out port:
 | offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
+| reservation, discovery | each provider's re-verification due date | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `RecheckOpenedIE` |
 | discovery | each live listing's search fields | the listing events |
 | conversation | customer names | `CustomerRegisteredIE` |
 
@@ -147,6 +148,12 @@ These rules come from decisions made after the domain phase. Each one needs a us
    on `HelperJoinedTeamIE`, `HelperReverifiedIE`, `HelperLapsedIE` and `HelperRemovedIE`.
 5. **R5. A lapsed helper named on an upcoming reservation.** The provider must name someone else before
    the start, and the reservation's existing "team must be on the roster" rule then applies.
+6. **R6. Verified for the whole job.**
+   - reservation and discovery keep each provider's re-verification due date, from
+     `ProviderVerifiedIE`, `ProviderReverifiedIE` and `RecheckOpenedIE`.
+   - `CustomerRequestReservation`, `CustomerEditRequest` and `ProviderAcceptRequest` pass the due date
+     as it is now to the domain, which refuses a job ending after it.
+   - `CustomerSearchProviders` puts it on each `ProviderCandidate`.
 
 ## Build order
 

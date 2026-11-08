@@ -42,6 +42,13 @@ class MatchClassifierMatchingTest {
         private int minHelpers = 1;
         private int maxHelpers = 3;
         private Optional<Instant> nearestFreeStart = Optional.of(SATURDAY_1000);
+        private Instant verifiedUntil = SATURDAY_1000.plus(Duration.ofDays(60));
+
+        /** The provider's re-verification is due at {@code due}. */
+        Candidate verifiedUntil(Instant due) {
+            verifiedUntil = due;
+            return this;
+        }
 
         Candidate offering(String... codes) {
             offered = jobs(codes);
@@ -83,7 +90,8 @@ class MatchClassifierMatchingTest {
 
         MatchResult classified() {
             return MatchClassifier.classify(
-                    SEARCH, new ProviderCandidate("provider-1", offered, minHours, maxHours, minHelpers, maxHelpers, cities, nearestFreeStart));
+                    SEARCH, new ProviderCandidate("provider-1", offered, minHours, maxHours, minHelpers, maxHelpers, cities, nearestFreeStart,
+                            verifiedUntil));
         }
     }
 
@@ -180,8 +188,42 @@ class MatchClassifierMatchingTest {
 
     @Test
     void aCandidateNeedsAnAvailabilityAnswer() {
-        assertThatThrownBy(() -> new ProviderCandidate("provider-1", Set.of(), 1, 1, 1, 1, Set.of(), null))
+        assertThatThrownBy(() -> new ProviderCandidate("provider-1", Set.of(), 1, 1, 1, 1, Set.of(), null, SATURDAY_1000))
                 .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new ProviderCandidate("provider-1", Set.of(), 1, 1, 1, 1, Set.of(), Optional.empty(), null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void aJobEndingAfterTheProvidersDueDateIsNoMatch() {
+        MatchResult result = aProvider().verifiedUntil(SATURDAY_1000.plus(Duration.ofHours(3)).minusSeconds(1)).classified();
+
+        assertThat(result.match()).isEqualTo(Match.NONE);
+        assertThat(result.reasons()).containsExactly(MatchReason.VERIFICATION_DUE_BEFORE_END);
+    }
+
+    @Test
+    void aJobEndingExactlyAtTheDueDateIsAMatch() {
+        MatchResult result = aProvider().verifiedUntil(SATURDAY_1000.plus(Duration.ofHours(3))).classified();
+
+        assertThat(result.match()).isEqualTo(Match.EXACT);
+    }
+
+    @Test
+    void aNearbyStartIsCheckedAgainstTheDueDateToo() {
+        Instant dueAtTheChosenEnd = SATURDAY_1000.plus(Duration.ofHours(3));
+
+        MatchResult result = aProvider().freeOnlyNearTheTime().verifiedUntil(dueAtTheChosenEnd).classified();
+
+        assertThat(result.match()).isEqualTo(Match.NONE);
+        assertThat(result.reasons()).containsExactly(MatchReason.VERIFICATION_DUE_BEFORE_END);
+    }
+
+    @Test
+    void aProviderWithNoFreeTimeIsNotFreeRatherThanDue() {
+        MatchResult result = aProvider().notFreeAtOrNearTheTime().verifiedUntil(SATURDAY_1000).classified();
+
+        assertThat(result.reasons()).containsExactly(MatchReason.NOT_FREE);
     }
 
     @Test
@@ -191,7 +233,7 @@ class MatchClassifierMatchingTest {
 
     @Test
     void aCandidateAndAResultBelongToAProvider() {
-        assertThatThrownBy(() -> new ProviderCandidate(" ", Set.of(), 1, 1, 1, 1, Set.of(), Optional.empty()))
+        assertThatThrownBy(() -> new ProviderCandidate(" ", Set.of(), 1, 1, 1, 1, Set.of(), Optional.empty(), SATURDAY_1000))
                 .isInstanceOf(DiscoveryDetailRequiredException.class);
         assertThatThrownBy(() -> new MatchResult(null, Match.EXACT, Set.of())).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new MatchResult("provider-1", null, Set.of())).isInstanceOf(NullPointerException.class);
