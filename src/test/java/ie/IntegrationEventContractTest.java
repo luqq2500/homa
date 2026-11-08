@@ -26,6 +26,8 @@ import ie.events.PaymentCapturedIE;
 import ie.events.PaymentRefundedIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
+import ie.events.RatingHiddenIE;
+import ie.events.RatingSubmittedIE;
 import ie.events.ProviderCheckedInIE;
 import ie.events.ProviderVerificationRejectedIE;
 import ie.events.ProviderVerifiedIE;
@@ -43,6 +45,7 @@ import ie.events.ToolAddedIE;
 import ie.events.ToolRetiredIE;
 import ie.port.AccountIE;
 import ie.port.CatalogueIE;
+import ie.port.FeedbackIE;
 import ie.port.OfferingIE;
 import ie.port.PaymentIE;
 import ie.port.PolicyIE;
@@ -117,7 +120,9 @@ class IntegrationEventContractTest {
                 Arguments.of(PaymentCapturedIE.class, PaymentIE.class),
                 Arguments.of(PaymentRefundedIE.class, PaymentIE.class),
                 Arguments.of(PayoutCreatedIE.class, PaymentIE.class),
-                Arguments.of(FineWaivedIE.class, PaymentIE.class));
+                Arguments.of(FineWaivedIE.class, PaymentIE.class),
+                Arguments.of(RatingSubmittedIE.class, FeedbackIE.class),
+                Arguments.of(RatingHiddenIE.class, FeedbackIE.class));
     }
 
     @ParameterizedTest(name = "{0} is a {1}")
@@ -188,7 +193,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(38);
+        assertThat(events().count()).isEqualTo(40);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

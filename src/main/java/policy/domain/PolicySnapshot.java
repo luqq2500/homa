@@ -17,9 +17,11 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.HelpersPerSearch;
 import policy.domain.PolicyValue.MinimumNotice;
+import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
 import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
+import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
@@ -151,6 +153,14 @@ public final class PolicySnapshot {
 
     public Duration disputeWindowExtension() {
         return value(DisputeWindowExtension.class).period();
+    }
+
+    public Duration ratingWindow() {
+        return value(RatingWindow.class).afterCompleted();
+    }
+
+    public int minimumRatingsToShow() {
+        return value(MinimumRatingsToShow.class).ratings();
     }
 
     public Duration evidenceRetention() {

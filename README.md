@@ -22,6 +22,7 @@ src/main/java/
   resolution/domain/            the founders' case queue and decisions
   conversation/domain/          chats for enquiries and reservations
   discovery/domain/             search criteria and exact, close or no matches
+  feedback/domain/              customers' ratings of providers and helpers, and the averages shown
   ie/port/                      one integration event interface per publishing context
   ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
@@ -66,8 +67,9 @@ Build order from the domain plan:
 | 9 | `conversation` | Done |
 | 10 | `discovery` | Done |
 | 11 | `ie/` integration event contracts | Done |
+| 12 | `feedback`, added after closing: two Homa-set values in `policy`, the `feedback` domain, `RatingSubmittedIE` and `RatingHiddenIE` | Done |
 
-The domain phase is complete: see `docs/domain-closing-report.md`.
+The domain phase is complete: see `docs/domain-closing-report.md`, and its addendum for `feedback`.
 
 ### Usecase phase
 

@@ -19,6 +19,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 - payment
 - resolution
 - conversation
+- feedback
 - Not in the domain phase
 - Integration events
 - Build order
@@ -51,8 +52,9 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 | `payment` | Money movement: authorise, hold, release, refund, payouts, fines and fine deductions | `Payment`, `Payout`, `Fine` |
 | `resolution` | Cases that need the founders' decision and their outcomes | `Case` |
 | `conversation` | Chats: one per enquiry or reservation, who may write, archiving | `Conversation` |
+| `feedback` | Customers' ratings of providers and helpers, and the averages shown | `Rating`, `RatingSummary` |
 
-All ten depend on the shared kernel `kernel/` (`Money`, `Percentage`), which is built first.
+All eleven depend on the shared kernel `kernel/` (`Money`, `Percentage`), which is built first.
 
 **Why `reservation` owns the money rules and `payment` doesn't:** the cancellation tiers, no-show fees and fines all depend on *when* something happened in the lifecycle, which only `reservation` knows. So `reservation` decides **who gets how much** (`Settlement`, `FineCharge`), and `payment` decides **how the money moves** (states, holds, payouts, the 50% fine deduction cap).
 
@@ -68,6 +70,8 @@ reservation ──(SettlementDecided, FineCharged)──► payment
 reservation ──(ReportFiled, CompletionDeadlineMissed, NoShowChallenged)──► resolution
 resolution ──(CaseDecided)──► reservation ──(SettlementDecided)──► payment
 reservation ──(EnquiryCreated, ReservationRequested)──► conversation
+reservation ──(ReservationRequested, TeamNamed, ReservationCompleted)──► feedback
+policy ─────(rating window, minimum ratings to show)──► feedback
 ```
 
 ---
@@ -1191,6 +1195,161 @@ Feature: Chat
 
 ---
 
+## feedback
+
+**Purpose:** customers' ratings of a provider and of each helper who came, and the averages shown on the provider page and on "who is coming". Called **rating** and **feedback** in code, never "review", because "review" already means the review page and Homa reviewing reports.
+
+| Object | Kind | Responsibility |
+|---|---|---|
+| `Rating` | Aggregate | One per Completed reservation: the provider rating, helper ratings, when it was submitted, hidden flag and reason |
+| `RateableReservation` | Value object | feedback's own snapshot: reservation id, status, customer, provider, named helpers, when it became Completed, and whether it has already been rated |
+| `Stars` | Value object | A whole number from 1 to 5 |
+| `ProviderRating` | Value object | Overall stars (required), stars per `ProviderCategory` (optional), written feedback (optional, up to 1,000 characters) |
+| `ProviderCategory` | Enum | `QUALITY_OF_WORK`, `PUNCTUALITY`, `COMMUNICATION`, `CARE_FOR_THE_HOME` |
+| `HelperRating` | Value object | Stars and a set of `Compliment`s for one helper |
+| `Compliment` | Enum | `FRIENDLY`, `HARDWORKING`, `CAREFUL_WITH_BELONGINGS`, `COOPERATIVE`, `THOROUGH` |
+| `RatingSummary` | Aggregate | One per provider and one per helper: rating count, average stars, category averages (provider), compliment counts (helper) |
+| `FeedbackLimits` | Value object | feedback's view of the Homa-set values: rating window, minimum ratings to show |
+
+```java
+Rating.submit(RateableReservation r, String customerId, ProviderRating provider,
+              Map<String, HelperRating> helpers, FeedbackLimits limits, Instant now)
+Rating.hide(String reason, Instant now)
+Rating.isHidden() : boolean
+
+RateableReservation.completed(String reservationId, String customerId, String providerId, Set<String> namedHelperIds, Instant completedAt)
+RateableReservation.notCompleted(String reservationId, ReservationStatus status, String customerId, String providerId, Set<String> namedHelperIds)
+RateableReservation.rated() : RateableReservation   // the same reservation, already rated
+
+RatingSummary.forProvider(String providerId)
+RatingSummary.forHelper(String helperId)
+RatingSummary.record(Stars stars, Map<ProviderCategory, Stars> categories, Set<Compliment> compliments)
+RatingSummary.withdraw(Stars stars, Map<ProviderCategory, Stars> categories, Set<Compliment> compliments)
+RatingSummary.averageStars() : BigDecimal          // one decimal place, half-up; only meaningful when isShown
+RatingSummary.isShown(FeedbackLimits limits) : boolean
+RatingSummary.topCompliments(int n) : List<Compliment>  // most first; ties keep the listed order
+RatingSummary.categoryAverage(ProviderCategory c) : Optional<BigDecimal>   // empty when no rating gave that category
+RatingSummary.ratingCount() : int
+```
+
+```gherkin
+Feature: Rating a completed reservation
+  Background:
+    Given a reservation that became Completed on Saturday 14:00
+    And the customer is C1, the provider is P1, and the named helpers are Aina and Ben
+
+  Scenario: The customer rates the provider
+    When C1 gives P1 4 stars on Sunday 10:00
+    Then the rating is recorded
+
+  Scenario: Only the reservation's customer can rate it
+    When C2 rates the reservation
+    Then it is rejected with NotTheReservationCustomerException
+
+  Scenario: A reservation is rated once
+    Given C1 has rated the reservation
+    When C1 rates it again
+    Then it is rejected with AlreadyRatedException
+
+  Scenario Outline: Ratings are accepted only within the rating window
+    When C1 rates the reservation at <time>
+    Then the result is <result>
+    Examples:
+      | time                         | result                      |
+      | 14 days after, at 14:00      | recorded                    |
+      | 14 days after, at 14:01      | RatingWindowClosedException |
+
+  Scenario Outline: Stars are whole numbers from 1 to 5
+    When C1 gives P1 <stars> stars
+    Then the result is <result>
+    Examples:
+      | stars | result                   |
+      | 1     | recorded                 |
+      | 5     | recorded                 |
+      | 0     | StarsOutOfRangeException |
+      | 6     | StarsOutOfRangeException |
+
+  Scenario: Category ratings and written feedback are optional
+    When C1 gives P1 5 stars with no category ratings and no written feedback
+    Then the rating is recorded
+
+  Scenario: Written feedback has a length limit
+    When C1 writes 1,001 characters of feedback
+    Then it is rejected with FeedbackTooLongException
+
+  Scenario: Only helpers who were named can be rated
+    When C1 rates helper Chan
+    Then it is rejected with HelperNotOnReservationException
+
+  Scenario: Helper ratings are optional
+    When C1 rates P1 and no helpers
+    Then the rating is recorded
+
+  Scenario: A helper can receive stars and compliments
+    When C1 gives Aina 5 stars with FRIENDLY and THOROUGH
+    Then Aina's rating has 5 stars and 2 compliments
+
+Feature: What can be rated
+  Scenario Outline: Only Completed reservations can be rated
+    Given a reservation that is <status>
+    When the customer rates it
+    Then it is rejected with ReservationNotRateableException
+    Examples:
+      | status    |
+      | CANCELLED |
+      | DISPUTED  |
+      | RESERVED  |
+
+Feature: Hiding a rating
+  Scenario: Homa hides a rating with a reason
+    Given a recorded rating
+    When Homa hides it with the reason "Personal phone number in the text"
+    Then the rating is hidden
+
+  Scenario: Hiding needs a reason
+    When Homa hides a rating with no reason
+    Then it is rejected with HidingReasonRequiredException
+
+  Scenario: A rating is hidden once
+    Given a hidden rating
+    When Homa hides it again
+    Then it is rejected with RatingAlreadyHiddenException
+
+Feature: Rating summaries
+  Scenario Outline: Average stars are shown only after the minimum number of ratings
+    Given a provider with <count> ratings
+    Then the average is shown is <shown>
+    Examples:
+      | count | shown |
+      | 2     | false |
+      | 3     | true  |
+
+  Scenario: The average is rounded to one decimal place
+    Given a provider rated 5, 4 and 4 stars
+    Then the average is 4.3
+
+  Scenario: Withdrawing a hidden rating removes it from the average
+    Given a provider rated 5, 4 and 1 stars
+    When the 1-star rating is withdrawn
+    Then the average is 4.5
+    And the rating count is 2
+
+  Scenario: Category averages count only the ratings that gave that category
+    Given a provider with PUNCTUALITY rated 5 once and 3 once, and two ratings without PUNCTUALITY
+    Then the PUNCTUALITY average is 4.0
+
+  Scenario: The most-given compliments come first
+    Given a helper complimented FRIENDLY 3 times, THOROUGH twice and COOPERATIVE once
+    Then the top 2 compliments are FRIENDLY and THOROUGH
+
+  Scenario: A summary cannot withdraw more ratings than it has
+    Given a helper with no ratings
+    When a rating is withdrawn
+    Then it is rejected with NoRatingToWithdrawException
+```
+
+---
+
 ## Not in the domain phase
 
 These have no business rules of their own, or they belong to usecase or infra later:
@@ -1251,6 +1410,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `SettlementDecidedIE` | reservation | payment | every method returning a `Settlement` |
 | `FineChargedIE` | reservation | payment | every method returning a `FineCharge` |
 | `CaseDecidedIE` | resolution | reservation | `Case.decide`, with `Case.providerReceives` |
+| `RatingSubmittedIE` | feedback | (provider page, notifications) | `Rating.submit` |
+| `RatingHiddenIE` | feedback | (provider page) | `Rating.hide` |
 | `PaymentCapturedIE` | payment | (notifications) | `Payment.capture` |
 | `PaymentRefundedIE` | payment | (notifications) | refund instructions from `Payment.settle`, `Payment.cancelBeforeAcceptance` |
 | `PayoutCreatedIE` | payment | (notifications) | `FineDeductionPolicy.apply` |
@@ -1281,6 +1442,10 @@ Build in this order so each context only needs what already exists. Within `rese
 9. `conversation`
 10. `discovery`
 11. `ie/` integration event contracts, once every context above passes its gates
+12. `feedback`, added after the domain phase closed:
+    1. `policy`: add the rating window (14 days) and minimum ratings to show (3) as Homa-set values
+    2. `feedback` domain
+    3. `ie/`: add `RatingSubmittedIE` and `RatingHiddenIE`, and the two new values to `HomaPolicyChangedIE`
 
 ## Testing approach
 
@@ -1514,6 +1679,21 @@ hours either side.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
+
+- **Feedback details** (added after the domain phase closed):
+  - `RateableReservation` also carries whether the reservation is already rated, so `Rating.submit` can
+    enforce "a reservation is rated once". The usecase sets it from storage.
+  - The rating window includes its last moment: 14 days after 14:00 is still in, 14:01 is not.
+  - Checks run in this order: the reservation is Completed, the customer is its customer, it is not
+    rated yet, the window is open, and every rated helper was named.
+  - Written feedback is counted in characters, not bytes, and kept without surrounding spaces. Empty
+    means none.
+  - A summary takes category ratings only for a provider, and compliments only for a helper. Withdrawing
+    a rating, or a category or compliment, that was never counted is rejected.
+  - Before any rating, the average is 0.0 and not shown. The spec shows "New".
+  - The minimum ratings to show is at least 1.
+  - Events carry no maps, so `RatingSubmittedIE` carries the overall stars, whether there is written
+    feedback, and the ids of the helpers rated. Category stars stay in `feedback`'s own summaries.
 
 ## Open questions
 

@@ -15,7 +15,7 @@ import com.tngtech.archunit.lang.ArchRule;
  */
 @AnalyzeClasses(
         packages = {"ie", "kernel", "catalogue", "policy", "account", "offering", "availability", "reservation",
-            "payment", "resolution", "conversation", "discovery"},
+            "payment", "resolution", "conversation", "discovery", "feedback"},
         importOptions = ImportOption.DoNotIncludeTests.class)
 class IntegrationEventArchitectureTest {
 

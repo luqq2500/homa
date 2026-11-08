@@ -2,6 +2,7 @@ package policy.domain;
 
 import kernel.Percentage;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
+import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -159,6 +160,24 @@ public sealed interface PolicyValue {
     record NoShowReportWindow(Duration period) implements PolicyValue {
         public NoShowReportWindow {
             PolicyShape.requirePeriod("The no-show report window", period);
+        }
+    }
+
+    // ---- Ratings ----
+
+    /** How long after a reservation becomes Completed the customer can rate it. */
+    record RatingWindow(Duration afterCompleted) implements PolicyValue {
+        public RatingWindow {
+            PolicyShape.requirePeriod("The rating window", afterCompleted);
+        }
+    }
+
+    /** How many ratings a provider or helper needs before their average stars are shown. */
+    record MinimumRatingsToShow(int ratings) implements PolicyValue {
+        public MinimumRatingsToShow {
+            if (ratings < 1) {
+                throw new MinimumRatingsToShowNotPositiveException(ratings);
+            }
         }
     }
 

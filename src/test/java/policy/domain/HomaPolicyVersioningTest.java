@@ -95,8 +95,14 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
+        void customersRateWithinFourteenDaysAndAveragesShowAfterThreeRatings() {
+            assertThat(launch.ratingWindow()).isEqualTo(Duration.ofDays(14));
+            assertThat(launch.minimumRatingsToShow()).isEqualTo(3);
+        }
+
+        @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(24);
+            assertThat(launch.values()).hasSize(26);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -132,7 +138,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(24);
+            assertThat(version2.snapshot().values()).hasSize(26);
         }
 
         @Test

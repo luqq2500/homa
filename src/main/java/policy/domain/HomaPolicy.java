@@ -17,9 +17,11 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.HelpersPerSearch;
 import policy.domain.PolicyValue.MinimumNotice;
+import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
 import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
+import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
@@ -63,7 +65,9 @@ public final class HomaPolicy {
             new CompletionReminder(Duration.ofMinutes(30)),
             new CompletionDeadline(Duration.ofHours(24)),
             new DisputeWindowExtension(Duration.ofHours(1)),
-            new EvidenceRetention(Duration.ofDays(7)));
+            new EvidenceRetention(Duration.ofDays(7)),
+            new RatingWindow(Duration.ofDays(14)),
+            new MinimumRatingsToShow(3));
 
     private final PolicySnapshot current;
 

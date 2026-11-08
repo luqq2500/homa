@@ -125,7 +125,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Check-in Policy
 
-- **Who is coming:** before the booked start, the provider names the **lead** (the person in charge on site) and the helpers for the reservation, matching the number of helpers booked. The lead is one of the named helpers, and a provider who is their own helper can be the lead. The customer does not pick the helpers but sees each one's name and photo, and who the lead is. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
+- **Who is coming:** before the booked start, the provider names the **lead** (the person in charge on site) and the helpers for the reservation, matching the number of helpers booked. The lead is one of the named helpers, and a provider who is their own helper can be the lead. The customer does not pick the helpers but sees each one's name, photo and average stars, and who the lead is. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
 - The provider is responsible for check-in and job completion. The lead must be at the customer's location with the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
 - Check-in is **location-based**. Homa enables the check-in action only when the device is within the **check-in radius** of the customer's location, and the provider then marks check-in.
 - Homa uses the device's location only at the moment of check-in, not continuously.
@@ -159,6 +159,32 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - A violation is a report that Homa's review upholds.
 - Consequences of violations are not part of the MVP. In the MVP, Homa only decides the outcome of each report (a release, a partial refund or a full refund).
 
+### Rating Policy
+
+- **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count.
+- **When:** within the **rating window** after the reservation becomes Completed, including its last minute. A disputed reservation can be rated only after Homa's decision, because it becomes Completed only then.
+- **Rating the provider:** an overall rating of 1 to 5 stars (required), optional ratings for each **provider category**, and optional written feedback of up to 1,000 characters.
+- **Rating helpers:** for each helper who came, the customer can give 1 to 5 stars and pick **compliments**. Helper ratings are optional and have no written feedback, so no one writes comments about an individual worker.
+- **Showing ratings:** a provider's or helper's average stars are shown only once they have at least the **minimum ratings to show**. Until then, the count is shown with "New".
+- **Ratings and reports are separate.** A rating is an opinion and never changes a payout, a fine or a decision. A problem that needs Homa's decision is a report.
+- **Hiding:** Homa can hide a rating that breaks the rules (abuse, personal details, or talk of paying outside Homa), with a recorded reason. A hidden rating no longer counts. Homa never edits a rating.
+
+#### Rating categories
+
+| For | Category | What it means |
+|---|---|---|
+| Provider | Quality of work | The booked jobs were done well |
+| Provider | Punctuality | The team arrived on time |
+| Provider | Communication | Replies in chat were clear and timely |
+| Provider | Care for the home | Belongings and the home were treated with care |
+| Helper (compliment) | Friendly | Pleasant and polite |
+| Helper (compliment) | Hardworking | Kept working through the booked time |
+| Helper (compliment) | Careful with belongings | Handled the home's things with care |
+| Helper (compliment) | Cooperative | Followed the customer's requests within the booked jobs |
+| Helper (compliment) | Thorough | Paid attention to detail |
+
+Compliments are positive only. Anything negative about a helper goes in the helper's stars or, if it needs Homa's decision, in a report.
+
 ### Verification Policy
 
 - Every provider is an individual and is verified through eKYC.
@@ -173,6 +199,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - **What Homa collects and why:**
   - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
   - Providers and helpers: eKYC identity data, name and photo, to verify them and show customers who is coming; providers' payout details, handled by Stripe.
+  - Ratings: customers' ratings of providers and helpers, shown to other customers as averages, category averages, compliment counts and written feedback. Helpers agree to being rated as part of their eKYC consent.
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.
@@ -250,6 +277,8 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within 24 hours before the booked start |
 | **Provider no-show fine** | Provider Cancellation Fines | 30% of the hours fee, for no check-in, or a cancellation after the booked start or after check-in |
 | **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout |
+| **Rating window** | Rating Policy | 14 days after the reservation becomes Completed |
+| **Minimum ratings to show** | Rating Policy | 3 ratings before average stars are shown |
 
 ## Key Experiences
 
@@ -263,13 +292,18 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 
 ### Provider page
 
-- Stats under the provider's name: jobs done, cancellations, and price and minimum hours
+- Stats under the provider's name: jobs done, cancellations, average stars with the rating count, and price and minimum hours
 - Jobs grouped to be easy to scan, such as kitchen or living room
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
-- The provider's team: every helper's name and photo, so you know who may come
+- The provider's team: every helper's name, photo and average stars, so you know who may come
+- Ratings: the average for each provider category, and written feedback from customers, newest first
 - A **Verified ID** badge: every provider and helper is verified through eKYC
 
+
+### Ratings
+
+After a reservation becomes Completed, the customer is asked to rate it: overall stars and optional category ratings for the provider, optional written feedback, and optional stars and compliments for each helper who came. When the provider names who is coming, the customer sees each helper's average stars and most-given compliments.
 
 ### Availability
 
@@ -336,6 +370,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 - **Providers:** verification status of providers and their helpers, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
 - **Customers:** accounts, reservations and reports filed.
 - **Fines:** every fine with its reason, amount, what has been deducted so far, and any waiver.
+- **Ratings:** every rating, with the option to hide one that breaks the rules, recorded with a reason.
 
 ### Settings
 
@@ -347,7 +382,8 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 These are deliberately left out of the MVP:
 
-- Reviews, star ratings and review tags
+- Providers rating customers (two-way ratings)
+- Ratings on cancelled reservations or no-shows
 - Consequences of violations and provider suspension (late cancellations and no-shows are only tracked in the admin console)
 - Homa credit, account top-ups and e-wallet payments
 - Rescheduling a reserved booking

@@ -21,14 +21,17 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.HelpersPerSearch;
 import policy.domain.PolicyValue.MinimumNotice;
+import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
 import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
 import policy.domain.exception.InvalidPolicyRangeException;
+import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
 import policy.domain.exception.PolicyPeriodNotPositiveException;
 import java.time.Duration;
 import java.util.function.BiFunction;
@@ -61,7 +64,8 @@ class PolicyValueShapeTest {
                     Named.of("completion reminder", CompletionReminder::new),
                     Named.of("completion deadline", CompletionDeadline::new),
                     Named.of("dispute window extension", DisputeWindowExtension::new),
-                    Named.of("evidence retention", EvidenceRetention::new));
+                    Named.of("evidence retention", EvidenceRetention::new),
+                    Named.of("rating window", RatingWindow::new));
         }
 
         @ParameterizedTest(name = "the {0} must be longer than zero")
@@ -121,6 +125,12 @@ class PolicyValueShapeTest {
         void aRejectedRangeIsShownInTheMessage() {
             assertThatThrownBy(() -> new DurationRange(4, 3)).hasMessageContaining("4 to 3");
         }
+    }
+
+    @Test
+    void averagesAreShownAfterAtLeastOneRating() {
+        assertThatThrownBy(() -> new MinimumRatingsToShow(0)).isInstanceOf(MinimumRatingsToShowNotPositiveException.class);
+        assertThat(new MinimumRatingsToShow(1).ratings()).isEqualTo(1);
     }
 
     @Test

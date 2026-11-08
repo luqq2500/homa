@@ -36,6 +36,8 @@ public record HomaPolicyChangedIE(
         Duration completionDeadline,
         Duration disputeWindowExtension,
         Duration evidenceRetention,
+        Duration ratingWindow,
+        int minimumRatingsToShow,
         Instant occurredAt) implements PolicyIE {
 
     public HomaPolicyChangedIE {
@@ -61,6 +63,7 @@ public record HomaPolicyChangedIE(
         Objects.requireNonNull(completionDeadline, "completionDeadline");
         Objects.requireNonNull(disputeWindowExtension, "disputeWindowExtension");
         Objects.requireNonNull(evidenceRetention, "evidenceRetention");
+        Objects.requireNonNull(ratingWindow, "ratingWindow");
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

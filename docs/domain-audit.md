@@ -5,8 +5,8 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **127 of 127** scenarios in the plan have a test. That is the original 122, plus the five in the
-"Buffer between jobs" feature added to the plan later. The script that checks this maps each scenario
+All **147 of 147** scenarios in the plan have a test. That is the original 122, plus five in the
+"Buffer between jobs" feature and 20 in the four `feedback` features, both added to the plan later. The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -157,6 +157,26 @@ Two scenarios map to more than one test:
 | 125 | Chat | Requesting from an enquiry keeps the same chat | `ConversationChatTest` | `requestingFromAnEnquiryKeepsTheSameChat` |
 | 126 | Chat | An archived chat is readable but closed | `ConversationChatTest` | `anArchivedChatIsReadableButClosed` |
 | 127 | Chat | A reservation's chat stays open after the job | `ConversationChatTest` | `aReservationsChatStaysOpenAfterTheJob` |
+| 128 | Rating a completed reservation | The customer rates the provider | `RatingSubmissionTest` | `theCustomerRatesTheProvider` |
+| 129 | Rating a completed reservation | Only the reservation's customer can rate it | `RatingSubmissionTest` | `onlyTheReservationsCustomerCanRateIt` |
+| 130 | Rating a completed reservation | A reservation is rated once | `RatingSubmissionTest` | `aReservationIsRatedOnce` |
+| 131 | Rating a completed reservation | Ratings are accepted only within the rating window (outline) | `RatingSubmissionTest` | `ratingsAreAcceptedOnlyWithinTheRatingWindow` |
+| 132 | Rating a completed reservation | Stars are whole numbers from 1 to 5 (outline) | `RatingSubmissionTest` | `starsAreWholeNumbersFromOneToFive`, `starsOutsideOneToFiveAreRejected` |
+| 133 | Rating a completed reservation | Category ratings and written feedback are optional | `RatingSubmissionTest` | `categoryRatingsAndWrittenFeedbackAreOptional` |
+| 134 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
+| 135 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
+| 136 | Rating a completed reservation | Helper ratings are optional | `RatingSubmissionTest` | `helperRatingsAreOptional` |
+| 137 | Rating a completed reservation | A helper can receive stars and compliments | `RatingSubmissionTest` | `aHelperCanReceiveStarsAndCompliments` |
+| 138 | What can be rated | Only Completed reservations can be rated (outline) | `RatingEligibilityTest` | `onlyCompletedReservationsCanBeRated` |
+| 139 | Hiding a rating | Homa hides a rating with a reason | `RatingHidingTest` | `homaHidesARatingWithAReason` |
+| 140 | Hiding a rating | Hiding needs a reason | `RatingHidingTest` | `hidingNeedsAReason` |
+| 141 | Hiding a rating | A rating is hidden once | `RatingHidingTest` | `aRatingIsHiddenOnce` |
+| 142 | Rating summaries | Average stars are shown only after the minimum number of ratings (outline) | `RatingSummaryAveragingTest` | `averageStarsAreShownOnlyAfterTheMinimumNumberOfRatings` |
+| 143 | Rating summaries | The average is rounded to one decimal place | `RatingSummaryAveragingTest` | `theAverageIsRoundedToOneDecimalPlace` |
+| 144 | Rating summaries | Withdrawing a hidden rating removes it from the average | `RatingSummaryAveragingTest` | `withdrawingAHiddenRatingRemovesItFromTheAverage` |
+| 145 | Rating summaries | Category averages count only the ratings that gave that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatGaveThatCategory` |
+| 146 | Rating summaries | The most-given compliments come first | `RatingSummaryAveragingTest` | `theMostGivenComplimentsComeFirst` |
+| 147 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
 
 ## 2. Product spec rules with no test
 
@@ -234,7 +254,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 58 | `PolicyArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 60 | `PolicyArchitectureTest` |
 | account | 5.0 | 100% | 100% | 86 | `AccountArchitectureTest` |
 | offering | 4.0 | 100% | 100% | 158 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
@@ -243,12 +263,13 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
 | discovery | 5.0 | 100% | 100% | 70 | `DiscoveryArchitectureTest` |
+| feedback | 5.0 | 100% | 100% | 119 | `FeedbackArchitectureTest` |
 | ie | 1.0 | n/a (exempt in the plan) | n/a | – | `IntegrationEventArchitectureTest` |
 
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, reservation, payment and
   discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1029 of 1029 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1161 of 1161 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.

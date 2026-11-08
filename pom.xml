@@ -147,6 +147,7 @@
                         <param>resolution.*</param>
                         <param>conversation.*</param>
                         <param>discovery.*</param>
+                        <param>feedback.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
@@ -160,6 +161,7 @@
                         <param>resolution.*</param>
                         <param>conversation.*</param>
                         <param>discovery.*</param>
+                        <param>feedback.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>
