@@ -58,6 +58,15 @@ Build order from the domain plan:
 
 ### Decisions taken while building (to fold back into the plan)
 
+Confirmed by the product owner: customers have a name; `HomaLimits` for hours and helpers; touching
+windows, touching blocks and the later-start tie-break in availability, plus a buffer between jobs;
+`Helper.remove()`.
+
+Open questions answered: #1 the customer no-show wait starts from the later of the booked start and
+check-in; #2 percentages round half-up and the refund is computed last; #3 editing a request does not
+reset its expiry; #6 the lead is one of the named helpers, and a provider who is their own helper can
+be the lead; #8 a request keeps the offering snapshot it was made with.
+
 - **`HomaPolicy.initial(Instant now)`** takes the time version 1 takes effect, following the "time is
   passed in" convention. Each version records when it took effect, and a change cannot take effect
   before the version in force.
@@ -102,6 +111,9 @@ Build order from the domain plan:
     available.
   - A hold also needs the slot to be inside the windows.
   - Each reservation holds one slot, and releasing a reservation that holds nothing is an error.
+  - A provider can set a buffer between jobs. A new slot can't start within the buffer after a held
+    slot, or end within it before one. The buffer is kept around reservation holds only, not around
+    synced busy blocks, and changing it doesn't affect slots already held.
   - `nearestAvailableStart` searches in 15-minute steps outward from the wanted start, up to the given
     distance either side, and takes the later start when two are equally near.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes

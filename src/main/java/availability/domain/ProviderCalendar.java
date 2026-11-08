@@ -1,6 +1,7 @@
 package availability.domain;
 
 import availability.domain.exception.AvailabilityDetailRequiredException;
+import availability.domain.exception.NegativeBufferBetweenJobsException;
 import availability.domain.exception.NoHoldForReservationException;
 import availability.domain.exception.ReservationAlreadyHeldException;
 import availability.domain.exception.SlotNotAvailableException;
@@ -14,8 +15,9 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * When a provider can work. A slot is available when it sits inside the provider's availability windows
- * and touches no synced busy block and no slot held by an accepted reservation.
+ * When a provider can work. A slot is available when it sits inside the provider's availability windows,
+ * overlaps no synced busy block, and keeps the provider's buffer between jobs clear of every slot held by
+ * an accepted reservation.
  */
 public final class ProviderCalendar {
 
@@ -23,6 +25,7 @@ public final class ProviderCalendar {
     private final String providerId;
     private List<AvailabilityWindow> windows = List.of();
     private List<BusyBlock> busyBlocks = List.of();
+    private Duration bufferBetweenJobs = Duration.ZERO;
     private final Map<String, ReservationHold> holds = new LinkedHashMap<>();
 
     private ProviderCalendar(String id, String providerId) {
@@ -47,6 +50,18 @@ public final class ProviderCalendar {
         busyBlocks = List.copyOf(blocks);
     }
 
+    /**
+     * Sets the time the provider keeps free before and after each job, for example to travel. A new slot
+     * must start at least this long after a held slot ends, and end at least this long before one starts.
+     * Slots already held are not affected.
+     */
+    public void setBufferBetweenJobs(Duration buffer) {
+        if (buffer.isNegative()) {
+            throw new NegativeBufferBetweenJobsException(buffer);
+        }
+        bufferBetweenJobs = buffer;
+    }
+
     /** Holds {@code slot} for an accepted reservation. */
     public void hold(String reservationId, TimeSlot slot) {
         if (holds.containsKey(reservationId)) {
@@ -66,7 +81,9 @@ public final class ProviderCalendar {
     }
 
     public boolean isAvailable(TimeSlot slot) {
-        return insideWindows(slot) && blockers().noneMatch(slot::overlaps);
+        return insideWindows(slot)
+                && busyBlocks.stream().noneMatch(slot::overlaps)
+                && holds.values().stream().noneMatch(hold -> hold.blocks(slot, bufferBetweenJobs));
     }
 
     /**
@@ -94,6 +111,10 @@ public final class ProviderCalendar {
         return busyBlocks;
     }
 
+    public Duration bufferBetweenJobs() {
+        return bufferBetweenJobs;
+    }
+
     public List<ReservationHold> holds() {
         return List.copyOf(holds.values());
     }
@@ -108,10 +129,6 @@ public final class ProviderCalendar {
 
     private Optional<Instant> firstAvailable(TimeSlot wanted, Instant... starts) {
         return Stream.of(starts).filter(start -> isAvailable(wanted.startingAt(start))).findFirst();
-    }
-
-    private Stream<TimeRange> blockers() {
-        return Stream.concat(busyBlocks.stream(), holds.values().stream().map(ReservationHold::slot));
     }
 
     /** Walks the sorted windows from the slot's start, until the slot's end is reached or a gap is found. */
