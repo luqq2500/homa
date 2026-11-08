@@ -13,8 +13,9 @@ import ie.events.EnquiryRequestedIE;
 import ie.events.FineChargedIE;
 import ie.events.FineWaivedIE;
 import ie.events.HelperRemovedIE;
-import ie.events.HelperVerificationRejectedIE;
-import ie.events.HelperVerifiedIE;
+import ie.events.HelperInviteRejectedIE;
+import ie.events.HelperInvitedIE;
+import ie.events.HelperJoinedTeamIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobAddedIE;
 import ie.events.JobRetiredIE;
@@ -92,8 +93,9 @@ class IntegrationEventContractTest {
                 Arguments.of(ProviderVerifiedIE.class, AccountIE.class),
                 Arguments.of(ProviderVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(PayoutAccountReadyIE.class, AccountIE.class),
-                Arguments.of(HelperVerifiedIE.class, AccountIE.class),
-                Arguments.of(HelperVerificationRejectedIE.class, AccountIE.class),
+                Arguments.of(HelperInvitedIE.class, AccountIE.class),
+                Arguments.of(HelperJoinedTeamIE.class, AccountIE.class),
+                Arguments.of(HelperInviteRejectedIE.class, AccountIE.class),
                 Arguments.of(HelperRemovedIE.class, AccountIE.class),
                 Arguments.of(ListingWentLiveIE.class, OfferingIE.class),
                 Arguments.of(ListingChangedIE.class, OfferingIE.class),
@@ -193,7 +195,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(40);
+        assertThat(events().count()).isEqualTo(41);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

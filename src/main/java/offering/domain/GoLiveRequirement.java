@@ -10,8 +10,7 @@ public enum GoLiveRequirement {
     HELPERS("helpers"),
     CITIES("cities"),
     CANCELLATION_TIER("cancellation tier"),
-    PROVIDER_VERIFIED_AND_PAYOUT_READY("provider verified with a ready payout account"),
-    ALL_HELPERS_VERIFIED("all helpers verified");
+    PROVIDER_VERIFIED_AND_PAYOUT_READY("provider verified with a ready payout account");
 
     private final String description;
 

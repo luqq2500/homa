@@ -5,8 +5,9 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **152 of 152** scenarios in the plan have a test. That is the original 122, plus five in the
-"Buffer between jobs" feature and 25 in the four `feedback` features, both added to the plan later. The script that checks this maps each scenario
+All **156 of 156** scenarios in the plan have a test. That is the original 122, plus five in the
+"Buffer between jobs" feature, 25 in the four `feedback` features, and the "Team membership"
+change, which replaced the two "Helpers" scenarios with six and reworded one go-live scenario. The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -41,147 +42,151 @@ Two scenarios map to more than one test:
 | 9 | Customer registration | A wrong code does not confirm the phone | `PhoneVerificationConfirmationTest` | `aWrongCodeDoesNotConfirmThePhone` |
 | 10 | Customer registration | An expired code is rejected | `PhoneVerificationConfirmationTest` | `anExpiredCodeIsRejected` |
 | 11 | Provider readiness | A provider is ready for go-live only when verified and payout-ready (outline) | `ProviderAccountReadinessTest` | `aProviderIsReadyForGoLiveOnlyWhenVerifiedAndPayoutReady` |
-| 12 | Helpers | A new helper starts unverified | `HelperVerificationTest` | `aNewHelperStartsUnverified` |
-| 13 | Helpers | A helper needs a name and a photo | `HelperVerificationTest` | `aHelperNeedsAName`, `aHelperNeedsAPhoto` |
-| 14 | Offering setup | A provider can only offer jobs from Homa's job list | `ProviderListingSetupTest` | `aProviderCanOnlyOfferJobsFromHomasJobList` |
-| 15 | Offering setup | Hours must sit within Homa's range (outline) | `ProviderListingSetupTest` | `hoursWithinHomasRangeAreAccepted`, `hoursMustSitWithinHomasRange`, `theMinimumHoursCannotBeAboveTheMaximum` |
-| 16 | Offering setup | Max helpers cannot exceed the verified team size | `ProviderListingSetupTest` | `maxHelpersCannotExceedTheVerifiedTeamSize` |
-| 17 | Offering setup | Max helpers cannot exceed 10 | `ProviderListingSetupTest` | `maxHelpersCannotExceedTen` |
-| 18 | Offering setup | The helper range shrinks when the team shrinks | `ProviderListingSetupTest` | `theHelperRangeShrinksWhenTheTeamShrinks` |
-| 19 | Offering setup | Cities must be launch cities | `ProviderListingSetupTest` | `citiesMustBeLaunchCities` |
-| 20 | Going live | A complete, verified provider goes live | `ProviderListingGoLiveTest` | `aCompleteVerifiedProviderGoesLive` |
-| 21 | Going live | Missing requirements block go-live and are listed | `ProviderListingGoLiveTest` | `missingRequirementsBlockGoLiveAndAreListed` |
-| 22 | Going live | An unverified helper blocks go-live | `ProviderListingGoLiveTest` | `anUnverifiedHelperBlocksGoLive` |
-| 23 | Provider availability | A slot inside a window with nothing else is available | `ProviderCalendarAvailabilityTest` | `aSlotInsideAWindowWithNothingElseIsAvailable` |
-| 24 | Provider availability | A synced busy block makes the slot unavailable | `ProviderCalendarAvailabilityTest` | `aSyncedBusyBlockMakesTheSlotUnavailable` |
-| 25 | Provider availability | An accepted reservation holds the slot | `ProviderCalendarAvailabilityTest` | `anAcceptedReservationHoldsTheSlot` |
-| 26 | Provider availability | Releasing a cancelled reservation frees the slot | `ProviderCalendarAvailabilityTest` | `releasingACancelledReservationFreesTheSlot` |
-| 27 | Provider availability | Holding an overlapping slot is rejected | `ProviderCalendarAvailabilityTest` | `holdingAnOverlappingSlotIsRejected` |
-| 28 | Provider availability | A slot partly outside the window is not available | `ProviderCalendarAvailabilityTest` | `aSlotPartlyOutsideTheWindowIsNotAvailable` |
-| 29 | Buffer between jobs | A job cannot start within the buffer after another job | `ProviderCalendarBufferTest` | `aJobCannotStartWithinTheBufferAfterAnotherJob` |
-| 30 | Buffer between jobs | A job cannot end within the buffer before another job | `ProviderCalendarBufferTest` | `aJobCannotEndWithinTheBufferBeforeAnotherJob` |
-| 31 | Buffer between jobs | Holding a slot inside the buffer is rejected | `ProviderCalendarBufferTest` | `holdingASlotInsideTheBufferIsRejected` |
-| 32 | Buffer between jobs | The buffer is kept around jobs, not around synced busy blocks | `ProviderCalendarBufferTest` | `theBufferIsKeptAroundJobsNotAroundSyncedBusyBlocks` |
-| 33 | Buffer between jobs | The buffer cannot be negative | `ProviderCalendarBufferTest` | `theBufferCannotBeNegative` |
-| 34 | Search criteria | Search values must be within Homa's ranges (outline) | `SearchCriteriaValidationTest` | `searchValuesWithinHomasRangesAreAccepted`, `theDurationMustBeWithinHomasRange`, `theHelpersMustBeWithinHomasRange` |
-| 35 | Search criteria | The start must respect the minimum notice | `SearchCriteriaValidationTest` | `theStartMustRespectTheMinimumNotice` |
-| 36 | Matching | Exact match | `MatchClassifierMatchingTest` | `aProviderThatFitsEverythingIsAnExactMatch` |
-| 37 | Matching | Some jobs only is a close match | `MatchClassifierMatchingTest` | `someJobsOnlyIsACloseMatch` |
-| 38 | Matching | Free near the time is a close match | `MatchClassifierMatchingTest` | `freeNearTheTimeIsACloseMatch` |
-| 39 | Matching | Not covering the city is no match | `MatchClassifierMatchingTest` | `notCoveringTheCityIsNoMatch` |
-| 40 | Matching | Helpers outside the range is no match | `MatchClassifierMatchingTest` | `helpersOutsideTheRangeIsNoMatch` |
-| 41 | Pricing | Price with a separate travel fee | `ReservationPricingTest` | `aSeparateTravelFeeIsAddedToTheHoursFeeBeforeTheServiceFee` |
-| 42 | Pricing | Price with the travel fee included | `ReservationPricingTest` | `withTravelIncludedTheProviderPriceIsTheHoursFee` |
-| 43 | Pricing | Choosing fewer jobs does not change the price | `ReservationPricingTest` | `choosingFewerJobsDoesNotChangeThePrice` |
-| 44 | Requesting a reservation | Request details must fit Homa's and the provider's rules (outline) | `ReservationRequestTest` | `requestDetailsMustFitHomasAndTheProvidersRules` |
-| 45 | Requesting a reservation | Jobs must be offered by the provider | `ReservationRequestTest` | `jobsMustBeOfferedByTheProvider` |
-| 46 | Requesting a reservation | The customer's city must be covered | `ReservationRequestTest` | `theCustomersCityMustBeCovered` |
-| 47 | Requesting a reservation | The reservation keeps the policy in force when requested | `ReservationRequestTest` | `theReservationKeepsThePolicyInForceWhenRequested` |
-| 48 | Request expiry | A request expires after 24 hours or at the booked start, whichever is sooner (outline) | `ReservationRequestExpiryTest` | `aRequestExpiresAfter24HoursOrAtTheBookedStartWhicheverIsSooner` |
-| 49 | Request expiry | The provider cannot accept an expired request | `ReservationRequestExpiryTest` | `theProviderCannotAcceptAnExpiredRequest` |
-| 50 | Request expiry | An unanswered request expires | `ReservationRequestExpiryTest` | `anUnansweredRequestExpires` |
-| 51 | Accepting and declining | The provider accepts a request | `ReservationAcceptanceTest` | `theProviderAcceptsARequest` |
-| 52 | Accepting and declining | The provider declines a request | `ReservationAcceptanceTest` | `theProviderDeclinesARequest` |
-| 53 | Accepting and declining | Only a requested reservation can be accepted | `ReservationAcceptanceTest` | `onlyARequestedReservationCanBeAccepted` |
-| 54 | Editing a request | The customer edits a request before it is accepted | `ReservationEditingTest` | `theCustomerEditsARequestBeforeItIsAccepted` |
-| 55 | Editing a request | A reserved booking cannot be edited | `ReservationEditingTest` | `aReservedBookingCannotBeEdited` |
-| 56 | Customer cancellation | Cancelling a request is free on every tier | `ReservationCustomerCancellationTest` | `customerCancelsForFreeOnEveryTier` |
-| 57 | Customer cancellation | Cancelling a reserved booking before the start (outline) | `ReservationCustomerCancellationTest` | `cancellingAReservedBookingBeforeTheStartFollowsTheTier` |
-| 58 | Customer cancellation | With travel included, the tier applies to the full provider price | `ReservationCustomerCancellationTest` | `withTravelIncludedTheTierAppliesToTheFullProviderPrice` |
-| 59 | Customer cancellation | The customer cannot cancel during the check-in period before check-in | `ReservationCustomerCancellationTest` | `customerCannotCancelDuringCheckInPeriodBeforeCheckIn` |
-| 60 | Customer cancellation | Cancelling after check-in counts as a customer no-show | `ReservationCustomerCancellationTest` | `cancellingAfterCheckInCountsAsACustomerNoShow` |
-| 61 | Customer cancellation | A cancellation fee is released straight away | `ReservationCustomerCancellationTest` | `aCancellationFeeIsReleasedStraightAway` |
-| 62 | Provider cancellation and fines | Provider fines depend on timing only (outline) | `ReservationProviderCancellationTest` | `providerFinesDependOnTimingOnly` |
-| 63 | Provider cancellation and fines | Cancelling after the booked start but before check-in carries the no-show fine | `ReservationProviderCancellationTest` | `cancellingAfterTheBookedStartButBeforeCheckInCarriesTheNoShowFine` |
-| 64 | Provider cancellation and fines | Cancelling after check-in carries the no-show fine | `ReservationProviderCancellationTest` | `cancellingAfterCheckInCarriesTheNoShowFine` |
-| 65 | Provider cancellation and fines | The fine does not depend on the provider's tier | `ReservationProviderCancellationTest` | `theFineDoesNotDependOnTheProvidersTier` |
-| 66 | Provider cancellation and fines | With travel included, the fine applies to the full provider price | `ReservationProviderCancellationTest` | `withTravelIncludedTheFineAppliesToTheFullProviderPrice` |
-| 67 | Naming who is coming | The provider names the lead and helpers | `ReservationTeamNamingTest` | `theProviderNamesTheLeadAndHelpers` |
-| 68 | Naming who is coming | The team must match the number of helpers booked | `ReservationTeamNamingTest` | `theTeamMustMatchTheNumberOfHelpersBooked` |
-| 69 | Naming who is coming | Helpers must be on the verified roster | `ReservationTeamNamingTest` | `helpersMustBeOnTheVerifiedRoster` |
-| 70 | Naming who is coming | The lead must be one of the named helpers | `ReservationTeamNamingTest` | `theLeadMustBeOneOfTheNamedHelpers` |
-| 71 | Naming who is coming | The team cannot change from the booked start | `ReservationTeamNamingTest` | `theTeamCannotChangeFromTheBookedStart` |
-| 72 | Check-in | Check-in needs the device near the customer within the check-in period (outline) | `ReservationCheckInTest` | `checkInNeedsTheDeviceNearTheCustomerWithinTheCheckInPeriod` |
-| 73 | Check-in | Check-in is locked until the team is named | `ReservationCheckInTest` | `checkInIsLockedUntilTheTeamIsNamed` |
-| 74 | Check-in | No check-in by the end of the check-in period (10:15) is a provider no-show | `ReservationCheckInTest` | `noCheckInByTheEndOfTheCheckInPeriodIsAProviderNoShow` |
-| 75 | Check-in | A provider no-show cannot be marked early | `ReservationCheckInTest` | `providerNoShowIsMarkedOnlyAfterCheckInPeriodEnds` |
-| 76 | Customer no-show | The provider reports a customer no-show after the wait | `ReservationCustomerNoShowTest` | `theProviderReportsACustomerNoShowAfterTheWait` |
-| 77 | Customer no-show | A customer no-show cannot be reported before the wait ends | `ReservationCustomerNoShowTest` | `aCustomerNoShowCannotBeReportedBeforeTheWaitEnds` |
-| 78 | Customer no-show | A customer no-show needs a check-in | `ReservationCustomerNoShowTest` | `aCustomerNoShowNeedsACheckIn` |
-| 79 | Customer no-show | The customer challenges a no-show within the report window | `ReservationCustomerNoShowTest` | `theCustomerChallengesANoShowWithinTheReportWindow` |
-| 80 | Customer no-show | Homa upholds the no-show and the reservation ends cancelled | `ReservationDecisionTest` | `homaUpholdsTheNoShowAndTheReservationEndsCancelled` |
-| 81 | Customer no-show | Homa finds the no-show wrongful and refunds in full | `ReservationDecisionTest` | `homaFindsTheNoShowWrongfulAndRefundsInFull` |
-| 82 | Customer no-show | A challenge after the report window is rejected | `ReservationCustomerNoShowTest` | `aChallengeAfterTheReportWindowIsRejected` |
-| 83 | Customer no-show | The no-show fee never exceeds the ceiling | `SettlementInvariantTest` | `theNoShowFeeIsTheCeiling` |
-| 84 | Completion | Completion needs photo or video evidence | `ReservationCompletionTest` | `completionNeedsPhotoOrVideoEvidence` |
-| 85 | Completion | Completion needs a check-in first | `ReservationCompletionTest` | `completionNeedsACheckInFirst` |
-| 86 | Completion | The completion reminder is due 30 minutes after the booked end (outline) | `ReservationCompletionTest` | `theCompletionReminderIsDue30MinutesAfterTheBookedEnd` |
-| 87 | Completion | Missing the completion deadline sends it to Homa | `ReservationCompletionTest` | `missingTheCompletionDeadlineSendsItToHoma` |
-| 88 | Completion | The completion deadline cannot be missed early | `ReservationCompletionTest` | `theCompletionDeadlineCannotBeMissedEarly` |
-| 89 | Dispute window and payout | The window ends 1 hour after the later of the booked end and completion (outline) | `ReservationDisputeWindowTest` | `theWindowEndsAnHourAfterTheLaterOfTheBookedEndAndCompletion` |
-| 90 | Dispute window and payout | The window has no end until completion is submitted | `ReservationDisputeWindowTest` | `theWindowHasNoEndUntilCompletionIsSubmitted` |
-| 91 | Dispute window and payout | The window closes with no report and the payment is released | `ReservationDisputeWindowTest` | `theWindowClosesWithNoReportAndThePaymentIsReleased` |
-| 92 | Dispute window and payout | The window cannot close early | `ReservationDisputeWindowTest` | `theWindowCannotCloseEarly` |
-| 93 | Reports | The customer files a report inside the window | `ReservationReportTest` | `theCustomerFilesAReportInsideTheWindow` |
-| 94 | Reports | The provider can file a report too | `ReservationReportTest` | `theProviderCanFileAReportToo` |
-| 95 | Reports | Each party files at most one report | `ReservationReportTest` | `eachPartyFilesAtMostOneReport` |
-| 96 | Reports | Reports before the booked start are rejected | `ReservationReportTest` | `reportsBeforeTheBookedStartAreRejected` |
-| 97 | Reports | Reports after the window are rejected | `ReservationReportTest` | `reportsAfterTheWindowAreRejected` |
-| 98 | Homa's decision | Release | `ReservationDecisionTest` | `homaReleasesThePaymentAndTheJobIsCompleted` |
-| 99 | Homa's decision | Partial refund | `ReservationDecisionTest` | `aPartialRefundSplitsThePaymentAndTheServiceFeeFollowsTheProvider` |
-| 100 | Homa's decision | Full refund | `ReservationDecisionTest` | `aFullRefundReturnsEverythingToTheCustomer` |
-| 101 | Homa's decision | A partial refund cannot give the provider more than the provider price | `ReservationDecisionTest` | `aPartialRefundCannotGiveTheProviderMoreThanTheProviderPrice` |
-| 102 | Enquiries | An enquiry closes when its date passes without a request | `EnquiryLifecycleTest` | `anEnquiryClosesWhenItsDatePassesWithoutARequest` |
-| 103 | Enquiries | An enquiry turns into one reservation only | `EnquiryLifecycleTest` | `anEnquiryTurnsIntoOneReservationOnly` |
-| 104 | Enquiries | Book again copies the details with a new date | `EnquiryLifecycleTest` | `bookAgainCopiesTheDetailsWithANewDate` |
-| 105 | Taking payment | A card is authorised, not charged, at request | `PaymentTakingTest` | `aCardIsAuthorisedNotChargedAtRequest` |
-| 106 | Taking payment | FPX is paid upfront | `PaymentTakingTest` | `fpxIsPaidUpfront` |
-| 107 | Taking payment | A card is charged when the provider accepts | `PaymentTakingTest` | `aCardIsChargedWhenTheProviderAccepts` |
-| 108 | Taking payment | A declined card request releases the authorisation and refunds nothing | `PaymentTakingTest` | `aDeclinedCardRequestReleasesTheAuthorisationAndRefundsNothing` |
-| 109 | Taking payment | A declined FPX request is refunded in full | `PaymentTakingTest` | `aDeclinedFpxRequestIsRefundedInFull` |
-| 110 | Taking payment | Editing an FPX request upward collects the difference | `PaymentTakingTest` | `editingAnFpxRequestUpwardCollectsTheDifference` |
-| 111 | Settling | A settlement is fully accounted for | `PaymentSettlementTest` | `aSettlementIsFullyAccountedFor` |
-| 112 | Settling | A settlement that doesn't add up is rejected | `PaymentSettlementTest` | `aSettlementThatDoesNotAddUpIsRejected` |
-| 113 | Settling | A payment cannot be settled twice | `PaymentSettlementTest` | `aPaymentCannotBeSettledTwice` |
-| 114 | Fines and payouts | A fine is deducted at most 50% per payout | `FineDeductionPolicyTest` | `aFineIsDeductedAtMostHalfOfAPayout` |
-| 115 | Fines and payouts | The rest of the fine comes off the next payout | `FineDeductionPolicyTest` | `theRestOfTheFineComesOffTheNextPayout` |
-| 116 | Fines and payouts | Older fines are deducted first | `FineDeductionPolicyTest` | `olderFinesAreDeductedFirst` |
-| 117 | Fines and payouts | A waived fine is not deducted | `FineDeductionPolicyTest` | `aWaivedFineIsNotDeducted` |
-| 118 | Fines and payouts | A partly deducted fine can be waived | `FineAndPayoutTest` | `aPartlyDeductedFineCanBeWaived` |
-| 119 | Deciding a case | A decision needs a reason | `CaseDecisionTest` | `aDecisionNeedsAReason` |
-| 120 | Deciding a case | A case is decided once | `CaseDecisionTest` | `aCaseIsDecidedOnce` |
-| 121 | Deciding a case | A partial refund must be within the provider price | `CaseDecisionTest` | `aPartialRefundMustBeWithinTheProviderPrice` |
-| 122 | Deciding a case | Every source can be decided with any outcome (outline) | `CaseDecisionTest` | `everySourceCanBeDecidedWithAnyOutcome` |
-| 123 | Chat | Only the customer can start a chat | `ConversationChatTest` | `onlyTheCustomerCanStartAChat` |
-| 124 | Chat | The provider can reply once the customer has started | `ConversationChatTest` | `theProviderCanReplyOnceTheCustomerHasStarted` |
-| 125 | Chat | Requesting from an enquiry keeps the same chat | `ConversationChatTest` | `requestingFromAnEnquiryKeepsTheSameChat` |
-| 126 | Chat | An archived chat is readable but closed | `ConversationChatTest` | `anArchivedChatIsReadableButClosed` |
-| 127 | Chat | A reservation's chat stays open after the job | `ConversationChatTest` | `aReservationsChatStaysOpenAfterTheJob` |
-| 128 | Rating a completed reservation | The customer rates the provider | `RatingSubmissionTest` | `theCustomerRatesTheProvider` |
-| 129 | Rating a completed reservation | Only the reservation's customer can rate it | `RatingSubmissionTest` | `onlyTheReservationsCustomerCanRateIt` |
-| 130 | Rating a completed reservation | A reservation is rated once | `RatingSubmissionTest` | `aReservationIsRatedOnce` |
-| 131 | Rating a completed reservation | Ratings are accepted only within the rating window (outline) | `RatingSubmissionTest` | `ratingsAreAcceptedOnlyWithinTheRatingWindow` |
-| 132 | Rating a completed reservation | Stars are whole numbers from 1 to 5 (outline) | `RatingSubmissionTest` | `starsAreWholeNumbersFromOneToFive`, `starsOutsideOneToFiveAreRejected` |
-| 133 | Rating a completed reservation | Written feedback is optional | `RatingSubmissionTest` | `writtenFeedbackIsOptional` |
-| 134 | Rating a completed reservation | Provider category stars are optional | `RatingSubmissionTest` | `providerCategoryStarsAreOptional` |
-| 135 | Rating a completed reservation | Any number of provider categories can be rated | `RatingSubmissionTest` | `anyNumberOfProviderCategoriesCanBeRated` |
-| 136 | Rating a completed reservation | The provider rating needs overall stars | `RatingSubmissionTest` | `theProviderRatingNeedsOverallStars` |
-| 137 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
-| 138 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
-| 139 | Rating a completed reservation | Helper ratings are optional | `RatingSubmissionTest` | `helperRatingsAreOptional` |
-| 140 | Rating a completed reservation | A helper can receive overall and category stars | `RatingSubmissionTest` | `aHelperCanReceiveOverallAndCategoryStars` |
-| 141 | Rating a completed reservation | A rated helper needs overall stars | `RatingSubmissionTest` | `aRatedHelperNeedsOverallStars` |
-| 142 | Rating a completed reservation | Helper category stars are optional | `RatingSubmissionTest` | `helperCategoryStarsAreOptional` |
-| 143 | What can be rated | Only Completed reservations can be rated (outline) | `RatingEligibilityTest` | `onlyCompletedReservationsCanBeRated` |
-| 144 | Hiding a rating | Homa hides a rating with a reason | `RatingHidingTest` | `homaHidesARatingWithAReason` |
-| 145 | Hiding a rating | Hiding needs a reason | `RatingHidingTest` | `hidingNeedsAReason` |
-| 146 | Hiding a rating | A rating is hidden once | `RatingHidingTest` | `aRatingIsHiddenOnce` |
-| 147 | Rating summaries | The overall average is shown only after the minimum number of ratings (outline) | `RatingSummaryAveragingTest` | `theOverallAverageIsShownOnlyAfterTheMinimumNumberOfRatings` |
-| 148 | Rating summaries | The average is rounded to one decimal place | `RatingSummaryAveragingTest` | `theAverageIsRoundedToOneDecimalPlace` |
-| 149 | Rating summaries | Withdrawing a hidden rating removes it from the averages | `RatingSummaryAveragingTest` | `withdrawingAHiddenRatingRemovesItFromTheAverages` |
-| 150 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
-| 151 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
-| 152 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
+| 12 | Team membership | An invited helper is not yet a team member | `HelperTeamMembershipTest` | `anInvitedHelperIsNotYetATeamMember` |
+| 13 | Team membership | A verified invite joins the team | `HelperTeamMembershipTest` | `aVerifiedInviteJoinsTheTeam` |
+| 14 | Team membership | A rejected invite stays off the team and can retry | `HelperTeamMembershipTest` | `aRejectedInviteStaysOffTheTeamAndCanRetry` |
+| 15 | Team membership | The provider can withdraw an invite or remove a member (outline) | `HelperTeamMembershipTest` | `theProviderCanWithdrawAnInviteOrRemoveAMember` |
+| 16 | Team membership | A removed helper cannot be verified back onto the team | `HelperTeamMembershipTest` | `aRemovedHelperCannotBeVerifiedBackOntoTheTeam` |
+| 17 | Team membership | An invite needs a name and a photo | `HelperTeamMembershipTest` | `anInviteNeedsANameAndAPhoto` |
+| 18 | Offering setup | A provider can only offer jobs from Homa's job list | `ProviderListingSetupTest` | `aProviderCanOnlyOfferJobsFromHomasJobList` |
+| 19 | Offering setup | Hours must sit within Homa's range (outline) | `ProviderListingSetupTest` | `hoursWithinHomasRangeAreAccepted`, `hoursMustSitWithinHomasRange`, `theMinimumHoursCannotBeAboveTheMaximum` |
+| 20 | Offering setup | Max helpers cannot exceed the verified team size | `ProviderListingSetupTest` | `maxHelpersCannotExceedTheVerifiedTeamSize` |
+| 21 | Offering setup | Max helpers cannot exceed 10 | `ProviderListingSetupTest` | `maxHelpersCannotExceedTen` |
+| 22 | Offering setup | The helper range shrinks when the team shrinks | `ProviderListingSetupTest` | `theHelperRangeShrinksWhenTheTeamShrinks` |
+| 23 | Offering setup | Cities must be launch cities | `ProviderListingSetupTest` | `citiesMustBeLaunchCities` |
+| 24 | Going live | A complete, verified provider goes live | `ProviderListingGoLiveTest` | `aCompleteVerifiedProviderGoesLive` |
+| 25 | Going live | Missing requirements block go-live and are listed | `ProviderListingGoLiveTest` | `missingRequirementsBlockGoLiveAndAreListed` |
+| 26 | Going live | A pending invite does not block go-live | `ProviderListingGoLiveTest` | `aPendingInviteDoesNotBlockGoLive` |
+| 27 | Provider availability | A slot inside a window with nothing else is available | `ProviderCalendarAvailabilityTest` | `aSlotInsideAWindowWithNothingElseIsAvailable` |
+| 28 | Provider availability | A synced busy block makes the slot unavailable | `ProviderCalendarAvailabilityTest` | `aSyncedBusyBlockMakesTheSlotUnavailable` |
+| 29 | Provider availability | An accepted reservation holds the slot | `ProviderCalendarAvailabilityTest` | `anAcceptedReservationHoldsTheSlot` |
+| 30 | Provider availability | Releasing a cancelled reservation frees the slot | `ProviderCalendarAvailabilityTest` | `releasingACancelledReservationFreesTheSlot` |
+| 31 | Provider availability | Holding an overlapping slot is rejected | `ProviderCalendarAvailabilityTest` | `holdingAnOverlappingSlotIsRejected` |
+| 32 | Provider availability | A slot partly outside the window is not available | `ProviderCalendarAvailabilityTest` | `aSlotPartlyOutsideTheWindowIsNotAvailable` |
+| 33 | Buffer between jobs | A job cannot start within the buffer after another job | `ProviderCalendarBufferTest` | `aJobCannotStartWithinTheBufferAfterAnotherJob` |
+| 34 | Buffer between jobs | A job cannot end within the buffer before another job | `ProviderCalendarBufferTest` | `aJobCannotEndWithinTheBufferBeforeAnotherJob` |
+| 35 | Buffer between jobs | Holding a slot inside the buffer is rejected | `ProviderCalendarBufferTest` | `holdingASlotInsideTheBufferIsRejected` |
+| 36 | Buffer between jobs | The buffer is kept around jobs, not around synced busy blocks | `ProviderCalendarBufferTest` | `theBufferIsKeptAroundJobsNotAroundSyncedBusyBlocks` |
+| 37 | Buffer between jobs | The buffer cannot be negative | `ProviderCalendarBufferTest` | `theBufferCannotBeNegative` |
+| 38 | Search criteria | Search values must be within Homa's ranges (outline) | `SearchCriteriaValidationTest` | `searchValuesWithinHomasRangesAreAccepted`, `theDurationMustBeWithinHomasRange`, `theHelpersMustBeWithinHomasRange` |
+| 39 | Search criteria | The start must respect the minimum notice | `SearchCriteriaValidationTest` | `theStartMustRespectTheMinimumNotice` |
+| 40 | Matching | Exact match | `MatchClassifierMatchingTest` | `aProviderThatFitsEverythingIsAnExactMatch` |
+| 41 | Matching | Some jobs only is a close match | `MatchClassifierMatchingTest` | `someJobsOnlyIsACloseMatch` |
+| 42 | Matching | Free near the time is a close match | `MatchClassifierMatchingTest` | `freeNearTheTimeIsACloseMatch` |
+| 43 | Matching | Not covering the city is no match | `MatchClassifierMatchingTest` | `notCoveringTheCityIsNoMatch` |
+| 44 | Matching | Helpers outside the range is no match | `MatchClassifierMatchingTest` | `helpersOutsideTheRangeIsNoMatch` |
+| 45 | Pricing | Price with a separate travel fee | `ReservationPricingTest` | `aSeparateTravelFeeIsAddedToTheHoursFeeBeforeTheServiceFee` |
+| 46 | Pricing | Price with the travel fee included | `ReservationPricingTest` | `withTravelIncludedTheProviderPriceIsTheHoursFee` |
+| 47 | Pricing | Choosing fewer jobs does not change the price | `ReservationPricingTest` | `choosingFewerJobsDoesNotChangeThePrice` |
+| 48 | Requesting a reservation | Request details must fit Homa's and the provider's rules (outline) | `ReservationRequestTest` | `requestDetailsMustFitHomasAndTheProvidersRules` |
+| 49 | Requesting a reservation | Jobs must be offered by the provider | `ReservationRequestTest` | `jobsMustBeOfferedByTheProvider` |
+| 50 | Requesting a reservation | The customer's city must be covered | `ReservationRequestTest` | `theCustomersCityMustBeCovered` |
+| 51 | Requesting a reservation | The reservation keeps the policy in force when requested | `ReservationRequestTest` | `theReservationKeepsThePolicyInForceWhenRequested` |
+| 52 | Request expiry | A request expires after 24 hours or at the booked start, whichever is sooner (outline) | `ReservationRequestExpiryTest` | `aRequestExpiresAfter24HoursOrAtTheBookedStartWhicheverIsSooner` |
+| 53 | Request expiry | The provider cannot accept an expired request | `ReservationRequestExpiryTest` | `theProviderCannotAcceptAnExpiredRequest` |
+| 54 | Request expiry | An unanswered request expires | `ReservationRequestExpiryTest` | `anUnansweredRequestExpires` |
+| 55 | Accepting and declining | The provider accepts a request | `ReservationAcceptanceTest` | `theProviderAcceptsARequest` |
+| 56 | Accepting and declining | The provider declines a request | `ReservationAcceptanceTest` | `theProviderDeclinesARequest` |
+| 57 | Accepting and declining | Only a requested reservation can be accepted | `ReservationAcceptanceTest` | `onlyARequestedReservationCanBeAccepted` |
+| 58 | Editing a request | The customer edits a request before it is accepted | `ReservationEditingTest` | `theCustomerEditsARequestBeforeItIsAccepted` |
+| 59 | Editing a request | A reserved booking cannot be edited | `ReservationEditingTest` | `aReservedBookingCannotBeEdited` |
+| 60 | Customer cancellation | Cancelling a request is free on every tier | `ReservationCustomerCancellationTest` | `customerCancelsForFreeOnEveryTier` |
+| 61 | Customer cancellation | Cancelling a reserved booking before the start (outline) | `ReservationCustomerCancellationTest` | `cancellingAReservedBookingBeforeTheStartFollowsTheTier` |
+| 62 | Customer cancellation | With travel included, the tier applies to the full provider price | `ReservationCustomerCancellationTest` | `withTravelIncludedTheTierAppliesToTheFullProviderPrice` |
+| 63 | Customer cancellation | The customer cannot cancel during the check-in period before check-in | `ReservationCustomerCancellationTest` | `customerCannotCancelDuringCheckInPeriodBeforeCheckIn` |
+| 64 | Customer cancellation | Cancelling after check-in counts as a customer no-show | `ReservationCustomerCancellationTest` | `cancellingAfterCheckInCountsAsACustomerNoShow` |
+| 65 | Customer cancellation | A cancellation fee is released straight away | `ReservationCustomerCancellationTest` | `aCancellationFeeIsReleasedStraightAway` |
+| 66 | Provider cancellation and fines | Provider fines depend on timing only (outline) | `ReservationProviderCancellationTest` | `providerFinesDependOnTimingOnly` |
+| 67 | Provider cancellation and fines | Cancelling after the booked start but before check-in carries the no-show fine | `ReservationProviderCancellationTest` | `cancellingAfterTheBookedStartButBeforeCheckInCarriesTheNoShowFine` |
+| 68 | Provider cancellation and fines | Cancelling after check-in carries the no-show fine | `ReservationProviderCancellationTest` | `cancellingAfterCheckInCarriesTheNoShowFine` |
+| 69 | Provider cancellation and fines | The fine does not depend on the provider's tier | `ReservationProviderCancellationTest` | `theFineDoesNotDependOnTheProvidersTier` |
+| 70 | Provider cancellation and fines | With travel included, the fine applies to the full provider price | `ReservationProviderCancellationTest` | `withTravelIncludedTheFineAppliesToTheFullProviderPrice` |
+| 71 | Naming who is coming | The provider names the lead and helpers | `ReservationTeamNamingTest` | `theProviderNamesTheLeadAndHelpers` |
+| 72 | Naming who is coming | The team must match the number of helpers booked | `ReservationTeamNamingTest` | `theTeamMustMatchTheNumberOfHelpersBooked` |
+| 73 | Naming who is coming | Helpers must be on the verified roster | `ReservationTeamNamingTest` | `helpersMustBeOnTheVerifiedRoster` |
+| 74 | Naming who is coming | The lead must be one of the named helpers | `ReservationTeamNamingTest` | `theLeadMustBeOneOfTheNamedHelpers` |
+| 75 | Naming who is coming | The team cannot change from the booked start | `ReservationTeamNamingTest` | `theTeamCannotChangeFromTheBookedStart` |
+| 76 | Check-in | Check-in needs the device near the customer within the check-in period (outline) | `ReservationCheckInTest` | `checkInNeedsTheDeviceNearTheCustomerWithinTheCheckInPeriod` |
+| 77 | Check-in | Check-in is locked until the team is named | `ReservationCheckInTest` | `checkInIsLockedUntilTheTeamIsNamed` |
+| 78 | Check-in | No check-in by the end of the check-in period (10:15) is a provider no-show | `ReservationCheckInTest` | `noCheckInByTheEndOfTheCheckInPeriodIsAProviderNoShow` |
+| 79 | Check-in | A provider no-show cannot be marked early | `ReservationCheckInTest` | `providerNoShowIsMarkedOnlyAfterCheckInPeriodEnds` |
+| 80 | Customer no-show | The provider reports a customer no-show after the wait | `ReservationCustomerNoShowTest` | `theProviderReportsACustomerNoShowAfterTheWait` |
+| 81 | Customer no-show | A customer no-show cannot be reported before the wait ends | `ReservationCustomerNoShowTest` | `aCustomerNoShowCannotBeReportedBeforeTheWaitEnds` |
+| 82 | Customer no-show | A customer no-show needs a check-in | `ReservationCustomerNoShowTest` | `aCustomerNoShowNeedsACheckIn` |
+| 83 | Customer no-show | The customer challenges a no-show within the report window | `ReservationCustomerNoShowTest` | `theCustomerChallengesANoShowWithinTheReportWindow` |
+| 84 | Customer no-show | Homa upholds the no-show and the reservation ends cancelled | `ReservationDecisionTest` | `homaUpholdsTheNoShowAndTheReservationEndsCancelled` |
+| 85 | Customer no-show | Homa finds the no-show wrongful and refunds in full | `ReservationDecisionTest` | `homaFindsTheNoShowWrongfulAndRefundsInFull` |
+| 86 | Customer no-show | A challenge after the report window is rejected | `ReservationCustomerNoShowTest` | `aChallengeAfterTheReportWindowIsRejected` |
+| 87 | Customer no-show | The no-show fee never exceeds the ceiling | `SettlementInvariantTest` | `theNoShowFeeIsTheCeiling` |
+| 88 | Completion | Completion needs photo or video evidence | `ReservationCompletionTest` | `completionNeedsPhotoOrVideoEvidence` |
+| 89 | Completion | Completion needs a check-in first | `ReservationCompletionTest` | `completionNeedsACheckInFirst` |
+| 90 | Completion | The completion reminder is due 30 minutes after the booked end (outline) | `ReservationCompletionTest` | `theCompletionReminderIsDue30MinutesAfterTheBookedEnd` |
+| 91 | Completion | Missing the completion deadline sends it to Homa | `ReservationCompletionTest` | `missingTheCompletionDeadlineSendsItToHoma` |
+| 92 | Completion | The completion deadline cannot be missed early | `ReservationCompletionTest` | `theCompletionDeadlineCannotBeMissedEarly` |
+| 93 | Dispute window and payout | The window ends 1 hour after the later of the booked end and completion (outline) | `ReservationDisputeWindowTest` | `theWindowEndsAnHourAfterTheLaterOfTheBookedEndAndCompletion` |
+| 94 | Dispute window and payout | The window has no end until completion is submitted | `ReservationDisputeWindowTest` | `theWindowHasNoEndUntilCompletionIsSubmitted` |
+| 95 | Dispute window and payout | The window closes with no report and the payment is released | `ReservationDisputeWindowTest` | `theWindowClosesWithNoReportAndThePaymentIsReleased` |
+| 96 | Dispute window and payout | The window cannot close early | `ReservationDisputeWindowTest` | `theWindowCannotCloseEarly` |
+| 97 | Reports | The customer files a report inside the window | `ReservationReportTest` | `theCustomerFilesAReportInsideTheWindow` |
+| 98 | Reports | The provider can file a report too | `ReservationReportTest` | `theProviderCanFileAReportToo` |
+| 99 | Reports | Each party files at most one report | `ReservationReportTest` | `eachPartyFilesAtMostOneReport` |
+| 100 | Reports | Reports before the booked start are rejected | `ReservationReportTest` | `reportsBeforeTheBookedStartAreRejected` |
+| 101 | Reports | Reports after the window are rejected | `ReservationReportTest` | `reportsAfterTheWindowAreRejected` |
+| 102 | Homa's decision | Release | `ReservationDecisionTest` | `homaReleasesThePaymentAndTheJobIsCompleted` |
+| 103 | Homa's decision | Partial refund | `ReservationDecisionTest` | `aPartialRefundSplitsThePaymentAndTheServiceFeeFollowsTheProvider` |
+| 104 | Homa's decision | Full refund | `ReservationDecisionTest` | `aFullRefundReturnsEverythingToTheCustomer` |
+| 105 | Homa's decision | A partial refund cannot give the provider more than the provider price | `ReservationDecisionTest` | `aPartialRefundCannotGiveTheProviderMoreThanTheProviderPrice` |
+| 106 | Enquiries | An enquiry closes when its date passes without a request | `EnquiryLifecycleTest` | `anEnquiryClosesWhenItsDatePassesWithoutARequest` |
+| 107 | Enquiries | An enquiry turns into one reservation only | `EnquiryLifecycleTest` | `anEnquiryTurnsIntoOneReservationOnly` |
+| 108 | Enquiries | Book again copies the details with a new date | `EnquiryLifecycleTest` | `bookAgainCopiesTheDetailsWithANewDate` |
+| 109 | Taking payment | A card is authorised, not charged, at request | `PaymentTakingTest` | `aCardIsAuthorisedNotChargedAtRequest` |
+| 110 | Taking payment | FPX is paid upfront | `PaymentTakingTest` | `fpxIsPaidUpfront` |
+| 111 | Taking payment | A card is charged when the provider accepts | `PaymentTakingTest` | `aCardIsChargedWhenTheProviderAccepts` |
+| 112 | Taking payment | A declined card request releases the authorisation and refunds nothing | `PaymentTakingTest` | `aDeclinedCardRequestReleasesTheAuthorisationAndRefundsNothing` |
+| 113 | Taking payment | A declined FPX request is refunded in full | `PaymentTakingTest` | `aDeclinedFpxRequestIsRefundedInFull` |
+| 114 | Taking payment | Editing an FPX request upward collects the difference | `PaymentTakingTest` | `editingAnFpxRequestUpwardCollectsTheDifference` |
+| 115 | Settling | A settlement is fully accounted for | `PaymentSettlementTest` | `aSettlementIsFullyAccountedFor` |
+| 116 | Settling | A settlement that doesn't add up is rejected | `PaymentSettlementTest` | `aSettlementThatDoesNotAddUpIsRejected` |
+| 117 | Settling | A payment cannot be settled twice | `PaymentSettlementTest` | `aPaymentCannotBeSettledTwice` |
+| 118 | Fines and payouts | A fine is deducted at most 50% per payout | `FineDeductionPolicyTest` | `aFineIsDeductedAtMostHalfOfAPayout` |
+| 119 | Fines and payouts | The rest of the fine comes off the next payout | `FineDeductionPolicyTest` | `theRestOfTheFineComesOffTheNextPayout` |
+| 120 | Fines and payouts | Older fines are deducted first | `FineDeductionPolicyTest` | `olderFinesAreDeductedFirst` |
+| 121 | Fines and payouts | A waived fine is not deducted | `FineDeductionPolicyTest` | `aWaivedFineIsNotDeducted` |
+| 122 | Fines and payouts | A partly deducted fine can be waived | `FineAndPayoutTest` | `aPartlyDeductedFineCanBeWaived` |
+| 123 | Deciding a case | A decision needs a reason | `CaseDecisionTest` | `aDecisionNeedsAReason` |
+| 124 | Deciding a case | A case is decided once | `CaseDecisionTest` | `aCaseIsDecidedOnce` |
+| 125 | Deciding a case | A partial refund must be within the provider price | `CaseDecisionTest` | `aPartialRefundMustBeWithinTheProviderPrice` |
+| 126 | Deciding a case | Every source can be decided with any outcome (outline) | `CaseDecisionTest` | `everySourceCanBeDecidedWithAnyOutcome` |
+| 127 | Chat | Only the customer can start a chat | `ConversationChatTest` | `onlyTheCustomerCanStartAChat` |
+| 128 | Chat | The provider can reply once the customer has started | `ConversationChatTest` | `theProviderCanReplyOnceTheCustomerHasStarted` |
+| 129 | Chat | Requesting from an enquiry keeps the same chat | `ConversationChatTest` | `requestingFromAnEnquiryKeepsTheSameChat` |
+| 130 | Chat | An archived chat is readable but closed | `ConversationChatTest` | `anArchivedChatIsReadableButClosed` |
+| 131 | Chat | A reservation's chat stays open after the job | `ConversationChatTest` | `aReservationsChatStaysOpenAfterTheJob` |
+| 132 | Rating a completed reservation | The customer rates the provider | `RatingSubmissionTest` | `theCustomerRatesTheProvider` |
+| 133 | Rating a completed reservation | Only the reservation's customer can rate it | `RatingSubmissionTest` | `onlyTheReservationsCustomerCanRateIt` |
+| 134 | Rating a completed reservation | A reservation is rated once | `RatingSubmissionTest` | `aReservationIsRatedOnce` |
+| 135 | Rating a completed reservation | Ratings are accepted only within the rating window (outline) | `RatingSubmissionTest` | `ratingsAreAcceptedOnlyWithinTheRatingWindow` |
+| 136 | Rating a completed reservation | Stars are whole numbers from 1 to 5 (outline) | `RatingSubmissionTest` | `starsAreWholeNumbersFromOneToFive`, `starsOutsideOneToFiveAreRejected` |
+| 137 | Rating a completed reservation | Written feedback is optional | `RatingSubmissionTest` | `writtenFeedbackIsOptional` |
+| 138 | Rating a completed reservation | Provider category stars are optional | `RatingSubmissionTest` | `providerCategoryStarsAreOptional` |
+| 139 | Rating a completed reservation | Any number of provider categories can be rated | `RatingSubmissionTest` | `anyNumberOfProviderCategoriesCanBeRated` |
+| 140 | Rating a completed reservation | The provider rating needs overall stars | `RatingSubmissionTest` | `theProviderRatingNeedsOverallStars` |
+| 141 | Rating a completed reservation | Written feedback has a length limit | `RatingSubmissionTest` | `writtenFeedbackHasALengthLimit` |
+| 142 | Rating a completed reservation | Only helpers who were named can be rated | `RatingSubmissionTest` | `onlyHelpersWhoWereNamedCanBeRated` |
+| 143 | Rating a completed reservation | Helper ratings are optional | `RatingSubmissionTest` | `helperRatingsAreOptional` |
+| 144 | Rating a completed reservation | A helper can receive overall and category stars | `RatingSubmissionTest` | `aHelperCanReceiveOverallAndCategoryStars` |
+| 145 | Rating a completed reservation | A rated helper needs overall stars | `RatingSubmissionTest` | `aRatedHelperNeedsOverallStars` |
+| 146 | Rating a completed reservation | Helper category stars are optional | `RatingSubmissionTest` | `helperCategoryStarsAreOptional` |
+| 147 | What can be rated | Only Completed reservations can be rated (outline) | `RatingEligibilityTest` | `onlyCompletedReservationsCanBeRated` |
+| 148 | Hiding a rating | Homa hides a rating with a reason | `RatingHidingTest` | `homaHidesARatingWithAReason` |
+| 149 | Hiding a rating | Hiding needs a reason | `RatingHidingTest` | `hidingNeedsAReason` |
+| 150 | Hiding a rating | A rating is hidden once | `RatingHidingTest` | `aRatingIsHiddenOnce` |
+| 151 | Rating summaries | The overall average is shown only after the minimum number of ratings (outline) | `RatingSummaryAveragingTest` | `theOverallAverageIsShownOnlyAfterTheMinimumNumberOfRatings` |
+| 152 | Rating summaries | The average is rounded to one decimal place | `RatingSummaryAveragingTest` | `theAverageIsRoundedToOneDecimalPlace` |
+| 153 | Rating summaries | Withdrawing a hidden rating removes it from the averages | `RatingSummaryAveragingTest` | `withdrawingAHiddenRatingRemovesItFromTheAverages` |
+| 154 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
+| 155 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
+| 156 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
 
 ## 2. Product spec rules with no test
 
@@ -260,8 +265,8 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 60 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 86 | `AccountArchitectureTest` |
-| offering | 4.0 | 100% | 100% | 158 | `OfferingArchitectureTest` |
+| account | 5.0 | 100% | 100% | 87 | `AccountArchitectureTest` |
+| offering | 4.0 | 100% | 100% | 157 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
 | reservation | 5.0 | 100% | 100% | 269 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
@@ -305,3 +310,8 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
   listened to by offering and notifications, and in the contract test.
 - **36 events in all**, each in the contract test: the plan's 32, plus `ListingWentOfflineIE`,
   `EnquiryRequestedIE` and the two rejected events.
+- **Later changes:**
+  - `JobAddedIE`, `ToolAddedIE`, `RatingSubmittedIE` and `RatingHiddenIE` were added.
+  - With team membership, `HelperVerifiedIE` became `HelperJoinedTeamIE`,
+    `HelperVerificationRejectedIE` became `HelperInviteRejectedIE`, and `HelperInvitedIE` was added.
+  - The contract test now covers 41 events.

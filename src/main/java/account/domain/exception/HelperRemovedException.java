@@ -1,6 +1,6 @@
 package account.domain.exception;
 
-/** A helper removed from the team cannot be changed. */
+/** A removed helper, whether a withdrawn invite or a removed member, cannot come back onto the team. */
 public class HelperRemovedException extends AccountRuleViolationException {
 
     public HelperRemovedException(String helperId) {

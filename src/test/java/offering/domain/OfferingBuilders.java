@@ -57,7 +57,7 @@ final class OfferingBuilders {
 
     static ProviderListing aLiveListing() {
         ProviderListing listing = aCompleteListing();
-        listing.goLive(true, true);
+        listing.goLive(true);
         return listing;
     }
 }

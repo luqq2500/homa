@@ -188,9 +188,9 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 ### Verification Policy
 
 - Every provider is an individual and is verified through eKYC.
-- A provider who adds helpers runs a team. Every helper must also be KYC verified. Helpers have no accounts, so the provider sends each helper an eKYC verification link from the provider app.
+- A provider runs a team by **inviting** helpers. Helpers have no accounts, so the provider adds the helper's name and photo and sends them an eKYC verification link from the provider app. A helper becomes a **team member** only once their eKYC is verified. Until then they are an invited helper: not on the team, not shown to customers, not counted in the provider's team size and not able to be named for jobs.
 - Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
-- A provider or helper whose eKYC is rejected is told to redo it, and can be verified on a later attempt. A helper removed from the team can no longer be named for jobs.
+- A provider or invited helper whose eKYC is rejected is told to redo it, and can be verified on a later attempt; an invited helper then becomes a team member. The provider can withdraw an invite or remove a team member at any time. A removed helper is no longer on the team and can no longer be named for jobs.
 
 ### Privacy Policy
 
@@ -296,7 +296,7 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 - Jobs grouped to be easy to scan, such as kitchen or living room
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
-- The provider's team: every helper's name, photo and average stars, so you know who may come
+- The provider's team: every team member's name, photo and average stars, so you know who may come. Invited helpers who are not yet verified are not shown.
 - Ratings: the average for each provider category once it has the minimum ratings to show, and written feedback from customers, newest first
 - A **Verified ID** badge: every provider and helper is verified through eKYC
 
@@ -333,16 +333,16 @@ Homa has a separate app that helps providers manage their reservations, calendar
 
 1. **Register** as a provider. Every provider is an individual.
 2. **Verify** through eKYC.
-3. **Set up your helpers:** by default you are the helper. You can add other helpers and run a team, and then choose whether to include yourself as a helper. Each added helper verifies through an eKYC link you send them.
+3. **Set up your team:** by default you are the helper. You can invite other helpers to run a team, and choose whether to include yourself as a helper. Each invited helper verifies through an eKYC link you send them, and joins your team once verified.
 4. **Set up the profile:** profile name, picture and offerings.
 5. **Add a payout account:** the bank account Homa pays out to.
 6. **Go live** once everything is set up.
 
-Providers cannot go live until they and their helpers are verified, their profile is complete and their payout account is added. When a provider tries to go live too early, Homa lists everything still missing, for example the profile picture or the cities.
+Providers cannot go live until they are verified, their profile is complete, their payout account is added, and their team has at least as many members as their minimum helpers per booking. Invites still waiting for eKYC do not block going live; those helpers join the team when verified. When a provider tries to go live too early, Homa lists everything still missing, for example the profile picture or the cities.
 
 ### Teams
 
-a provider who adds helpers manages them in Homa and chooses whether to include themselves as a helper. Every helper must be KYC verified. Helpers do not have their own accounts in the MVP. Each helper has a name and photo shown to customers. For each reservation the provider names the lead and helpers before the booked start, then checks in and submits completion through the lead on site.
+A provider invites helpers and manages the team in Homa, and chooses whether to include themselves as a helper. Only verified helpers are team members; invited helpers join once their eKYC is verified. Helpers do not have their own accounts in the MVP. Each helper has a name and photo shown to customers. For each reservation the provider names the lead and helpers before the booked start, then checks in and submits completion through the lead on site.
 
 ### After going live
 
@@ -367,7 +367,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 - **Overview:** reservations, total booking value, service fee earned, cancellation and no-show rates, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
-- **Providers:** verification status of providers and their helpers, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
+- **Providers:** verification status of providers, their team members and their open invites, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
 - **Customers:** accounts, reservations and reports filed.
 - **Fines:** every fine with its reason, amount, what has been deducted so far, and any waiver.
 - **Ratings:** every rating, with the option to hide one that breaks the rules, recorded with a reason.

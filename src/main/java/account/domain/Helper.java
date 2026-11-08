@@ -1,11 +1,14 @@
 package account.domain;
 
+import account.domain.exception.HelperAlreadyTeamMemberException;
 import account.domain.exception.HelperPhotoRequiredException;
 import account.domain.exception.HelperRemovedException;
 
 /**
- * A helper on a provider's team. Helpers have no accounts of their own: the provider adds them, and
- * each verifies through an eKYC link the provider sends. Customers see each helper's name and photo.
+ * A helper a provider has invited to their team. Helpers have no accounts of their own: the provider
+ * adds their name and photo and sends them an eKYC link. A helper becomes a team member only once their
+ * eKYC is verified. Until then they are not on the team, not shown to customers, not counted in the team
+ * size and cannot be named for jobs.
  */
 public final class Helper {
 
@@ -13,8 +16,7 @@ public final class Helper {
     private final String providerId;
     private final String name;
     private final Photo photo;
-    private VerificationStatus ekyc = VerificationStatus.PENDING;
-    private boolean removed;
+    private TeamStatus status = TeamStatus.INVITED;
 
     private Helper(String id, String providerId, String name, Photo photo) {
         this.id = id;
@@ -23,7 +25,8 @@ public final class Helper {
         this.photo = photo;
     }
 
-    public static Helper add(String providerId, String name, Photo photo) {
+    /** The provider invites a helper, with a name and a photo. The helper starts {@code INVITED}. */
+    public static Helper invite(String providerId, String name, Photo photo) {
         String provider = AccountText.require(providerId, "A helper's provider");
         String helperName = AccountText.require(name, "A helper's name");
         if (photo == null) {
@@ -32,24 +35,36 @@ public final class Helper {
         return new Helper(new HelperId().generate(), provider, helperName, photo);
     }
 
+    /**
+     * Records Kenal's result for an invite. Verified, the helper joins the team as a {@code MEMBER};
+     * rejected, the invite is {@code INVITE_REJECTED} and the helper can redo eKYC.
+     */
     public void recordEkycResult(VerificationStatus result) {
-        requireOnTeam();
-        ekyc = EkycResult.require(result);
+        if (status == TeamStatus.REMOVED) {
+            throw new HelperRemovedException(id);
+        }
+        if (status == TeamStatus.MEMBER) {
+            throw new HelperAlreadyTeamMemberException(id);
+        }
+        boolean verified = EkycResult.require(result) == VerificationStatus.VERIFIED;
+        status = verified ? TeamStatus.MEMBER : TeamStatus.INVITE_REJECTED;
     }
 
-    /** Takes the helper off the provider's team. A removed helper stays on record but cannot be named for jobs. */
+    /** The provider withdraws an invite or removes a team member. A removed helper cannot come back. */
     public void remove() {
-        requireOnTeam();
-        removed = true;
+        if (status == TeamStatus.REMOVED) {
+            throw new HelperRemovedException(id);
+        }
+        status = TeamStatus.REMOVED;
     }
 
-    /** Whether the provider can name this helper for a reservation: on the team and verified. */
-    public boolean isVerifiedTeamMember() {
-        return !removed && ekyc == VerificationStatus.VERIFIED;
+    /** Whether the helper is on the team: true only for a {@code MEMBER}. */
+    public boolean isTeamMember() {
+        return status == TeamStatus.MEMBER;
     }
 
-    public boolean isOnTeam() {
-        return !removed;
+    public TeamStatus teamStatus() {
+        return status;
     }
 
     public String id() {
@@ -66,15 +81,5 @@ public final class Helper {
 
     public Photo photo() {
         return photo;
-    }
-
-    public VerificationStatus ekycStatus() {
-        return ekyc;
-    }
-
-    private void requireOnTeam() {
-        if (removed) {
-            throw new HelperRemovedException(id);
-        }
     }
 }

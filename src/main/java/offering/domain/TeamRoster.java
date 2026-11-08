@@ -4,18 +4,18 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * The provider's verified team: the ids of every verified helper, including the provider when they are
+ * The provider's team: the ids of every team member, including the provider when they are
  * their own helper. It caps the helpers range and is who the provider can name for a reservation.
  */
-public record TeamRoster(Set<String> verifiedHelperIds) {
+public record TeamRoster(Set<String> memberIds) {
 
     public TeamRoster {
-        verifiedHelperIds = Set.copyOf(Objects.requireNonNull(verifiedHelperIds));
-        verifiedHelperIds.forEach(id -> OfferingText.require(id, "A helper id"));
+        memberIds = Set.copyOf(Objects.requireNonNull(memberIds));
+        memberIds.forEach(id -> OfferingText.require(id, "A helper id"));
     }
 
-    public static TeamRoster of(Set<String> verifiedHelperIds) {
-        return new TeamRoster(verifiedHelperIds);
+    public static TeamRoster of(Set<String> memberIds) {
+        return new TeamRoster(memberIds);
     }
 
     public static TeamRoster empty() {
@@ -23,10 +23,10 @@ public record TeamRoster(Set<String> verifiedHelperIds) {
     }
 
     public int size() {
-        return verifiedHelperIds.size();
+        return memberIds.size();
     }
 
     public boolean includes(String helperId) {
-        return verifiedHelperIds.contains(helperId);
+        return memberIds.contains(helperId);
     }
 }

@@ -179,7 +179,8 @@ Feature: Homa-set values
 | `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
 | `ProviderAccount` | Aggregate | Individual provider: eKYC status, payout account status, whether they include themselves as a helper |
-| `Helper` | Aggregate | Belongs to one provider: name, photo, eKYC status |
+| `Helper` | Aggregate | Belongs to one provider: name, photo and team status. Only a `MEMBER` is on the team |
+| `TeamStatus` | Enum | `INVITED` (eKYC pending), `INVITE_REJECTED` (eKYC failed, can retry), `MEMBER` (eKYC verified), `REMOVED` |
 | `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED` |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
 
@@ -195,9 +196,10 @@ ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.includeSelfAsHelper(boolean include)
 ProviderAccount.isReadyForGoLive() : boolean    // own eKYC verified and payout account ready
 
-Helper.add(String providerId, String name, Photo photo)
-Helper.recordEkycResult(VerificationStatus result)
-Helper.remove()                                  // off the team; behind HelperRemovedIE
+Helper.invite(String providerId, String name, Photo photo)   // starts INVITED
+Helper.recordEkycResult(VerificationStatus result)           // VERIFIED -> MEMBER; REJECTED -> INVITE_REJECTED
+Helper.remove()                                              // withdraws an invite or removes a member -> REMOVED
+Helper.isTeamMember() : boolean                              // true only for MEMBER
 ```
 
 ```gherkin
@@ -228,13 +230,42 @@ Feature: Provider readiness
       | PENDING  | true   | false |
       | REJECTED | true   | false |
 
-Feature: Helpers
-  Scenario: A new helper starts unverified
-    When the provider adds helper "Aina" with a photo
-    Then Aina's eKYC status is PENDING
+Feature: Team membership
+  Scenario: An invited helper is not yet a team member
+    When the provider invites "Aina" with a photo
+    Then Aina is INVITED
+    And Aina is not a team member
 
-  Scenario: A helper needs a name and a photo
-    When the provider adds a helper with no photo
+  Scenario: A verified invite joins the team
+    Given Aina is INVITED
+    When Aina's eKYC is VERIFIED
+    Then Aina is a MEMBER
+    And Aina is a team member
+
+  Scenario: A rejected invite stays off the team and can retry
+    Given Aina is INVITED
+    When Aina's eKYC is REJECTED
+    Then Aina is INVITE_REJECTED and not a team member
+    When Aina's eKYC is later VERIFIED
+    Then Aina is a MEMBER
+
+  Scenario Outline: The provider can withdraw an invite or remove a member
+    Given Aina is <status>
+    When the provider removes Aina
+    Then Aina is REMOVED and not a team member
+    Examples:
+      | status          |
+      | INVITED         |
+      | INVITE_REJECTED |
+      | MEMBER          |
+
+  Scenario: A removed helper cannot be verified back onto the team
+    Given Aina is REMOVED
+    When Aina's eKYC is VERIFIED
+    Then it is rejected with HelperRemovedException
+
+  Scenario: An invite needs a name and a photo
+    When the provider invites a helper with no photo
     Then it is rejected with HelperPhotoRequiredException
 ```
 
@@ -253,7 +284,7 @@ Feature: Helpers
 | `HoursRange` | Value object | Min and max hours, whole hours, within Homa's 1–6 |
 | `HelpersRange` | Value object | Min and max helpers, at least 1, at most the verified team size and at most 10 |
 | `TravelFee` | Value object | `separate(amount)` or `included()` |
-| `TeamRoster` | Value object | Verified helper ids, used for the helper range and for naming who's coming |
+| `TeamRoster` | Value object | Team member ids (plus the provider if they include themselves), used for the helper range and for naming who's coming. Invited helpers are never on it |
 | `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster |
 
 ```java
@@ -267,7 +298,7 @@ ProviderListing.setHelpers(HelpersRange helpers, HomaLimits limits)
 ProviderListing.coverCities(Set<City> cities, ServiceAreaView area)
 ProviderListing.chooseCancellationTier(CancellationTier tier)
 ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the team; an empty team takes a live listing offline
-ProviderListing.goLive(boolean providerReady, boolean allHelpersVerified)
+ProviderListing.goLive(boolean providerReady)                 // the roster must cover the minimum helpers
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
 ```
@@ -290,17 +321,17 @@ Feature: Offering setup
       | 4   | 2   | InvalidHoursRangeException    |
 
   Scenario: Max helpers cannot exceed the verified team size
-    Given the provider has 3 verified helpers
+    Given the provider has 3 team members
     When the provider sets helpers from 1 to 4
     Then it is rejected with HelpersExceedTeamSizeException
 
   Scenario: Max helpers cannot exceed 10
-    Given the provider has 12 verified helpers
+    Given the provider has 12 team members
     When the provider sets helpers from 1 to 11
     Then it is rejected with HelpersOutOfRangeException
 
   Scenario: The helper range shrinks when the team shrinks
-    Given a live provider with helpers from 1 to 4 and 4 verified helpers
+    Given a live provider with helpers from 1 to 4 and 4 team members
     When one helper is removed from the roster
     Then the helper range is 1 to 3
 
@@ -312,7 +343,6 @@ Feature: Going live
   Scenario: A complete, verified provider goes live
     Given a provider listing with a profile, at least one job, pricing, hours, helpers, cities and a tier
     And the provider is verified with a ready payout account
-    And all helpers are verified
     When the provider goes live
     Then the listing is live
 
@@ -322,11 +352,13 @@ Feature: Going live
     Then it is rejected with ListingNotReadyException
     And the missing requirements are "profile picture" and "cities"
 
-  Scenario: An unverified helper blocks go-live
+  Scenario: A pending invite does not block go-live
     Given a complete listing and a verified provider
-    And one helper is still PENDING
+    And a team of 2 members with minimum helpers 1
+    And one more helper still INVITED
     When the provider goes live
-    Then it is rejected with ListingNotReadyException
+    Then the listing is live
+    And the team size is 2
 ```
 
 
@@ -1413,8 +1445,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ProviderVerifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` |
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
-| `HelperVerifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` |
-| `HelperVerificationRejectedIE` | account | offering, (notifications) | `Helper.recordEkycResult` with `REJECTED` |
+| `HelperInvitedIE` | account | (notifications) | `Helper.invite` |
+| `HelperJoinedTeamIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` (now a `MEMBER`) |
+| `HelperInviteRejectedIE` | account | (notifications) | `Helper.recordEkycResult` with `REJECTED` |
 | `HelperRemovedIE` | account | offering | removing a helper |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
@@ -1598,9 +1631,10 @@ hours either side.
   - When the team shrinks, max helpers shrinks to the team size, and min helpers with it if needed. A
     growing team doesn't widen the range. A live listing whose verified team becomes empty is no
     longer live.
-  - Go-live lists every missing requirement, including the provider's own verification and the
-    helpers' verification. Only a live listing gives an `OfferingSnapshot`, and a live listing doesn't
-    go live twice.
+  - Go-live lists every missing requirement, including the provider's own verification. Helpers'
+    verification is no longer a go-live requirement: only team members are on the roster, and pending
+    invites never block going live (see "Change after the domain phase: team membership"). Only a live
+    listing gives an `OfferingSnapshot`, and a live listing doesn't go live twice.
 - **Availability details:**
   - Windows that touch or overlap count as one stretch.
   - A busy block or hold that only touches a slot (ending at 10:00 for a 10:00 start) leaves it
@@ -1681,8 +1715,9 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Seven publishing contexts each have an event interface in `ie/port`, and the 38 events in the
-    plan's table are records in `ie/events`. Availability, conversation and discovery only listen.
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 41 events in the
+    plan's table are records in `ie/events`, including `feedback`'s two and the team membership events.
+    Availability, conversation and discovery only listen.
   - Every event carries `occurredAt`, which the usecase supplies.
   - The rule (confirmed, and the same in `docs/`): events carry primitives, Strings, kernel types and
     JDK value types (`Instant`, `Duration`, immutable `List`/`Set`); never domain objects; no `Optional`
@@ -1701,6 +1736,8 @@ hours either side.
   - One event per outcome (confirmed): `ProviderVerifiedIE` and `HelperVerifiedIE` mean verified,
     nothing else. A rejection has its own event, `ProviderVerificationRejectedIE` or
     `HelperVerificationRejectedIE`, so the provider is told to redo eKYC.
+    *Superseded for helpers by team membership (below): `HelperVerifiedIE` is now `HelperJoinedTeamIE`
+    and `HelperVerificationRejectedIE` is now `HelperInviteRejectedIE`, and `HelperInvitedIE` is added.*
   - The tests check that each event can't be built with a required field missing, can't be changed
     after it is built, and belongs to its context's interface. ArchUnit checks that `ie` imports only
     `kernel` and Java and that no domain imports `ie`. The mutation gate doesn't apply to `ie`.
@@ -1727,6 +1764,24 @@ hours either side.
     each category.
   - Events carry no maps, so `RatingSubmittedIE` carries the overall stars, whether there is written
     feedback, and the ids of the helpers rated. Category stars stay in `feedback`'s own summaries.
+
+## Change after the domain phase: team membership
+
+Decided after the domain phase closed. A helper is **invited** first and becomes a **team member** only once their eKYC is verified, so "team" means verified everywhere.
+
+- `account`: `Helper.add` becomes `Helper.invite`. `Helper` replaces its eKYC status and removed flag with one `TeamStatus`: `INVITED`, `INVITE_REJECTED`, `MEMBER`, `REMOVED`. `isVerifiedTeamMember()` and `isOnTeam()` become one method, `isTeamMember()`, true only for `MEMBER`. A rejected invite can retry; a removed helper cannot come back.
+- `offering`: `goLive` drops the `allHelpersVerified` flag and the `ALL_HELPERS_VERIFIED` requirement. Instead the roster must have at least the minimum helpers per booking. Pending invites never block going live.
+- `ie/`: `HelperVerifiedIE` becomes `HelperJoinedTeamIE`, `HelperVerificationRejectedIE` becomes `HelperInviteRejectedIE`, and `HelperInvitedIE` is added.
+- **Usecase phase, required test:** a provider's `TeamRoster` is built only from helpers where `isTeamMember()` is true, plus the provider if they include themselves, and is rebuilt on `HelperJoinedTeamIE` and `HelperRemovedIE`.
+- **Decided while building:**
+  - A `MEMBER` is already verified, so a new eKYC result for a member is rejected with
+    `HelperAlreadyTeamMemberException`. Otherwise a late rejection would drop the member off the team
+    without a `HelperRemovedIE`. To take a member off the team, the provider removes them.
+  - "The roster must cover the minimum helpers" needs no separate go-live check. The roster holds only
+    team members, and the helper range is set within it and shrinks with it, so the `HELPERS`
+    requirement already guarantees it.
+  - `TeamRoster`'s field, in `offering` and in `reservation`, is renamed from `verifiedHelperIds` to
+    `memberIds`. The listing events' field is renamed to `teamMemberIds`.
 
 ## Open questions
 

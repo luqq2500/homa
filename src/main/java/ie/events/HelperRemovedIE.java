@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A helper was removed from a provider's team. */
+/** A provider withdrew a helper's invite or removed a team member. */
 public record HelperRemovedIE(
         String helperId,
         String providerId,

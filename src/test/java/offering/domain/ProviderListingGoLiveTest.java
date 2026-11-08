@@ -33,7 +33,7 @@ class ProviderListingGoLiveTest {
         void aCompleteVerifiedProviderGoesLive() {
             ProviderListing listing = aCompleteListing();
 
-            listing.goLive(true, true);
+            listing.goLive(true);
 
             assertThat(listing.isLive()).isTrue();
         }
@@ -44,21 +44,27 @@ class ProviderListingGoLiveTest {
         }
 
         @Test
-        void anUnverifiedHelperBlocksGoLive() {
-            ProviderListing listing = aCompleteListing();
+        void aPendingInviteDoesNotBlockGoLive() {
+            ProviderListing listing = aDraftWithATeamOf(2);
+            listing.setProfile(OfferingBuilders.A_PROFILE);
+            listing.offerJobs(Set.of(job("KITCHEN")), CATALOGUE_JOBS);
+            listing.setPricing(HourlyRate.of(Money.parse("30")), TravelFee.included());
+            listing.setHours(HoursRange.of(2, 4), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
+            listing.coverCities(Set.of(city("Cyberjaya")), LAUNCH_AREA);
+            listing.chooseCancellationTier(CancellationTier.STANDARD);
 
-            assertThatThrownBy(() -> listing.goLive(true, false))
-                    .isInstanceOf(ListingNotReadyException.class)
-                    .extracting(e -> ((ListingNotReadyException) e).missing(), collection(Object.class))
-                    .containsExactly(GoLiveRequirement.ALL_HELPERS_VERIFIED);
-            assertThat(listing.isLive()).isFalse();
+            listing.goLive(true);
+
+            assertThat(listing.isLive()).isTrue();
+            assertThat(listing.roster().size()).isEqualTo(2);
         }
 
         @Test
         void anUnverifiedProviderOrMissingPayoutAccountBlocksGoLive() {
             ProviderListing listing = aCompleteListing();
 
-            assertThatThrownBy(() -> listing.goLive(false, true))
+            assertThatThrownBy(() -> listing.goLive(false))
                     .isInstanceOf(ListingNotReadyException.class)
                     .extracting(e -> ((ListingNotReadyException) e).missing(), collection(Object.class))
                     .containsExactly(GoLiveRequirement.PROVIDER_VERIFIED_AND_PAYOUT_READY);
@@ -66,7 +72,7 @@ class ProviderListingGoLiveTest {
 
         @Test
         void aLiveListingDoesNotGoLiveAgain() {
-            assertThatThrownBy(() -> aLiveListing().goLive(true, true)).isInstanceOf(ListingAlreadyLiveException.class);
+            assertThatThrownBy(() -> aLiveListing().goLive(true)).isInstanceOf(ListingAlreadyLiveException.class);
         }
     }
 
@@ -83,7 +89,7 @@ class ProviderListingGoLiveTest {
             listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
             listing.chooseCancellationTier(CancellationTier.FLEXIBLE);
 
-            assertThatThrownBy(() -> listing.goLive(true, true))
+            assertThatThrownBy(() -> listing.goLive(true))
                     .isInstanceOf(ListingNotReadyException.class)
                     .hasMessageContaining("profile picture")
                     .hasMessageContaining("cities")
@@ -105,11 +111,11 @@ class ProviderListingGoLiveTest {
         }
 
         @Test
-        void aDraftWithAnUnverifiedTeamListsEverythingMissing() {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1").goLive(false, false))
+        void aDraftWithAnUnverifiedProviderListsEverythingMissing() {
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1").goLive(false))
                     .isInstanceOf(ListingNotReadyException.class)
                     .extracting(e -> ((ListingNotReadyException) e).missing(), collection(Object.class))
-                    .hasSize(10)
+                    .hasSize(9)
                     .containsAll(EnumSet.allOf(GoLiveRequirement.class));
         }
 

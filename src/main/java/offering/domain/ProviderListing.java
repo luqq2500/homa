@@ -135,19 +135,18 @@ public final class ProviderListing {
     }
 
     /**
-     * Takes the listing live.
+     * Takes the listing live. Only team members are on the roster, so invites still waiting for eKYC never
+     * block going live; the helper range set from the roster already covers the minimum helpers.
      *
      * @param providerReady whether the provider's own eKYC is verified and their payout account is ready
-     * @param allHelpersVerified whether every helper on the team is verified
      */
-    public void goLive(boolean providerReady, boolean allHelpersVerified) {
+    public void goLive(boolean providerReady) {
         if (live) {
             throw new ListingAlreadyLiveException();
         }
         Set<GoLiveRequirement> missing = EnumSet.noneOf(GoLiveRequirement.class);
         missing.addAll(missingForGoLive());
         addIfNot(providerReady, GoLiveRequirement.PROVIDER_VERIFIED_AND_PAYOUT_READY, missing);
-        addIfNot(allHelpersVerified, GoLiveRequirement.ALL_HELPERS_VERIFIED, missing);
         if (!missing.isEmpty()) {
             throw new ListingNotReadyException(missing);
         }

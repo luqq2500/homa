@@ -21,7 +21,7 @@ public record ListingWentLiveIE(
         int maxHelpers,
         Set<String> cities,
         String cancellationTier,
-        Set<String> verifiedHelperIds,
+        Set<String> teamMemberIds,
         Instant occurredAt) implements OfferingIE {
 
     public ListingWentLiveIE {
@@ -33,7 +33,7 @@ public record ListingWentLiveIE(
         Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
-        verifiedHelperIds = Set.copyOf(verifiedHelperIds);
+        teamMemberIds = Set.copyOf(teamMemberIds);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

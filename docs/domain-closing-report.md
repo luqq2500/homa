@@ -247,3 +247,31 @@ Added after the phase closed, from the updated product description (Rating Polic
   All of these are in the plan under "Decisions made while building". The feedback length limit and the
   window's last minute are also in the spec.
 
+## 11. Addendum: team membership
+
+Changed after the phase closed. A helper is **invited** first and becomes a **team member** only once
+their eKYC is verified, so "team" means verified everywhere.
+
+- **`account`:**
+  - `Helper.invite` replaces `Helper.add`.
+  - `Helper` has one `TeamStatus`: `INVITED`, `INVITE_REJECTED`, `MEMBER` or `REMOVED`.
+  - `isTeamMember()` is true only for `MEMBER`.
+  - A rejected invite can retry; a removed helper cannot come back.
+  - A member is not verified again: a new eKYC result for a member is rejected with
+    `HelperAlreadyTeamMemberException`, so it can't silently drop them off the team.
+- **`offering`:**
+  - `goLive(providerReady)` no longer takes "all helpers verified", and that go-live requirement is
+    gone, so a pending invite never blocks going live.
+  - The roster holds only team members, so the existing helper-range requirement already covers the
+    minimum helpers.
+- **Renames:**
+  - `ie/`: `HelperVerifiedIE` is now `HelperJoinedTeamIE`, `HelperVerificationRejectedIE` is now
+    `HelperInviteRejectedIE`, and `HelperInvitedIE` is new. That makes 41 events.
+  - The `TeamRoster` field is now `memberIds`, and the listing events carry `teamMemberIds`.
+- **Scenarios:**
+  - The "Team membership" feature, with six scenarios, replaces the two "Helpers" scenarios.
+  - "A pending invite does not block go-live" replaces "An unverified helper blocks go-live".
+  - The audit maps 156 of 156.
+- **Gates:** whole build 909 tests, 1,147 mutants, all killed. `account.domain` has 87 mutants and
+  `offering.domain` 157, both at 100%.
+

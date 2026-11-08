@@ -44,6 +44,6 @@ final class AccountBuilders {
     }
 
     static Helper aHelperNamed(String name) {
-        return Helper.add("provider-1", name, Photo.of("photos/" + name + ".jpg"));
+        return Helper.invite("provider-1", name, Photo.of("photos/" + name + ".jpg"));
     }
 }
