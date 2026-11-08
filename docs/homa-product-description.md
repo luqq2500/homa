@@ -141,7 +141,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 - There is one dispute window, from the booked start until the **dispute window extension** after the later of the booked end and the moment the provider submits job completion. The customer is notified when the provider marks the job completed.
 - Homa acts only on reports. The customer and the provider are each expected to file a report if something goes wrong. If no report is filed before the dispute window ends, Homa is not responsible for the issue, and the payment is released as normal.
-- The customer and the provider can each file one report per reservation, with a reason and evidence.
+- The customer and the provider can each file one report per reservation, with a reason, and evidence where available.
 - A report is one of two types: a problem during the job (for example a missing helper or missing tools), or a problem with the finished work.
 - A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund.
 

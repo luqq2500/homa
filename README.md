@@ -80,7 +80,7 @@ windows, touching blocks and the later-start tie-break in availability, plus a b
 Open questions answered: #1 the customer no-show wait starts from the later of the booked start and
 check-in; #2 percentages round half-up and the refund is computed last; #3 editing a request does not
 reset its expiry; #6 the lead is one of the named helpers, and a provider who is their own helper can
-be the lead; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
+be the lead; #5 SMS codes are 6 digits, valid 5 minutes, with a new code after 5 wrong attempts; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
 hours either side.
 
 - **`HomaPolicy.initial(Instant now)`** takes the time version 1 takes effect, following the "time is
@@ -154,6 +154,15 @@ hours either side.
       completion is open. A challenged no-show takes no reports.
     - For a challenged no-show, "release" and "partial refund" are measured against the no-show fee.
     - `Reservation.resolve` takes `now`, so the settlement has a release time.
+  - `Reservation.cancellationTerms()` gives what the review page shows: when the fee starts (the booked
+    start on Flexible), the fee from then, the period when cancelling is locked, and the customer no-show
+    fee once checked in. `cancelByCustomer` reads its fee from the same terms.
+  - Who checks in is not recorded or checked (confirmed). Helpers have no accounts and the provider is
+    accountable either way.
+  - Report evidence is optional and a reason is required (confirmed). The spec now says "with a reason,
+    and evidence where available".
+  - Availability at request and at acceptance is checked by the usecases, not by `Reservation`
+    (confirmed).
   - **Payment phase note:** a customer no-show settlement is released when the report window ends.
     If it is challenged, Homa's decision gives a final settlement that replaces it.
   - The team reminder is a new Homa-set value, 24 hours (confirmed). `isTeamReminderDue` is true while

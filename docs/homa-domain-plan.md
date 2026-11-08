@@ -498,6 +498,7 @@ Reservation.decline(Instant now)
 Reservation.expire(Instant now)
 
 // Cancelling
+Reservation.cancellationTerms() : CancellationTerms   // free until, fee from then, locked period, after check-in
 Reservation.cancelByCustomer(Instant now) : Settlement
 Reservation.cancelByProvider(Instant now) : CancellationResult   // Settlement + FineCharge
 
@@ -1320,6 +1321,11 @@ class ReservationCustomerCancellationTest {
 - **Challenged customer no-show:** the reservation moves to Disputed. After Homa reviews it, it ends **Cancelled**: either Homa proceeds with the cancellation (the no-show fee stands) or finds it wrongful (full refund).
 - **Earliest check-in:** 15 minutes before the booked start.
 - **Shared kernel:** domains may depend on `kernel/` (`Money`, `Percentage`). The backend module discipline is updated.
+- **SMS code rules:** 6 digits, valid 5 minutes, a new code after 5 wrong attempts.
+- **Who checks in:** not recorded or checked. Helpers have no accounts, so the domain cannot know who held the phone, and the provider is accountable either way. Check-in already requires the team to be named.
+- **Availability at request and acceptance:** checked by the request and accept usecases, not by `Reservation`.
+- **Report evidence:** optional. A reason is required; evidence is encouraged, since some problems (a helper not turning up) have nothing to photograph, and Homa weighs missing evidence when deciding.
+- **Cancellation terms:** `Reservation.cancellationTerms()` gives what the review page shows, using the same base as the cancel rule.
 
 ### Still open
 
@@ -1329,7 +1335,7 @@ These came up while turning the spec into rules. Until answered, the plan uses t
 2. **Rounding** (slice 1). Percentages of RM amounts can produce half sen. *Assumption:* round half-up to the sen, and compute the customer refund last so the parts always add up to the total.
 3. **Does editing a request reset its expiry?** (slice 2). *Assumption:* no, the expiry stays from the original request.
 4. **What "near the chosen time" means for close matches** (discovery). *Assumption:* the provider is free for the same duration starting within 2 hours before or after.
-5. **SMS code rules** (account). *Assumption:* 6 digits, valid 5 minutes, 5 wrong attempts then a new code is needed.
+5. **SMS code rules** (account). *Decided:* 6 digits, valid 5 minutes, 5 wrong attempts then a new code is needed.
 6. **Is the lead one of the helpers?** (slice 5). *Assumption:* yes, the lead is one of the named helpers.
 7. **Fine deductions: which payouts count?** The spec says "next successful reservations". *Assumption:* only payouts from Completed reservations, not cancellation or no-show fee payouts.
 8. **Changes to an offering while a request is open.** *Assumption:* the request keeps the offering snapshot it was made with; the provider's change affects new requests only.

@@ -1,7 +1,7 @@
 # Domain phase audit
 
-Checked against `docs/homa-domain-plan.md` and `docs/homa-product-description.md` on a clean build: 804
-tests, 1029 mutants.
+Checked against `docs/homa-domain-plan.md` and `docs/homa-product-description.md` on a clean build.
+Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
@@ -160,10 +160,10 @@ These belong in the domain and have no test today.
 
 | # | Spec rule | What is missing | Suggested fix |
 |---|---|---|---|
-| G1 | Cancellation Policy: the review page and the reservation details show "the exact amount and time for that booking", for example "Cancel after Sat 9:00 am: you pay RM36" | No domain query gives the fee and the moment it starts. The rule is applied inside `cancelByCustomer`, but nothing exposes it | Add `Reservation.cancellationTerms()` returning the fee window opening time and the fee, or none for Flexible |
-| G2 | Check-in Policy: "The lead must be at the customer's location with the provider app to check in"; completion is submitted "through the lead on site" | `checkIn` and `submitCompletion` don't record or check who did them | Take the helper id and check it is the named lead, or confirm the provider is accountable either way and record nothing |
-| G3 | Chat: on reserving, "Homa checks the provider's availability again"; How Homa Works: "Bookable times come from each provider's own calendar" | `Reservation.request` takes no availability answer, and no test ties a request to `ProviderCalendar.isAvailable` or `hold` | Usecase layer: `RequestReservation` checks `isAvailable` and `AcceptReservation` calls `hold`, with tests there |
-| G4 | Dispute Policy: each report is filed "with a reason and evidence" | Evidence is optional; only the reason is required. The plan's own scenario has the provider file with a reason only | Confirm evidence is optional, or require at least one piece for the customer |
+| G1 (**done**) | Cancellation Policy: the review page and the reservation details show "the exact amount and time for that booking", for example "Cancel after Sat 9:00 am: you pay RM36" | No domain query gives the fee and the moment it starts. The rule is applied inside `cancelByCustomer`, but nothing exposes it | Added `Reservation.cancellationTerms()`, tested in `ReservationCancellationTermsTest` at the fee-start boundary on every tier. `cancelByCustomer` uses the same terms |
+| G2 (**no rule**) | Check-in Policy: "The lead must be at the customer's location with the provider app to check in"; completion is submitted "through the lead on site" | `checkIn` and `submitCompletion` don't record or check who did them | Decided: not recorded or checked. Helpers have no accounts and the provider is accountable either way |
+| G3 (**usecase**) | Chat: on reserving, "Homa checks the provider's availability again"; How Homa Works: "Bookable times come from each provider's own calendar" | `Reservation.request` takes no availability answer, and no test ties a request to `ProviderCalendar.isAvailable` or `hold` | Decided: the request and accept usecases check availability, with tests there |
+| G4 (**optional**) | Dispute Policy: each report is filed "with a reason and evidence" | Evidence is optional; only the reason is required. The plan's own scenario has the provider file with a reason only | Decided: evidence is optional and a reason is required. The spec now says "with a reason, and evidence where available" |
 
 ### 2b. Rules outside the domain phase
 
@@ -212,13 +212,13 @@ Each will need a test in the usecase or infra phase.
 | 2 | Percentages round half-up to the sen, and the customer refund is worked out last so the parts add up | Confirmed | `kernel/Percentage.java` `of(Money)` (HALF_UP, line 37); `reservation/domain/Settlement.java` `of` (line 34); `reservation/domain/PriceBreakdown.java` (service fee). The fine cap uses a variant that rounds in the provider's favour: `payment/domain/FineDeductionPolicy.java` `mostDeductible` (line 36) | `PercentageTest`, `SettlementInvariantTest`, `FineDeductionPolicyTest.theCapRoundsInTheProvidersFavour` |
 | 3 | Editing a request does not reset its expiry | Confirmed | `reservation/domain/Reservation.java` `requestExpiresAt()` (lines 116–117, from `requestedAt`); `edit` leaves `requestedAt` alone | `ReservationEditingTest.editingDoesNotResetTheExpiry`, `movingTheStartEarlierCanBringTheExpiryForward` |
 | 4 | "Near the chosen time" for a close match means free for the same duration within 2 hours either side | Confirmed | `discovery/domain/MatchClassifier.java` `NEAR_THE_CHOSEN_TIME` (line 24), passed by the usecase to `availability/domain/ProviderCalendar.java` `nearestAvailableStart` (line 94) | `MatchClassifierMatchingTest`, `ProviderCalendarNearestStartTest` |
-| 5 | SMS codes are 6 digits, valid for 5 minutes, with a new code needed after 5 wrong attempts | **Not yet confirmed** | `account/domain/PhoneVerification.java` `CODE_VALIDITY`, `MAX_WRONG_ATTEMPTS` and `SIX_DIGITS` (lines 19–22) | `PhoneVerificationConfirmationTest` |
+| 5 | SMS codes are 6 digits, valid for 5 minutes, with a new code needed after 5 wrong attempts | Confirmed | `account/domain/PhoneVerification.java` `CODE_VALIDITY`, `MAX_WRONG_ATTEMPTS` and `SIX_DIGITS` (lines 19–22) | `PhoneVerificationConfirmationTest` |
 | 6 | The lead is one of the named helpers; a provider who is their own helper can be the lead | Confirmed | `reservation/domain/TeamAssignment.java` constructor (line 16) | `ReservationTeamNamingTest.theLeadMustBeOneOfTheNamedHelpers`, `aProviderWhoIsTheirOwnHelperCanLeadTheTeam` |
 | 7 | Fines come off payouts for completed jobs only, not cancellation-fee or no-show-fee payouts | Confirmed | `payment/domain/PayoutKind.java`; `payment/domain/FineDeductionPolicy.java` `apply` (line 24) | `FineDeductionPolicyTest.onlyPayoutsForCompletedJobsHaveFinesDeducted` |
 | 8 | A request keeps the offering snapshot it was made with | Confirmed | `reservation/domain/Reservation.java` `offering` field (line 54, final) and `edit` checking against it (line 127); `offering/domain/ProviderListing.java` `snapshot()` | `ProviderListingGoLiveTest.aLaterChangeDoesNotTouchASnapshotAlreadyTaken` |
 
-The other choices made while building are listed in the README under "Decisions taken while building".
-All of them were confirmed.
+All eight are confirmed. The other choices made while building are listed in the README under
+"Decisions taken while building", and all of them were confirmed too.
 
 ## 4. Gates per context
 
@@ -252,3 +252,24 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **`kernel` imports nothing outside the JDK:** `KernelArchitectureTest.kernelDependsOnlyOnTheJavaStandardLibrary`.
 - **Domain exceptions** live in each context's `domain/exception` package, checked by
   `domainExceptionsLiveInTheExceptionPackage`.
+
+## 5. Integration events
+
+- **No `Optional` fields** (commit `17015a2`). Events that could have had a missing value were split, so
+  every field is always present:
+  - The listing events carry `travelIncluded` and a `travelFee` that is RM0 when travel is included.
+  - `ListingWentOfflineIE` is new.
+  - `EnquiryRequestedIE` replaces the optional enquiry id on `ReservationRequestedIE`.
+  - `CaseDecidedIE.providerReceives` is always set, from `Case.providerReceives`.
+- **The event rule is enforced** by
+  `IntegrationEventContractTest.anEventCarriesOnlyPrimitivesStringsKernelAndJdkValueTypes`. It allows
+  primitives, Strings, `Money`, `Percentage`, `Instant`, `Duration`, and a `List` or `Set` of Strings.
+  `Optional` is not allowed. The rule's wording is the same in the plan, the discipline and the README.
+- **Collections are copied** with `List.copyOf` or `Set.copyOf` in every compact constructor.
+  `anEventCannotBeChangedAfterItIsBuilt` checks this, and `anEventCanOnlyBeBuiltWithEveryRequiredField`
+  checks that nulls are rejected.
+- **Rejected verification has its own events** (commit `219d592`): `ProviderVerificationRejectedIE` and
+  `HelperVerificationRejectedIE`, so there is one event per outcome. Both are in the plan's event table,
+  listened to by offering and notifications, and in the contract test.
+- **36 events in all**, each in the contract test: the plan's 32, plus `ListingWentOfflineIE`,
+  `EnquiryRequestedIE` and the two rejected events.

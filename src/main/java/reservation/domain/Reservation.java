@@ -179,6 +179,21 @@ public final class Reservation {
         return new CancellationResult(endCancelled(Ending.PROVIDER_CANCELLED, Money.ZERO, now), fine);
     }
 
+    /**
+     * The cancellation terms of this booking for the customer, under the provider's tier: free until the
+     * fee starts, the fee from then until the booked start, locked during the check-in period, and a
+     * customer no-show fee after check-in. Cancelling while the request is still unanswered is always free.
+     */
+    public CancellationTerms cancellationTerms() {
+        if (status != ReservationStatus.REQUESTED && status != ReservationStatus.RESERVED) {
+            throw new InvalidStatusTransitionException(status, "given cancellation terms");
+        }
+        Money fee = tierFee();
+        Instant freeUntil = fee.isZero() ? start() : feeWindowOpensAt();
+        return new CancellationTerms(
+                offering.cancellationTier(), freeUntil, fee, start(), checkInClosesAt(), customerNoShowFee());
+    }
+
     // ---- Job day ----
 
     /** Names who is coming. The team can change until the booked start. */
@@ -476,9 +491,9 @@ public final class Reservation {
         throw new ProviderMissedCheckInException();
     }
 
-    /** Before the booked start the provider's tier applies: its fee inside the fee window, nothing before it. */
+    /** Before the booked start the provider's tier applies, exactly as {@link #cancellationTerms()} states it. */
     private Settlement cancelBeforeStartByCustomer(Instant now) {
-        Money fee = now.isBefore(feeWindowOpensAt()) ? Money.ZERO : tierFee();
+        Money fee = cancellationTerms().feeAt(now);
         Ending why = fee.isZero() ? Ending.CUSTOMER_CANCELLED_FREE : Ending.CUSTOMER_CANCELLED_IN_FEE_WINDOW;
         return endCancelled(why, fee, now);
     }
