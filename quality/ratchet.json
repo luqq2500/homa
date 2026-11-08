@@ -22,5 +22,9 @@
   "policy": {
     "score": 100.0,
     "strength": 100.0
+  },
+  "reservation": {
+    "score": 100.0,
+    "strength": 100.0
   }
 }
