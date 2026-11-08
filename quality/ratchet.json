@@ -11,6 +11,14 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "conversation": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "discovery": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "kernel": {
     "score": 100.0,
     "strength": 100.0
@@ -28,6 +36,10 @@
     "strength": 100.0
   },
   "reservation": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "resolution": {
     "score": 100.0,
     "strength": 100.0
   }

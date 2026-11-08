@@ -140,6 +140,9 @@
                         <param>availability.*</param>
                         <param>reservation.*</param>
                         <param>payment.*</param>
+                        <param>resolution.*</param>
+                        <param>conversation.*</param>
+                        <param>discovery.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
@@ -150,6 +153,9 @@
                         <param>availability.*</param>
                         <param>reservation.*</param>
                         <param>payment.*</param>
+                        <param>resolution.*</param>
+                        <param>conversation.*</param>
+                        <param>discovery.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>

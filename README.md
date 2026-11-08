@@ -19,6 +19,9 @@ src/main/java/
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
   payment/domain/               payments, fines, payouts and fine deductions
+  resolution/domain/            the founders' case queue and decisions
+  conversation/domain/          chats for enquiries and reservations
+  discovery/domain/             search criteria and exact, close or no matches
 src/test/java/                  the same packages, one test class per feature
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
@@ -56,14 +59,16 @@ Build order from the domain plan:
 | 5 | `availability` | Done |
 | 6 | `reservation`, all seven slices | Done, except the team reminder (see below) |
 | 7 | `payment` | Done |
-| 8 | `resolution` | Next |
-| 9–10 | `conversation`, `discovery` | To do |
-| 11 | `ie/` integration event contracts | To do, after every context passes its gates |
+| 8 | `resolution` | Done |
+| 9 | `conversation` | Done |
+| 10 | `discovery` | Done |
+| 11 | `ie/` integration event contracts | Next |
 
 ### Decisions taken while building (to fold back into the plan)
 
 Confirmed by the product owner: customers have a name; `HomaLimits` for hours and helpers; a live
-listing whose verified team becomes empty is no longer live; touching
+listing whose verified team becomes empty is no longer live; every decision listed under the
+reservation and payment details below; touching
 windows, touching blocks and the later-start tie-break in availability, plus a buffer between jobs;
 `Helper.remove()`.
 
@@ -164,6 +169,21 @@ be the lead; #8 a request keeps the offering snapshot it was made with.
     completed jobs only. They are taken oldest first, up to the cap, which rounds in the provider's
     favour.
   - A fine is waived once, with a reason. A fully deducted fine has nothing left to waive.
+- **Resolution details:** a case is opened with the amount at stake: the provider price for a job, or
+  the customer no-show fee for a challenged no-show. A partial refund must be within that amount.
+  Evidence can be added while the case is open, for example when the other party also reports.
+- **Conversation details:**
+  - `Conversation.start(Party, ...)` lets the rule "only the customer starts a chat" be enforced;
+    `startByCustomer` is the usual entry point.
+  - A chat is linked to a reservation once.
+  - Only an enquiry's chat is archived, once. A reservation's chat stays open.
+- **Discovery details:**
+  - `SearchCriteria.of` takes `SearchLimits`, discovery's own view of the Homa-set values.
+  - A `ProviderCandidate` carries `nearestFreeStart`, the answer from availability's
+    `nearestAvailableStart` within 2 hours either side (open question #4, still the plan's
+    assumption). Equal to the chosen start means free at the chosen time; another start means a
+    close match; empty means no match.
+  - A match result lists every reason it is not exact.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
