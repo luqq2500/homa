@@ -5,23 +5,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.homa</groupId>
-    <artifactId>homa-parent</artifactId>
+    <artifactId>homa</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
     <name>Homa</name>
 
     <!--
-        Build order follows the domain plan: the shared kernel first, then each bounded context.
-        A bounded context depends on kernel only; it never depends on another bounded context.
+        One source tree. Each bounded context is a top-level package (catalogue, policy, ...), with its
+        layers below it (catalogue.domain, later catalogue.usecase and catalogue.infra). The shared
+        kernel is the package kernel. Context isolation and the dependency rule are enforced by the
+        ArchUnit tests in each context's test package.
     -->
-    <modules>
-        <module>kernel</module>
-        <module>catalogue</module>
-        <module>policy</module>
-        <module>account</module>
-        <module>offering</module>
-        <module>availability</module>
-    </modules>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -34,7 +28,7 @@
         <pitest.version>1.19.1</pitest.version>
         <pitest.junit5.version>1.2.2</pitest.junit5.version>
 
-        <!-- Mutation gate for kernel/ and domain (Discipline §9). The ratchet lives in quality/ratchet.json. -->
+        <!-- Mutation gate for kernel and domain (Discipline §9). tools/quality_gates.py also applies it per context, with the ratchet in quality/ratchet.json. -->
         <mutation.threshold>90</mutation.threshold>
     </properties>
 
@@ -56,11 +50,6 @@
                 <groupId>com.tngtech.archunit</groupId>
                 <artifactId>archunit-junit5</artifactId>
                 <version>${archunit.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.homa</groupId>
-                <artifactId>kernel</artifactId>
-                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -141,14 +130,25 @@
                     </dependency>
                 </dependencies>
                 <configuration>
+                    <!-- One entry per context. Add each new context here as it is built. -->
                     <targetClasses>
-                        <param>com.homa.*</param>
+                        <param>kernel.*</param>
+                        <param>catalogue.*</param>
+                        <param>policy.*</param>
+                        <param>account.*</param>
+                        <param>offering.*</param>
+                        <param>availability.*</param>
                     </targetClasses>
                     <targetTests>
-                        <param>com.homa.*</param>
+                        <param>kernel.*</param>
+                        <param>catalogue.*</param>
+                        <param>policy.*</param>
+                        <param>account.*</param>
+                        <param>offering.*</param>
+                        <param>availability.*</param>
                     </targetTests>
                     <excludedTestClasses>
-                        <param>com.homa.*ArchitectureTest</param>
+                        <param>*ArchitectureTest</param>
                     </excludedTestClasses>
                     <mutators>
                         <mutator>STRONGER</mutator>

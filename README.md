@@ -9,31 +9,36 @@ usecase, then infra.
 ## Layout
 
 ```text
-pom.xml                 parent build: Java 21, JUnit 5, ArchUnit, JaCoCo, PIT
-kernel/                 shared kernel: Money, Percentage (Java standard library only)
-catalogue/              job list, tool list, service area, homepage shelves
-policy/                 Homa-set values and their versions
-account/                customer and provider accounts, helpers, phone and eKYC verification
-offering/               a provider's listing and the rules for going live
-availability/           a provider's windows, synced busy blocks and reservation holds
-tools/quality_gates.py  CRAP gate and mutation ratchet
-quality/ratchet.json    last passing mutation score per module
+pom.xml                         one Maven project: Java 21, JUnit 5, ArchUnit, JaCoCo, PIT
+src/main/java/
+  kernel/                       shared kernel: Money, Percentage (Java standard library only)
+  catalogue/domain/             job list, tool list, service area, homepage shelves
+  policy/domain/                Homa-set values and their versions
+  account/domain/               customer and provider accounts, helpers, phone and eKYC verification
+  offering/domain/              a provider's listing and the rules for going live
+  availability/domain/          a provider's windows, synced busy blocks and reservation holds
+src/test/java/                  the same packages, one test class per feature
+tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
+quality/ratchet.json            last passing mutation score per context
 ```
 
-Each bounded context is its own Maven module. A context depends on `kernel` only, never on another
-context, so context isolation is enforced by the compiler. Inside a context, the layers are packages
-(`com.homa.<context>.domain`, later `usecase` and `infra`), and an ArchUnit test in each module checks
-that the domain imports only itself, `kernel` and `java..`.
+Each bounded context is a top-level package, with its layers below it: `catalogue.domain` now, and
+`catalogue.usecase` and `catalogue.infra` later, each with its own `exception` package. An ArchUnit
+test in each context's test package is the dependency-rule gate. It checks that the domain imports only
+itself, `kernel` and `java..`, so no context imports another. `kernel` imports only `java..`.
+
+When a new context is added, add its package to PIT's `targetClasses` and `targetTests` in `pom.xml`;
+the gate script fails if one is missing.
 
 ## Running the gates
 
 ```bash
 mvn verify                          # unit tests, dependency rule (ArchUnit), mutation >= 90% (PIT)
-python3 tools/quality_gates.py      # CRAP < 6 per method, mutation ratchet
+python3 tools/quality_gates.py      # CRAP < 6 per method, mutation >= 90% per context, ratchet
 python3 tools/quality_gates.py --update   # after a pass: raise the ratchet
 ```
 
-Reports: `<module>/target/site/jacoco/` (coverage) and `<module>/target/pit-reports/` (mutation).
+Reports: `target/site/jacoco/` (coverage) and `target/pit-reports/` (mutation).
 
 ## Domain phase progress
 
