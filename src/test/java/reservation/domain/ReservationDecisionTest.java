@@ -26,7 +26,7 @@ class ReservationDecisionTest {
         }
 
         @Test
-        void release() {
+        void homaReleasesThePaymentAndTheJobIsCompleted() {
             Reservation reservation = aDisputedReservation();
 
             Settlement settlement = reservation.resolve(CaseDecision.release(), saturday("18:00"));
@@ -39,7 +39,7 @@ class ReservationDecisionTest {
         }
 
         @Test
-        void partialRefund() {
+        void aPartialRefundSplitsThePaymentAndTheServiceFeeFollowsTheProvider() {
             Settlement settlement = aDisputedReservation().resolve(CaseDecision.partialRefund(rm("100.00")), saturday("18:00"));
 
             assertThat(settlement.providerEarning()).isEqualTo(rm("100.00"));
@@ -48,7 +48,7 @@ class ReservationDecisionTest {
         }
 
         @Test
-        void fullRefund() {
+        void aFullRefundReturnsEverythingToTheCustomer() {
             Settlement settlement = aDisputedReservation().resolve(CaseDecision.fullRefund(), saturday("18:00"));
 
             assertThat(settlement.customerRefund()).isEqualTo(rm("230.00"));

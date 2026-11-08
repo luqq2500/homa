@@ -14,7 +14,7 @@ import reservation.domain.exception.EnquiryDateInPastException;
 import reservation.domain.exception.ReservationDetailRequiredException;
 
 /** Feature: Enquiries. */
-class EnquiryTest {
+class EnquiryLifecycleTest {
 
     private Enquiry anEnquiryForSaturday10() {
         return Enquiry.create("customer-1", "provider-1", aBooking().startingAt(saturday("10:00")).build(), thursday("09:00"));

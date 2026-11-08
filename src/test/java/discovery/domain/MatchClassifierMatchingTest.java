@@ -18,12 +18,12 @@ import org.junit.jupiter.params.provider.CsvSource;
  * Feature: Matching. Background: the customer searches for KITCHEN and LAUNDRY_FOLD, Saturday 10:00, 3 hours,
  * 2 helpers, in Cyberjaya.
  */
-class MatchClassifierTest {
+class MatchClassifierMatchingTest {
 
     private static final Instant THURSDAY_0900 = Instant.parse("2026-11-12T01:00:00Z");
     private static final Instant SATURDAY_1000 = Instant.parse("2026-11-14T02:00:00Z");
     private static final SearchCriteria SEARCH = SearchCriteria.of(
-            jobs("KITCHEN", "LAUNDRY_FOLD"), SATURDAY_1000, 3, 2, City.of("Cyberjaya"), THURSDAY_0900, SearchCriteriaTest.LAUNCH_LIMITS);
+            jobs("KITCHEN", "LAUNDRY_FOLD"), SATURDAY_1000, 3, 2, City.of("Cyberjaya"), THURSDAY_0900, SearchCriteriaValidationTest.LAUNCH_LIMITS);
 
     private static Set<JobCode> jobs(String... codes) {
         return Arrays.stream(codes).map(JobCode::of).collect(Collectors.toSet());
@@ -88,7 +88,7 @@ class MatchClassifierTest {
     }
 
     @Test
-    void exactMatch() {
+    void aProviderThatFitsEverythingIsAnExactMatch() {
         MatchResult result = aProvider().classified();
 
         assertThat(result.match()).isEqualTo(Match.EXACT);

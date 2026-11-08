@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import reservation.domain.exception.CancellationLockedDuringCheckInPeriodException;
 import reservation.domain.exception.InvalidStatusTransitionException;
@@ -25,9 +26,10 @@ class ReservationCustomerCancellationTest {
     @Nested
     class WhenRequested {
 
-        @Test
-        void customerCancelsForFreeOnEveryTier() {
-            Reservation reservation = aReservation().onTier(CancellationTier.FIRM).requested();
+        @ParameterizedTest(name = "cancelling a request on the {0} tier is free")
+        @EnumSource(CancellationTier.class)
+        void customerCancelsForFreeOnEveryTier(CancellationTier tier) {
+            Reservation reservation = aReservation().onTier(tier).requested();
 
             Settlement settlement = reservation.cancelByCustomer(thursday("12:00"));
 

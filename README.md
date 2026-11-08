@@ -25,7 +25,7 @@ src/main/java/
   ie/port/                      one integration event interface per publishing context
   ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
-docs/                           the product description, the domain plan and the module discipline
+docs/                           the product description, the domain plan, the module discipline and the domain audit
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
 ```

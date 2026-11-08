@@ -18,7 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /** Feature: Search criteria. */
-class SearchCriteriaTest {
+class SearchCriteriaValidationTest {
 
     static final SearchLimits LAUNCH_LIMITS = new SearchLimits(1, 6, 1, 10, Duration.ofHours(2), Duration.ofDays(30));
     static final Instant SATURDAY_0900 = Instant.parse("2026-11-14T01:00:00Z");

@@ -12,6 +12,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.stream.Stream;
+import kernel.Money;
+import kernel.Percentage;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -115,10 +117,22 @@ class ReservationRequestTest {
 
     @Test
     void theReservationKeepsThePolicyInForceWhenRequested() {
-        Reservation reservation = request(aBooking());
+        Reservation underVersion1 = request(aBooking());
+        PolicySnapshot v1 = theLaunchPolicy();
+        PolicySnapshot version2 = new PolicySnapshot(
+                2, Percentage.of(12), v1.minimumNotice(), v1.bookingHorizon(), v1.requestExpiry(), v1.feeWindow(),
+                v1.cancellationFees(), v1.providerLateCancellationFine(), v1.providerNoShowFine(), v1.earliestCheckIn(),
+                v1.checkInPeriod(), v1.checkInRadiusMetres(), v1.customerNoShowWait(), v1.customerNoShowFee(),
+                v1.noShowReportWindow(), v1.completionReminder(), v1.completionDeadline(), v1.disputeWindowExtension(),
+                v1.teamReminder());
 
-        assertThat(reservation.policy().version()).isEqualTo(1);
-        assertThat(reservation.policy()).isEqualTo(theLaunchPolicy());
+        Reservation underVersion2 = Reservation.request(
+                "customer-2", aBooking().build(), anOffering().build(), version2, Optional.empty(), PaymentMethod.CARD, NOW);
+
+        assertThat(underVersion1.policy().version()).isEqualTo(1);
+        assertThat(underVersion1.price().serviceFee()).isEqualTo(Money.parse("30.00"));
+        assertThat(underVersion2.policy().version()).isEqualTo(2);
+        assertThat(underVersion2.price().serviceFee()).isEqualTo(Money.parse("24.00"));
     }
 
     @Test

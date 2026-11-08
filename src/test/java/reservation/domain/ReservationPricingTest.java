@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class ReservationPricingTest {
 
     @Test
-    void priceWithASeparateTravelFee() {
+    void aSeparateTravelFeeIsAddedToTheHoursFeeBeforeTheServiceFee() {
         PriceBreakdown price = aReservation()
                 .withOffering(anOffering().charging("30").withSeparateTravelFee("20"))
                 .forBooking(aBooking().withHelpers(2).forHours(3))
@@ -28,7 +28,7 @@ class ReservationPricingTest {
     }
 
     @Test
-    void priceWithTheTravelFeeIncluded() {
+    void withTravelIncludedTheProviderPriceIsTheHoursFee() {
         PriceBreakdown price = aReservation()
                 .withOffering(anOffering().charging("35").withTravelIncluded())
                 .forBooking(aBooking().withHelpers(2).forHours(3))
