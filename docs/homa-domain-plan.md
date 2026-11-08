@@ -1180,7 +1180,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 
 | Event | Published by | Listened to by | Carries the result of |
 |---|---|---|---|
+| `JobAddedIE` | catalogue | offering | `JobList.add` |
 | `JobRetiredIE` | catalogue | offering | `JobList.retire` |
+| `ToolAddedIE` | catalogue | offering | `ToolList.add` |
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |

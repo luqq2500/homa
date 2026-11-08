@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Post-development quality gates that Maven does not enforce on its own (Discipline §9).
 
-Run after `mvn verify`, which already enforces unit tests, the dependency rule (ArchUnit) and the
-90% mutation threshold for the whole project (PIT). This script reads the same reports per context,
-where a context is a top-level package under src/main/java (kernel, catalogue, policy, ...):
+Run after `mvn verify`, which already enforces unit tests, the dependency rule (ArchUnit) and PIT's
+whole-project mutation floor. This script reads the same reports per layer. A context is a top-level
+package under src/main/java; its layers are the packages below it (catalogue.domain, catalogue.usecase,
+...). `kernel` and `ie` have no layers.
 
   * CRAP index below 6 for every method, from JaCoCo's report.
-  * Mutation score and test strength of at least 90% for each context, not just overall.
-  * Mutation ratchet: a context's score and test strength may never drop below its last passing
-    score, stored in quality/ratchet.json. Pass --update to raise the ratchet after a pass.
-  * Every context is in PIT's targetClasses in pom.xml, so a new context cannot skip the gate. The
-    integration event contracts in ie/ have no logic and are exempt from the mutation gate.
+  * Mutation score and test strength per layer: at least 90% for kernel and every domain, at least 80%
+    for every usecase. Infra has no mutation gate; it is verified by integration tests.
+  * Mutation ratchet: a layer's score and test strength may never drop below its last passing score,
+    stored in quality/ratchet.json. Pass --update to raise the ratchet after a pass.
+  * Every context is in PIT's targetClasses in pom.xml, so a new context cannot skip the gate.
+  * The integration event contracts in ie/ have no logic and are exempt from the mutation gate.
 
 Usage: python3 tools/quality_gates.py [--update]
 """
@@ -27,17 +29,29 @@ JACOCO = ROOT / "target" / "site" / "jacoco" / "jacoco.xml"
 PIT = ROOT / "target" / "pit-reports" / "mutations.xml"
 RATCHET = ROOT / "quality" / "ratchet.json"
 CRAP_LIMIT = 6.0
+LAYERS = ("domain", "usecase", "infra")
+MUTATION_THRESHOLDS = {"kernel": 90.0, "domain": 90.0, "usecase": 80.0}
 # Event records have no logic, so the mutation gate does not apply to them (domain plan, Integration events).
 NO_MUTATION_GATE = {"ie"}
-MUTATION_THRESHOLD = 90.0
 
 
-def contexts():
-    return sorted(p.name for p in SOURCES.iterdir() if p.is_dir())
+def layers():
+    """Every gated unit: kernel, ie, and each <context>.<layer> that has code."""
+    found = []
+    for context in sorted(p for p in SOURCES.iterdir() if p.is_dir()):
+        present = [layer for layer in LAYERS if (context / layer).is_dir()]
+        found += [f"{context.name}.{layer}" for layer in present] if present else [context.name]
+    return found
 
 
-def context_of(class_name):
-    return re.split(r"[./]", class_name, maxsplit=1)[0]
+def layer_of(class_name):
+    parts = re.split(r"[./]", class_name)
+    return f"{parts[0]}.{parts[1]}" if len(parts) > 2 and parts[1] in LAYERS else parts[0]
+
+
+def threshold_of(layer):
+    kind = layer.split(".")[-1]
+    return MUTATION_THRESHOLDS.get(kind)
 
 
 def counter(element, kind):
@@ -47,10 +61,10 @@ def counter(element, kind):
     return 0, 0
 
 
-def crap_by_context(failures):
+def crap_by_layer(failures):
     worst = defaultdict(float)
     for cls in ET.parse(JACOCO).getroot().iter("class"):
-        context = context_of(cls.get("name"))
+        layer = layer_of(cls.get("name"))
         for method in cls.findall("method"):
             missed_c, covered_c = counter(method, "COMPLEXITY")
             missed_i, covered_i = counter(method, "INSTRUCTION")
@@ -58,25 +72,26 @@ def crap_by_context(failures):
             total = missed_i + covered_i
             coverage = covered_i / total if total else 1.0
             crap = complexity ** 2 * (1 - coverage) ** 3 + complexity
-            worst[context] = max(worst[context], crap)
+            worst[layer] = max(worst[layer], crap)
             if crap >= CRAP_LIMIT:
                 name = cls.get("name").replace("/", ".") + "#" + method.get("name")
                 failures.append(f"{name} CRAP {crap:.1f} (complexity {complexity}, coverage {coverage:.0%})")
     return worst
 
 
-def mutation_by_context():
+def mutation_by_layer():
     statuses = defaultdict(list)
     for m in ET.parse(PIT).getroot().iter("mutation"):
-        statuses[context_of(m.findtext("mutatedClass"))].append(m.get("status"))
+        statuses[layer_of(m.findtext("mutatedClass"))].append(m.get("status"))
     scores = {}
-    for context, found in statuses.items():
+    for layer, found in statuses.items():
         total = len(found)
         killed = sum(1 for s in found if s in ("KILLED", "TIMED_OUT", "MEMORY_ERROR"))
         covered = total - sum(1 for s in found if s == "NO_COVERAGE")
-        scores[context] = {
+        scores[layer] = {
             "score": round(100 * killed / total, 2) if total else 100.0,
             "strength": round(100 * killed / covered, 2) if covered else 100.0,
+            "mutants": total,
         }
     return scores
 
@@ -92,31 +107,34 @@ def main(update):
             return 1
     ratchet = json.loads(RATCHET.read_text()) if RATCHET.exists() else {}
     failures = []
-    worst = crap_by_context(failures)
-    mutation = mutation_by_context()
+    worst = crap_by_layer(failures)
+    mutation = mutation_by_layer()
     targets = pit_targets()
 
-    print(f"{'context':<14}{'worst CRAP':>12}{'mutation':>11}{'strength':>11}{'ratchet':>10}")
-    for context in contexts():
-        last = ratchet.get(context, {"score": 0.0, "strength": 0.0})
-        if context in NO_MUTATION_GATE:
-            print(f"{context:<14}{worst[context]:>12.1f}{'n/a':>11}{'n/a':>11}{'n/a':>10}")
+    print(f"{'layer':<22}{'worst CRAP':>11}{'mutants':>9}{'mutation':>10}{'strength':>10}{'limit':>7}{'ratchet':>9}")
+    for layer in layers():
+        context = layer.split(".")[0]
+        threshold = threshold_of(layer)
+        last = ratchet.get(layer, {"score": 0.0, "strength": 0.0})
+        if context in NO_MUTATION_GATE or threshold is None:
+            print(f"{layer:<22}{worst[layer]:>11.1f}{'-':>9}{'n/a':>10}{'n/a':>10}{'n/a':>7}{'n/a':>9}")
             continue
         if context not in targets:
             failures.append(f"{context}: not in PIT targetClasses in pom.xml")
-        scores = mutation.get(context)
+        scores = mutation.get(layer)
         if scores is None:
-            failures.append(f"{context}: no mutants in the PIT report")
-            print(f"{context:<14}{worst[context]:>12.1f}{'-':>11}{'-':>11}{last['score']:>9.2f}%")
+            failures.append(f"{layer}: no mutants in the PIT report")
+            print(f"{layer:<22}{worst[layer]:>11.1f}{'-':>9}{'-':>10}{'-':>10}{threshold:>6.0f}%{last['score']:>8.2f}%")
             continue
         for key in ("score", "strength"):
-            if scores[key] < MUTATION_THRESHOLD:
-                failures.append(f"{context}: mutation {key} {scores[key]}% is below {MUTATION_THRESHOLD}%")
+            if scores[key] < threshold:
+                failures.append(f"{layer}: mutation {key} {scores[key]}% is below {threshold:.0f}%")
             if scores[key] < last[key]:
-                failures.append(f"{context}: mutation {key} {scores[key]}% fell below the ratchet {last[key]}%")
-        print(f"{context:<14}{worst[context]:>12.1f}{scores['score']:>10.2f}%{scores['strength']:>10.2f}%{last['score']:>9.2f}%")
+                failures.append(f"{layer}: mutation {key} {scores[key]}% fell below the ratchet {last[key]}%")
+        print(f"{layer:<22}{worst[layer]:>11.1f}{scores['mutants']:>9}{scores['score']:>9.2f}%{scores['strength']:>9.2f}%"
+              f"{threshold:>6.0f}%{last['score']:>8.2f}%")
         if update:
-            ratchet[context] = {key: max(scores[key], last[key]) for key in ("score", "strength")}
+            ratchet[layer] = {key: max(scores[key], last[key]) for key in ("score", "strength")}
 
     if failures:
         print("\nQuality gates FAILED:")

@@ -13,6 +13,7 @@ pom.xml                         one Maven project: Java 21, JUnit 5, ArchUnit, J
 src/main/java/
   kernel/                       shared kernel: Money, Percentage (Java standard library only)
   catalogue/domain/             job list, tool list, service area, homepage shelves
+  catalogue/usecase/            Homa curating the catalogue; providers and customers viewing it
   policy/domain/                Homa-set values and their versions
   account/domain/               customer and provider accounts, helpers, phone and eKYC verification
   offering/domain/              a provider's listing and the rules for going live
@@ -27,7 +28,7 @@ src/main/java/
 src/test/java/                  the same packages, one test class per feature
 docs/                           the product description, the domain plan, the module discipline and the domain audit
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
-quality/ratchet.json            last passing mutation score per context
+quality/ratchet.json            last passing mutation score per layer
 ```
 
 Each bounded context is a top-level package, with its layers below it: `catalogue.domain` now, and
@@ -42,7 +43,7 @@ the gate script fails if one is missing.
 
 ```bash
 mvn verify                          # unit tests, dependency rule (ArchUnit), mutation >= 90% (PIT)
-python3 tools/quality_gates.py      # CRAP < 6 per method, mutation >= 90% per context, ratchet
+python3 tools/quality_gates.py      # CRAP < 6 per method; mutation per layer (kernel and domain >= 90%, usecase >= 80%); ratchet
 python3 tools/quality_gates.py --update   # after a pass: raise the ratchet
 ```
 
@@ -67,7 +68,17 @@ Build order from the domain plan:
 | 10 | `discovery` | Done |
 | 11 | `ie/` integration event contracts | Done |
 
-The domain phase is complete. Next by the discipline: the usecase layer.
+The domain phase is complete.
+
+### Usecase phase
+
+Planned in `docs/homa-usecase-plan.md`: the conventions, each context's usecases, how one context gets
+another's data, and open questions U1 to U7.
+
+| Context | Usecase layer |
+|---|---|
+| `catalogue` | Done: the reference pattern |
+| the others | Waiting for review of the usecase plan |
 
 ### Decisions taken while building (to fold back into the plan)
 

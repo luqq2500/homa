@@ -16,6 +16,7 @@ import ie.events.HelperRemovedIE;
 import ie.events.HelperVerificationRejectedIE;
 import ie.events.HelperVerifiedIE;
 import ie.events.HomaPolicyChangedIE;
+import ie.events.JobAddedIE;
 import ie.events.JobRetiredIE;
 import ie.events.ListingChangedIE;
 import ie.events.ListingWentOfflineIE;
@@ -38,6 +39,7 @@ import ie.events.ReservationExpiredIE;
 import ie.events.ReservationRequestedIE;
 import ie.events.SettlementDecidedIE;
 import ie.events.TeamNamedIE;
+import ie.events.ToolAddedIE;
 import ie.events.ToolRetiredIE;
 import ie.port.AccountIE;
 import ie.port.CatalogueIE;
@@ -78,7 +80,9 @@ class IntegrationEventContractTest {
 
     static Stream<Arguments> events() {
         return Stream.of(
+                Arguments.of(JobAddedIE.class, CatalogueIE.class),
                 Arguments.of(JobRetiredIE.class, CatalogueIE.class),
+                Arguments.of(ToolAddedIE.class, CatalogueIE.class),
                 Arguments.of(ToolRetiredIE.class, CatalogueIE.class),
                 Arguments.of(HomaPolicyChangedIE.class, PolicyIE.class),
                 Arguments.of(CustomerRegisteredIE.class, AccountIE.class),
@@ -184,7 +188,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(36);
+        assertThat(events().count()).isEqualTo(38);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

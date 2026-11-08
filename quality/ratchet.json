@@ -1,21 +1,25 @@
 {
-  "account": {
+  "account.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "availability": {
+  "availability.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "catalogue": {
+  "catalogue.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "conversation": {
+  "catalogue.usecase": {
     "score": 100.0,
     "strength": 100.0
   },
-  "discovery": {
+  "conversation.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "discovery.domain": {
     "score": 100.0,
     "strength": 100.0
   },
@@ -23,23 +27,23 @@
     "score": 100.0,
     "strength": 100.0
   },
-  "offering": {
+  "offering.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "payment": {
+  "payment.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "policy": {
+  "policy.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "reservation": {
+  "reservation.domain": {
     "score": 100.0,
     "strength": 100.0
   },
-  "resolution": {
+  "resolution.domain": {
     "score": 100.0,
     "strength": 100.0
   }
