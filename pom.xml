@@ -18,6 +18,7 @@
         <module>kernel</module>
         <module>catalogue</module>
         <module>policy</module>
+        <module>account</module>
     </modules>
 
     <properties>

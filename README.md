@@ -13,6 +13,7 @@ pom.xml                 parent build: Java 21, JUnit 5, ArchUnit, JaCoCo, PIT
 kernel/                 shared kernel: Money, Percentage (Java standard library only)
 catalogue/              job list, tool list, service area, homepage shelves
 policy/                 Homa-set values and their versions
+account/                customer and provider accounts, helpers, phone and eKYC verification
 tools/quality_gates.py  CRAP gate and mutation ratchet
 quality/ratchet.json    last passing mutation score per module
 ```
@@ -41,8 +42,9 @@ Build order from the domain plan:
 | 0 | `kernel` | Done |
 | 1 | `catalogue` | Done |
 | 2 | `policy` | Done |
-| 3 | `account` | Next |
-| 4–10 | `offering`, `availability`, `reservation`, `payment`, `resolution`, `conversation`, `discovery` | To do |
+| 3 | `account` | Done |
+| 4 | `offering` | Next |
+| 5–10 | `availability`, `reservation`, `payment`, `resolution`, `conversation`, `discovery` | To do |
 | 11 | `ie/` integration event contracts | To do, after every context passes its gates |
 
 ### Decisions taken while building (to fold back into the plan)
@@ -65,4 +67,15 @@ Build order from the domain plan:
   tool is retired only once and its code is never reused; shelves are ordered from 1. A preset search
   needs at least one job, hour and helper. Homa's upper limits (6 hours, 10 helpers) can change, so
   they are checked when the search runs, in `discovery`.
+- **Account details:**
+  - Customers register with a name as well as a phone number and address, because the spec says
+    providers see "the customer's name, address and reservation details".
+  - Phone numbers are Malaysian mobiles (`+601` then 8 or 9 digits).
+  - The SMS code (open question 5) is 6 digits and expires 5 minutes after it is sent, exactly at the
+    5-minute mark. After 5 wrong codes, a new code is needed.
+  - An eKYC result is `VERIFIED` or `REJECTED`; a rejected provider can be verified on a later attempt.
+  - A provider is their own helper by default.
+  - `Helper.remove()` is added, so `HelperRemovedIE` has a domain method behind it.
+- **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
+  with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
