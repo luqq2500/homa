@@ -1355,7 +1355,8 @@ class ReservationCustomerCancellationTest {
 ## Decisions made while building
 
 These are folded in from the build. The method blocks and object tables above already match them;
-this section records the reasoning and the edge cases.
+this section records the reasoning and the edge cases. The product-level decisions are also stated in
+`docs/homa-product-description.md`.
 
 All decisions below are confirmed by the product owner, including: customers have a name; `HomaLimits` for hours and helpers; a live
 listing whose verified team becomes empty is no longer live; every decision listed under the
