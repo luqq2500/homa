@@ -3,15 +3,14 @@ package ie.events;
 import ie.port.ResolutionIE;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import kernel.Money;
 
-/** The founders decided a case, with a reason. */
+/** The founders decided a case, with a reason. {@code providerReceives} is what is at stake for a release, RM0.00 for a full refund, or the decided amount for a partial refund. */
 public record CaseDecidedIE(
         String caseId,
         String reservationId,
         String outcome,
-        Optional<Money> providerReceives,
+        Money providerReceives,
         String reason,
         Instant occurredAt) implements ResolutionIE {
 

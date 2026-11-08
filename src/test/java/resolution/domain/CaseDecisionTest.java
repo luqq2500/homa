@@ -144,6 +144,22 @@ class CaseDecisionTest {
         }
 
         @Test
+        void theDecisionSaysWhatTheProviderReceives() {
+            Case released = anOpenCase(CaseSource.CUSTOMER_REPORT);
+            Case refunded = anOpenCase(CaseSource.CUSTOMER_REPORT);
+            Case partial = anOpenCase(CaseSource.CUSTOMER_REPORT);
+            assertThat(released.providerReceives()).isEmpty();
+
+            released.decide(Decision.release(), "Work was done", DECIDED);
+            refunded.decide(Decision.fullRefund(), "Work was not done", DECIDED);
+            partial.decide(Decision.partialRefund(rm("120.00")), "Half done", DECIDED);
+
+            assertThat(released.providerReceives()).contains(rm("200.00"));
+            assertThat(refunded.providerReceives()).contains(rm("0.00"));
+            assertThat(partial.providerReceives()).contains(rm("120.00"));
+        }
+
+        @Test
         void aDecisionNamesItsOutcome() {
             assertThat(Decision.release().outcome()).isEqualTo(Decision.Outcome.RELEASE);
             assertThat(Decision.fullRefund().providerReceives()).isEmpty();

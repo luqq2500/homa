@@ -3,25 +3,24 @@ package ie.events;
 import ie.port.OfferingIE;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import kernel.Money;
 
-/** A provider's listing changed. It carries the whole listing as it now is. */
+/** A live listing changed. It carries the whole listing as it now is. When travel is included, {@code travelFee} is RM0.00. */
 public record ListingChangedIE(
         String listingId,
         String providerId,
-        boolean live,
         Set<String> jobCodes,
         Set<String> toolCodes,
-        Optional<Money> hourlyRatePerHelper,
-        Optional<Money> separateTravelFee,
+        Money hourlyRatePerHelper,
+        boolean travelIncluded,
+        Money travelFee,
         int minHours,
         int maxHours,
         int minHelpers,
         int maxHelpers,
         Set<String> cities,
-        Optional<String> cancellationTier,
+        String cancellationTier,
         Set<String> verifiedHelperIds,
         Instant occurredAt) implements OfferingIE {
 
@@ -31,7 +30,7 @@ public record ListingChangedIE(
         jobCodes = Set.copyOf(jobCodes);
         toolCodes = Set.copyOf(toolCodes);
         Objects.requireNonNull(hourlyRatePerHelper, "hourlyRatePerHelper");
-        Objects.requireNonNull(separateTravelFee, "separateTravelFee");
+        Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
         verifiedHelperIds = Set.copyOf(verifiedHelperIds);

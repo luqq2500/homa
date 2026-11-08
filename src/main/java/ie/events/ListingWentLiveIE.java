@@ -3,18 +3,18 @@ package ie.events;
 import ie.port.OfferingIE;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import kernel.Money;
 
-/** A provider's listing went live, with what search needs to match it. */
+/** A provider's listing went live, with what search needs to match it. When travel is included, {@code travelFee} is RM0.00. */
 public record ListingWentLiveIE(
         String listingId,
         String providerId,
         Set<String> jobCodes,
         Set<String> toolCodes,
         Money hourlyRatePerHelper,
-        Optional<Money> separateTravelFee,
+        boolean travelIncluded,
+        Money travelFee,
         int minHours,
         int maxHours,
         int minHelpers,
@@ -30,7 +30,7 @@ public record ListingWentLiveIE(
         jobCodes = Set.copyOf(jobCodes);
         toolCodes = Set.copyOf(toolCodes);
         Objects.requireNonNull(hourlyRatePerHelper, "hourlyRatePerHelper");
-        Objects.requireNonNull(separateTravelFee, "separateTravelFee");
+        Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
         verifiedHelperIds = Set.copyOf(verifiedHelperIds);

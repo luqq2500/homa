@@ -106,6 +106,18 @@ public final class Case {
         return Optional.ofNullable(decision);
     }
 
+    /**
+     * What the provider receives under the decision: what was at stake for a release, nothing for a full
+     * refund, or the decided amount for a partial refund. Empty until the case is decided.
+     */
+    public Optional<Money> providerReceives() {
+        return decision().map(decided -> switch (decided.outcome()) {
+            case RELEASE -> atStake;
+            case FULL_REFUND -> Money.ZERO;
+            case PARTIAL_REFUND -> decided.providerReceives().orElseThrow();
+        });
+    }
+
     public Optional<String> reason() {
         return Optional.ofNullable(reason);
     }

@@ -25,6 +25,7 @@ src/main/java/
   ie/port/                      one integration event interface per publishing context
   ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
+docs/                           the product description, the domain plan and the module discipline
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per context
 ```
@@ -190,12 +191,20 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Seven publishing contexts each have an event interface in `ie/port`, and the 32 events in the
+  - Seven publishing contexts each have an event interface in `ie/port`, and the 34 events in the
     plan's table are records in `ie/events`. Availability, conversation and discovery only listen.
   - Every event carries `occurredAt`, which the usecase supplies.
-  - Besides primitives, Strings and kernel types, events use JDK value types: `Instant`, `Duration`,
-    and immutable `Set`, `List` and `Optional`. They carry no domain object; enums go across as their
-    names.
+  - The rule (confirmed, and updated in `docs/`): events carry only primitives, Strings, kernel types
+    and JDK value types (`Instant`, `Duration`, immutable `List` and `Set`). Never domain objects, and
+    no `Optional` fields. Enums go across as their names. Collections are copied in each record's
+    compact constructor. A contract test checks every field's type.
+  - Rather than nullable fields, events are split so every value is always present:
+    - Listing events carry `travelIncluded` and a `travelFee` that is RM0 when travel is included.
+    - `ListingChangedIE` is for live listings only. `ListingWentOfflineIE` covers a live listing that
+      stops being live.
+    - `EnquiryRequestedIE` (from `Enquiry.markRequested`) links the chat, instead of an optional
+      enquiry id on `ReservationRequestedIE`.
+    - `CaseDecidedIE.providerReceives` is always set, from `Case.providerReceives`.
   - `HomaPolicyChangedIE` carries every Homa-set value, so listeners keep a full copy. The listing
     events carry the whole listing that search needs. `ReportFiledIE`, `NoShowChallengedIE` and
     `CompletionDeadlineMissedIE` carry the amount at stake for the case.

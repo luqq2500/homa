@@ -9,6 +9,7 @@ import ie.events.CompletionSubmittedIE;
 import ie.events.CustomerRegisteredIE;
 import ie.events.EnquiryClosedIE;
 import ie.events.EnquiryCreatedIE;
+import ie.events.EnquiryRequestedIE;
 import ie.events.FineChargedIE;
 import ie.events.FineWaivedIE;
 import ie.events.HelperRemovedIE;
@@ -16,6 +17,7 @@ import ie.events.HelperVerifiedIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobRetiredIE;
 import ie.events.ListingChangedIE;
+import ie.events.ListingWentOfflineIE;
 import ie.events.ListingWentLiveIE;
 import ie.events.NoShowChallengedIE;
 import ie.events.PaymentCapturedIE;
@@ -54,7 +56,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import kernel.Money;
@@ -85,7 +86,9 @@ class IntegrationEventContractTest {
                 Arguments.of(HelperRemovedIE.class, AccountIE.class),
                 Arguments.of(ListingWentLiveIE.class, OfferingIE.class),
                 Arguments.of(ListingChangedIE.class, OfferingIE.class),
+                Arguments.of(ListingWentOfflineIE.class, OfferingIE.class),
                 Arguments.of(EnquiryCreatedIE.class, ReservationIE.class),
+                Arguments.of(EnquiryRequestedIE.class, ReservationIE.class),
                 Arguments.of(EnquiryClosedIE.class, ReservationIE.class),
                 Arguments.of(ReservationRequestedIE.class, ReservationIE.class),
                 Arguments.of(ReservationEditedIE.class, ReservationIE.class),
@@ -154,9 +157,30 @@ class IntegrationEventContractTest {
                 .isTrue();
     }
 
+    private static final Set<Class<?>> ALLOWED = Set.of(
+            int.class, long.class, boolean.class, String.class, Money.class, Percentage.class,
+            Instant.class, Duration.class, List.class, Set.class);
+
+    /**
+     * Events carry only primitives, Strings, kernel types and JDK value types ({@code Instant},
+     * {@code Duration}, immutable {@code List} and {@code Set}): never a domain object, and no
+     * {@code Optional} fields. Collections hold Strings.
+     */
+    @ParameterizedTest(name = "{0} carries only allowed types")
+    @MethodSource("events")
+    void anEventCarriesOnlyPrimitivesStringsKernelAndJdkValueTypes(Class<? extends Record> event, Class<?> port) {
+        for (RecordComponent component : event.getRecordComponents()) {
+            assertThat(ALLOWED).as("%s.%s", event.getSimpleName(), component.getName()).contains(component.getType());
+            if (component.getGenericType() instanceof ParameterizedType collection) {
+                assertThat(collection.getActualTypeArguments()).as("%s.%s", event.getSimpleName(), component.getName())
+                        .containsExactly(String.class);
+            }
+        }
+    }
+
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(32);
+        assertThat(events().count()).isEqualTo(34);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {
@@ -210,10 +234,6 @@ class IntegrationEventContractTest {
         if (type == List.class) {
             return new ArrayList<>(List.of(name + "-1"));
         }
-        if (type == Optional.class) {
-            Type held = ((ParameterizedType) generic).getActualTypeArguments()[0];
-            return Optional.of(held == Money.class ? Money.parse("20.00") : name + "-1");
-        }
-        throw new AssertionError("No sample for " + type + " in " + name + "; events carry only primitives, Strings, kernel and JDK value types");
+        throw new AssertionError("No sample for " + type + " in " + name);
     }
 }
