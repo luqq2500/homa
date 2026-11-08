@@ -15,6 +15,7 @@ catalogue/              job list, tool list, service area, homepage shelves
 policy/                 Homa-set values and their versions
 account/                customer and provider accounts, helpers, phone and eKYC verification
 offering/               a provider's listing and the rules for going live
+availability/           a provider's windows, synced busy blocks and reservation holds
 tools/quality_gates.py  CRAP gate and mutation ratchet
 quality/ratchet.json    last passing mutation score per module
 ```
@@ -45,8 +46,9 @@ Build order from the domain plan:
 | 2 | `policy` | Done |
 | 3 | `account` | Done |
 | 4 | `offering` | Done |
-| 5 | `availability` | Next |
-| 6–10 | `reservation`, `payment`, `resolution`, `conversation`, `discovery` | To do |
+| 5 | `availability` | Done |
+| 6 | `reservation`, slice by slice | Next |
+| 7–10 | `payment`, `resolution`, `conversation`, `discovery` | To do |
 | 11 | `ie/` integration event contracts | To do, after every context passes its gates |
 
 ### Decisions taken while building (to fold back into the plan)
@@ -89,6 +91,14 @@ Build order from the domain plan:
   - Go-live lists every missing requirement, including the provider's own verification and the
     helpers' verification. Only a live listing gives an `OfferingSnapshot`, and a live listing doesn't
     go live twice.
+- **Availability details:**
+  - Windows that touch or overlap count as one stretch.
+  - A busy block or hold that only touches a slot (ending at 10:00 for a 10:00 start) leaves it
+    available.
+  - A hold also needs the slot to be inside the windows.
+  - Each reservation holds one slot, and releasing a reservation that holds nothing is an error.
+  - `nearestAvailableStart` searches in 15-minute steps outward from the wanted start, up to the given
+    distance either side, and takes the later start when two are equally near.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.

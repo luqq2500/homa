@@ -20,6 +20,7 @@
         <module>policy</module>
         <module>account</module>
         <module>offering</module>
+        <module>availability</module>
     </modules>
 
     <properties>
