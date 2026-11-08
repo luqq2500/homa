@@ -191,12 +191,12 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Seven publishing contexts each have an event interface in `ie/port`, and the 34 events in the
+  - Seven publishing contexts each have an event interface in `ie/port`, and the 36 events in the
     plan's table are records in `ie/events`. Availability, conversation and discovery only listen.
   - Every event carries `occurredAt`, which the usecase supplies.
-  - The rule (confirmed, and updated in `docs/`): events carry only primitives, Strings, kernel types
-    and JDK value types (`Instant`, `Duration`, immutable `List` and `Set`). Never domain objects, and
-    no `Optional` fields. Enums go across as their names. Collections are copied in each record's
+  - The rule (confirmed, and the same in `docs/`): events carry primitives, Strings, kernel types and
+    JDK value types (`Instant`, `Duration`, immutable `List`/`Set`); never domain objects; no `Optional`
+    fields. Enums go across as their names. Collections are copied in each record's
     compact constructor. A contract test checks every field's type.
   - Rather than nullable fields, events are split so every value is always present:
     - Listing events carry `travelIncluded` and a `travelFee` that is RM0 when travel is included.
@@ -208,7 +208,9 @@ hours either side.
   - `HomaPolicyChangedIE` carries every Homa-set value, so listeners keep a full copy. The listing
     events carry the whole listing that search needs. `ReportFiledIE`, `NoShowChallengedIE` and
     `CompletionDeadlineMissedIE` carry the amount at stake for the case.
-  - `ProviderVerifiedIE` and `HelperVerifiedIE` are published for a `VERIFIED` result only.
+  - One event per outcome (confirmed): `ProviderVerifiedIE` and `HelperVerifiedIE` mean verified,
+    nothing else. A rejection has its own event, `ProviderVerificationRejectedIE` or
+    `HelperVerificationRejectedIE`, so the provider is told to redo eKYC.
   - The tests check that each event can't be built with a required field missing, can't be changed
     after it is built, and belongs to its context's interface. ArchUnit checks that `ie` imports only
     `kernel` and Java and that no domain imports `ie`. The mutation gate doesn't apply to `ie`.

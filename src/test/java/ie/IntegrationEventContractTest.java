@@ -13,6 +13,7 @@ import ie.events.EnquiryRequestedIE;
 import ie.events.FineChargedIE;
 import ie.events.FineWaivedIE;
 import ie.events.HelperRemovedIE;
+import ie.events.HelperVerificationRejectedIE;
 import ie.events.HelperVerifiedIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobRetiredIE;
@@ -25,6 +26,7 @@ import ie.events.PaymentRefundedIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
 import ie.events.ProviderCheckedInIE;
+import ie.events.ProviderVerificationRejectedIE;
 import ie.events.ProviderVerifiedIE;
 import ie.events.ReportFiledIE;
 import ie.events.ReservationAcceptedIE;
@@ -81,8 +83,10 @@ class IntegrationEventContractTest {
                 Arguments.of(HomaPolicyChangedIE.class, PolicyIE.class),
                 Arguments.of(CustomerRegisteredIE.class, AccountIE.class),
                 Arguments.of(ProviderVerifiedIE.class, AccountIE.class),
+                Arguments.of(ProviderVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(PayoutAccountReadyIE.class, AccountIE.class),
                 Arguments.of(HelperVerifiedIE.class, AccountIE.class),
+                Arguments.of(HelperVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(HelperRemovedIE.class, AccountIE.class),
                 Arguments.of(ListingWentLiveIE.class, OfferingIE.class),
                 Arguments.of(ListingChangedIE.class, OfferingIE.class),
@@ -162,9 +166,9 @@ class IntegrationEventContractTest {
             Instant.class, Duration.class, List.class, Set.class);
 
     /**
-     * Events carry only primitives, Strings, kernel types and JDK value types ({@code Instant},
-     * {@code Duration}, immutable {@code List} and {@code Set}): never a domain object, and no
-     * {@code Optional} fields. Collections hold Strings.
+     * Events carry primitives, Strings, kernel types and JDK value types ({@code Instant},
+     * {@code Duration}, immutable {@code List}/{@code Set}); never domain objects; no {@code Optional}
+     * fields. Collections hold Strings.
      */
     @ParameterizedTest(name = "{0} carries only allowed types")
     @MethodSource("events")
@@ -180,7 +184,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(34);
+        assertThat(events().count()).isEqualTo(36);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

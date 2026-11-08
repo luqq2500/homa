@@ -21,7 +21,7 @@ The codebase is partitioned into **shared modules** and **bounded-context module
 ### Shared Modules
 
 - `kernel/`: The shared kernel. It holds *only* small, immutable, domain-agnostic value primitives that every bounded context's domain needs, such as `Money` and `Percentage`. It has no dependencies of its own (no framework, no other module), no entities, no repositories and no business rules of any one bounded context. It is the **only** module a `domain` layer may import.
-- `ie/`: The integration event contract module. It holds *only* event interfaces and event definitions that other bounded contexts may depend on. It carries no behavior and no business logic. Events carry only primitives, Strings, kernel types and JDK value types (`Instant`, `Duration`, immutable `List` and `Set`). Never domain objects, and no `Optional` fields. Collections are copied defensively in the record's compact constructor. `ie/` depends only on `kernel/`, and no `domain` layer imports it.
+- `ie/`: The integration event contract module. It holds *only* event interfaces and event definitions that other bounded contexts may depend on. It carries no behavior and no business logic. Events carry primitives, Strings, kernel types and JDK value types (`Instant`, `Duration`, immutable `List`/`Set`); never domain objects; no `Optional` fields. Collections are copied defensively in the record's compact constructor. `ie/` depends only on `kernel/`, and no `domain` layer imports it.
 - Other shared modules hold domain-agnostic, cross-cutting primitives that more than one bounded context genuinely needs. Domain layers may not import them.
 
 #### Shared Kernel Admission Rule

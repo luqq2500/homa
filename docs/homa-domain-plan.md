@@ -1170,10 +1170,11 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 **Rules**
 
 - `ie/` holds only event interfaces (`ie/port/`) and immutable event records (`ie/events/`). No behaviour.
-- Events carry only primitives, Strings, kernel types and JDK value types (`Instant`, `Duration`, immutable `List` and `Set`). Never domain objects, and no `Optional` fields. No context leaks its internals. A value that is not always there is a sign the event should be split, so every field is always present.
+- Events carry primitives, Strings, kernel types and JDK value types (`Instant`, `Duration`, immutable `List`/`Set`); never domain objects; no `Optional` fields. No context leaks its internals. When a value is not always there, split the event so every field is always present (preferred), or use a nullable field with an accessor that returns `Optional<T>`.
 - Collections are copied defensively in the record's compact constructor (`List.copyOf`, `Set.copyOf`), so events stay immutable and reject nulls.
 - `ie/` depends only on `kernel/`. No `domain` imports `ie/`.
 - One event interface per publishing context, for example `ReservationIE`; each event implements it, for example `ReservationAcceptedIE implements ReservationIE`.
+- One event per outcome, never one generic event with a status field: for example `ProviderVerifiedIE` and `ProviderVerificationRejectedIE`.
 - Each event's fields come from the result of one domain method, listed below. If an event has no domain method behind it, a method is missing from the domain.
 
 | Event | Published by | Listened to by | Carries the result of |
@@ -1182,9 +1183,11 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
-| `ProviderVerifiedIE` | account | offering | `ProviderAccount.recordEkycResult` |
+| `ProviderVerifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` |
+| `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
-| `HelperVerifiedIE` | account | offering | `Helper.recordEkycResult` |
+| `HelperVerifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` |
+| `HelperVerificationRejectedIE` | account | offering, (notifications) | `Helper.recordEkycResult` with `REJECTED` |
 | `HelperRemovedIE` | account | offering | removing a helper |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
