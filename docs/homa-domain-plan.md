@@ -1204,11 +1204,12 @@ Feature: Chat
 | `Rating` | Aggregate | One per Completed reservation: the provider rating, helper ratings, when it was submitted, hidden flag and reason |
 | `RateableReservation` | Value object | feedback's own snapshot: reservation id, status, customer, provider, named helpers, when it became Completed, and whether it has already been rated |
 | `Stars` | Value object | A whole number from 1 to 5 |
-| `ProviderRating` | Value object | Overall stars (required), stars per `ProviderCategory` (optional), written feedback (optional, up to 1,000 characters) |
-| `ProviderCategory` | Enum | `QUALITY_OF_WORK`, `PUNCTUALITY`, `COMMUNICATION`, `CARE_FOR_THE_HOME` |
+| `ProviderRating` | Value object | Stars (required), a set of `Highlight`s (optional), written feedback (optional, up to 1,000 characters) |
+| `Highlight` | Enum | `GREAT_WORK`, `ON_TIME`, `RESPONSIVE`, `CAREFUL_WITH_THE_HOME`; positive only |
 | `HelperRating` | Value object | Stars and a set of `Compliment`s for one helper |
-| `Compliment` | Enum | `FRIENDLY`, `HARDWORKING`, `CAREFUL_WITH_BELONGINGS`, `COOPERATIVE`, `THOROUGH` |
-| `RatingSummary` | Aggregate | One per provider and one per helper: rating count, average stars, category averages (provider), compliment counts (helper) |
+| `Compliment` | Enum | `FRIENDLY`, `HARDWORKING`, `CAREFUL_WITH_BELONGINGS`, `COOPERATIVE`, `THOROUGH`; positive only |
+| `RatingSummary` | Aggregate | One per provider and one per helper: rating count, average stars, highlight counts (provider) or compliment counts (helper) |
+| `PickCount` | Value object | One highlight or compliment and how often it was picked, as shown: "On time · 8" |
 | `FeedbackLimits` | Value object | feedback's view of the Homa-set values: rating window, minimum ratings to show |
 
 ```java
@@ -1223,12 +1224,11 @@ RateableReservation.rated() : RateableReservation   // the same reservation, alr
 
 RatingSummary.forProvider(String providerId)
 RatingSummary.forHelper(String helperId)
-RatingSummary.record(Stars stars, Map<ProviderCategory, Stars> categories, Set<Compliment> compliments)
-RatingSummary.withdraw(Stars stars, Map<ProviderCategory, Stars> categories, Set<Compliment> compliments)
+RatingSummary.record(Stars stars, Set<String> picks)     // highlight or compliment names
+RatingSummary.withdraw(Stars stars, Set<String> picks)
 RatingSummary.averageStars() : BigDecimal          // one decimal place, half-up; only meaningful when isShown
 RatingSummary.isShown(FeedbackLimits limits) : boolean
-RatingSummary.topCompliments(int n) : List<Compliment>  // most first; ties keep the listed order
-RatingSummary.categoryAverage(ProviderCategory c) : Optional<BigDecimal>   // empty when no rating gave that category
+RatingSummary.topPicks(int n) : List<PickCount>          // most-picked highlights or compliments, with counts; ties keep the listed order
 RatingSummary.ratingCount() : int
 ```
 
@@ -1269,8 +1269,12 @@ Feature: Rating a completed reservation
       | 0     | StarsOutOfRangeException |
       | 6     | StarsOutOfRangeException |
 
-  Scenario: Category ratings and written feedback are optional
-    When C1 gives P1 5 stars with no category ratings and no written feedback
+  Scenario: Highlights and written feedback are optional
+    When C1 gives P1 5 stars with no highlights and no written feedback
+    Then the rating is recorded
+
+  Scenario: The customer picks any number of highlights
+    When C1 gives P1 4 stars with ON_TIME and RESPONSIVE
     Then the rating is recorded
 
   Scenario: Written feedback has a length limit
@@ -1334,13 +1338,18 @@ Feature: Rating summaries
     Then the average is 4.5
     And the rating count is 2
 
-  Scenario: Category averages count only the ratings that gave that category
-    Given a provider with PUNCTUALITY rated 5 once and 3 once, and two ratings without PUNCTUALITY
-    Then the PUNCTUALITY average is 4.0
+  Scenario: Highlights are counted, not averaged
+    Given a provider with 4 ratings, 3 of them picking ON_TIME and 1 picking GREAT_WORK
+    Then the provider shows ON_TIME 3 and GREAT_WORK 1
+
+  Scenario: Withdrawing a hidden rating removes its highlights
+    Given a provider with ON_TIME picked 3 times
+    When a rating that picked ON_TIME is withdrawn
+    Then ON_TIME shows 2
 
   Scenario: The most-given compliments come first
     Given a helper complimented FRIENDLY 3 times, THOROUGH twice and COOPERATIVE once
-    Then the top 2 compliments are FRIENDLY and THOROUGH
+    Then the top 2 picks are FRIENDLY 3 and THOROUGH 2
 
   Scenario: A summary cannot withdraw more ratings than it has
     Given a helper with no ratings
@@ -1680,7 +1689,7 @@ hours either side.
   with an id type, such as `Helper.add(ProviderId provider, ...)`, take a `String` id.
 - **Jobs and tools have no `equals`.** They are only reached through their list, keyed by code.
 
-- **Feedback details** (added after the domain phase closed):
+- **Feedback details** (added after the domain phase closed, confirmed by the product owner):
   - `RateableReservation` also carries whether the reservation is already rated, so `Rating.submit` can
     enforce "a reservation is rated once". The usecase sets it from storage.
   - The rating window includes its last moment: 14 days after 14:00 is still in, 14:01 is not.
@@ -1688,12 +1697,13 @@ hours either side.
     rated yet, the window is open, and every rated helper was named.
   - Written feedback is counted in characters, not bytes, and kept without surrounding spaces. Empty
     means none.
-  - A summary takes category ratings only for a provider, and compliments only for a helper. Withdrawing
-    a rating, or a category or compliment, that was never counted is rejected.
+  - A summary takes only highlights for a provider, and only compliments for a helper. A pick of the
+    wrong kind is rejected with `RatingDoesNotFitSummaryException`. Withdrawing a rating, or a pick, that
+    was never counted is rejected with `NoRatingToWithdrawException`.
   - Before any rating, the average is 0.0 and not shown. The spec shows "New".
   - The minimum ratings to show is at least 1.
-  - Events carry no maps, so `RatingSubmittedIE` carries the overall stars, whether there is written
-    feedback, and the ids of the helpers rated. Category stars stay in `feedback`'s own summaries.
+  - Events carry no maps, so `RatingSubmittedIE` carries the stars, whether there is written feedback,
+    and the ids of the helpers rated. The picks stay in `feedback`'s own summaries.
 
 ## Open questions
 

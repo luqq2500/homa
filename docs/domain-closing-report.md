@@ -210,27 +210,31 @@ Added after the phase closed, from the updated product description (Rating Polic
   Version 1 now holds 26 values.
 - **`feedback` domain:**
   - `Rating`: submitting a rating, and Homa hiding one.
-  - `RatingSummary`: the average stars, category averages and compliment counts for each provider and
-    each helper.
-  - The value objects for stars, provider and helper ratings, categories, compliments, the
-    reservation as feedback knows it, and the limits.
-  - 25 source files, 637 lines, 13 exceptions.
+  - `RatingSummary`: the average stars for each provider and each helper, plus how often each
+    highlight (provider) or compliment (helper) was picked. Picks are counted, not averaged.
+  - The value objects for stars, provider ratings (stars, any number of highlights, written feedback),
+    helper ratings (stars and compliments), highlights, compliments, pick counts, the reservation as
+    feedback knows it, and the limits.
+  - 26 source files, 619 lines, 13 exceptions.
 - **`ie/`:** `RatingSubmittedIE` and `RatingHiddenIE`, published by a new `FeedbackIE` interface.
   `HomaPolicyChangedIE` also carries the two new values. That makes 40 events.
-- **Scenarios:** all 20 feedback scenarios in the plan map to a test, named by the convention. The audit's
-  scenario table now has 147 of 147.
+- **Scenarios:** all 22 feedback scenarios in the plan map to a test, named by the convention. The audit's
+  scenario table now has 149 of 149.
 - **Gates:**
-  - `feedback.domain`: 119 mutants, all killed (100% score and test strength), worst CRAP 5.0.
-  - Whole build: 899 tests, 1,161 mutants, all killed.
+  - `feedback.domain`: 97 mutants, all killed (100% score and test strength), worst CRAP 4.0.
+  - Whole build: 901 tests, 1,139 mutants, all killed.
   - The dependency rule passes for `feedback`.
 - **Decisions while building:**
   - `RateableReservation` also carries whether the reservation is already rated, so "a reservation is
     rated once" can be enforced in the domain.
   - The rating window includes its last minute.
   - Written feedback is counted in characters.
-  - A provider summary takes no compliments, and a helper summary no category ratings.
-  - Events carry no maps, so `RatingSubmittedIE` carries the overall stars, whether there is written
-    feedback, and the rated helper ids. Category stars stay in `feedback`.
+  - A provider summary takes only highlights, and a helper summary only compliments.
+  - Events carry no maps, so `RatingSubmittedIE` carries the stars, whether there is written feedback,
+    and the rated helper ids. The picks stay in `feedback`.
+- **Revised after review:** provider categories rated with stars became highlights, picked without
+  stars, the same way as helper compliments. The provider page shows how often each highlight was
+  picked, for example "On time · 8".
 
   All of these are in the plan under "Decisions made while building". The feedback length limit and the
   window's last minute are also in the spec.

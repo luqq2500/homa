@@ -5,9 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import feedback.domain.exception.StarsOutOfRangeException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -24,15 +22,15 @@ class FeedbackValuesTest {
 
     @Test
     void aRatingKeepsWhatWasGivenEvenIfTheOriginalChanges() {
-        Map<ProviderCategory, Stars> categories = new HashMap<>(Map.of(ProviderCategory.PUNCTUALITY, Stars.of(3)));
+        Set<Highlight> highlights = new HashSet<>(Set.of(Highlight.ON_TIME));
         Set<Compliment> compliments = new HashSet<>(Set.of(Compliment.FRIENDLY));
-        ProviderRating provider = ProviderRating.of(Stars.of(4), categories, null);
+        ProviderRating provider = ProviderRating.of(Stars.of(4), highlights, null);
         HelperRating helper = new HelperRating(Stars.of(5), compliments);
 
-        categories.clear();
+        highlights.clear();
         compliments.clear();
 
-        assertThat(provider.categories()).hasSize(1);
+        assertThat(provider.highlights()).containsExactly(Highlight.ON_TIME);
         assertThat(provider.writtenFeedback()).isEmpty();
         assertThat(helper.compliments()).containsExactly(Compliment.FRIENDLY);
     }
@@ -41,6 +39,19 @@ class FeedbackValuesTest {
     void aProviderRatingNeedsOverallStars() {
         assertThatThrownBy(() -> ProviderRating.of(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new HelperRating(null, Set.of())).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void aPickCountNamesItsPick() {
+        assertThat(new PickCount("ON_TIME", 8).count()).isEqualTo(8);
+        assertThatThrownBy(() -> new PickCount(null, 1)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void providersArePickedForHighlightsAndHelpersForComplimentsInTheirListedOrder() {
+        assertThat(RatingSummary.Subject.PROVIDER.picks()).containsExactly("GREAT_WORK", "ON_TIME", "RESPONSIVE", "CAREFUL_WITH_THE_HOME");
+        assertThat(RatingSummary.Subject.HELPER.picks())
+                .containsExactly("FRIENDLY", "HARDWORKING", "CAREFUL_WITH_BELONGINGS", "COOPERATIVE", "THOROUGH");
     }
 
     @Test

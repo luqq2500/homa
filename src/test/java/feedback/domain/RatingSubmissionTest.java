@@ -42,7 +42,7 @@ class RatingSubmissionTest {
         void theCustomerRatesTheProvider() {
             Rating rating = rate(stars(4), Map.of(), sunday("10:00"));
 
-            assertThat(rating.provider().overall()).isEqualTo(Stars.of(4));
+            assertThat(rating.provider().stars()).isEqualTo(Stars.of(4));
             assertThat(rating.reservationId()).isEqualTo("R1");
             assertThat(rating.customerId()).isEqualTo("C1");
             assertThat(rating.providerId()).isEqualTo("P1");
@@ -54,7 +54,7 @@ class RatingSubmissionTest {
         @ParameterizedTest(name = "{0} stars are recorded")
         @ValueSource(ints = {1, 5})
         void starsAreWholeNumbersFromOneToFive(int given) {
-            assertThat(rate(stars(given), Map.of(), sunday("10:00")).provider().overall().value()).isEqualTo(given);
+            assertThat(rate(stars(given), Map.of(), sunday("10:00")).provider().stars().value()).isEqualTo(given);
         }
 
         @ParameterizedTest(name = "{0} stars are rejected")
@@ -66,40 +66,49 @@ class RatingSubmissionTest {
         }
 
         @Test
-        void categoryRatingsAndWrittenFeedbackAreOptional() {
+        void highlightsAndWrittenFeedbackAreOptional() {
             Rating rating = rate(stars(5), Map.of(), sunday("10:00"));
 
-            assertThat(rating.provider().categories()).isEmpty();
+            assertThat(rating.provider().highlights()).isEmpty();
             assertThat(rating.provider().hasWrittenFeedback()).isFalse();
             assertThat(rating.provider().writtenFeedback()).isEmpty();
         }
 
         @Test
-        void categoryRatingsAndWrittenFeedbackAreKeptWhenGiven() {
-            ProviderRating given = ProviderRating.of(
-                    Stars.of(4), Map.of(ProviderCategory.PUNCTUALITY, Stars.of(3)), " Great kitchen clean ");
+        void theCustomerPicksAnyNumberOfHighlights() {
+            ProviderRating given = ProviderRating.of(Stars.of(4), Set.of(Highlight.ON_TIME, Highlight.RESPONSIVE), "");
 
             Rating rating = rate(given, Map.of(), sunday("10:00"));
 
-            assertThat(rating.provider().categories()).containsEntry(ProviderCategory.PUNCTUALITY, Stars.of(3));
-            assertThat(rating.provider().writtenFeedback()).isEqualTo("Great kitchen clean");
+            assertThat(rating.provider().stars()).isEqualTo(Stars.of(4));
+            assertThat(rating.provider().highlights()).containsExactlyInAnyOrder(Highlight.ON_TIME, Highlight.RESPONSIVE);
+        }
+
+        @Test
+        void everyHighlightCanBePickedTogetherWithWrittenFeedback() {
+            ProviderRating given = ProviderRating.of(Stars.of(5), Set.of(Highlight.values()), " Spotless kitchen, on time ");
+
+            Rating rating = rate(given, Map.of(), sunday("10:00"));
+
+            assertThat(rating.provider().highlights()).hasSize(4);
+            assertThat(rating.provider().writtenFeedback()).isEqualTo("Spotless kitchen, on time");
             assertThat(rating.provider().hasWrittenFeedback()).isTrue();
         }
 
         @Test
         void writtenFeedbackHasALengthLimit() {
-            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Map.of(), "a".repeat(1_001)))
+            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Set.of(), "a".repeat(1_001)))
                     .isInstanceOf(FeedbackTooLongException.class)
                     .hasMessageContaining("1001");
-            assertThat(ProviderRating.of(Stars.of(4), Map.of(), "a".repeat(1_000)).writtenFeedback()).hasSize(1_000);
+            assertThat(ProviderRating.of(Stars.of(4), Set.of(), "a".repeat(1_000)).writtenFeedback()).hasSize(1_000);
         }
 
         @Test
         void theLengthLimitCountsCharactersNotBytes() {
             String emoji = "😊";
 
-            assertThat(ProviderRating.of(Stars.of(4), Map.of(), emoji.repeat(1_000)).hasWrittenFeedback()).isTrue();
-            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Map.of(), emoji.repeat(1_001)))
+            assertThat(ProviderRating.of(Stars.of(4), Set.of(), emoji.repeat(1_000)).hasWrittenFeedback()).isTrue();
+            assertThatThrownBy(() -> ProviderRating.of(Stars.of(4), Set.of(), emoji.repeat(1_001)))
                     .isInstanceOf(FeedbackTooLongException.class);
         }
     }

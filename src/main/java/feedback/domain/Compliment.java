@@ -1,6 +1,6 @@
 package feedback.domain;
 
-/** A positive-only compliment a customer can give a helper. Anything negative goes in the stars or a report. */
+/** Something that went well, which a customer can pick for a helper. Compliments are positive only. */
 public enum Compliment {
     /** Pleasant and polite. */
     FRIENDLY,

@@ -1,13 +1,13 @@
 package feedback.domain;
 
-/** What a customer can rate a provider on, besides the overall stars. */
-public enum ProviderCategory {
+/** Something that went well, which a customer can pick for a provider. Highlights are positive only. */
+public enum Highlight {
     /** The booked jobs were done well. */
-    QUALITY_OF_WORK,
+    GREAT_WORK,
     /** The team arrived on time. */
-    PUNCTUALITY,
+    ON_TIME,
     /** Replies in chat were clear and timely. */
-    COMMUNICATION,
+    RESPONSIVE,
     /** Belongings and the home were treated with care. */
-    CARE_FOR_THE_HOME
+    CAREFUL_WITH_THE_HOME
 }
