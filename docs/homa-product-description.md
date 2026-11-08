@@ -191,6 +191,11 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 - A provider runs a team by **inviting** helpers. Helpers have no accounts, so the provider adds the helper's name and photo and sends them an eKYC verification link from the provider app. A helper becomes a **team member** only once their eKYC is verified. Until then they are an invited helper: not on the team, not shown to customers, not counted in the provider's team size and not able to be named for jobs.
 - Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
 - A provider or invited helper whose eKYC is rejected is told to redo it, and can be verified on a later attempt; an invited helper then becomes a team member. The provider can withdraw an invite or remove a team member at any time. A removed helper is no longer on the team and can no longer be named for jobs.
+- **Re-verification:** every provider and team member is re-verified through eKYC every **re-verification period**, counted from their own last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date, with a link for each.
+- Until the due date nothing changes. A person who passes stays verified, and their next due date is counted from the new verification.
+- **Missing the due date:** a team member who isn't re-verified by their due date **lapses** and leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A provider who isn't re-verified by their due date has their listing **paused**: it takes no new requests until they pass. Reservations already accepted still go ahead.
+- **Early re-check:** Homa can ask for an early re-verification of a provider or team member, for example after a safety-related report. The due date then moves to the **early re-check deadline**, if that is sooner.
+- The **Verified ID** badge shows when each person was last verified.
 
 ### Privacy Policy
 
@@ -277,6 +282,9 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within 24 hours before the booked start |
 | **Provider no-show fine** | Provider Cancellation Fines | 30% of the hours fee, for no check-in, or a cancellation after the booked start or after check-in |
 | **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout |
+| **Re-verification period** | Verification Policy | Every 3 months, from each person's last successful verification |
+| **Re-verification reminder** | Verification Policy | 14 days before a person's re-verification is due |
+| **Early re-check deadline** | Verification Policy | 14 days after Homa asks for an early re-verification |
 | **Rating window** | Rating Policy | 14 days after the reservation becomes Completed |
 | **Minimum ratings to show** | Rating Policy | 3 ratings before average stars are shown |
 
@@ -298,7 +306,7 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 - The provider's cancellation policy
 - The provider's team: every team member's name, photo and average stars, so you know who may come. Invited helpers who are not yet verified are not shown.
 - Ratings: the average for each provider category once it has the minimum ratings to show, and written feedback from customers, newest first
-- A **Verified ID** badge: every provider and helper is verified through eKYC
+- A **Verified ID** badge: every provider and team member is verified through eKYC and re-verified every 3 months, with the date of their last verification
 
 
 ### Ratings
@@ -349,6 +357,7 @@ A provider invites helpers and manages the team in Homa, and chooses whether to 
 - **Reservations:** accept or decline requests, name the lead and helpers for each reservation, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
 - **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Verification:** see when the provider and each team member are next due for re-verification, and send the eKYC links.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
 ## Homa Admin
@@ -367,7 +376,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 - **Overview:** reservations, total booking value, service fee earned, cancellation and no-show rates, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
-- **Providers:** verification status of providers, their team members and their open invites, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
+- **Providers:** verification status of providers, their team members and their open invites, upcoming and lapsed re-verifications, and the option to ask for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
 - **Customers:** accounts, reservations and reports filed.
 - **Fines:** every fine with its reason, amount, what has been deducted so far, and any waiver.
 - **Ratings:** every rating, with the option to hide one that breaks the rules, recorded with a reason.
@@ -388,6 +397,7 @@ These are deliberately left out of the MVP:
 - Homa credit, account top-ups and e-wallet payments
 - Rescheduling a reserved booking
 - Helper accounts
+- Automatic re-verification when an identity document expires (re-verification is every 3 months, or early on Homa's request)
 - Skilled trade jobs such as plumbing, air-conditioning or electrical work
 
 ## External Services Homa Will Use and Not Develop

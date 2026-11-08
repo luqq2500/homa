@@ -16,10 +16,14 @@ import ie.events.HelperRemovedIE;
 import ie.events.HelperInviteRejectedIE;
 import ie.events.HelperInvitedIE;
 import ie.events.HelperJoinedTeamIE;
+import ie.events.HelperLapsedIE;
+import ie.events.HelperReverifiedIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobAddedIE;
 import ie.events.JobRetiredIE;
 import ie.events.ListingChangedIE;
+import ie.events.ListingPausedIE;
+import ie.events.ListingResumedIE;
 import ie.events.ListingWentOfflineIE;
 import ie.events.ListingWentLiveIE;
 import ie.events.NoShowChallengedIE;
@@ -29,7 +33,10 @@ import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
 import ie.events.RatingHiddenIE;
 import ie.events.RatingSubmittedIE;
+import ie.events.RecheckOpenedIE;
 import ie.events.ProviderCheckedInIE;
+import ie.events.ProviderReverifiedIE;
+import ie.events.ProviderVerificationLapsedIE;
 import ie.events.ProviderVerificationRejectedIE;
 import ie.events.ProviderVerifiedIE;
 import ie.events.ReportFiledIE;
@@ -97,9 +104,16 @@ class IntegrationEventContractTest {
                 Arguments.of(HelperJoinedTeamIE.class, AccountIE.class),
                 Arguments.of(HelperInviteRejectedIE.class, AccountIE.class),
                 Arguments.of(HelperRemovedIE.class, AccountIE.class),
+                Arguments.of(RecheckOpenedIE.class, AccountIE.class),
+                Arguments.of(HelperReverifiedIE.class, AccountIE.class),
+                Arguments.of(HelperLapsedIE.class, AccountIE.class),
+                Arguments.of(ProviderReverifiedIE.class, AccountIE.class),
+                Arguments.of(ProviderVerificationLapsedIE.class, AccountIE.class),
                 Arguments.of(ListingWentLiveIE.class, OfferingIE.class),
                 Arguments.of(ListingChangedIE.class, OfferingIE.class),
                 Arguments.of(ListingWentOfflineIE.class, OfferingIE.class),
+                Arguments.of(ListingPausedIE.class, OfferingIE.class),
+                Arguments.of(ListingResumedIE.class, OfferingIE.class),
                 Arguments.of(EnquiryCreatedIE.class, ReservationIE.class),
                 Arguments.of(EnquiryRequestedIE.class, ReservationIE.class),
                 Arguments.of(EnquiryClosedIE.class, ReservationIE.class),
@@ -195,7 +209,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(41);
+        assertThat(events().count()).isEqualTo(48);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

@@ -143,6 +143,7 @@ class ProviderListingGoLiveTest {
             assertThat(snapshot.cities()).containsExactly(city("Cyberjaya"));
             assertThat(snapshot.cancellationTier()).isEqualTo(CancellationTier.STANDARD);
             assertThat(snapshot.roster()).isEqualTo(aRosterOf(4));
+            assertThat(snapshot.takesRequests()).isTrue();
         }
 
         @Test

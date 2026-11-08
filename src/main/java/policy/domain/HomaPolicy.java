@@ -23,6 +23,9 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.EarlyRecheckDeadline;
+import policy.domain.PolicyValue.ReverificationPeriod;
+import policy.domain.PolicyValue.ReverificationReminder;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CancellationFeeAboveNoShowCeilingException;
@@ -67,7 +70,10 @@ public final class HomaPolicy {
             new DisputeWindowExtension(Duration.ofHours(1)),
             new EvidenceRetention(Duration.ofDays(7)),
             new RatingWindow(Duration.ofDays(14)),
-            new MinimumRatingsToShow(3));
+            new MinimumRatingsToShow(3),
+            new ReverificationPeriod(3),
+            new ReverificationReminder(Duration.ofDays(14)),
+            new EarlyRecheckDeadline(Duration.ofDays(14)));
 
     private final PolicySnapshot current;
 

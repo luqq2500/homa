@@ -23,6 +23,7 @@ import reservation.domain.exception.CityNotCoveredException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
 import reservation.domain.exception.JobNotOfferedException;
+import reservation.domain.exception.ListingPausedException;
 import reservation.domain.exception.ReservationDetailRequiredException;
 import reservation.domain.exception.StartBeyondHorizonException;
 import reservation.domain.exception.StartNotOnQuarterHourException;
@@ -148,6 +149,20 @@ class ReservationRequestTest {
         assertThat(reservation.enquiryId()).contains("enquiry-1");
         assertThat(reservation.paymentMethod()).isEqualTo(PaymentMethod.FPX);
         assertThat(reservation.requestedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void aPausedListingRefusesNewRequestsButKeepsAcceptedOnes() {
+        Reservation accepted = request(aBooking());
+        accepted.accept(NOW.plus(Duration.ofMinutes(5)));
+
+        assertThatThrownBy(() -> Reservation.request(
+                        "customer-2", aBooking().build(), anOffering().paused().build(), theLaunchPolicy(), Optional.empty(),
+                        PaymentMethod.CARD, NOW))
+                .isInstanceOf(ListingPausedException.class)
+                .hasMessageContaining("provider-1");
+        assertThat(accepted.status()).isEqualTo(ReservationStatus.RESERVED);
+        assertThat(accepted.offering().takesRequests()).isTrue();
     }
 
     @Test

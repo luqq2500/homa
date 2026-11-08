@@ -38,6 +38,9 @@ public record HomaPolicyChangedIE(
         Duration evidenceRetention,
         Duration ratingWindow,
         int minimumRatingsToShow,
+        int reverificationPeriodMonths,
+        Duration reverificationReminder,
+        Duration earlyRecheckDeadline,
         Instant occurredAt) implements PolicyIE {
 
     public HomaPolicyChangedIE {
@@ -64,6 +67,8 @@ public record HomaPolicyChangedIE(
         Objects.requireNonNull(disputeWindowExtension, "disputeWindowExtension");
         Objects.requireNonNull(evidenceRetention, "evidenceRetention");
         Objects.requireNonNull(ratingWindow, "ratingWindow");
+        Objects.requireNonNull(reverificationReminder, "reverificationReminder");
+        Objects.requireNonNull(earlyRecheckDeadline, "earlyRecheckDeadline");
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

@@ -51,7 +51,8 @@ class ReservationDetailsTest {
     @Test
     void anOfferingBelongsToAProvider() {
         assertThatThrownBy(() -> new OfferingSnapshot(
-                        " ", rm("30"), Optional.empty(), 2, 4, 1, 3, jobs("KITCHEN"), Set.of(City.of("Cyberjaya")), CancellationTier.FIRM))
+                        " ", rm("30"), Optional.empty(), 2, 4, 1, 3, jobs("KITCHEN"), Set.of(City.of("Cyberjaya")), CancellationTier.FIRM,
+                        true))
                 .isInstanceOf(ReservationDetailRequiredException.class);
     }
 

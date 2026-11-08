@@ -275,3 +275,36 @@ their eKYC is verified, so "team" means verified everywhere.
 - **Gates:** whole build 909 tests, 1,147 mutants, all killed. `account.domain` has 87 mutants and
   `offering.domain` 157, both at 100%.
 
+## 12. Addendum: periodic re-verification
+
+Changed after the phase closed, for customer safety. Every provider and team member is re-verified
+through eKYC every **3 months**, counted from their own last successful verification.
+
+- **`policy`:** three new Homa-set values:
+  - re-verification period: 3 months
+  - reminder: 14 days before the due date
+  - early re-check deadline: 14 days
+
+  That makes 29 values. `HomaPolicyChangedIE` carries all three.
+- **`account`:**
+  - `Helper` and `ProviderAccount` hold a `Verification`: when the person was last verified, when they
+    are due, whether a re-check is open, and the reason for an early one.
+  - New methods: `openRecheck`, `requestEarlyRecheck` and `lapse`. `recordEkycResult` now takes the
+    limits and the time, and returns an `EkycOutcome`.
+  - `TeamStatus` gains `LAPSED`, and a lapsed provider is `VerificationStatus.LAPSED`.
+  - The old rule "no new result for a member" is replaced:
+    - With a re-check open, a pass starts a new period and a rejection changes nothing yet.
+    - With no re-check open, a repeated pass changes nothing and a rejection is refused.
+    - A lapsed person who passes is back on the team.
+- **`offering`:**
+  - `pause()` and `resume()`: a paused listing stays live but takes no new requests.
+  - `takesRequests()` is copied into the snapshot.
+- **`reservation`:** `Reservation.request` refuses a paused listing with `ListingPausedException`.
+- **`ie/`:** the plan's five events, plus `ListingPausedIE` and `ListingResumedIE`. That makes 48
+  events.
+- **Scenarios:** the two re-verification features add 14 scenarios, and the audit maps 170 of 170.
+- **Gates:** whole build 1,022 tests, 1,241 mutants, all killed. `account.domain` has 156 mutants and
+  `offering.domain` 177, both at 100%.
+- **To confirm:** a request already waiting when the listing pauses can still be accepted. The
+  decisions made while building are listed in the plan, under "Change after the domain phase: periodic
+  re-verification".

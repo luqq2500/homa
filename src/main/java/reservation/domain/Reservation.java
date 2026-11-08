@@ -25,6 +25,7 @@ import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
 import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.JobNotOfferedException;
+import reservation.domain.exception.ListingPausedException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
 import reservation.domain.exception.ProviderMissedCheckInException;
@@ -88,7 +89,10 @@ public final class Reservation {
 
     // ---- Request ----
 
-    /** Submits a request for the provider to accept, with the offering and policy in force {@code now}. */
+    /**
+     * Submits a request for the provider to accept, with the offering and policy in force {@code now}. A
+     * paused listing takes no new requests.
+     */
     public static Reservation request(
             String customerId,
             ReservationDetails details,
@@ -97,6 +101,9 @@ public final class Reservation {
             Optional<String> enquiryId,
             PaymentMethod paymentMethod,
             Instant now) {
+        if (!offering.takesRequests()) {
+            throw new ListingPausedException(offering.providerId());
+        }
         requireFits(details, offering, policy, now);
         return new Reservation(
                 ReservationText.require(customerId, "A customer id"),

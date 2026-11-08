@@ -3,6 +3,7 @@ package policy.domain;
 import kernel.Percentage;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
 import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
+import policy.domain.exception.ReverificationPeriodNotPositiveException;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -160,6 +161,31 @@ public sealed interface PolicyValue {
     record NoShowReportWindow(Duration period) implements PolicyValue {
         public NoShowReportWindow {
             PolicyShape.requirePeriod("The no-show report window", period);
+        }
+    }
+
+    // ---- Verification ----
+
+    /** How many months after each person's last successful verification their re-verification is due. */
+    record ReverificationPeriod(int months) implements PolicyValue {
+        public ReverificationPeriod {
+            if (months < 1) {
+                throw new ReverificationPeriodNotPositiveException(months);
+            }
+        }
+    }
+
+    /** How long before a person's re-verification is due Homa reminds the provider and opens the re-check. */
+    record ReverificationReminder(Duration beforeDue) implements PolicyValue {
+        public ReverificationReminder {
+            PolicyShape.requirePeriod("The re-verification reminder", beforeDue);
+        }
+    }
+
+    /** How long after Homa asks for an early re-check the person must pass it, if that is sooner than their due date. */
+    record EarlyRecheckDeadline(Duration afterRequest) implements PolicyValue {
+        public EarlyRecheckDeadline {
+            PolicyShape.requirePeriod("The early re-check deadline", afterRequest);
         }
     }
 

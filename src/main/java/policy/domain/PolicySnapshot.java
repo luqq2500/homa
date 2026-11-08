@@ -23,6 +23,9 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.EarlyRecheckDeadline;
+import policy.domain.PolicyValue.ReverificationPeriod;
+import policy.domain.PolicyValue.ReverificationReminder;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import java.time.Duration;
@@ -161,6 +164,19 @@ public final class PolicySnapshot {
 
     public int minimumRatingsToShow() {
         return value(MinimumRatingsToShow.class).ratings();
+    }
+
+    /** Re-verification is due this many months after each person's last successful verification. */
+    public int reverificationPeriodMonths() {
+        return value(ReverificationPeriod.class).months();
+    }
+
+    public Duration reverificationReminder() {
+        return value(ReverificationReminder.class).beforeDue();
+    }
+
+    public Duration earlyRecheckDeadline() {
+        return value(EarlyRecheckDeadline.class).afterRequest();
     }
 
     public Duration evidenceRetention() {

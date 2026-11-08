@@ -6,7 +6,9 @@ import offering.domain.exception.HelpersOutOfRangeException;
 import offering.domain.exception.HoursOutOfRangeException;
 import offering.domain.exception.JobNotInCatalogueException;
 import offering.domain.exception.ListingAlreadyLiveException;
+import offering.domain.exception.ListingAlreadyPausedException;
 import offering.domain.exception.ListingNotLiveException;
+import offering.domain.exception.ListingNotPausedException;
 import offering.domain.exception.ListingNotReadyException;
 import offering.domain.exception.NoCitiesCoveredException;
 import offering.domain.exception.NoJobsOfferedException;
@@ -21,10 +23,13 @@ import java.util.function.BooleanSupplier;
 
 /**
  * A provider's listing: what they sell, at what price, when and where. A listing starts as a draft and
- * goes live once it is complete and the provider and their helpers are verified.
+ * goes live once it is complete and the provider is verified.
  *
  * <p>A live listing can still change; each change affects new requests only, because a request keeps the
  * {@link OfferingSnapshot} it was made with.
+ *
+ * <p>A live listing is paused while the provider's re-verification has lapsed: it stays live, so accepted
+ * reservations go ahead, but it takes no new requests and is left out of search.
  */
 public final class ProviderListing {
 
@@ -41,6 +46,7 @@ public final class ProviderListing {
     private CancellationTier cancellationTier;
     private TeamRoster roster = TeamRoster.empty();
     private boolean live;
+    private boolean paused;
 
     private ProviderListing(String id, String providerId) {
         this.id = id;
@@ -128,10 +134,15 @@ public final class ProviderListing {
      */
     public void updateRoster(TeamRoster newRoster) {
         roster = Objects.requireNonNull(newRoster);
+        fitHelpersToRoster();
+        live = live && helpers != null;
+        paused = paused && live;
+    }
+
+    private void fitHelpersToRoster() {
         if (helpers != null) {
             helpers = helpers.fittedTo(roster.size()).orElse(null);
         }
-        live = live && helpers != null;
     }
 
     /**
@@ -153,6 +164,28 @@ public final class ProviderListing {
         live = true;
     }
 
+    /**
+     * Pauses a live listing because the provider's re-verification lapsed. It stays live, so accepted
+     * reservations go ahead, but it takes no new requests until it resumes.
+     */
+    public void pause() {
+        if (!live) {
+            throw new ListingNotLiveException();
+        }
+        if (paused) {
+            throw new ListingAlreadyPausedException();
+        }
+        paused = true;
+    }
+
+    /** Resumes a paused listing once the provider passes re-verification. */
+    public void resume() {
+        if (!paused) {
+            throw new ListingNotPausedException();
+        }
+        paused = false;
+    }
+
     /** What the listing itself still needs before it can go live. Verification is checked at go-live. */
     public Set<GoLiveRequirement> missingForGoLive() {
         Set<GoLiveRequirement> missing = EnumSet.noneOf(GoLiveRequirement.class);
@@ -160,17 +193,29 @@ public final class ProviderListing {
         return Set.copyOf(missing);
     }
 
-    /** What a reservation copies at request time. Only a live listing can be reserved. */
+    /**
+     * What a reservation copies at request time. Only a live listing has one; a paused listing's snapshot
+     * says it takes no requests.
+     */
     public OfferingSnapshot snapshot() {
         if (!live) {
             throw new ListingNotLiveException();
         }
         return new OfferingSnapshot(
-                providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster);
+                providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster, !paused);
     }
 
     public boolean isLive() {
         return live;
+    }
+
+    public boolean isPaused() {
+        return paused;
+    }
+
+    /** Whether the listing takes new requests: live and not paused. */
+    public boolean takesRequests() {
+        return live && !paused;
     }
 
     public String id() {

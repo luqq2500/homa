@@ -6,6 +6,8 @@ import java.util.Set;
 /**
  * What a reservation copies from a live listing at request time. The request keeps it, so a later change
  * to the listing affects new requests only.
+ *
+ * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
  */
 public record OfferingSnapshot(
         String providerId,
@@ -17,7 +19,8 @@ public record OfferingSnapshot(
         Set<ToolCode> tools,
         Set<City> cities,
         CancellationTier cancellationTier,
-        TeamRoster roster) {
+        TeamRoster roster,
+        boolean takesRequests) {
 
     public OfferingSnapshot {
         Objects.requireNonNull(providerId);

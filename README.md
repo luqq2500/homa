@@ -14,7 +14,7 @@ src/main/java/
   kernel/                       shared kernel: Money, Percentage (Java standard library only)
   catalogue/domain/             job list, tool list, service area, homepage shelves
   policy/domain/                Homa-set values and their versions
-  account/domain/               customer and provider accounts, helpers, phone and eKYC verification
+  account/domain/               customer and provider accounts, helpers, phone and eKYC verification, re-verification
   offering/domain/              a provider's listing and the rules for going live
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
@@ -69,8 +69,9 @@ Build order from the domain plan:
 | 11 | `ie/` integration event contracts | Done |
 | 12 | `feedback`, added after closing: two Homa-set values in `policy`, the `feedback` domain, `RatingSubmittedIE` and `RatingHiddenIE` | Done |
 | 13 | Team membership, changed after closing: helpers join a provider's team only once their eKYC is verified; `HelperInvitedIE`, `HelperJoinedTeamIE` and `HelperInviteRejectedIE` | Done |
+| 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; seven new events | Done |
 
-The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback` and team membership.
+The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership and re-verification.
 
 ### Usecase phase
 
@@ -82,3 +83,5 @@ another's data, and open questions U1 to U7. It waits for review.
 
 All of them are confirmed by the product owner, and recorded in the domain plan under "Decisions made
 while building" (`docs/homa-domain-plan.md`). The plan's method blocks and object tables match the code.
+The re-verification decisions are listed under "Change after the domain phase: periodic
+re-verification" in the plan. They are waiting for confirmation.

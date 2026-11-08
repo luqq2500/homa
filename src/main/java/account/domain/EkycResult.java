@@ -8,10 +8,11 @@ final class EkycResult {
     private EkycResult() {
     }
 
-    static VerificationStatus require(VerificationStatus result) {
-        if (result == null || result == VerificationStatus.PENDING) {
+    /** Whether {@code result} is VERIFIED; anything but VERIFIED or REJECTED is refused. */
+    static boolean isVerified(VerificationStatus result) {
+        if (result != VerificationStatus.VERIFIED && result != VerificationStatus.REJECTED) {
             throw new EkycResultNotFinalException();
         }
-        return result;
+        return result == VerificationStatus.VERIFIED;
     }
 }

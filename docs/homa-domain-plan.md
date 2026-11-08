@@ -180,7 +180,9 @@ Feature: Homa-set values
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
 | `ProviderAccount` | Aggregate | Individual provider: eKYC status, payout account status, whether they include themselves as a helper |
 | `Helper` | Aggregate | Belongs to one provider: name, photo and team status. Only a `MEMBER` is on the team |
-| `TeamStatus` | Enum | `INVITED` (eKYC pending), `INVITE_REJECTED` (eKYC failed, can retry), `MEMBER` (eKYC verified), `REMOVED` |
+| `TeamStatus` | Enum | `INVITED` (eKYC pending), `INVITE_REJECTED` (eKYC failed, can retry), `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
+| `Verification` | Value object | When a provider or team member was last verified, when re-verification is due, and whether a re-check is open |
+| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline |
 | `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED` |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
 
@@ -1448,10 +1450,17 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `HelperInvitedIE` | account | (notifications) | `Helper.invite` |
 | `HelperJoinedTeamIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` (now a `MEMBER`) |
 | `HelperInviteRejectedIE` | account | (notifications) | `Helper.recordEkycResult` with `REJECTED` |
+| `RecheckOpenedIE` | account | (notifications) | `Helper.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
+| `HelperReverifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
+| `HelperLapsedIE` | account | offering | `Helper.lapse` |
+| `ProviderReverifiedIE` | account | offering | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
+| `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
 | `HelperRemovedIE` | account | offering | removing a helper |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
 | `ListingWentOfflineIE` | offering | discovery | `ProviderListing.updateRoster` leaving a live listing with no verified team |
+| `ListingPausedIE` | offering | discovery | `ProviderListing.pause` |
+| `ListingResumedIE` | offering | discovery | `ProviderListing.resume` |
 | `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgainFrom` |
 | `EnquiryRequestedIE` | reservation | conversation | `Enquiry.markRequested` |
 | `EnquiryClosedIE` | reservation | conversation | `Enquiry.isClosed` turning true |
@@ -1715,8 +1724,9 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 41 events in the
-    plan's table are records in `ie/events`, including `feedback`'s two and the team membership events.
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 48 events in the
+    plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
+    and the re-verification events.
     Availability, conversation and discovery only listen.
   - Every event carries `occurredAt`, which the usecase supplies.
   - The rule (confirmed, and the same in `docs/`): events carry primitives, Strings, kernel types and
@@ -1782,6 +1792,172 @@ Decided after the domain phase closed. A helper is **invited** first and becomes
     requirement already guarantees it.
   - `TeamRoster`'s field, in `offering` and in `reservation`, is renamed from `verifiedHelperIds` to
     `memberIds`. The listing events' field is renamed to `teamMemberIds`.
+
+## Change after the domain phase: periodic re-verification
+
+Decided after the domain phase closed, for customer safety. Every provider and team member is re-verified every **3 months**.
+
+**New Homa-set values (`policy`):** re-verification period 3 months; re-verification reminder 14 days before the due date; early re-check deadline 14 days.
+
+**`account`**
+
+- `Helper` and `ProviderAccount` hold a `Verification`: last verified, due date (last verified + period) and whether a re-check is open.
+- `TeamStatus` gains `LAPSED`. `ProviderAccount` gains a lapsed state too; `isReadyForGoLive()` and taking new requests need it not lapsed.
+- The re-check opens at the reminder (due date − 14 days), or straight away when Homa asks for an early re-check, which also moves the due date to now + 14 days if that is sooner.
+- eKYC results for someone already verified:
+  - With a re-check open: `VERIFIED` resets last verified and the due date and closes the re-check. `REJECTED` changes nothing yet; they can retry until the due date.
+  - With no re-check open: `VERIFIED` is a no-op (Kenal may deliver the same result twice). `REJECTED` is refused with `HelperAlreadyTeamMemberException` (or the provider equivalent).
+  - `LAPSED`: `VERIFIED` makes them a `MEMBER` again with a new due date. `REJECTED` keeps them lapsed.
+- Lapsing is an explicit step taken by a scheduler at the due date, not something computed on read, so `isTeamMember()` stays a plain status check.
+
+```java
+Helper.openRecheck(VerificationLimits limits, Instant now)                 // from due date - reminder
+Helper.requestEarlyRecheck(String reason, VerificationLimits limits, Instant now)
+Helper.recordEkycResult(VerificationStatus result, VerificationLimits limits, Instant now)
+Helper.lapse(Instant now)                                                   // MEMBER whose due date has passed -> LAPSED
+Helper.verification() : Verification
+// ProviderAccount gets the same four methods; a lapsed provider is not ready for go-live and takes no new requests
+```
+
+**`offering`:** `ProviderListing.pause()` and `resume()`. A paused listing takes no new requests and is left out of search; it stays live, so accepted reservations go ahead. `OfferingSnapshot` carries whether the listing takes requests, and `Reservation.request` refuses a paused listing with `ListingPausedException`.
+
+**`ie/`:** `RecheckOpenedIE` (provider and team member, for the reminder), `HelperReverifiedIE`, `HelperLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`. `offering` listens to `HelperLapsedIE` and `HelperJoinedTeamIE`/`HelperReverifiedIE` to rebuild the roster, and to `ProviderVerificationLapsedIE`/`ProviderReverifiedIE` to pause and resume.
+
+**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies.
+
+**Decided while building:**
+
+- **Outcomes:** `recordEkycResult` returns an `EkycOutcome`, so the usecase publishes one event per
+  outcome and nothing for a duplicate. The outcomes are `VERIFIED` (first pass: the provider is
+  verified, or the invite joins the team), `REJECTED` (first attempt failed), `REVERIFIED`,
+  `RECHECK_FAILED` (a re-check or lapsed person failed; nothing changes) and `UNCHANGED` (a repeated
+  `VERIFIED` with no re-check open).
+- **Months on Malaysian dates:** the due date is the last verification plus the period in months,
+  counted on `Asia/Kuala_Lumpur` dates. A date with no match in the later month lands on that month's
+  last day, so 30 November gives 29 February in a leap year.
+- **`Verification`** has four fields: `lastVerified`, `dueAt`, `recheckOpen`, and
+  `earlyRecheckReason`, which is set only while an early re-check is open. Passing a re-check starts a
+  new `Verification` with no re-check open. `Helper.verification()` and
+  `ProviderAccount.verification()` return `Optional`, which is empty until the first pass.
+- **`policy`:**
+  - The three values are `ReverificationPeriod(int months)` (at least 1), `ReverificationReminder`
+    and `EarlyRecheckDeadline`. There are now 29 Homa-set values.
+  - `HomaPolicyChangedIE` carries all three, so account can build its `VerificationLimits`.
+- **Provider state:**
+  - A lapsed provider is `VerificationStatus.LAPSED`. It is never a result from Kenal:
+    `PENDING` and `LAPSED` are both refused as results.
+  - The provider equivalent of `HelperAlreadyTeamMemberException` is
+    `ProviderAlreadyVerifiedException`. Before this change, a later `REJECTED` would overwrite a
+    verified provider.
+- **Who can be re-checked:** only a `MEMBER` or a `VERIFIED` provider can have a re-check opened, be
+  asked for an early re-check, or lapse. Anyone else is refused with `HelperNotTeamMemberException`
+  or `ProviderNotVerifiedException`. A removed helper is refused with `HelperRemovedException`.
+- **Opening the re-check:**
+  - Opening a re-check that is already open is refused with `RecheckAlreadyOpenException`.
+  - An early re-check can still be asked for while the regular one is open; it moves the due date
+    only if that is sooner.
+- **Lapsing:**
+  - A member with a re-check open still lapses at the due date.
+  - A missed early re-check lapses at its deadline, because that deadline is the due date.
+- **`offering`:**
+  - `pause()` needs a live listing (`ListingNotLiveException`) that is not already paused
+    (`ListingAlreadyPausedException`). `resume()` needs a paused listing (`ListingNotPausedException`).
+  - A team change keeps the pause. A listing that goes offline is no longer paused, and `goLive`
+    already needs a provider who is not lapsed.
+  - `takesRequests()` is live and not paused, and the snapshot copies it.
+- **Search needs to know:**
+  - `ListingPausedIE` and `ListingResumedIE` were added (offering to discovery), so search can leave
+    paused listings out. That makes 48 events.
+  - `RecheckOpenedIE` carries `providerId`, `helperId` (empty for the provider's own re-check),
+    `dueAt` and `earlyRecheckReason` (empty for the regular re-check).
+- **`reservation`:**
+  - Only `Reservation.request` checks the pause.
+  - A request already waiting when the listing pauses keeps its snapshot, so it can still be edited
+    and accepted. *To confirm.*
+
+```gherkin
+Feature: Periodic re-verification
+  Background:
+    Given Aina became a team member on 1 January
+
+  Scenario: Re-verification is due 3 months after the last verification
+    Then Aina's re-verification is due on 1 April
+
+  Scenario Outline: The re-check opens 14 days before the due date
+    When Homa opens the re-check on <date>
+    Then the result is <result>
+    Examples:
+      | date     | result                       |
+      | 18 March | re-check open                |
+      | 17 March | RecheckNotYetDueException    |
+
+  Scenario: Passing the re-check resets the due date
+    Given the re-check is open
+    When Aina's eKYC is VERIFIED on 20 March
+    Then Aina is still a MEMBER
+    And Aina's re-verification is due on 20 June
+    And no re-check is open
+
+  Scenario: A failed re-check can be retried before the due date
+    Given the re-check is open
+    When Aina's eKYC is REJECTED on 20 March
+    Then Aina is still a MEMBER
+    And the re-check is still open
+
+  Scenario: A repeated VERIFIED result with no re-check open changes nothing
+    Given no re-check is open
+    When Aina's eKYC is VERIFIED again
+    Then Aina's re-verification is still due on 1 April
+
+  Scenario: A REJECTED result with no re-check open is refused
+    Given no re-check is open
+    When Aina's eKYC is REJECTED
+    Then it is rejected with HelperAlreadyTeamMemberException
+
+  Scenario Outline: Missing the due date lapses the member
+    When Homa lapses Aina on <date>
+    Then the result is <result>
+    Examples:
+      | date     | result                           |
+      | 1 April  | Aina is LAPSED and not a team member |
+      | 31 March | ReverificationNotYetDueException |
+
+  Scenario: A lapsed member who passes rejoins the team
+    Given Aina is LAPSED
+    When Aina's eKYC is VERIFIED on 5 April
+    Then Aina is a MEMBER
+    And Aina's re-verification is due on 5 July
+
+  Scenario: An early re-check moves the due date sooner
+    When Homa asks for an early re-check on 10 January with the reason "Report R12: different person attended"
+    Then the re-check is open
+    And Aina's re-verification is due on 24 January
+
+  Scenario: An early re-check never moves the due date later
+    When Homa asks for an early re-check on 25 March
+    Then Aina's re-verification is still due on 1 April
+
+  Scenario: An early re-check needs a reason
+    When Homa asks for an early re-check with no reason
+    Then it is rejected with RecheckReasonRequiredException
+
+Feature: Provider re-verification
+  Scenario: A lapsed provider is not ready and takes no new requests
+    Given a live provider whose re-verification was due on 1 April
+    When Homa lapses the provider on 1 April
+    Then the provider is not ready for go-live
+
+  Scenario: A paused listing refuses new requests but keeps accepted ones
+    Given a live listing with an accepted reservation for 5 April
+    When the listing is paused
+    Then a new request is rejected with ListingPausedException
+    And the accepted reservation is unchanged
+
+  Scenario: A paused listing resumes when the provider passes
+    Given a paused listing
+    When the listing is resumed
+    Then it takes new requests
+```
 
 ## Open questions
 

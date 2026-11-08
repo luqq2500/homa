@@ -101,8 +101,15 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
+        void everyoneIsReverifiedEveryThreeMonthsWithAFourteenDayReminder() {
+            assertThat(launch.reverificationPeriodMonths()).isEqualTo(3);
+            assertThat(launch.reverificationReminder()).isEqualTo(Duration.ofDays(14));
+            assertThat(launch.earlyRecheckDeadline()).isEqualTo(Duration.ofDays(14));
+        }
+
+        @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(26);
+            assertThat(launch.values()).hasSize(29);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -138,7 +145,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(26);
+            assertThat(version2.snapshot().values()).hasSize(29);
         }
 
         @Test

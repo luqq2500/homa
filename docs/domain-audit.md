@@ -5,9 +5,12 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **156 of 156** scenarios in the plan have a test. That is the original 122, plus five in the
-"Buffer between jobs" feature, 25 in the four `feedback` features, and the "Team membership"
-change, which replaced the two "Helpers" scenarios with six and reworded one go-live scenario. The script that checks this maps each scenario
+All **170 of 170** scenarios in the plan have a test. That is the original 122, plus:
+- five in the "Buffer between jobs" feature
+- 25 in the four `feedback` features
+- the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
+  go-live scenario
+- 14 in the two re-verification features The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -187,6 +190,20 @@ Two scenarios map to more than one test:
 | 154 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
 | 155 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
 | 156 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
+| 157 | Periodic re-verification | Re-verification is due 3 months after the last verification | `HelperReverificationTest` | `reverificationIsDueThreeMonthsAfterTheLastVerification` |
+| 158 | Periodic re-verification | The re-check opens 14 days before the due date (outline) | `HelperReverificationTest` | `theRecheckOpensFourteenDaysBeforeTheDueDate`, `theRecheckDoesNotOpenBeforeTheReminder` |
+| 159 | Periodic re-verification | Passing the re-check resets the due date | `HelperReverificationTest` | `passingTheRecheckResetsTheDueDate` |
+| 160 | Periodic re-verification | A failed re-check can be retried before the due date | `HelperReverificationTest` | `aFailedRecheckCanBeRetriedBeforeTheDueDate` |
+| 161 | Periodic re-verification | A repeated VERIFIED result with no re-check open changes nothing | `HelperReverificationTest` | `aRepeatedVerifiedResultWithNoRecheckOpenChangesNothing` |
+| 162 | Periodic re-verification | A REJECTED result with no re-check open is refused | `HelperReverificationTest` | `aRejectedResultWithNoRecheckOpenIsRefused` |
+| 163 | Periodic re-verification | Missing the due date lapses the member (outline) | `HelperReverificationTest` | `missingTheDueDateLapsesTheMember`, `aMemberDoesNotLapseBeforeTheDueDate` |
+| 164 | Periodic re-verification | A lapsed member who passes rejoins the team | `HelperReverificationTest` | `aLapsedMemberWhoPassesRejoinsTheTeam` |
+| 165 | Periodic re-verification | An early re-check moves the due date sooner | `HelperReverificationTest` | `anEarlyRecheckMovesTheDueDateSooner` |
+| 166 | Periodic re-verification | An early re-check never moves the due date later | `HelperReverificationTest` | `anEarlyRecheckNeverMovesTheDueDateLater` |
+| 167 | Periodic re-verification | An early re-check needs a reason | `HelperReverificationTest` | `anEarlyRecheckNeedsAReason` |
+| 168 | Provider re-verification | A lapsed provider is not ready and takes no new requests | `ProviderReverificationTest` | `aLapsedProviderIsNotReadyAndTakesNoNewRequests` |
+| 169 | Provider re-verification | A paused listing refuses new requests but keeps accepted ones | `ReservationRequestTest` | `aPausedListingRefusesNewRequestsButKeepsAcceptedOnes` |
+| 170 | Provider re-verification | A paused listing resumes when the provider passes | `ProviderListingPauseTest` | `aPausedListingResumesWhenTheProviderPasses` |
 
 ## 2. Product spec rules with no test
 
@@ -264,11 +281,11 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 60 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 87 | `AccountArchitectureTest` |
-| offering | 4.0 | 100% | 100% | 157 | `OfferingArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 63 | `PolicyArchitectureTest` |
+| account | 5.0 | 100% | 100% | 156 | `AccountArchitectureTest` |
+| offering | 5.0 | 100% | 100% | 177 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 269 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 282 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
@@ -276,10 +293,10 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | feedback | 4.0 | 100% | 100% | 105 | `FeedbackArchitectureTest` |
 | ie | 1.0 | n/a (exempt in the plan) | n/a | – | `IntegrationEventArchitectureTest` |
 
-- **CRAP below 6:** passes in every context. The worst is 5.0, in account, reservation, payment and
-  discovery.
+- **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
+  payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1147 of 1147 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,241 of 1,241 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -314,4 +331,8 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
   - `JobAddedIE`, `ToolAddedIE`, `RatingSubmittedIE` and `RatingHiddenIE` were added.
   - With team membership, `HelperVerifiedIE` became `HelperJoinedTeamIE`,
     `HelperVerificationRejectedIE` became `HelperInviteRejectedIE`, and `HelperInvitedIE` was added.
-  - The contract test now covers 41 events.
+  - With re-verification, `RecheckOpenedIE`, `HelperReverifiedIE`, `HelperLapsedIE`,
+    `ProviderReverifiedIE` and `ProviderVerificationLapsedIE` were added from the plan. Two more were
+    added while building: `ListingPausedIE` and `ListingResumedIE`, so search can leave a paused
+    listing out. `HomaPolicyChangedIE` now carries the three re-verification values.
+  - The contract test now covers 48 events.

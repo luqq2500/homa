@@ -10,6 +10,7 @@ import kernel.Money;
  * listing do not change it.
  *
  * @param separateTravelFee the flat travel fee when charged separately; empty when travel is included
+ * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
  */
 public record OfferingSnapshot(
         String providerId,
@@ -21,7 +22,8 @@ public record OfferingSnapshot(
         int maxHelpers,
         Set<JobCode> jobs,
         Set<City> cities,
-        CancellationTier cancellationTier) {
+        CancellationTier cancellationTier,
+        boolean takesRequests) {
 
     public OfferingSnapshot {
         providerId = ReservationText.require(providerId, "A provider id");

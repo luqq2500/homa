@@ -113,6 +113,13 @@ final class ReservationBuilders {
         private Optional<Money> travel = Optional.of(rm("20"));
         private CancellationTier tier = CancellationTier.STANDARD;
         private Set<City> cities = Set.of(City.of("Cyberjaya"));
+        private boolean takesRequests = true;
+
+        /** The listing is paused because the provider's re-verification lapsed. */
+        OfferingBuilder paused() {
+            takesRequests = false;
+            return this;
+        }
 
         OfferingBuilder charging(String ratePerHelperPerHour) {
             rate = rm(ratePerHelperPerHour);
@@ -141,7 +148,8 @@ final class ReservationBuilders {
 
         OfferingSnapshot build() {
             return new OfferingSnapshot(
-                    "provider-1", rate, travel, 2, 4, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier);
+                    "provider-1", rate, travel, 2, 4, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier,
+                    takesRequests);
         }
     }
 

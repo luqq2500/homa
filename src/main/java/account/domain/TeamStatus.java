@@ -8,6 +8,8 @@ public enum TeamStatus {
     INVITE_REJECTED,
     /** eKYC verified: on the team, shown to customers, counted in the team size, and can be named for jobs. */
     MEMBER,
+    /** Re-verification was missed: off the team until the helper passes eKYC again. */
+    LAPSED,
     /** The invite was withdrawn or the member was removed. Cannot come back. */
     REMOVED
 }

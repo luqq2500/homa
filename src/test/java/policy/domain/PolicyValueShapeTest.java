@@ -26,6 +26,9 @@ import policy.domain.PolicyValue.NoShowReportWindow;
 import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.EarlyRecheckDeadline;
+import policy.domain.PolicyValue.ReverificationPeriod;
+import policy.domain.PolicyValue.ReverificationReminder;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
@@ -33,6 +36,7 @@ import policy.domain.exception.CheckInRadiusNotPositiveException;
 import policy.domain.exception.InvalidPolicyRangeException;
 import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
 import policy.domain.exception.PolicyPeriodNotPositiveException;
+import policy.domain.exception.ReverificationPeriodNotPositiveException;
 import java.time.Duration;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -65,7 +69,9 @@ class PolicyValueShapeTest {
                     Named.of("completion deadline", CompletionDeadline::new),
                     Named.of("dispute window extension", DisputeWindowExtension::new),
                     Named.of("evidence retention", EvidenceRetention::new),
-                    Named.of("rating window", RatingWindow::new));
+                    Named.of("rating window", RatingWindow::new),
+                    Named.of("re-verification reminder", ReverificationReminder::new),
+                    Named.of("early re-check deadline", EarlyRecheckDeadline::new));
         }
 
         @ParameterizedTest(name = "the {0} must be longer than zero")
@@ -131,6 +137,14 @@ class PolicyValueShapeTest {
     void averagesAreShownAfterAtLeastOneRating() {
         assertThatThrownBy(() -> new MinimumRatingsToShow(0)).isInstanceOf(MinimumRatingsToShowNotPositiveException.class);
         assertThat(new MinimumRatingsToShow(1).ratings()).isEqualTo(1);
+    }
+
+    @Test
+    void reverificationIsDueAtLeastAMonthAfterTheLastVerification() {
+        assertThatThrownBy(() -> new ReverificationPeriod(0))
+                .isInstanceOf(ReverificationPeriodNotPositiveException.class)
+                .hasMessageContaining("was 0");
+        assertThat(new ReverificationPeriod(1).months()).isEqualTo(1);
     }
 
     @Test
