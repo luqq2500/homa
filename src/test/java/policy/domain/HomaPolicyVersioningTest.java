@@ -69,6 +69,11 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
+        void theProviderIsRemindedToNameTheTeamADayAhead() {
+            assertThat(launch.teamReminder()).isEqualTo(Duration.ofHours(24));
+        }
+
+        @Test
         void checkInOpensFifteenMinutesBeforeTheStartAndClosesFifteenMinutesAfter() {
             assertThat(launch.earliestCheckIn()).isEqualTo(Duration.ofMinutes(15));
             assertThat(launch.checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
@@ -91,7 +96,7 @@ class HomaPolicyVersioningTest {
 
         @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(23);
+            assertThat(launch.values()).hasSize(24);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -127,7 +132,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(23);
+            assertThat(version2.snapshot().values()).hasSize(24);
         }
 
         @Test

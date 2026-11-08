@@ -22,6 +22,7 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.ServiceFee;
+import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CancellationFeeAboveNoShowCeilingException;
 import policy.domain.exception.FlexibleTierMustBeFreeException;
 import policy.domain.exception.NoShowFineBelowLateCancellationFineException;
@@ -52,6 +53,7 @@ public final class HomaPolicy {
             new ProviderLateCancellationFine(Percentage.of(20)),
             new ProviderNoShowFine(Percentage.of(30)),
             new FineDeductionCap(Percentage.of(50)),
+            new TeamReminder(Duration.ofHours(24)),
             new EarliestCheckIn(Duration.ofMinutes(15)),
             new CheckInPeriod(Duration.ofMinutes(15)),
             new CheckInRadius(300),

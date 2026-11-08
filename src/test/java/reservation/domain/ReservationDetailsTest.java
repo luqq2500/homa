@@ -66,7 +66,7 @@ class ReservationDetailsTest {
                         launch.providerLateCancellationFine(), launch.providerNoShowFine(), launch.earliestCheckIn(),
                         launch.checkInPeriod(), launch.checkInRadiusMetres(), launch.customerNoShowWait(),
                         launch.customerNoShowFee(), launch.noShowReportWindow(), launch.completionReminder(),
-                        launch.completionDeadline(), launch.disputeWindowExtension()))
+                        launch.completionDeadline(), launch.disputeWindowExtension(), launch.teamReminder()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("STANDARD");
     }

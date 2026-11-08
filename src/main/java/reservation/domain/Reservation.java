@@ -327,6 +327,17 @@ public final class Reservation {
 
     // ---- Reminders ----
 
+    /**
+     * Homa reminds the provider to name the team from the team reminder time before the booked start,
+     * until the team is named. From the booked start the team is locked, so there is nothing to remind.
+     */
+    public boolean isTeamReminderDue(Instant now) {
+        return status == ReservationStatus.RESERVED
+                && team == null
+                && !now.isBefore(start().minus(policy.teamReminder()))
+                && now.isBefore(start());
+    }
+
     /** Homa reminds the provider to submit completion from the completion reminder time after the booked end. */
     public boolean isCompletionReminderDue(Instant now) {
         return status == ReservationStatus.RESERVED

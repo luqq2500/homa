@@ -26,6 +26,7 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.ServiceFee;
+import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
 import policy.domain.exception.InvalidPolicyRangeException;
 import policy.domain.exception.PolicyPeriodNotPositiveException;
@@ -52,6 +53,7 @@ class PolicyValueShapeTest {
                     Named.of("booking horizon", BookingHorizon::new),
                     Named.of("request expiry", RequestExpiry::new),
                     Named.of("fee window", FeeWindow::new),
+                    Named.of("team reminder", TeamReminder::new),
                     Named.of("earliest check-in", EarliestCheckIn::new),
                     Named.of("check-in period", CheckInPeriod::new),
                     Named.of("customer no-show wait", CustomerNoShowWait::new),

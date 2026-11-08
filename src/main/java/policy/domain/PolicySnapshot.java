@@ -22,6 +22,7 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.ServiceFee;
+import policy.domain.PolicyValue.TeamReminder;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -109,6 +110,10 @@ public final class PolicySnapshot {
 
     public Percentage fineDeductionCap() {
         return value(FineDeductionCap.class).ofPayout();
+    }
+
+    public Duration teamReminder() {
+        return value(TeamReminder.class).beforeStart();
     }
 
     public Duration earliestCheckIn() {

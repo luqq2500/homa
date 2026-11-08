@@ -27,7 +27,8 @@ public record PolicySnapshot(
         Duration noShowReportWindow,
         Duration completionReminder,
         Duration completionDeadline,
-        Duration disputeWindowExtension) {
+        Duration disputeWindowExtension,
+        Duration teamReminder) {
 
     public PolicySnapshot {
         cancellationFees = Map.copyOf(cancellationFees);

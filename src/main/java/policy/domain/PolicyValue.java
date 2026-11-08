@@ -109,6 +109,13 @@ public sealed interface PolicyValue {
 
     // ---- Check-in ----
 
+    /** How long before the booked start Homa reminds the provider to name the team. */
+    record TeamReminder(Duration beforeStart) implements PolicyValue {
+        public TeamReminder {
+            PolicyShape.requirePeriod("The team reminder time", beforeStart);
+        }
+    }
+
     /** How long before the booked start the provider can check in. */
     record EarliestCheckIn(Duration beforeStart) implements PolicyValue {
         public EarliestCheckIn {

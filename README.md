@@ -57,7 +57,7 @@ Build order from the domain plan:
 | 3 | `account` | Done |
 | 4 | `offering` | Done |
 | 5 | `availability` | Done |
-| 6 | `reservation`, all seven slices | Done, except the team reminder (see below) |
+| 6 | `reservation`, all seven slices | Done |
 | 7 | `payment` | Done |
 | 8 | `resolution` | Done |
 | 9 | `conversation` | Done |
@@ -75,7 +75,8 @@ windows, touching blocks and the later-start tie-break in availability, plus a b
 Open questions answered: #1 the customer no-show wait starts from the later of the booked start and
 check-in; #2 percentages round half-up and the refund is computed last; #3 editing a request does not
 reset its expiry; #6 the lead is one of the named helpers, and a provider who is their own helper can
-be the lead; #8 a request keeps the offering snapshot it was made with.
+be the lead; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
+hours either side.
 
 - **`HomaPolicy.initial(Instant now)`** takes the time version 1 takes effect, following the "time is
   passed in" convention. Each version records when it took effect, and a change cannot take effect
@@ -150,8 +151,9 @@ be the lead; #8 a request keeps the offering snapshot it was made with.
     - `Reservation.resolve` takes `now`, so the settlement has a release time.
   - **Payment phase note:** a customer no-show settlement is released when the report window ends.
     If it is challenged, Homa's decision gives a final settlement that replaces it.
-  - **Waiting on the product owner:** the spec says Homa reminds the provider to name the team "ahead
-    of time", but no Homa-set value says how far ahead, so `isTeamReminderDue` is not built yet.
+  - The team reminder is a new Homa-set value, 24 hours (confirmed). `isTeamReminderDue` is true while
+    the booking is reserved and the team is not named, from 24 hours before the booked start until the
+    start, when the team locks.
 - **Payment details:**
   - `capture` runs on acceptance for both methods. A card is charged; an FPX payment, already held, is
     kept for the booking.
@@ -180,8 +182,7 @@ be the lead; #8 a request keeps the offering snapshot it was made with.
 - **Discovery details:**
   - `SearchCriteria.of` takes `SearchLimits`, discovery's own view of the Homa-set values.
   - A `ProviderCandidate` carries `nearestFreeStart`, the answer from availability's
-    `nearestAvailableStart` within 2 hours either side (open question #4, still the plan's
-    assumption). Equal to the chosen start means free at the chosen time; another start means a
+    `nearestAvailableStart` within 2 hours either side (open question #4, confirmed). Equal to the chosen start means free at the chosen time; another start means a
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Ids are Strings.** Following `XId().generate()` returning a `String`, signatures the plan writes
