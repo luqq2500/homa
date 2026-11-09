@@ -72,14 +72,15 @@ Build order from the domain plan:
 | 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; eight new events | Done |
 | 15 | Verified for the whole job: a provider is requested, accepts and is found in search only for jobs that end by their re-verification due date | Done |
 | 16 | Provider types, team roles (helpers and supervisors), accepted documents, face check-in, and adding a team member through a lawful-employment confirmation and eKYC | Done |
+| 17 | Verification on the spot: eKYC on the provider's phone with the person present, within a 1-hour session | Done |
 
-The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, and provider types and face check-in.
+The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.
 
 ### Usecase phase
 
 Paused: the repository holds the domain modules only for now. The draft plan,
 `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases, how one context gets
-another's data, the required rules R1 to R8, and open questions U1 to U7. It waits for review.
+another's data, the required rules R1 to R9, and open questions U1 to U7. It waits for review.
 
 ### Decisions taken while building
 

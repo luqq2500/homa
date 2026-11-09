@@ -217,15 +217,15 @@ Both types can have a team of helpers and supervisors, and everything else is th
 
 **Adding a team member.** The provider fills in one form and the person verifies; nothing is on the team until the eKYC is verified.
 1. **Add:** the provider chooses the role (helper or supervisor), the document type (identity card or passport) and, for a business provider only, the issuing country; an independent provider's members are always Malaysian. The provider adds a profile photo and, on the same form, ticks that **this person** is lawfully employed by or engaged with them and allowed to work in Malaysia. The form cannot be sent without the tick.
-2. **Verify:** the person completes eKYC through a link from the provider app; team members have no accounts. Once it is verified, the person is added to the team automatically, with their registered name from the eKYC. The profile photo is matched against the eKYC once, so it shows the verified person.
+2. **Verify on the spot:** the person must be with the provider. On the provider's phone, the person scans their own identity document and takes their own live selfie; team members have no accounts and need no phone of their own. Once it is verified, the person is added to the team automatically, with their registered name from the eKYC. The profile photo is matched against the eKYC once, so it shows the verified person.
 
-While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. If the eKYC is rejected or not finished within the **verification link expiry**, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
+While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. If the eKYC is rejected or not finished within the **verification session expiry**, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members submit only their eKYC. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Only a business provider can add team members from outside Malaysia. Homa removes a team member, and can remove the provider, if it learns a team member is not allowed to work. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
 - Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
 - A provider whose eKYC is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
-- **Re-verification:** every provider and team member is re-verified through eKYC, by the same steps, at their **due date**: the **re-verification period** after their last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date, with a link for each.
+- **Re-verification:** every provider and team member is re-verified through eKYC, by the same steps, at their **due date**: the **re-verification period** after their last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present.
 - Until the due date nothing changes. A person who passes stays verified, and their next due date is counted from the new verification.
 - **Missing the due date:** a team member who isn't re-verified by their due date **lapses** and leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A provider who isn't re-verified by their due date has their listing **paused**: it takes no new requests until they pass. Reservations already accepted still go ahead.
 - **Verified for the whole job:** a provider can be requested, and can accept, only for a job that ends by their re-verification due date. Search leaves a provider out for any job that would end later. Once they pass the re-check, their next due date moves out and those dates open up.
@@ -243,7 +243,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.
-- **Consent:** asked at sign-up and at eKYC. Location permission is asked only when checking in. Each team member consents through their own eKYC link, including to face checks at check-in and to being rated.
+- **Consent:** asked at sign-up and at eKYC. Location permission is asked only when checking in. Each team member gives their own consent on the eKYC screen, including to face checks at check-in and to being rated.
 - **Retention:** evidence is kept for the **evidence retention period**. Other personal data is kept while the account is active and deleted or anonymised after the account is closed, except records Homa must keep by law (such as payment records).
 - **User rights:** customers, providers and helpers can see their data, correct it, get a copy, and ask to close their account and delete their data.
 - **Sharing:** personal data is shared only with the external services listed below, to run Homa, and with authorities when the law requires. Customers see only what they need about providers and helpers (names, photos, check-in time), and providers see only the customer's name, address and reservation details.
@@ -304,7 +304,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Check-in period** | Check-in Policy | 15 minutes after the booked start |
 | **Check-in radius** | Check-in Policy | 300 metres |
 | **Face check attempts** | Check-in Policy | 3 per person per check-in |
-| **Verification link expiry** | Verification Policy | 7 days to complete eKYC when adding a team member |
+| **Verification session expiry** | Verification Policy | 1 hour to complete eKYC on the spot when adding or re-verifying a team member |
 | **Customer no-show wait** | Check-in Policy | 15 minutes |
 | **Customer no-show fee** | Check-in Policy | Travel fee plus 30% of the hours fee |
 | **No-show report window** | Check-in Policy | 1 hour after the provider reports a customer no-show |
@@ -380,7 +380,7 @@ Homa has a separate app that helps providers manage their reservations, calendar
 
 1. **Choose the provider type:** Independent or Business.
 2. **Verify:** choose the identity document (MyKad or Malaysian passport) and complete eKYC. A business also submits its SSM registration, which Homa checks.
-3. **Set up your team:** by default you are a helper. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify through the eKYC link you send them, and they join your team once verified. You can remove yourself from the team.
+3. **Set up your team:** by default you are a helper. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify on the spot on your phone, scanning their own document and taking their own selfie, and they join your team once verified. You can remove yourself from the team.
 4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
 5. **Add a payout account:** a personal bank account for an independent provider, a business bank account for a business.
 6. **Go live** once everything is set up.
@@ -396,7 +396,7 @@ A provider adds helpers and supervisors and manages the team in Homa. Only peopl
 - **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
 - **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy. A change applies to new requests only; a request already made keeps the offering it was made with.
-- **Verification:** see when the provider and each team member are next due for re-verification, and send the eKYC links.
+- **Verification:** see when the provider and each team member are next due for re-verification, and run each re-verification on the spot with the person present.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
 ## Homa Admin

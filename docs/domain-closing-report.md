@@ -336,7 +336,7 @@ customer knows who they are before they arrive.
 
 - **`policy`:**
   - No Homa limit on helpers.
-  - New values: face check attempts (3), verification link expiry (7 days) and the accepted documents
+  - New values: face check attempts (3), verification link expiry (7 days; now the 1-hour session expiry, see section 15) and the accepted documents
     list. That makes 31 values.
 - **`account`:**
   - **Providers:** a provider is independent or a business. A business's SSM registration is checked
@@ -366,3 +366,21 @@ customer knows who they are before they arrive.
 - **Gates:** whole build 1,149 tests, 1,480 mutants, all killed, worst CRAP 5.0.
 - **Decisions:** the decisions made while building are confirmed, and listed in the plan under "Decided
   while building: provider types, team roles, documents, face check-in and adding a team member".
+
+## 15. Addendum: verification on the spot
+
+Changed after the phase closed. A person being added or re-verified does eKYC on the spot, on the
+provider's phone: they scan their own document and take their own selfie. There is no link.
+
+- **`policy`:** the 7-day verification link expiry is now the verification session expiry, 1 hour.
+- **`account`:**
+  - `VerificationLimits` carries the session expiry.
+  - An unfinished `MemberVerification` expires from 1 hour after it started.
+- **`ie/`:** `HomaPolicyChangedIE` carries `verificationSessionExpiry`. The member verification events
+  describe the on-the-spot session.
+- **Usecase plan:** required rule R9. A re-verification session that runs out sends no result, so
+  the re-check stays open.
+- **Scenarios:** "An unfinished on-the-spot eKYC expires after 1 hour" replaces the 7-day scenario,
+  and the audit maps 199 of 199.
+- **Gates:** whole build 1,149 tests, 1,480 mutants, all killed.
+- **To confirm:** the decisions in the plan under "Decided while building: verification on the spot".

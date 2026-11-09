@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A provider started adding a helper or supervisor; the person is waiting for verification and is not on the team. */
+/** A provider started adding a helper or supervisor, who is doing eKYC on the spot on the provider's phone; until verified they are waiting for verification and not on the team. The session ends at {@code expiresAt}. */
 public record MemberVerificationStartedIE(
         String verificationId,
         String providerId,

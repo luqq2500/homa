@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A person being added did not finish eKYC within the verification link expiry; nothing is added, and the provider can start again. */
+/** A person being added did not finish the on-the-spot eKYC within the verification session expiry; nothing is added, and the provider can start again. */
 public record MemberVerificationExpiredIE(
         String verificationId,
         String providerId,

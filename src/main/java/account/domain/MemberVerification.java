@@ -12,7 +12,9 @@ import java.util.Optional;
 /**
  * Adding a team member, before the person exists on the team. The provider fills in one form: the role, the
  * document type, the issuing country (a business only), a profile photo, and the lawful-employment
- * confirmation for this person. The person then completes eKYC through a link. Until it is verified this is
+ * confirmation for this person. The person then completes eKYC on the spot, on the provider's phone: they
+ * scan their own document and take their own live selfie, and need no account or phone of their own.
+ * The session must finish within the verification session expiry. Until it is verified this is
  * shown to the provider as waiting for verification: not on the team, never shown to customers, and it
  * cannot be named for jobs.
  */
@@ -44,7 +46,7 @@ public final class MemberVerification {
         this.photo = photo;
         this.confirmation = confirmation;
         this.limits = limits;
-        this.expiresAt = now.plus(limits.linkExpiry());
+        this.expiresAt = now.plus(limits.sessionExpiry());
     }
 
     /**
@@ -90,7 +92,7 @@ public final class MemberVerification {
         return EkycOutcome.VERIFIED;
     }
 
-    /** An eKYC not finished within the verification link expiry ends, and nothing is added. */
+    /** An eKYC not finished within the verification session expiry ends, and nothing is added. */
     public void expire(Instant now) {
         requireWaiting();
         if (now.isBefore(expiresAt)) {
@@ -99,7 +101,7 @@ public final class MemberVerification {
         status = MemberVerificationStatus.EXPIRED;
     }
 
-    /** Whether it ended without adding anyone, after a rejection or the link expiry. */
+    /** Whether it ended without adding anyone, after a rejection or the session expiry. */
     public boolean hasEnded() {
         return status == MemberVerificationStatus.REJECTED || status == MemberVerificationStatus.EXPIRED;
     }

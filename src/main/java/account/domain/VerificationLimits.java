@@ -7,10 +7,10 @@ import java.time.ZoneId;
 
 /**
  * account's view of the Homa-set verification values: the re-verification period in months, the reminder
- * before the due date, the early re-check deadline, and the verification link expiry for adding a team
- * member. At launch they are 3 months, 14 days, 14 days and 7 days.
+ * before the due date, the early re-check deadline, and the verification session expiry for adding a team
+ * member on the spot. At launch they are 3 months, 14 days, 14 days and 1 hour.
  */
-public record VerificationLimits(int periodMonths, Duration reminder, Duration earlyRecheckDeadline, Duration linkExpiry) {
+public record VerificationLimits(int periodMonths, Duration reminder, Duration earlyRecheckDeadline, Duration sessionExpiry) {
 
     /** Homa operates in Malaysia, so a period of months is counted on Malaysian calendar dates. */
     static final ZoneId HOMA_TIME = ZoneId.of("Asia/Kuala_Lumpur");
@@ -21,7 +21,7 @@ public record VerificationLimits(int periodMonths, Duration reminder, Duration e
         }
         requirePositive("re-verification reminder", reminder);
         requirePositive("early re-check deadline", earlyRecheckDeadline);
-        requirePositive("verification link expiry", linkExpiry);
+        requirePositive("verification session expiry", sessionExpiry);
     }
 
     /** When re-verification is due for someone verified at {@code verifiedAt}. */

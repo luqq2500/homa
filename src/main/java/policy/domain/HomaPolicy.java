@@ -17,7 +17,7 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.AcceptedDocuments;
 import policy.domain.PolicyValue.FaceCheckAttempts;
-import policy.domain.PolicyValue.VerificationLinkExpiry;
+import policy.domain.PolicyValue.VerificationSessionExpiry;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -77,7 +77,7 @@ public final class HomaPolicy {
             new ReverificationPeriod(3),
             new ReverificationReminder(Duration.ofDays(14)),
             new EarlyRecheckDeadline(Duration.ofDays(14)),
-            new VerificationLinkExpiry(Duration.ofDays(7)),
+            new VerificationSessionExpiry(Duration.ofHours(1)),
             new AcceptedDocuments(Set.of(
                     AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, AcceptedDocument.MALAYSIA),
                     AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.PASSPORT, AcceptedDocument.MALAYSIA),

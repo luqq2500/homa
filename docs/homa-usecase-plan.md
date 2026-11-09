@@ -75,7 +75,7 @@ Availability is the exception: a request needs a live answer (see U1).
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
 - Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`; `HomaCheckBusinessRegistration` → `BusinessRegistrationCheckedIE`
-- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; Kenal link out port) → `MemberVerificationStartedIE`; `HomaExpireMemberVerifications` (scheduled) → `MemberVerificationExpiredIE`; `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
+- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens a Kenal on-the-spot session on the provider's phone) → `MemberVerificationStartedIE`; `HomaExpireMemberVerifications` (scheduled, at least every few minutes, since a session lasts 1 hour) → `MemberVerificationExpiredIE`; `ProviderStartReverification` (opens an on-the-spot session for a provider or team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
 - Kenal reporting back: `KenalRecordProviderResult`, `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
 - Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
@@ -163,6 +163,13 @@ These rules come from decisions made after the domain phase. Each one needs a us
    the location check. The customer sees each person's result and time. Someone who cannot work
    (`Reservation.canWork` is false) is shown to the customer as not working on the job, and the
    customer can report a missing helper.
+
+9. **R9. Verification on the spot.** eKYC for adding or re-verifying a team member runs as a Kenal
+   session on the provider's phone, with the person scanning their own document and taking their own
+   selfie. The session lasts the verification session expiry (1 hour).
+   - When adding, `HomaExpireMemberVerifications` ends an unfinished verification.
+   - When re-verifying, a session that runs out sends no result, so nothing changes, the re-check stays
+     open, and the provider can start another session.
 
 ## Build order
 

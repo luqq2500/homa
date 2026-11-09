@@ -197,10 +197,10 @@ public sealed interface PolicyValue {
                 EnumSet.of(DocumentHolder.PROVIDER, DocumentHolder.INDEPENDENT_TEAM_MEMBER);
     }
 
-    /** How long a person being added to a team has to finish their eKYC. */
-    record VerificationLinkExpiry(Duration period) implements PolicyValue {
-        public VerificationLinkExpiry {
-            PolicyShape.requirePeriod("The verification link expiry", period);
+    /** How long a person has to finish their eKYC on the spot, on the provider's phone, when being added to a team. */
+    record VerificationSessionExpiry(Duration period) implements PolicyValue {
+        public VerificationSessionExpiry {
+            PolicyShape.requirePeriod("The verification session expiry", period);
         }
     }
 

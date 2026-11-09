@@ -25,6 +25,8 @@ import account.domain.exception.PhotoRequiredException;
 import account.domain.exception.TeamMemberRemovedException;
 import account.domain.exception.VerificationNotExpiredException;
 import account.domain.exception.VerificationNotWaitingException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +39,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /** Feature: Adding a team member, and the team member's identity. */
 class TeamMemberAddingTest {
+
+    /** The 1-hour session for a verification started at 10:00 on 1 March ends at 11:00. */
+    private static final Instant ELEVEN_ON_1_MARCH = on("1 March").plus(Duration.ofHours(1));
 
     private static final EkycResult INDONESIAN_PASSPORT =
             verifiedWith(new IdentityDocument(INDONESIA, DocumentType.PASSPORT, "Ahmad bin Ismail"));
@@ -84,7 +89,7 @@ class TeamMemberAddingTest {
             assertThat(verification.issuingCountry()).isEqualTo(INDONESIA);
             assertThat(verification.photo()).isEqualTo(Photo.of("photos/aina.jpg"));
             assertThat(verification.confirmation()).isEqualTo(confirmedOn("1 March"));
-            assertThat(verification.expiresAt()).isEqualTo(on("8 March"));
+            assertThat(verification.expiresAt()).isEqualTo(on("1 March").plus(Duration.ofHours(1)));
             assertThat(verification.id()).isNotBlank();
         }
 
@@ -268,7 +273,7 @@ class TeamMemberAddingTest {
             MemberVerification rejected = aHelperWaitingSince("1 March");
             rejected.recordEkycResult(EkycResult.rejected(), ACCEPTED, on("2 March"));
             MemberVerification expired = aHelperWaitingSince("1 March");
-            expired.expire(on("8 March"));
+            expired.expire(ELEVEN_ON_1_MARCH);
 
             assertThatThrownBy(() -> verified.recordEkycResult(EkycResult.rejected(), ACCEPTED, on("3 March")))
                     .isInstanceOf(VerificationNotWaitingException.class)
@@ -288,22 +293,22 @@ class TeamMemberAddingTest {
     class Expiry {
 
         @Test
-        void anUnfinishedEkycExpiresAfterSevenDays() {
+        void anUnfinishedOnTheSpotEkycExpiresAfterAnHour() {
             MemberVerification verification = aHelperWaitingSince("1 March");
 
-            verification.expire(on("8 March"));
+            verification.expire(ELEVEN_ON_1_MARCH);
 
             assertThat(verification.status()).isEqualTo(MemberVerificationStatus.EXPIRED);
             assertThat(verification.hasEnded()).isTrue();
         }
 
         @Test
-        void anEkycDoesNotExpireBeforeSevenDays() {
+        void anOnTheSpotEkycDoesNotExpireBeforeAnHour() {
             MemberVerification verification = aHelperWaitingSince("1 March");
 
-            assertThatThrownBy(() -> verification.expire(on("8 March").minusSeconds(60)))
+            assertThatThrownBy(() -> verification.expire(ELEVEN_ON_1_MARCH.minusSeconds(60)))
                     .isInstanceOf(VerificationNotExpiredException.class)
-                    .hasMessageContaining(on("8 March").toString());
+                    .hasMessageContaining(ELEVEN_ON_1_MARCH.toString());
             assertThat(verification.status()).isEqualTo(MemberVerificationStatus.WAITING);
         }
 
@@ -312,7 +317,7 @@ class TeamMemberAddingTest {
             MemberVerification verified = aHelperWaitingSince("1 March");
             verified.recordEkycResult(verifiedAsAina(), ACCEPTED, on("2 March"));
 
-            assertThatThrownBy(() -> verified.expire(on("8 March")))
+            assertThatThrownBy(() -> verified.expire(ELEVEN_ON_1_MARCH))
                     .isInstanceOf(VerificationNotWaitingException.class)
                     .hasMessageContaining(verified.id());
             assertThat(verified.status()).isEqualTo(MemberVerificationStatus.VERIFIED);

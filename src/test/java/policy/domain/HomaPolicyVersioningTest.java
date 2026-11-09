@@ -106,9 +106,9 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
-        void eachPersonGetsThreeFaceCheckAttemptsAndSevenDaysToVerify() {
+        void eachPersonGetsThreeFaceCheckAttemptsAndAnHourToVerifyOnTheSpot() {
             assertThat(launch.faceCheckAttempts()).isEqualTo(3);
-            assertThat(launch.verificationLinkExpiry()).isEqualTo(Duration.ofDays(7));
+            assertThat(launch.verificationSessionExpiry()).isEqualTo(Duration.ofHours(1));
         }
 
         @Test

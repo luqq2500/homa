@@ -241,7 +241,7 @@ Two scenarios map to more than one test:
 | 195 | Adding a team member | Only a business chooses the issuing country (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry` |
 | 196 | Adding a team member | A person cannot be added before verification | `TeamMemberAddingTest` | `aPersonCannotBeAddedBeforeVerification` |
 | 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
-| 198 | Adding a team member | An unfinished eKYC expires after 7 days (outline) | `TeamMemberAddingTest` | `anUnfinishedEkycExpiresAfterSevenDays`, `anEkycDoesNotExpireBeforeSevenDays` |
+| 198 | Adding a team member | An unfinished on-the-spot eKYC expires after 1 hour (outline) | `TeamMemberAddingTest` | `anUnfinishedOnTheSpotEkycExpiresAfterAnHour`, `anOnTheSpotEkycDoesNotExpireBeforeAnHour` |
 | 199 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
 
 ## 2. Product spec rules with no test

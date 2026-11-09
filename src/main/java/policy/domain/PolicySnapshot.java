@@ -17,7 +17,7 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.AcceptedDocuments;
 import policy.domain.PolicyValue.FaceCheckAttempts;
-import policy.domain.PolicyValue.VerificationLinkExpiry;
+import policy.domain.PolicyValue.VerificationSessionExpiry;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -136,8 +136,8 @@ public final class PolicySnapshot {
         return value(FaceCheckAttempts.class).attempts();
     }
 
-    public Duration verificationLinkExpiry() {
-        return value(VerificationLinkExpiry.class).period();
+    public Duration verificationSessionExpiry() {
+        return value(VerificationSessionExpiry.class).period();
     }
 
     public Set<AcceptedDocument> acceptedDocuments() {
