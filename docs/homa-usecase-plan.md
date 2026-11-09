@@ -47,7 +47,7 @@ fed by event handlers and stored behind its own out port:
 |---|---|---|
 | offering | active catalogue jobs and tools | `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE` |
 | offering | Homa's hours and helpers limits | `HomaPolicyChangedIE` |
-| offering | provider readiness and the team roster | `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `HelperJoinedTeamIE`, `HelperReverifiedIE`, `HelperLapsedIE`, `HelperRemovedIE` |
+| offering | provider type and readiness, and the team roster by role | `ProviderRegisteredIE`, `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `BusinessRegistrationCheckedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
 | offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
@@ -74,14 +74,14 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
-- Provider: `ProviderRegisterAccount`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`
-- Helpers: `ProviderInviteHelper` → `HelperInvitedIE`, `ProviderSendHelperEkycLink`, `ProviderRemoveHelper` → `HelperRemovedIE`
-- Kenal reporting back: `KenalRecordProviderResult` and `KenalRecordHelperResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
-- Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `HelperLapsedIE` or `ProviderVerificationLapsedIE`
+- Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`; `HomaCheckBusinessRegistration` → `BusinessRegistrationCheckedIE`
+- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; Kenal link out port) → `MemberVerificationStartedIE`; `HomaExpireMemberVerifications` (scheduled) → `MemberVerificationEndedIE`; `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
+- Kenal reporting back: `KenalRecordProviderResult`, `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
+- Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
 **offering**
-- `ProviderDraftListing`, `ProviderSetProfile`, `ProviderOfferJobs`, `ProviderBringTools`, `ProviderSetPricing`, `ProviderSetHours`, `ProviderSetHelpers`, `ProviderCoverCities`, `ProviderChooseCancellationTier` → `ListingChangedIE` when live
+- `ProviderDraftListing`, `ProviderSetProfile`, `ProviderOfferJobs`, `ProviderBringTools`, `ProviderSetPricing`, `ProviderSetHours`, `ProviderSetHelpers`, `ProviderSetSupervisorRule`, `ProviderClearSupervisorRule`, `ProviderCoverCities`, `ProviderChooseCancellationTier` → `ListingChangedIE` when live
 - `ProviderGoLive` → `ListingWentLiveIE`
 - Handlers: the catalogue, policy and account events above. A roster change can lead to `ListingWentOfflineIE`. `ProviderVerificationLapsedIE` pauses a live listing → `ListingPausedIE`; `ProviderReverifiedIE` resumes a paused one → `ListingResumedIE`.
 
@@ -92,7 +92,7 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **reservation**
 - Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation`; `CustomerChallengeNoShow` → `NoShowChallengedIE`
-- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
+- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `ProviderRecordFaceCheck` → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
@@ -120,14 +120,14 @@ Availability is the exception: a request needs a live answer (see U1).
 
 These rules come from decisions made after the domain phase. Each one needs a usecase test.
 
-1. **R1. One event per eKYC outcome.** `KenalRecordProviderResult` and `KenalRecordHelperResult`
-   publish the event for the `EkycOutcome` the domain returns, and nothing for `UNCHANGED`:
+1. **R1. One event per eKYC outcome.** The Kenal usecases publish the event for the `EkycOutcome`
+   the domain returns, and nothing for `UNCHANGED`:
 
-   | Outcome | Helper | Provider |
+   | Outcome | Team member | Provider |
    |---|---|---|
-   | `VERIFIED` | `HelperJoinedTeamIE` | `ProviderVerifiedIE` |
-   | `REJECTED` | `HelperInviteRejectedIE` | `ProviderVerificationRejectedIE` |
-   | `REVERIFIED` | `HelperReverifiedIE` | `ProviderReverifiedIE` |
+   | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` (R7) | `ProviderVerifiedIE` |
+   | `REJECTED` | `MemberVerificationEndedIE` | `ProviderVerificationRejectedIE` |
+   | `REVERIFIED` | `TeamMemberReverifiedIE` | `ProviderReverifiedIE` |
    | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
    | `UNCHANGED` | none | none |
 
@@ -143,10 +143,11 @@ These rules come from decisions made after the domain phase. Each one needs a us
 3. **R3. Going offline never touches accepted reservations.** `ListingWentOfflineIE` and
    `ListingPausedIE` update projections only. No handler cancels or changes a reservation because of
    them.
-4. **R4. The roster holds team members only.** offering builds a provider's `TeamRoster` from helpers
-   where `isTeamMember()` is true, plus the provider if they include themselves. It rebuilds the roster
-   on `HelperJoinedTeamIE`, `HelperReverifiedIE`, `HelperLapsedIE` and `HelperRemovedIE`.
-5. **R5. A lapsed helper named on an upcoming reservation.** The provider must name someone else before
+4. **R4. The roster holds team members only, by role.** offering builds a provider's `TeamRoster` from
+   members where `isTeamMember()` is true, as helpers or supervisors, plus the provider as a helper if
+   they include themselves. It rebuilds the roster on `TeamMemberAddedIE`, `TeamMemberReverifiedIE`,
+   `TeamMemberLapsedIE` and `TeamMemberRemovedIE`.
+5. **R5. A lapsed team member named on an upcoming reservation.** The provider must name someone else before
    the start, and the reservation's existing "team must be on the roster" rule then applies.
 6. **R6. Verified for the whole job.**
    - reservation and discovery keep each provider's re-verification due date, from
@@ -154,6 +155,14 @@ These rules come from decisions made after the domain phase. Each one needs a us
    - `CustomerRequestReservation`, `CustomerEditRequest` and `ProviderAcceptRequest` pass the due date
      as it is now to the domain, which refuses a job ending after it.
    - `CustomerSearchProviders` puts it on each `ProviderCandidate`.
+
+7. **R7. A verified person is added straight away.** When `MemberVerification.recordEkycResult`
+   returns `VERIFIED`, the same usecase calls `TeamMember.add` and publishes `TeamMemberAddedIE`; there
+   is no separate step for the provider.
+8. **R8. Only verified people work.** The provider app asks every named person for a face check after
+   the location check. The customer sees each person's result and time. Someone who cannot work
+   (`Reservation.canWork` is false) is shown to the customer as not working on the job, and the
+   customer can report a missing helper.
 
 ## Build order
 

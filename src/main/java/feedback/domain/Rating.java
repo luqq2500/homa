@@ -53,7 +53,7 @@ public final class Rating {
         requireRateableBy(reservation, customerId);
         requireInsideRatingWindow(reservation, limits, now);
         Map<String, HelperRating> rated = Map.copyOf(helpers);
-        rated.keySet().stream().filter(helper -> !reservation.namedHelperIds().contains(helper)).findFirst().ifPresent(helper -> {
+        rated.keySet().stream().filter(helper -> !reservation.namedMemberIds().contains(helper)).findFirst().ifPresent(helper -> {
             throw new HelperNotOnReservationException(helper);
         });
         return new Rating(reservation, Objects.requireNonNull(provider), rated, now);

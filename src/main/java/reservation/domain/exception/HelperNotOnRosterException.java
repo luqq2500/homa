@@ -1,9 +1,9 @@
 package reservation.domain.exception;
 
-/** Every helper named is on the provider's verified roster. */
+/** Every helper named is a helper on the provider's team. */
 public class HelperNotOnRosterException extends ReservationRuleViolationException {
 
     public HelperNotOnRosterException(String helperId) {
-        super("Helper " + helperId + " is not on the provider's verified roster");
+        super("Helper " + helperId + " is not a helper on the provider's team");
     }
 }

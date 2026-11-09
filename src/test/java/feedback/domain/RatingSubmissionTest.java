@@ -1,6 +1,7 @@
 package feedback.domain;
 
 import static feedback.domain.FeedbackBuilders.LAUNCH_LIMITS;
+import static feedback.domain.FeedbackBuilders.saturday;
 import static feedback.domain.FeedbackBuilders.aCompletedReservation;
 import static feedback.domain.FeedbackBuilders.daysAfterSaturday;
 import static feedback.domain.FeedbackBuilders.stars;
@@ -17,6 +18,7 @@ import feedback.domain.exception.RatingWindowClosedException;
 import feedback.domain.exception.StarsOutOfRangeException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -197,6 +199,17 @@ class RatingSubmissionTest {
 
             assertThat(aina.overall()).isEqualTo(Stars.of(5));
             assertThat(aina.categories()).hasSize(2).containsEntry(HelperCategory.THOROUGHNESS, Stars.of(4));
+        }
+
+        @Test
+        void aNamedSupervisorIsRatedWithTheHelperCategories() {
+            RateableReservation withSupervisor =
+                    RateableReservation.completed("R2", "C1", "P1", Set.of("aina", "ben", "siti"), saturday("14:00"));
+            HelperRating given = HelperRating.of(Stars.of(5), Map.of(HelperCategory.COOPERATION, Stars.of(5)));
+
+            Rating rating = Rating.submit(withSupervisor, "C1", stars(4), Map.of("siti", given), LAUNCH_LIMITS, sunday("10:00"));
+
+            assertThat(rating.helpers()).containsEntry("siti", given);
         }
 
         @Test

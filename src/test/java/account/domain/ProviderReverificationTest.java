@@ -1,6 +1,8 @@
 package account.domain;
 
+import static account.domain.AccountBuilders.ACCEPTED;
 import static account.domain.AccountBuilders.LIMITS;
+import static account.domain.AccountBuilders.aMyKad;
 import static account.domain.AccountBuilders.aProvider;
 import static account.domain.AccountBuilders.aProviderVerifiedOn;
 import static account.domain.AccountBuilders.on;
@@ -24,6 +26,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /** Feature: Provider re-verification. The provider was verified on 1 January and their payout account is ready. */
 class ProviderReverificationTest {
+
+    private static final EkycResult NUR_AINA = EkycResult.verified(aMyKad("Nur Aina binti Ahmad"));
 
     private ProviderAccount provider;
 
@@ -56,7 +60,7 @@ class ProviderReverificationTest {
     void passingTheRecheckResetsTheDueDate() {
         provider.openRecheck(LIMITS, on("18 March"));
 
-        EkycOutcome outcome = provider.recordEkycResult(VerificationStatus.VERIFIED, LIMITS, on("20 March"));
+        EkycOutcome outcome = provider.recordEkycResult(NUR_AINA, ACCEPTED, LIMITS, on("20 March"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.REVERIFIED);
         assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
@@ -67,7 +71,7 @@ class ProviderReverificationTest {
     void aFailedRecheckChangesNothingYet() {
         provider.openRecheck(LIMITS, on("18 March"));
 
-        EkycOutcome outcome = provider.recordEkycResult(VerificationStatus.REJECTED, LIMITS, on("20 March"));
+        EkycOutcome outcome = provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("20 March"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.RECHECK_FAILED);
         assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
@@ -77,7 +81,7 @@ class ProviderReverificationTest {
 
     @Test
     void aRepeatedVerifiedResultWithNoRecheckOpenChangesNothing() {
-        EkycOutcome outcome = provider.recordEkycResult(VerificationStatus.VERIFIED, LIMITS, on("2 January"));
+        EkycOutcome outcome = provider.recordEkycResult(NUR_AINA, ACCEPTED, LIMITS, on("2 January"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.UNCHANGED);
         assertThat(verification().lastVerified()).isEqualTo(on("1 January"));
@@ -85,7 +89,7 @@ class ProviderReverificationTest {
 
     @Test
     void aRejectedResultWithNoRecheckOpenIsRefused() {
-        assertThatThrownBy(() -> provider.recordEkycResult(VerificationStatus.REJECTED, LIMITS, on("2 January")))
+        assertThatThrownBy(() -> provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("2 January")))
                 .isInstanceOf(ProviderAlreadyVerifiedException.class)
                 .hasMessageContaining(provider.id());
         assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
@@ -110,7 +114,7 @@ class ProviderReverificationTest {
     void aLapsedProviderWhoPassesIsVerifiedAgain() {
         provider.lapse(on("1 April"));
 
-        EkycOutcome outcome = provider.recordEkycResult(VerificationStatus.VERIFIED, LIMITS, on("5 April"));
+        EkycOutcome outcome = provider.recordEkycResult(NUR_AINA, ACCEPTED, LIMITS, on("5 April"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.REVERIFIED);
         assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
@@ -122,7 +126,7 @@ class ProviderReverificationTest {
     void aLapsedProviderWhoFailsStaysLapsed() {
         provider.lapse(on("1 April"));
 
-        EkycOutcome outcome = provider.recordEkycResult(VerificationStatus.REJECTED, LIMITS, on("5 April"));
+        EkycOutcome outcome = provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("5 April"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.RECHECK_FAILED);
         assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.LAPSED);
@@ -158,7 +162,7 @@ class ProviderReverificationTest {
                 case PENDING -> aProvider();
                 case REJECTED -> {
                     ProviderAccount rejected = aProvider();
-                    rejected.recordEkycResult(VerificationStatus.REJECTED, LIMITS, on("1 January"));
+                    rejected.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("1 January"));
                     yield rejected;
                 }
                 default -> {

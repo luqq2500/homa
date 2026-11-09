@@ -7,6 +7,7 @@ import kernel.Money;
 import offering.domain.exception.HourlyRateNotPositiveException;
 import offering.domain.exception.InvalidHelpersRangeException;
 import offering.domain.exception.InvalidHomaLimitsException;
+import offering.domain.exception.TeamMemberInTwoRolesException;
 import offering.domain.exception.OfferingDetailRequiredException;
 import offering.domain.exception.ProfileNameRequiredException;
 import offering.domain.exception.TravelFeeNotPositiveException;
@@ -64,23 +65,28 @@ class OfferingTermsTest {
 
         @Test
         void theMinimumHelpersCannotBeAboveTheMaximum() {
-            assertThatThrownBy(() -> HelpersRange.of(3, 2)).isInstanceOf(InvalidHelpersRangeException.class);
+            assertThatThrownBy(() -> HelpersRange.of(3, 2))
+                    .isInstanceOf(InvalidHelpersRangeException.class)
+                    .hasMessageContaining("3 to 2");
             assertThat(HelpersRange.of(2, 2).max()).isEqualTo(2);
         }
 
         @Test
-        void homasLimitsAreRangesFromOne() {
-            HomaLimits limits = new HomaLimits(1, 6, 1, 10);
-            assertThat(limits.maxHours()).isEqualTo(6);
-            assertThat(limits.maxHelpers()).isEqualTo(10);
+        void minHelpersIsAtLeastOne() {
+            assertThatThrownBy(() -> HelpersRange.of(0, 2)).isInstanceOf(InvalidHelpersRangeException.class);
+            assertThat(HelpersRange.of(1, 2).min()).isEqualTo(1);
+        }
 
-            assertThatThrownBy(() -> new HomaLimits(0, 6, 1, 10)).isInstanceOf(InvalidHomaLimitsException.class);
-            assertThatThrownBy(() -> new HomaLimits(7, 6, 1, 10)).isInstanceOf(InvalidHomaLimitsException.class);
-            assertThatThrownBy(() -> new HomaLimits(1, 6, 0, 10)).isInstanceOf(InvalidHomaLimitsException.class);
-            assertThatThrownBy(() -> new HomaLimits(1, 6, 11, 10))
+        @Test
+        void homasDurationRangeStartsFromOne() {
+            HomaLimits limits = new HomaLimits(1, 6);
+            assertThat(limits.maxHours()).isEqualTo(6);
+
+            assertThatThrownBy(() -> new HomaLimits(0, 6))
                     .isInstanceOf(InvalidHomaLimitsException.class)
-                    .hasMessageContaining("helpers per search");
-            assertThat(new HomaLimits(6, 6, 10, 10).minHours()).isEqualTo(6);
+                    .hasMessageContaining("duration range");
+            assertThatThrownBy(() -> new HomaLimits(7, 6)).isInstanceOf(InvalidHomaLimitsException.class);
+            assertThat(new HomaLimits(6, 6).minHours()).isEqualTo(6);
         }
     }
 
@@ -116,20 +122,35 @@ class OfferingTermsTest {
     class TeamsAndPlaces {
 
         @Test
-        void aRosterKeepsItsVerifiedHelpers() {
-            Set<String> ids = new HashSet<>(Set.of("aina", "ben"));
-            TeamRoster roster = TeamRoster.of(ids);
-            ids.clear();
+        void aRosterKeepsItsMembersByRole() {
+            Set<String> helpers = new HashSet<>(Set.of("aina", "ben"));
+            Set<String> supervisors = new HashSet<>(Set.of("siti"));
+            TeamRoster roster = TeamRoster.of(helpers, supervisors);
+            helpers.clear();
+            supervisors.clear();
 
-            assertThat(roster.size()).isEqualTo(2);
-            assertThat(roster.includes("aina")).isTrue();
-            assertThat(roster.includes("dina")).isFalse();
-            assertThat(TeamRoster.empty().size()).isZero();
+            assertThat(roster.helperIds()).containsExactlyInAnyOrder("aina", "ben");
+            assertThat(roster.supervisorIds()).containsExactly("siti");
+            assertThat(roster.helperCount()).isEqualTo(2);
+            assertThat(roster.hasSupervisor()).isTrue();
+            assertThat(TeamRoster.empty().helperCount()).isZero();
+            assertThat(TeamRoster.empty().hasSupervisor()).isFalse();
+            assertThat(TeamRoster.ofHelpers(Set.of("aina")).hasSupervisor()).isFalse();
         }
 
         @Test
-        void aRosterNeedsRealHelperIds() {
-            assertThatThrownBy(() -> TeamRoster.of(Set.of(" "))).isInstanceOf(OfferingDetailRequiredException.class);
+        void aRosterNeedsRealIds() {
+            assertThatThrownBy(() -> TeamRoster.ofHelpers(Set.of(" "))).isInstanceOf(OfferingDetailRequiredException.class);
+            assertThatThrownBy(() -> TeamRoster.of(Set.of(), Set.of(" ")))
+                    .isInstanceOf(OfferingDetailRequiredException.class)
+                    .hasMessageContaining("supervisor");
+        }
+
+        @Test
+        void aTeamMemberHasOneRole() {
+            assertThatThrownBy(() -> TeamRoster.of(Set.of("aina", "ben"), Set.of("ben")))
+                    .isInstanceOf(TeamMemberInTwoRolesException.class)
+                    .hasMessageContaining("ben");
         }
 
         @Test

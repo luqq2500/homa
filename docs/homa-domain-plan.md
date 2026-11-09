@@ -178,12 +178,13 @@ Feature: Homa-set values
 |---|---|---|
 | `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
-| `ProviderAccount` | Aggregate | Individual provider: eKYC status, payout account status, whether they include themselves as a helper |
-| `Helper` | Aggregate | Belongs to one provider: name, photo and team status. Only a `MEMBER` is on the team |
-| `TeamStatus` | Enum | `INVITED` (eKYC pending), `INVITE_REJECTED` (eKYC failed, can retry), `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
+| `ProviderAccount` | Aggregate | Independent or business provider: eKYC status and document, business registration, payout account status, whether they are a helper on their own team |
+| `MemberVerification` | Aggregate | Adding a team member before they exist: the add form and the eKYC outcome (see "adding a team member") |
+| `TeamMember` | Aggregate | Replaces `Helper`. Belongs to one provider: role, registered name and document, photo, team status and verification. Only a `MEMBER` is on the team |
+| `TeamStatus` | Enum | `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
 | `Verification` | Value object | When a provider or team member was last verified, when re-verification is due, and whether a re-check is open |
-| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline |
-| `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED` |
+| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline, verification link expiry |
+| `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED`, `LAPSED` (a provider's state only; never a result) |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
 
 ```java
@@ -192,16 +193,16 @@ PhoneVerification.confirm(String code, Instant now) : boolean
 CustomerAccount.register(PhoneVerification verified, String name, Address address)
 CustomerAccount.changeAddress(Address address)
 
-ProviderAccount.register(PhoneVerification verified, String legalName)
-ProviderAccount.recordEkycResult(VerificationStatus result)
+ProviderAccount.register(PhoneVerification verified, ProviderType type)
+ProviderAccount.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome
+ProviderAccount.recordBusinessRegistrationChecked(String ssmNumber, Instant now)
 ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.includeSelfAsHelper(boolean include)
-ProviderAccount.isReadyForGoLive() : boolean    // own eKYC verified and payout account ready
+ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready, and a business's registration checked
 
-Helper.invite(String providerId, String name, Photo photo)   // starts INVITED
-Helper.recordEkycResult(VerificationStatus result)           // VERIFIED -> MEMBER; REJECTED -> INVITE_REJECTED
-Helper.remove()                                              // withdraws an invite or removes a member -> REMOVED
-Helper.isTeamMember() : boolean                              // true only for MEMBER
+// Adding a team member: MemberVerification.start, recordEkycResult and expire, then TeamMember.add (see "adding a team member")
+TeamMember.remove()                                          // removes a member -> REMOVED
+TeamMember.isTeamMember() : boolean                          // true only for MEMBER
 ```
 
 ```gherkin
@@ -284,22 +285,25 @@ Feature: Team membership
 | `Profile` | Value object | Display name and picture |
 | `HourlyRate` | Value object | Rate per helper per hour, above zero |
 | `HoursRange` | Value object | Min and max hours, whole hours, within Homa's 1–6 |
-| `HelpersRange` | Value object | Min and max helpers, at least 1, at most the verified team size and at most 10 |
+| `HelpersRange` | Value object | Min and max helpers, at least 1, at most the helpers on the team; no Homa upper limit |
 | `TravelFee` | Value object | `separate(amount)` or `included()` |
-| `TeamRoster` | Value object | Team member ids (plus the provider if they include themselves), used for the helper range and for naming who's coming. Invited helpers are never on it |
-| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster |
+| `TeamRoster` | Value object | Helper ids (plus the provider if they are a helper) and supervisor ids. Helpers cap the helper range; both are who can be named. Only team members are on it |
+| `SupervisorRule` | Value object | When a supervisor is sent: from a minimum number of helpers, of hours, or both |
+| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster, supervisor rule, provider type, whether it takes requests |
 
 ```java
-ProviderListing.draft(String providerId)
+ProviderListing.draft(String providerId, ProviderType providerType)
 ProviderListing.setProfile(Profile profile)
 ProviderListing.offerJobs(Set<JobCode> jobs, Set<JobCode> activeCatalogueJobs)
 ProviderListing.bringTools(Set<ToolCode> tools, Set<ToolCode> activeCatalogueTools)
 ProviderListing.setPricing(HourlyRate rate, TravelFee travelFee)
 ProviderListing.setHours(HoursRange hours, HomaLimits limits)       // offering's own view of the Homa-set ranges
-ProviderListing.setHelpers(HelpersRange helpers, HomaLimits limits)
+ProviderListing.setHelpers(HelpersRange helpers)                // at most the helpers on the team
+ProviderListing.setSupervisorRule(SupervisorRule rule)          // needs a supervisor on the team
+ProviderListing.clearSupervisorRule()
 ProviderListing.coverCities(Set<City> cities, ServiceAreaView area)
 ProviderListing.chooseCancellationTier(CancellationTier tier)
-ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the team; an empty team takes a live listing offline
+ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the helpers; no helper, or no supervisor for a rule, takes a live listing offline
 ProviderListing.goLive(boolean providerReady)                 // the roster must cover the minimum helpers
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
@@ -525,7 +529,7 @@ Feature: Matching
 | `ReservationDetails` | Value object | Jobs, start, hours, helpers, address. The payment method is passed to `request` separately, since an enquiry has the same details but no payment |
 | `PriceBreakdown` | Value object | Hours fee, travel fee, provider price, service fee, total |
 | `ReservationStatus` | Enum | `REQUESTED`, `RESERVED`, `DECLINED`, `EXPIRED`, `CANCELLED`, `DISPUTED`, `COMPLETED` |
-| `TeamAssignment` | Value object | Lead and helpers named for this reservation |
+| `TeamAssignment` | Value object | Helpers and any supervisors named for this reservation |
 | `CheckIn` | Value object | Time checked in, distance from the customer |
 | `Completion` | Value object | Time submitted and evidence references |
 | `Report` | Entity | Filed by the customer or the provider: type, reason, evidence |
@@ -573,7 +577,9 @@ Reservation.cancelByProvider(Instant now) : CancellationResult   // Settlement +
 
 // Job day
 Reservation.nameTeam(TeamAssignment team, TeamRoster roster, Instant now)
-Reservation.checkIn(int distanceMetres, Instant now)
+Reservation.checkIn(int distanceMetres, Instant now)                 // the location check; then face checks (see "face check-in")
+Reservation.recordFaceCheck(String memberId, FaceCheckResult result, Instant now)
+Reservation.recordFaceCheckUnavailable(Instant now)
 Reservation.markProviderNoShow(Instant now) : CancellationResult
 Reservation.reportCustomerNoShow(Instant now) : Settlement
 Reservation.challengeNoShow(Instant now)
@@ -1444,22 +1450,24 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
+| `ProviderRegisteredIE` | account | offering | `ProviderAccount.register`, with the provider type |
+| `BusinessRegistrationCheckedIE` | account | offering | `ProviderAccount.recordBusinessRegistrationChecked` |
 | `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED`, with `verification().dueAt()` |
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
-| `HelperInvitedIE` | account | (notifications) | `Helper.invite` |
-| `HelperJoinedTeamIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` (now a `MEMBER`) |
-| `HelperInviteRejectedIE` | account | (notifications) | `Helper.recordEkycResult` with `REJECTED` |
-| `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `Helper.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
-| `RecheckFailedIE` | account | (notifications) | `Helper.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
-| `HelperReverifiedIE` | account | offering | `Helper.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed |
-| `HelperLapsedIE` | account | offering | `Helper.lapse` |
+| `MemberVerificationStartedIE` | account | (provider app, notifications) | `MemberVerification.start` |
+| `MemberVerificationEndedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED`, `MemberVerification.expire` |
+| `TeamMemberAddedIE` | account | offering | `TeamMember.add`, with the role, registered name and lawful-employment confirmation |
+| `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `TeamMember.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
+| `RecheckFailedIE` | account | (notifications) | `TeamMember.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
+| `TeamMemberReverifiedIE` | account | offering | `TeamMember.recordEkycResult` returning `REVERIFIED` |
+| `TeamMemberLapsedIE` | account | offering | `TeamMember.lapse` |
 | `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed, with `verification().dueAt()` |
 | `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
-| `HelperRemovedIE` | account | offering | removing a helper |
+| `TeamMemberRemovedIE` | account | offering | `TeamMember.remove` |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
-| `ListingWentOfflineIE` | offering | discovery | `ProviderListing.updateRoster` leaving a live listing with no verified team |
+| `ListingWentOfflineIE` | offering | discovery | `ProviderListing.updateRoster` leaving a live listing with no helper, or with a supervisor rule and no supervisor |
 | `ListingPausedIE` | offering | discovery, reservation | `ProviderListing.pause` |
 | `ListingResumedIE` | offering | discovery, reservation | `ProviderListing.resume` |
 | `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgainFrom` |
@@ -1472,7 +1480,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ReservationExpiredIE` | reservation | payment | `Reservation.expire` |
 | `ReservationCancelledIE` | reservation | availability | any cancel or no-show |
 | `TeamNamedIE` | reservation | (notifications) | `Reservation.nameTeam` |
-| `ProviderCheckedInIE` | reservation | (notifications) | `Reservation.checkIn` |
+| `ProviderCheckedInIE` | reservation | (notifications) | `Reservation.checkIn`, the location check |
+| `FaceCheckRecordedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` |
+| `CheckInCompletedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` with the first pass, or `Reservation.recordFaceCheckUnavailable` |
 | `CompletionSubmittedIE` | reservation | (notifications) | `Reservation.submitCompletion` |
 | `ReportFiledIE` | reservation | resolution | `Reservation.fileReport` |
 | `NoShowChallengedIE` | reservation | resolution | `Reservation.challengeNoShow` |
@@ -1725,7 +1735,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 49 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -1836,9 +1846,9 @@ Helper.verification() : Verification
 
   | Outcome | Helper | Provider |
   |---|---|---|
-  | `VERIFIED` | `HelperJoinedTeamIE` | `ProviderVerifiedIE` |
-  | `REJECTED` | `HelperInviteRejectedIE` | `ProviderVerificationRejectedIE` |
-  | `REVERIFIED` | `HelperReverifiedIE` | `ProviderReverifiedIE` |
+  | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` | `ProviderVerifiedIE` |
+  | `REJECTED` | `MemberVerificationEndedIE` | `ProviderVerificationRejectedIE` |
+  | `REVERIFIED` | `TeamMemberReverifiedIE` | `ProviderReverifiedIE` |
   | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
   | `UNCHANGED` | none | none |
 - **Months on Malaysian dates:** the due date is the last verification plus the period in months,
@@ -2045,6 +2055,346 @@ Feature: Verified for the whole job
     When the customer searches
     Then the provider is no match, because their verification is due before the job ends
 ```
+
+## Change after the domain phase: provider types, team roles, documents and face check-in
+
+Decided after the domain phase closed. Safety principle: only verified people enter a customer's home, and the customer knows who they are before they arrive.
+
+**`policy`**
+
+- Remove the Homa limit on helpers (the old 1–10 range). Helpers per booking and team size have no Homa upper limit.
+- Add **face check attempts** (3 per person per check-in) and the **accepted documents** list: for providers and owners or directors, Malaysian MyKad or Malaysian passport; for team members of an independent provider, a Malaysian identity card or passport; for team members of a business provider, an identity card or passport from any country.
+
+**`account`**
+
+| Object | Kind | Responsibility |
+|---|---|---|
+| `ProviderType` | Enum | `INDEPENDENT`, `BUSINESS` |
+| `ProviderAccount` | Aggregate | Gains its `ProviderType`; a business also holds its SSM registration number and whether Homa has checked it |
+| `IdentityDocument` | Value object | Issuing country, type (`IDENTITY_CARD`, `PASSPORT`) and the **registered name** read from the eKYC result |
+| `TeamMember` | Aggregate | Renames `Helper`. Holds a `TeamRole` (`HELPER`, `SUPERVISOR`), the `IdentityDocument`, the profile photo and whether it matched the eKYC face, the `TeamStatus` and `Verification` |
+| `EmploymentConfirmation` | Value object | The provider's confirmation that every team member they add is lawfully employed or engaged and allowed to work in Malaysia: when it was given and the terms version |
+| `AcceptedDocuments` | Value object | account's view of the Homa-set accepted documents list |
+
+- The registered name comes only from the eKYC result; there is no method to set or change it.
+- A document outside the accepted list is refused with `DocumentNotAcceptedException`. A foreign document for an independent provider's member is refused the same way.
+- Homa does not check work permits. A provider must give an `EmploymentConfirmation` before inviting team members and before going live (`EmploymentNotConfirmedException`).
+- **Due date** = last verified + re-verification period. Document expiry does not change it.
+- A business provider cannot go live until its registration is checked.
+
+```java
+ProviderAccount.register(PhoneVerification verified, ProviderType type)
+ProviderAccount.recordBusinessRegistrationChecked(String ssmNumber, Instant now)   // BUSINESS only
+ProviderAccount.confirmLawfulEmployment(String termsVersion, Instant now)
+ProviderAccount.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now)
+
+TeamMember.invite(String providerId, ProviderType providerType, TeamRole role, Photo photo)
+TeamMember.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now)
+TeamMember.recordPhotoMatch(boolean matches)
+TeamMember.registeredName() : String
+TeamMember.role() : TeamRole
+```
+
+**`offering`**
+
+- `HelpersRange` has no Homa upper limit: minimum at least 1, maximum at most the number of **helpers** on the roster.
+- `TeamRoster` holds members by role: helper ids and supervisor ids. Supervisors never count towards the helpers range.
+- New `SupervisorRule` (value object, optional): from a minimum number of helpers, a minimum number of hours, or both. `requiresSupervisor(helpers, hours)` is true when either is reached.
+- `ProviderListing.setSupervisorRule(SupervisorRule rule)` needs at least one supervisor on the roster. Go-live needs a supervisor when a rule is set, and `updateRoster` takes a live listing offline if a rule is set and no supervisor is left.
+- `OfferingSnapshot` carries the `SupervisorRule` and the provider type.
+
+**`discovery`:** `SearchCriteria` needs at least 1 helper and has no upper limit.
+
+**`reservation`**
+
+- `TeamAssignment` becomes helpers plus supervisors; the lead is removed. Rules: the number of helpers matches the booking; every person is on the roster in that role; at least one supervisor when the offering snapshot's `SupervisorRule` requires it (`SupervisorRequiredException`); the same person cannot be named twice.
+- Check-in becomes two steps:
+
+```java
+Reservation.checkIn(int distanceMetres, Instant now)                 // location check, as before; check-in is not complete yet
+Reservation.recordFaceCheck(String memberId, FaceCheckResult result, Instant now)   // PASSED or FAILED, per named person
+Reservation.recordFaceCheckUnavailable(Instant now)                  // service down: check-in completes on location only
+Reservation.isCheckedIn() : boolean                                  // location passed and (one face passed or face check unavailable)
+Reservation.canWork(String memberId) : boolean                       // passed their face check, or face check unavailable
+```
+
+- A person who fails the **face check attempts** cannot work on that job (`FaceCheckAttemptsUsedException` on a further attempt).
+- The provider no-show rule now uses `isCheckedIn()`: if it is still false at the end of the check-in period, the reservation ends as a provider no-show. A face check service outage never causes a no-show.
+- The pricing is unchanged: supervisors are not charged.
+
+**`feedback`:** supervisors are rated exactly like helpers, with the helper categories. `RateableReservation` carries all named members.
+
+**`ie/`:** `TeamMemberInvitedIE`, `TeamMemberJoinedIE` and `TeamMemberInviteRejectedIE` replace the helper events and carry the role; add `BusinessRegistrationCheckedIE`, `LawfulEmploymentConfirmedIE`, `FaceCheckRecordedIE` and `CheckInCompletedIE`.
+
+```gherkin
+Feature: Provider types and documents
+  Scenario Outline: The provider must be Malaysian
+    When a provider verifies with a <document> issued by <country>
+    Then the result is <result>
+    Examples:
+      | document      | country   | result                         |
+      | IDENTITY_CARD | Malaysia  | verified                       |
+      | PASSPORT      | Malaysia  | verified                       |
+      | PASSPORT      | Indonesia | DocumentNotAcceptedException   |
+
+  Scenario Outline: Only a business provider can have foreign team members
+    Given a <type> provider
+    When a member verifies with a passport issued by Indonesia
+    Then the result is <result>
+    Examples:
+      | type        | result                         |
+      | INDEPENDENT | DocumentNotAcceptedException   |
+      | BUSINESS    | MEMBER                         |
+
+  Scenario: Team members can only be invited after the lawful-employment confirmation
+    Given a provider who has not confirmed lawful employment
+    When the provider invites a helper
+    Then it is rejected with EmploymentNotConfirmedException
+
+  Scenario: The confirmation is recorded with its time and terms version
+    When the provider confirms lawful employment under terms "2026-11" at 10:00
+    Then the confirmation records terms "2026-11" and 10:00
+
+  Scenario: The due date follows the cycle only
+    Given a member verified on 1 January with a passport that expires on 15 February
+    Then their re-verification is due on 1 April
+
+  Scenario: The registered name comes from the eKYC result
+    When a member's eKYC is VERIFIED with the registered name "Ahmad bin Ismail"
+    Then the member's registered name is "Ahmad bin Ismail"
+
+  Scenario: A business cannot go live before its registration is checked
+    Given a complete business listing whose SSM registration is not checked
+    When the provider goes live
+    Then it is rejected with ListingNotReadyException
+
+Feature: Supervisors
+  Background:
+    Given a provider with 4 helpers and 1 supervisor, sending a supervisor from 3 helpers or from 4 hours
+
+  Scenario Outline: A supervisor is required from either threshold
+    When a booking is for <helpers> helpers and <hours> hours
+    Then a supervisor is required is <required>
+    Examples:
+      | helpers | hours | required |
+      | 2       | 3     | false    |
+      | 3       | 2     | true     |
+      | 1       | 4     | true     |
+
+  Scenario: Naming the team without a required supervisor is refused
+    Given a reserved booking for 3 helpers
+    When the provider names 3 helpers and no supervisor
+    Then it is rejected with SupervisorRequiredException
+
+  Scenario: Supervisors do not count towards the helpers range
+    When the provider sets helpers from 1 to 5
+    Then it is rejected with HelpersExceedTeamSizeException
+
+  Scenario: Supervisors are not charged
+    Given a booking for 3 helpers at RM30 per helper per hour for 2 hours with a supervisor
+    Then the hours fee is RM180.00
+
+  Scenario: A supervisor rule needs a supervisor on the team
+    Given a provider with no supervisors
+    When the provider sets a supervisor rule from 3 helpers
+    Then it is rejected with NoSupervisorOnTeamException
+
+Feature: Face check at check-in
+  Background:
+    Given a reserved booking starting Saturday 10:00 with Aina and Ben named
+    And the location check passed at 09:58
+
+  Scenario: Check-in completes when the first person passes
+    When Aina's face check PASSED at 09:59
+    Then the reservation is checked in
+    And Aina can work
+    And Ben cannot work yet
+
+  Scenario: Location alone is not a check-in
+    Then the reservation is not checked in
+
+  Scenario: A person who fails every attempt cannot work
+    Given Aina passed
+    When Ben's face check FAILED 3 times
+    Then Ben cannot work
+    And a 4th attempt is rejected with FaceCheckAttemptsUsedException
+
+  Scenario: A face check outage never makes a no-show
+    When the face check service is unavailable at 10:05
+    Then the reservation is checked in
+    And Aina and Ben can work
+
+  Scenario: No face pass by the end of the check-in period is a provider no-show
+    Given no face check has passed
+    When Homa marks a provider no-show at 10:16
+    Then the reservation is CANCELLED
+```
+
+## Change after the domain phase: adding a team member
+
+Supersedes the invite model in "team membership" and "provider types". There are no invited members. The provider confirms lawful employment **on the add form**, together with the role, document type and (business only) issuing country; the person is added automatically once their eKYC is verified. Before that, nothing is on the team.
+
+**`account`**
+
+| Object | Kind | Responsibility |
+|---|---|---|
+| `MemberVerification` | Aggregate | The pending step before a member exists: provider, role, document type, issuing country (Malaysia for an independent provider), photo, the `EmploymentConfirmation`, link expiry and the eKYC outcome. Not a team member and never shown to customers |
+| `TeamMember` | Aggregate | Created only from a verified `MemberVerification`. `TeamStatus` is now `MEMBER`, `LAPSED`, `REMOVED` (`INVITED` and `INVITE_REJECTED` are gone) |
+| `EmploymentConfirmation` | Value object | Given on the add form for one person: when it was given and the terms version. Required to start a `MemberVerification`. Replaces the one-off provider-level confirmation |
+
+```java
+MemberVerification.start(String providerId, ProviderType type, TeamRole role, DocumentType documentType,
+                         String issuingCountry, Photo photo, EmploymentConfirmation confirmation,
+                         AcceptedDocuments accepted, VerificationLimits limits, Instant now)
+MemberVerification.recordEkycResult(EkycResult result, AcceptedDocuments accepted, Instant now)  // VERIFIED -> ready to add; REJECTED -> ended
+MemberVerification.expire(Instant now)                                                         // not finished within the link expiry -> ended
+TeamMember.add(MemberVerification verified, Instant now)                                       // the only way a TeamMember exists; the usecase calls it on VERIFIED
+```
+
+- `ProviderAccount.confirmLawfulEmployment` and `EmploymentNotConfirmedException` at provider level are removed; going live no longer needs a provider-level confirmation.
+- `MemberVerification.start` refuses a missing confirmation (`EmploymentNotConfirmedException`), a country other than Malaysia for an independent provider, and a document outside the accepted list (`DocumentNotAcceptedException`). An eKYC result whose document doesn't match the chosen type and country is refused the same way.
+- `TeamMember.add` refuses a `MemberVerification` that is not verified (`MemberNotVerifiedException`) or has already been used (`MemberAlreadyAddedException`).
+- Re-verification of an existing member is unchanged; it does not need a new confirmation.
+
+**`policy`:** add the **verification link expiry**, 7 days.
+
+**`ie/`:** `MemberVerificationStartedIE`, `MemberVerificationEndedIE` (rejected or expired) and `TeamMemberAddedIE` replace `TeamMemberInvitedIE`, `TeamMemberInviteRejectedIE` and `TeamMemberJoinedIE`; `LawfulEmploymentConfirmedIE` is folded into `TeamMemberAddedIE`.
+
+```gherkin
+Feature: Adding a team member
+  Scenario: A confirmed and verified person is added
+    Given a provider started adding a helper with a MyKad, confirming lawful employment under terms "2026-11"
+    When the eKYC is VERIFIED with the registered name "Aina binti Ahmad"
+    Then Aina binti Ahmad is a MEMBER and a helper
+    And the confirmation records the time and terms "2026-11"
+
+  Scenario: The add form needs the confirmation
+    When the provider starts adding a helper without ticking the confirmation
+    Then it is rejected with EmploymentNotConfirmedException
+
+  Scenario Outline: Only a business chooses the issuing country
+    Given a <type> provider
+    When the provider starts adding a helper with a passport issued by <country>
+    Then the result is <result>
+    Examples:
+      | type        | country   | result                        |
+      | INDEPENDENT | Malaysia  | waiting for verification      |
+      | INDEPENDENT | Indonesia | DocumentNotAcceptedException  |
+      | BUSINESS    | Indonesia | waiting for verification      |
+
+  Scenario: A person cannot be added before verification
+    Given Aina's eKYC is still waiting
+    When the provider tries to add Aina
+    Then it is rejected with MemberNotVerifiedException
+
+  Scenario: A rejected eKYC adds nothing
+    When Aina's eKYC is REJECTED
+    Then the verification has ended
+    And Aina is not on the team
+
+  Scenario Outline: An unfinished eKYC expires after 7 days
+    Given verification started on 1 March at 10:00
+    When Homa expires it at <time>
+    Then the result is <result>
+    Examples:
+      | time           | result                            |
+      | 8 March, 10:00 | the verification has ended        |
+      | 8 March, 09:59 | VerificationNotExpiredException   |
+
+  Scenario: A verification is used once
+    Given Aina was added from this verification
+    When the provider adds from it again
+    Then it is rejected with MemberAlreadyAddedException
+```
+
+## Decided while building: provider types, team roles, documents, face check-in and adding a team member
+
+These cover both sections above. All of them are waiting for confirmation.
+
+**`account`**
+
+- **Results carry the document:** `EkycResult` is now a value: `verified(IdentityDocument)` or
+  `rejected()`. A verified result must carry the document, which gives the registered name.
+- **Countries:**
+  - A country is an ISO 3166 two-letter code, such as `MY` or `ID`.
+  - An accepted document is a holder (`PROVIDER`, `INDEPENDENT_TEAM_MEMBER`, `BUSINESS_TEAM_MEMBER`),
+    a type, and a country, which is empty for any country.
+- **The provider:**
+  - `ProviderAccount.register` takes the type and no legal name; the registered name comes from the
+    eKYC result.
+  - A business registration is checked once (`BusinessRegistrationAlreadyCheckedException`). An
+    independent provider has none (`NotABusinessProviderException`).
+- **`MemberVerification`:**
+  - Its statuses are `WAITING`, `VERIFIED`, `REJECTED`, `EXPIRED` and `ADDED`.
+  - The verified document must be the type and country chosen on the form, and still accepted.
+    Otherwise `DocumentNotAcceptedException`, and it stays waiting.
+  - A repeated result changes nothing (`UNCHANGED`). A different result after it has ended or been
+    verified is refused (`VerificationNotWaitingException`).
+  - It holds the `VerificationLimits` in force at the start, so the new member's due date comes from
+    the verification time.
+- **`TeamMember`:**
+  - It keeps the document read at each pass, so a re-check can use a different accepted document.
+  - The photo match is recorded once (`PhotoMatchAlreadyRecordedException`).
+  - An independent provider's members must be Malaysian at every re-check too, whatever the list says.
+- **Renamed exceptions:** `TeamMemberRemovedException`, `NotATeamMemberException`,
+  `TeamMemberAlreadyVerifiedException` and `PhotoRequiredException`.
+- **Accepted documents list (`policy`):** the list itself refuses a foreign document for providers
+  or independent members (`ForeignDocumentNotAllowedException`), and needs an entry for every holder.
+
+**`offering`**
+
+- **The listing:**
+  - `ProviderListing.draft` takes the provider type.
+  - `setHelpers` no longer takes Homa limits, and `HomaLimits` holds hours only.
+- **`TeamRoster`:** a person is never both a helper and a supervisor (`TeamMemberInTwoRolesException`).
+- **The supervisor rule:**
+  - `clearSupervisorRule()` removes the rule.
+  - A listing that goes offline for want of a supervisor keeps its rule, so it goes live again once a
+    supervisor is added, or after the rule is cleared.
+  - The snapshot carries the rule as `Optional`.
+
+**`reservation`**
+
+- **Naming the team:**
+  - `TeamAssignment` is helpers plus supervisors.
+  - A supervisor must be on the roster as a supervisor (`SupervisorNotOnRosterException`).
+  - Naming the same person twice is refused (`MemberNamedTwiceException`).
+- **The location step:** `checkIn` is the location check, made once. `checkInRecord()` returns it,
+  and `checkedInAt()` is when check-in completed.
+- **Face checks:**
+  - They come after the location check (`LocationNotCheckedException`).
+  - Only a named person takes one (`MemberNotNamedException`), and someone who passed takes no other
+    (`FaceCheckAlreadyPassedException`).
+  - Check-in must complete within the check-in period. After that, a face check or an outage report
+    is refused for a booking not yet checked in.
+  - Once check-in is complete, the others' face checks can carry on.
+- **Outages:**
+  - A face check outage lets everyone named work, except someone who already failed every attempt.
+  - An outage after check-in keeps the check-in time.
+- **The customer no-show wait and cancelling:**
+  - The wait runs from the completed check-in.
+  - A cancellation after only the location check is not a customer no-show.
+
+**`ie/`**
+
+- **Events added:**
+  - `ProviderRegisteredIE` gives offering the provider type.
+  - `MemberVerificationEndedIE` carries a `reason` (`REJECTED` or `EXPIRED`), as the plan names one
+    event, though the event rule prefers one event per outcome.
+- **Events renamed:** the remaining helper events are renamed for team members, since supervisors are
+  members too: `TeamMemberRemovedIE`, `TeamMemberReverifiedIE` and `TeamMemberLapsedIE`. They carry
+  `memberId` and the role.
+- **New fields:**
+  - The listing events carry `providerType`, `helperIds`, `supervisorIds`, `supervisorFromHelpers` and
+    `supervisorFromHours`; a threshold that isn't set is 0.
+  - `HomaPolicyChangedIE` drops the helper limits and adds `faceCheckAttempts`,
+    `verificationLinkExpiry` and `acceptedDocuments`, each written as "holder:type:country", with
+    `*` for any country.
+  - `TeamNamedIE` carries `helperIds` and `supervisorIds`.
+- **53 events in all.**
+
+**Not built in the domain:** Homa removing a provider when it learns a team member may not work is
+left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
 
 ## Open questions
 

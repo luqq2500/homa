@@ -15,7 +15,9 @@ import policy.domain.PolicyValue.EarliestCheckIn;
 import policy.domain.PolicyValue.EvidenceRetention;
 import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
-import policy.domain.PolicyValue.HelpersPerSearch;
+import policy.domain.PolicyValue.AcceptedDocuments;
+import policy.domain.PolicyValue.FaceCheckAttempts;
+import policy.domain.PolicyValue.VerificationLinkExpiry;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -34,6 +36,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * An immutable copy of one version of the Homa-set values. A reservation keeps the snapshot that was
@@ -78,10 +81,6 @@ public final class PolicySnapshot {
 
     public DurationRange durationRange() {
         return value(DurationRange.class);
-    }
-
-    public HelpersPerSearch helpersPerSearch() {
-        return value(HelpersPerSearch.class);
     }
 
     public Duration minimumNotice() {
@@ -131,6 +130,18 @@ public final class PolicySnapshot {
 
     public int checkInRadiusMetres() {
         return value(CheckInRadius.class).metres();
+    }
+
+    public int faceCheckAttempts() {
+        return value(FaceCheckAttempts.class).attempts();
+    }
+
+    public Duration verificationLinkExpiry() {
+        return value(VerificationLinkExpiry.class).period();
+    }
+
+    public Set<AcceptedDocument> acceptedDocuments() {
+        return value(AcceptedDocuments.class).documents();
     }
 
     public Duration customerNoShowWait() {

@@ -35,7 +35,7 @@ class ReservationTeamReminderTest {
     @Test
     void noReminderOnceTheTeamIsNamed() {
         Reservation reservation = aReservation().reserved();
-        reservation.nameTeam(TeamAssignment.of("aina", "aina", "ben"), ROSTER, friday("12:00"));
+        reservation.nameTeam(TeamAssignment.helpers("aina", "ben"), ROSTER, friday("12:00"));
 
         assertThat(reservation.isTeamReminderDue(saturday("05:00"))).isFalse();
     }

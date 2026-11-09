@@ -3,43 +3,43 @@ package ie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ie.events.BusinessRegistrationCheckedIE;
 import ie.events.CaseDecidedIE;
+import ie.events.CheckInCompletedIE;
 import ie.events.CompletionDeadlineMissedIE;
 import ie.events.CompletionSubmittedIE;
 import ie.events.CustomerRegisteredIE;
 import ie.events.EnquiryClosedIE;
 import ie.events.EnquiryCreatedIE;
 import ie.events.EnquiryRequestedIE;
+import ie.events.FaceCheckRecordedIE;
 import ie.events.FineChargedIE;
 import ie.events.FineWaivedIE;
-import ie.events.HelperRemovedIE;
-import ie.events.HelperInviteRejectedIE;
-import ie.events.HelperInvitedIE;
-import ie.events.HelperJoinedTeamIE;
-import ie.events.HelperLapsedIE;
-import ie.events.HelperReverifiedIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobAddedIE;
 import ie.events.JobRetiredIE;
 import ie.events.ListingChangedIE;
 import ie.events.ListingPausedIE;
 import ie.events.ListingResumedIE;
-import ie.events.ListingWentOfflineIE;
 import ie.events.ListingWentLiveIE;
+import ie.events.ListingWentOfflineIE;
+import ie.events.MemberVerificationEndedIE;
+import ie.events.MemberVerificationStartedIE;
 import ie.events.NoShowChallengedIE;
 import ie.events.PaymentCapturedIE;
 import ie.events.PaymentRefundedIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
-import ie.events.RatingHiddenIE;
-import ie.events.RatingSubmittedIE;
-import ie.events.RecheckFailedIE;
-import ie.events.RecheckOpenedIE;
 import ie.events.ProviderCheckedInIE;
+import ie.events.ProviderRegisteredIE;
 import ie.events.ProviderReverifiedIE;
 import ie.events.ProviderVerificationLapsedIE;
 import ie.events.ProviderVerificationRejectedIE;
 import ie.events.ProviderVerifiedIE;
+import ie.events.RatingHiddenIE;
+import ie.events.RatingSubmittedIE;
+import ie.events.RecheckFailedIE;
+import ie.events.RecheckOpenedIE;
 import ie.events.ReportFiledIE;
 import ie.events.ReservationAcceptedIE;
 import ie.events.ReservationCancelledIE;
@@ -49,6 +49,10 @@ import ie.events.ReservationEditedIE;
 import ie.events.ReservationExpiredIE;
 import ie.events.ReservationRequestedIE;
 import ie.events.SettlementDecidedIE;
+import ie.events.TeamMemberAddedIE;
+import ie.events.TeamMemberLapsedIE;
+import ie.events.TeamMemberRemovedIE;
+import ie.events.TeamMemberReverifiedIE;
 import ie.events.TeamNamedIE;
 import ie.events.ToolAddedIE;
 import ie.events.ToolRetiredIE;
@@ -101,14 +105,16 @@ class IntegrationEventContractTest {
                 Arguments.of(ProviderVerifiedIE.class, AccountIE.class),
                 Arguments.of(ProviderVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(PayoutAccountReadyIE.class, AccountIE.class),
-                Arguments.of(HelperInvitedIE.class, AccountIE.class),
-                Arguments.of(HelperJoinedTeamIE.class, AccountIE.class),
-                Arguments.of(HelperInviteRejectedIE.class, AccountIE.class),
-                Arguments.of(HelperRemovedIE.class, AccountIE.class),
+                Arguments.of(ProviderRegisteredIE.class, AccountIE.class),
+                Arguments.of(BusinessRegistrationCheckedIE.class, AccountIE.class),
+                Arguments.of(MemberVerificationStartedIE.class, AccountIE.class),
+                Arguments.of(MemberVerificationEndedIE.class, AccountIE.class),
+                Arguments.of(TeamMemberAddedIE.class, AccountIE.class),
+                Arguments.of(TeamMemberRemovedIE.class, AccountIE.class),
                 Arguments.of(RecheckOpenedIE.class, AccountIE.class),
                 Arguments.of(RecheckFailedIE.class, AccountIE.class),
-                Arguments.of(HelperReverifiedIE.class, AccountIE.class),
-                Arguments.of(HelperLapsedIE.class, AccountIE.class),
+                Arguments.of(TeamMemberReverifiedIE.class, AccountIE.class),
+                Arguments.of(TeamMemberLapsedIE.class, AccountIE.class),
                 Arguments.of(ProviderReverifiedIE.class, AccountIE.class),
                 Arguments.of(ProviderVerificationLapsedIE.class, AccountIE.class),
                 Arguments.of(ListingWentLiveIE.class, OfferingIE.class),
@@ -127,6 +133,8 @@ class IntegrationEventContractTest {
                 Arguments.of(ReservationCancelledIE.class, ReservationIE.class),
                 Arguments.of(TeamNamedIE.class, ReservationIE.class),
                 Arguments.of(ProviderCheckedInIE.class, ReservationIE.class),
+                Arguments.of(FaceCheckRecordedIE.class, ReservationIE.class),
+                Arguments.of(CheckInCompletedIE.class, ReservationIE.class),
                 Arguments.of(CompletionSubmittedIE.class, ReservationIE.class),
                 Arguments.of(ReportFiledIE.class, ReservationIE.class),
                 Arguments.of(NoShowChallengedIE.class, ReservationIE.class),
@@ -211,7 +219,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(49);
+        assertThat(events().count()).isEqualTo(53);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

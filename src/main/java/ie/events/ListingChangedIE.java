@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 import kernel.Money;
 
-/** A live listing changed. It carries the whole listing as it now is. When travel is included, {@code travelFee} is RM0.00. */
+/** A live listing changed. It carries the whole listing as it now is. When travel is included, {@code travelFee} is RM0.00. {@code supervisorFromHelpers} and {@code supervisorFromHours} are 0 when that threshold is not set. */
 public record ListingChangedIE(
         String listingId,
         String providerId,
@@ -21,7 +21,11 @@ public record ListingChangedIE(
         int maxHelpers,
         Set<String> cities,
         String cancellationTier,
-        Set<String> teamMemberIds,
+        String providerType,
+        Set<String> helperIds,
+        Set<String> supervisorIds,
+        int supervisorFromHelpers,
+        int supervisorFromHours,
         Instant occurredAt) implements OfferingIE {
 
     public ListingChangedIE {
@@ -33,7 +37,9 @@ public record ListingChangedIE(
         Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
-        teamMemberIds = Set.copyOf(teamMemberIds);
+        Objects.requireNonNull(providerType, "providerType");
+        helperIds = Set.copyOf(helperIds);
+        supervisorIds = Set.copyOf(supervisorIds);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

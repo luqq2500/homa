@@ -52,7 +52,7 @@ class ReservationDetailsTest {
     void anOfferingBelongsToAProvider() {
         assertThatThrownBy(() -> new OfferingSnapshot(
                         " ", rm("30"), Optional.empty(), 2, 4, 1, 3, jobs("KITCHEN"), Set.of(City.of("Cyberjaya")), CancellationTier.FIRM,
-                        true))
+                        Optional.empty(), true))
                 .isInstanceOf(ReservationDetailRequiredException.class);
     }
 
@@ -67,7 +67,7 @@ class ReservationDetailsTest {
                         launch.providerLateCancellationFine(), launch.providerNoShowFine(), launch.earliestCheckIn(),
                         launch.checkInPeriod(), launch.checkInRadiusMetres(), launch.customerNoShowWait(),
                         launch.customerNoShowFee(), launch.noShowReportWindow(), launch.completionReminder(),
-                        launch.completionDeadline(), launch.disputeWindowExtension(), launch.teamReminder()))
+                        launch.completionDeadline(), launch.disputeWindowExtension(), launch.teamReminder(), launch.faceCheckAttempts()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("STANDARD");
     }

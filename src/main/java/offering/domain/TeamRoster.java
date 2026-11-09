@@ -1,32 +1,43 @@
 package offering.domain;
 
+import offering.domain.exception.TeamMemberInTwoRolesException;
 import java.util.Objects;
 import java.util.Set;
 
 /**
- * The provider's team: the ids of every team member, including the provider when they are
- * their own helper. It caps the helpers range and is who the provider can name for a reservation.
+ * The provider's team by role: the helpers, including the provider when they are a helper on their own
+ * team, and the supervisors. Only helpers cap the helpers range; supervisors never count towards it. It is
+ * who the provider can name for a reservation.
  */
-public record TeamRoster(Set<String> memberIds) {
+public record TeamRoster(Set<String> helperIds, Set<String> supervisorIds) {
 
     public TeamRoster {
-        memberIds = Set.copyOf(Objects.requireNonNull(memberIds));
-        memberIds.forEach(id -> OfferingText.require(id, "A helper id"));
+        helperIds = Set.copyOf(Objects.requireNonNull(helperIds));
+        supervisorIds = Set.copyOf(Objects.requireNonNull(supervisorIds));
+        helperIds.forEach(id -> OfferingText.require(id, "A helper id"));
+        supervisorIds.forEach(id -> OfferingText.require(id, "A supervisor id"));
+        helperIds.stream().filter(supervisorIds::contains).findFirst().ifPresent(id -> {
+            throw new TeamMemberInTwoRolesException(id);
+        });
     }
 
-    public static TeamRoster of(Set<String> memberIds) {
-        return new TeamRoster(memberIds);
+    public static TeamRoster of(Set<String> helperIds, Set<String> supervisorIds) {
+        return new TeamRoster(helperIds, supervisorIds);
+    }
+
+    public static TeamRoster ofHelpers(Set<String> helperIds) {
+        return new TeamRoster(helperIds, Set.of());
     }
 
     public static TeamRoster empty() {
-        return new TeamRoster(Set.of());
+        return new TeamRoster(Set.of(), Set.of());
     }
 
-    public int size() {
-        return memberIds.size();
+    public int helperCount() {
+        return helperIds.size();
     }
 
-    public boolean includes(String helperId) {
-        return memberIds.contains(helperId);
+    public boolean hasSupervisor() {
+        return !supervisorIds.isEmpty();
     }
 }

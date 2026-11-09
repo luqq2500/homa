@@ -4,7 +4,7 @@ import ie.port.OfferingIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A live listing stopped being live, for example because its verified team became empty; search stops showing it. */
+/** A live listing stopped being live, for example because no helper, or no supervisor its supervisor rule needs, is left; search stops showing it. */
 public record ListingWentOfflineIE(
         String listingId,
         String providerId,

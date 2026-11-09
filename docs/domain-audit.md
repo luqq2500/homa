@@ -5,13 +5,22 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **175 of 175** scenarios in the plan have a test. That is the original 122, plus:
+All **199 of 199** scenarios in the plan have a test. That is the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
   go-live scenario
 - 14 in the two re-verification features
-- five in "Verified for the whole job" The script that checks this maps each scenario
+- five in "Verified for the whole job"
+- 24 in the four features for provider types, supervisors, face check-in and adding a team member
+
+The plan's older scenarios on invites, the lead and the 1 to 10 helper limit describe rules these
+changes replaced. Their rows point to the tests of the rule that replaced them:
+- **Team membership (rows 12 to 17)** now map to `TeamMemberAddingTest`, and one to
+  `TeamMemberReverificationTest`.
+- **"Max helpers cannot exceed 10" (row 21)** maps to `homaSetsNoUpperLimitOnHelpers`.
+- **The lead scenarios (rows 71, 73 and 74)** map to the helper and supervisor naming tests.
+- **The helper search range (row 38)** maps to `aSearchIsForAtLeastOneHelper`. The script that checks this maps each scenario
 title to a test class and method(s), confirms each method exists, and confirms the name is camelCase.
 Every row of the 12 Scenario Outlines is a parameterised case, and most tests add the other side of each
 boundary (10:15 and 10:16, 300 m and 301 m, RM200 and RM201).
@@ -45,17 +54,17 @@ Two scenarios map to more than one test:
 | 8 | Customer registration | A customer can only register with a confirmed phone number | `CustomerAccountRegistrationTest` | `aCustomerCanOnlyRegisterWithAConfirmedPhoneNumber` |
 | 9 | Customer registration | A wrong code does not confirm the phone | `PhoneVerificationConfirmationTest` | `aWrongCodeDoesNotConfirmThePhone` |
 | 10 | Customer registration | An expired code is rejected | `PhoneVerificationConfirmationTest` | `anExpiredCodeIsRejected` |
-| 11 | Provider readiness | A provider is ready for go-live only when verified and payout-ready (outline) | `ProviderAccountReadinessTest` | `aProviderIsReadyForGoLiveOnlyWhenVerifiedAndPayoutReady` |
-| 12 | Team membership | An invited helper is not yet a team member | `HelperTeamMembershipTest` | `anInvitedHelperIsNotYetATeamMember` |
-| 13 | Team membership | A verified invite joins the team | `HelperTeamMembershipTest` | `aVerifiedInviteJoinsTheTeam` |
-| 14 | Team membership | A rejected invite stays off the team and can retry | `HelperTeamMembershipTest` | `aRejectedInviteStaysOffTheTeamAndCanRetry` |
-| 15 | Team membership | The provider can withdraw an invite or remove a member (outline) | `HelperTeamMembershipTest` | `theProviderCanWithdrawAnInviteOrRemoveAMember` |
-| 16 | Team membership | A removed helper cannot be verified back onto the team | `HelperTeamMembershipTest` | `aRemovedHelperCannotBeVerifiedBackOntoTheTeam` |
-| 17 | Team membership | An invite needs a name and a photo | `HelperTeamMembershipTest` | `anInviteNeedsANameAndAPhoto` |
+| 11 | Provider readiness | A provider is ready for go-live only when verified and payout-ready (outline) | `ProviderAccountReadinessTest` | `anIndependentProviderIsReadyWhenVerifiedAndPayoutReady` |
+| 12 | Team membership | An invited helper is not yet a team member | `TeamMemberAddingTest` | `aWaitingVerificationIsNotOnTheTeam` |
+| 13 | Team membership | A verified invite joins the team | `TeamMemberAddingTest` | `aConfirmedAndVerifiedPersonIsAdded` |
+| 14 | Team membership | A rejected invite stays off the team and can retry | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
+| 15 | Team membership | The provider can withdraw an invite or remove a member (outline) | `TeamMemberAddingTest` | `theProviderCanRemoveATeamMember` |
+| 16 | Team membership | A removed helper cannot be verified back onto the team | `TeamMemberReverificationTest` | `aRemovedMemberTakesNoEkycResult` |
+| 17 | Team membership | An invite needs a name and a photo | `TeamMemberAddingTest` | `theAddFormNeedsAProviderARoleAndAPhoto` |
 | 18 | Offering setup | A provider can only offer jobs from Homa's job list | `ProviderListingSetupTest` | `aProviderCanOnlyOfferJobsFromHomasJobList` |
 | 19 | Offering setup | Hours must sit within Homa's range (outline) | `ProviderListingSetupTest` | `hoursWithinHomasRangeAreAccepted`, `hoursMustSitWithinHomasRange`, `theMinimumHoursCannotBeAboveTheMaximum` |
 | 20 | Offering setup | Max helpers cannot exceed the verified team size | `ProviderListingSetupTest` | `maxHelpersCannotExceedTheVerifiedTeamSize` |
-| 21 | Offering setup | Max helpers cannot exceed 10 | `ProviderListingSetupTest` | `maxHelpersCannotExceedTen` |
+| 21 | Offering setup | Max helpers cannot exceed 10 | `ProviderListingSetupTest` | `homaSetsNoUpperLimitOnHelpers` |
 | 22 | Offering setup | The helper range shrinks when the team shrinks | `ProviderListingSetupTest` | `theHelperRangeShrinksWhenTheTeamShrinks` |
 | 23 | Offering setup | Cities must be launch cities | `ProviderListingSetupTest` | `citiesMustBeLaunchCities` |
 | 24 | Going live | A complete, verified provider goes live | `ProviderListingGoLiveTest` | `aCompleteVerifiedProviderGoesLive` |
@@ -72,7 +81,7 @@ Two scenarios map to more than one test:
 | 35 | Buffer between jobs | Holding a slot inside the buffer is rejected | `ProviderCalendarBufferTest` | `holdingASlotInsideTheBufferIsRejected` |
 | 36 | Buffer between jobs | The buffer is kept around jobs, not around synced busy blocks | `ProviderCalendarBufferTest` | `theBufferIsKeptAroundJobsNotAroundSyncedBusyBlocks` |
 | 37 | Buffer between jobs | The buffer cannot be negative | `ProviderCalendarBufferTest` | `theBufferCannotBeNegative` |
-| 38 | Search criteria | Search values must be within Homa's ranges (outline) | `SearchCriteriaValidationTest` | `searchValuesWithinHomasRangesAreAccepted`, `theDurationMustBeWithinHomasRange`, `theHelpersMustBeWithinHomasRange` |
+| 38 | Search criteria | Search values must be within Homa's ranges (outline) | `SearchCriteriaValidationTest` | `searchValuesWithinHomasRangesAreAccepted`, `theDurationMustBeWithinHomasRange`, `aSearchIsForAtLeastOneHelper` |
 | 39 | Search criteria | The start must respect the minimum notice | `SearchCriteriaValidationTest` | `theStartMustRespectTheMinimumNotice` |
 | 40 | Matching | Exact match | `MatchClassifierMatchingTest` | `aProviderThatFitsEverythingIsAnExactMatch` |
 | 41 | Matching | Some jobs only is a close match | `MatchClassifierMatchingTest` | `someJobsOnlyIsACloseMatch` |
@@ -105,10 +114,10 @@ Two scenarios map to more than one test:
 | 68 | Provider cancellation and fines | Cancelling after check-in carries the no-show fine | `ReservationProviderCancellationTest` | `cancellingAfterCheckInCarriesTheNoShowFine` |
 | 69 | Provider cancellation and fines | The fine does not depend on the provider's tier | `ReservationProviderCancellationTest` | `theFineDoesNotDependOnTheProvidersTier` |
 | 70 | Provider cancellation and fines | With travel included, the fine applies to the full provider price | `ReservationProviderCancellationTest` | `withTravelIncludedTheFineAppliesToTheFullProviderPrice` |
-| 71 | Naming who is coming | The provider names the lead and helpers | `ReservationTeamNamingTest` | `theProviderNamesTheLeadAndHelpers` |
+| 71 | Naming who is coming | The provider names the lead and helpers | `ReservationTeamNamingTest` | `theProviderNamesTheHelpers` |
 | 72 | Naming who is coming | The team must match the number of helpers booked | `ReservationTeamNamingTest` | `theTeamMustMatchTheNumberOfHelpersBooked` |
-| 73 | Naming who is coming | Helpers must be on the verified roster | `ReservationTeamNamingTest` | `helpersMustBeOnTheVerifiedRoster` |
-| 74 | Naming who is coming | The lead must be one of the named helpers | `ReservationTeamNamingTest` | `theLeadMustBeOneOfTheNamedHelpers` |
+| 73 | Naming who is coming | Helpers must be on the verified roster | `ReservationTeamNamingTest` | `helpersMustBeOnTheTeamAsHelpers` |
+| 74 | Naming who is coming | The lead must be one of the named helpers | `ReservationTeamNamingTest` | `theSamePersonCannotBeNamedTwice` |
 | 75 | Naming who is coming | The team cannot change from the booked start | `ReservationTeamNamingTest` | `theTeamCannotChangeFromTheBookedStart` |
 | 76 | Check-in | Check-in needs the device near the customer within the check-in period (outline) | `ReservationCheckInTest` | `checkInNeedsTheDeviceNearTheCustomerWithinTheCheckInPeriod` |
 | 77 | Check-in | Check-in is locked until the team is named | `ReservationCheckInTest` | `checkInIsLockedUntilTheTeamIsNamed` |
@@ -191,17 +200,17 @@ Two scenarios map to more than one test:
 | 154 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
 | 155 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
 | 156 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
-| 157 | Periodic re-verification | Re-verification is due 3 months after the last verification | `HelperReverificationTest` | `reverificationIsDueThreeMonthsAfterTheLastVerification` |
-| 158 | Periodic re-verification | The re-check opens 14 days before the due date (outline) | `HelperReverificationTest` | `theRecheckOpensFourteenDaysBeforeTheDueDate`, `theRecheckDoesNotOpenBeforeTheReminder` |
-| 159 | Periodic re-verification | Passing the re-check resets the due date | `HelperReverificationTest` | `passingTheRecheckResetsTheDueDate` |
-| 160 | Periodic re-verification | A failed re-check can be retried before the due date | `HelperReverificationTest` | `aFailedRecheckCanBeRetriedBeforeTheDueDate` |
-| 161 | Periodic re-verification | A repeated VERIFIED result with no re-check open changes nothing | `HelperReverificationTest` | `aRepeatedVerifiedResultWithNoRecheckOpenChangesNothing` |
-| 162 | Periodic re-verification | A REJECTED result with no re-check open is refused | `HelperReverificationTest` | `aRejectedResultWithNoRecheckOpenIsRefused` |
-| 163 | Periodic re-verification | Missing the due date lapses the member (outline) | `HelperReverificationTest` | `missingTheDueDateLapsesTheMember`, `aMemberDoesNotLapseBeforeTheDueDate` |
-| 164 | Periodic re-verification | A lapsed member who passes rejoins the team | `HelperReverificationTest` | `aLapsedMemberWhoPassesRejoinsTheTeam` |
-| 165 | Periodic re-verification | An early re-check moves the due date sooner | `HelperReverificationTest` | `anEarlyRecheckMovesTheDueDateSooner` |
-| 166 | Periodic re-verification | An early re-check never moves the due date later | `HelperReverificationTest` | `anEarlyRecheckNeverMovesTheDueDateLater` |
-| 167 | Periodic re-verification | An early re-check needs a reason | `HelperReverificationTest` | `anEarlyRecheckNeedsAReason` |
+| 157 | Periodic re-verification | Re-verification is due 3 months after the last verification | `TeamMemberReverificationTest` | `reverificationIsDueThreeMonthsAfterTheLastVerification` |
+| 158 | Periodic re-verification | The re-check opens 14 days before the due date (outline) | `TeamMemberReverificationTest` | `theRecheckOpensFourteenDaysBeforeTheDueDate`, `theRecheckDoesNotOpenBeforeTheReminder` |
+| 159 | Periodic re-verification | Passing the re-check resets the due date | `TeamMemberReverificationTest` | `passingTheRecheckResetsTheDueDate` |
+| 160 | Periodic re-verification | A failed re-check can be retried before the due date | `TeamMemberReverificationTest` | `aFailedRecheckCanBeRetriedBeforeTheDueDate` |
+| 161 | Periodic re-verification | A repeated VERIFIED result with no re-check open changes nothing | `TeamMemberReverificationTest` | `aRepeatedVerifiedResultWithNoRecheckOpenChangesNothing` |
+| 162 | Periodic re-verification | A REJECTED result with no re-check open is refused | `TeamMemberReverificationTest` | `aRejectedResultWithNoRecheckOpenIsRefused` |
+| 163 | Periodic re-verification | Missing the due date lapses the member (outline) | `TeamMemberReverificationTest` | `missingTheDueDateLapsesTheMember`, `aMemberDoesNotLapseBeforeTheDueDate` |
+| 164 | Periodic re-verification | A lapsed member who passes rejoins the team | `TeamMemberReverificationTest` | `aLapsedMemberWhoPassesRejoinsTheTeam` |
+| 165 | Periodic re-verification | An early re-check moves the due date sooner | `TeamMemberReverificationTest` | `anEarlyRecheckMovesTheDueDateSooner` |
+| 166 | Periodic re-verification | An early re-check never moves the due date later | `TeamMemberReverificationTest` | `anEarlyRecheckNeverMovesTheDueDateLater` |
+| 167 | Periodic re-verification | An early re-check needs a reason | `TeamMemberReverificationTest` | `anEarlyRecheckNeedsAReason` |
 | 168 | Provider re-verification | A lapsed provider is not ready and takes no new requests | `ProviderReverificationTest` | `aLapsedProviderIsNotReadyAndTakesNoNewRequests` |
 | 169 | Provider re-verification | A paused listing refuses new requests but keeps accepted ones | `ReservationRequestTest` | `aPausedListingRefusesNewRequestsButKeepsAcceptedOnes` |
 | 170 | Provider re-verification | A paused listing resumes when the provider passes | `ProviderListingPauseTest` | `aPausedListingResumesWhenTheProviderPasses` |
@@ -210,6 +219,30 @@ Two scenarios map to more than one test:
 | 173 | Verified for the whole job | The provider cannot accept a job ending after their due date as it is now | `ReservationProviderVerificationTest` | `theProviderCannotAcceptAJobEndingAfterTheirDueDateAsItIsNow` |
 | 174 | Verified for the whole job | The provider can accept once a passed re-check moves the due date later | `ReservationProviderVerificationTest` | `theProviderCanAcceptOnceAPassedRecheckMovesTheDueDateLater` |
 | 175 | Verified for the whole job | Search leaves out a provider whose due date comes before the job ends | `MatchClassifierMatchingTest` | `aJobEndingAfterTheProvidersDueDateIsNoMatch` |
+| 176 | Provider types and documents | The provider must be Malaysian (outline) | `ProviderAccountReadinessTest` | `theProviderVerifiesWithAMyKadOrAMalaysianPassport`, `theProviderMustBeMalaysian` |
+| 177 | Provider types and documents | Only a business provider can have foreign team members (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry`, `aBusinessCanAddAForeignTeamMember` |
+| 178 | Provider types and documents | Team members can only be invited after the lawful-employment confirmation | `TeamMemberAddingTest` | `theAddFormNeedsTheConfirmation` |
+| 179 | Provider types and documents | The confirmation is recorded with its time and terms version | `TeamMemberAddingTest` | `theConfirmationRecordsItsTimeAndTermsVersion` |
+| 180 | Provider types and documents | The due date follows the cycle only | `TeamMemberAddingTest` | `theDueDateFollowsTheCycleOnly` |
+| 181 | Provider types and documents | The registered name comes from the eKYC result | `TeamMemberAddingTest` | `aBusinessCanAddAForeignTeamMember` |
+| 182 | Provider types and documents | A business cannot go live before its registration is checked | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsRegistrationIsChecked` |
+| 183 | Supervisors | A supervisor is required from either threshold (outline) | `ProviderListingSupervisorTest` | `aSupervisorIsRequiredFromEitherThreshold` |
+| 184 | Supervisors | Naming the team without a required supervisor is refused | `ReservationTeamNamingTest` | `namingTheTeamWithoutARequiredSupervisorIsRefused` |
+| 185 | Supervisors | Supervisors do not count towards the helpers range | `ProviderListingSetupTest` | `supervisorsDoNotCountTowardsTheHelpersRange` |
+| 186 | Supervisors | Supervisors are not charged | `ReservationTeamNamingTest` | `supervisorsAreNotCharged` |
+| 187 | Supervisors | A supervisor rule needs a supervisor on the team | `ProviderListingSupervisorTest` | `aSupervisorRuleNeedsASupervisorOnTheTeam` |
+| 188 | Face check at check-in | Check-in completes when the first person passes | `ReservationFaceCheckTest` | `checkInCompletesWhenTheFirstPersonPasses` |
+| 189 | Face check at check-in | Location alone is not a check-in | `ReservationFaceCheckTest` | `locationAloneIsNotACheckIn` |
+| 190 | Face check at check-in | A person who fails every attempt cannot work | `ReservationFaceCheckTest` | `aPersonWhoFailsEveryAttemptCannotWork` |
+| 191 | Face check at check-in | A face check outage never makes a no-show | `ReservationFaceCheckTest` | `aFaceCheckOutageNeverMakesANoShow` |
+| 192 | Face check at check-in | No face pass by the end of the check-in period is a provider no-show | `ReservationFaceCheckTest` | `noFacePassByTheEndOfTheCheckInPeriodIsAProviderNoShow` |
+| 193 | Adding a team member | A confirmed and verified person is added | `TeamMemberAddingTest` | `aConfirmedAndVerifiedPersonIsAdded` |
+| 194 | Adding a team member | The add form needs the confirmation | `TeamMemberAddingTest` | `theAddFormNeedsTheConfirmation` |
+| 195 | Adding a team member | Only a business chooses the issuing country (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry` |
+| 196 | Adding a team member | A person cannot be added before verification | `TeamMemberAddingTest` | `aPersonCannotBeAddedBeforeVerification` |
+| 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
+| 198 | Adding a team member | An unfinished eKYC expires after 7 days (outline) | `TeamMemberAddingTest` | `anUnfinishedEkycExpiresAfterSevenDays`, `anEkycDoesNotExpireBeforeSevenDays` |
+| 199 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
 
 ## 2. Product spec rules with no test
 
@@ -287,22 +320,22 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 63 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 156 | `AccountArchitectureTest` |
-| offering | 5.0 | 100% | 100% | 177 | `OfferingArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 80 | `PolicyArchitectureTest` |
+| account | 5.0 | 100% | 100% | 256 | `AccountArchitectureTest` |
+| offering | 5.0 | 100% | 100% | 198 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 287 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 379 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
-| discovery | 5.0 | 100% | 100% | 77 | `DiscoveryArchitectureTest` |
+| discovery | 5.0 | 100% | 100% | 74 | `DiscoveryArchitectureTest` |
 | feedback | 4.0 | 100% | 100% | 105 | `FeedbackArchitectureTest` |
 | ie | 1.0 | n/a (exempt in the plan) | n/a | – | `IntegrationEventArchitectureTest` |
 
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,253 of 1,253 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,480 of 1,480 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -344,4 +377,12 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     `HomaPolicyChangedIE` now carries the three re-verification values.
   - For "verified for the whole job", `ProviderVerifiedIE` and `ProviderReverifiedIE` carry
     `reverificationDueAt`.
-  - The contract test now covers 49 events.
+  - With provider types and adding a team member:
+    - The three helper invite events gave way to `MemberVerificationStartedIE`,
+      `MemberVerificationEndedIE` and `TeamMemberAddedIE`.
+    - The other helper events became team member events.
+    - `ProviderRegisteredIE`, `BusinessRegistrationCheckedIE`, `FaceCheckRecordedIE` and
+      `CheckInCompletedIE` were added.
+    - The listing, policy and team-naming events carry roles, supervisor thresholds, the face check
+      values and the accepted documents.
+  - The contract test now covers 53 events.

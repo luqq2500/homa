@@ -15,7 +15,9 @@ import policy.domain.PolicyValue.EarliestCheckIn;
 import policy.domain.PolicyValue.EvidenceRetention;
 import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
-import policy.domain.PolicyValue.HelpersPerSearch;
+import policy.domain.PolicyValue.AcceptedDocuments;
+import policy.domain.PolicyValue.FaceCheckAttempts;
+import policy.domain.PolicyValue.VerificationLinkExpiry;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -36,6 +38,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * The Homa-set values in force. Homa changes one value at a time; each change makes a new version and
@@ -47,7 +50,6 @@ public final class HomaPolicy {
     private static final List<PolicyValue> LAUNCH_VALUES = List.of(
             new ServiceFee(Percentage.of(15)),
             new DurationRange(1, 6),
-            new HelpersPerSearch(1, 10),
             new MinimumNotice(Duration.ofHours(2)),
             new BookingHorizon(Duration.ofDays(30)),
             new RequestExpiry(Duration.ofHours(24)),
@@ -62,6 +64,7 @@ public final class HomaPolicy {
             new EarliestCheckIn(Duration.ofMinutes(15)),
             new CheckInPeriod(Duration.ofMinutes(15)),
             new CheckInRadius(300),
+            new FaceCheckAttempts(3),
             new CustomerNoShowWait(Duration.ofMinutes(15)),
             new CustomerNoShowFee(Percentage.of(30)),
             new NoShowReportWindow(Duration.ofHours(1)),
@@ -73,7 +76,17 @@ public final class HomaPolicy {
             new MinimumRatingsToShow(3),
             new ReverificationPeriod(3),
             new ReverificationReminder(Duration.ofDays(14)),
-            new EarlyRecheckDeadline(Duration.ofDays(14)));
+            new EarlyRecheckDeadline(Duration.ofDays(14)),
+            new VerificationLinkExpiry(Duration.ofDays(7)),
+            new AcceptedDocuments(Set.of(
+                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, AcceptedDocument.MALAYSIA),
+                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.PASSPORT, AcceptedDocument.MALAYSIA),
+                    AcceptedDocument.issuedBy(
+                            DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.IDENTITY_CARD, AcceptedDocument.MALAYSIA),
+                    AcceptedDocument.issuedBy(
+                            DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.PASSPORT, AcceptedDocument.MALAYSIA),
+                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.IDENTITY_CARD),
+                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.PASSPORT))));
 
     private final PolicySnapshot current;
 

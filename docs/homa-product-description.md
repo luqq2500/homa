@@ -27,6 +27,10 @@ Typical jobs are kitchen care, toilet care, living room tidying, laundry folding
 
 Homeowners who don't have the time to finish their home chores.
 
+### Safety principle
+
+**Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider and team member passes eKYC to join, is re-verified regularly, is shown to the customer before the job, and verifies their face at the door. Homa verifies who people are; it does not inspect how they work, which is judged through ratings and disputes.
+
 ## Where Homa Operates
 
 Homa launches in three neighbouring cities: **Salak Tinggi**, **Cyberjaya** and **Putrajaya**. All prices are in Malaysian ringgit (RM).
@@ -37,12 +41,12 @@ Each provider chooses which cities they cover. Search only shows providers who c
 
 Homa sells **a provider's time**. The customer chooses what they want done and for how long, and the price is clear upfront.
 
-1. **Search:** pick the jobs you need, a date and time, a duration (1 to 6 hours) and the number of helpers (1 to 10).
+1. **Search:** pick the jobs you need, a date and time, a duration (1 to 6 hours) and the number of helpers (at least 1).
 2. **Browse:** see providers who match exactly, plus close matches so you can explore alternatives. A close match is a provider who offers some but not all of the chosen jobs, or who is free for the same duration at a start within 2 hours before or after the chosen time. A close match is still in the customer's city and fits the helpers and duration.
 3. **Choose:** open a provider page to see their jobs, tools, price, availability, cancellation policy and team. You can tap **Chat** to ask the provider questions first; the chat keeps your chosen details and you can reserve from it.
 4. **Review:** check the details on the review page and edit them if needed. The same page is used whether you reserve directly or from a chat.
 5. **Reserve:** tap **Reserve** to submit a reservation request. You pay by card or online banking (FPX). A card is authorised and charged only when the provider accepts; FPX is paid upfront. You can edit the request until the provider accepts it. If the provider declines or doesn't respond, a card authorisation is released and an upfront payment is refunded in full.
-6. **Job day:** you can see who is coming, the provider checks in, does the job, and marks it completed with photo or video evidence.
+6. **Job day:** you can see who is coming. At the door, every person who came verifies their face, the team does the job, and the provider marks it completed with photo or video evidence.
 7. **Payout:** after the dispute window ends without a report, Homa releases the payment to the provider.
 
 ### Time
@@ -53,16 +57,24 @@ start times are in 15-minute steps. A start time must be at least the **minimum 
 
 Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool is never deleted, and its code is never used for anything else.
 
-### Helpers
+### Teams, helpers and supervisors
 
-each provider sets the minimum and maximum number of helpers per booking. The maximum cannot be more than the provider's verified team size, so the provider can always name everyone who is coming. The customer picks any number in that range. For example, a provider with a minimum of 1 and a team of 4 can be booked with 1, 2, 3 or 4 helpers.
+A provider's **team** is everyone verified to work for them. Each team member has one role:
 
-If the verified team shrinks below the maximum, the maximum shrinks to the team size, and the minimum with it if needed. A growing team does not widen the range on its own; the provider sets it again. A live provider with no verified team left stops being live, and must have a verified team, set their helpers and go live again.
+- **Helper:** does the booked jobs. The customer books and pays for helpers.
+- **Supervisor:** the person in charge on site. A supervisor is not counted or charged as a helper.
+
+Teams have no size limit. Each provider sets the minimum (at least 1) and maximum number of helpers per booking; Homa sets no upper limit. The maximum cannot be more than the number of helpers on the team, so the provider can always name everyone who is coming. The customer picks any number in that range.
+
+If the team's helpers drop below the maximum, the maximum shrinks to match, and the minimum with it if needed. A growing team does not widen the range on its own; the provider sets it again. A live provider with no helper left stops being live, and must have a helper, set their helpers and go live again.
+
+**When a supervisor comes:** a provider with supervisors can set when one is sent: from a **minimum number of helpers**, from a **minimum number of hours**, or both. A booking that reaches either one includes at least one supervisor, at no extra cost to the customer. The provider page and the review page say when a supervisor is included. A provider who sets neither never has to send one, and can still choose to.
 
 ## Pricing
 
 Each provider sets:
-- the minimum and maximum number of helpers per booking
+- the minimum and maximum number of helpers per booking (no Homa upper limit)
+- when a supervisor is sent, if they have supervisors
 - a flat hourly rate per helper
 - minimum and maximum hours, within Homa's range of 1 to 6 hours
 - how the travel fee works: either a **separate flat travel fee**, or **already included in the price**
@@ -70,7 +82,7 @@ Each provider sets:
 
 A provider offers at least one job and covers at least one city. Bringing no tools is allowed. A separate travel fee is more than RM0; a provider who charges nothing for travel includes it in the price.
 
-The **hours fee** is the hourly rate per helper × the number of helpers × the hours. The **provider price** is the hours fee plus the travel fee when it is charged separately.
+The **hours fee** is the hourly rate per helper × the number of helpers × the hours. Supervisors are not charged; their cost is part of the provider's hourly rate. The **provider price** is the hours fee plus the travel fee when it is charged separately.
 
 Homa adds a **service fee** of 15% of the provider price, paid by the customer. The **total** the customer pays is the provider price plus the service fee. The provider receives the full provider price, and the service fee is how Homa earns.
 
@@ -125,10 +137,11 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Check-in Policy
 
-- **Who is coming:** before the booked start, the provider names the **lead** (the person in charge on site) and the helpers for the reservation, matching the number of helpers booked. The lead is one of the named helpers, and a provider who is their own helper can be the lead. The customer does not pick the helpers but sees each one's name, photo and average stars, and who the lead is. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
-- The provider is responsible for check-in and job completion. The lead must be at the customer's location with the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
+- **Who is coming:** before the booked start, the provider names the helpers for the reservation, matching the number of helpers booked, and at least one **supervisor** when the booking reaches the provider's supervisor threshold. The customer does not pick them but sees each person's name, role, photo and average stars. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
+- The provider is responsible for check-in and job completion. Someone on site must have the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
 - Check-in is **location-based**. Homa enables the check-in action only when the device is within the **check-in radius** of the customer's location, and the provider then marks check-in.
 - Homa uses the device's location only at the moment of check-in, not continuously.
+- **Face check:** after the location check, every named person takes a live selfie on the provider app, which Homa matches against their eKYC. Check-in counts once the first named person passes. Each other person must pass before working; after the **face check attempts** they cannot work on that job, and the customer is told. The customer sees each person's result and time. If the face check service is unavailable, check-in goes ahead on location only, marked "face check unavailable" for the customer, and the provider is not fined. Homa keeps only the result and time, never the selfie.
 - The customer does not need to confirm check-in. The customer sees the check-in time, and can report a problem (for example a missing helper) through the Dispute Policy.
 - The provider can check in from the **earliest check-in** time and must check in by the booked start plus the **check-in period**, including its last minute: for a 10:00 start, from 09:45 up to and including 10:15. Homa records the check-in time, and the customer can see it.
 - No check-in by then is a provider no-show. The reservation is cancelled automatically, the customer is refunded in full, and the provider pays a fine (see Provider Cancellation Fines).
@@ -164,7 +177,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count.
 - **When:** within the **rating window** after the reservation becomes Completed, including its last minute. A disputed reservation can be rated only after Homa's decision, because it becomes Completed only then.
 - **Rating the provider:** overall stars from 1 to 5 (required), stars for any number of **provider categories** (optional), and written feedback (optional, up to 1,000 characters).
-- **Rating helpers:** rating helpers is optional. For each helper the customer rates, overall stars from 1 to 5 are required, and stars for each **helper category** are optional. There is no written feedback for helpers, so no one writes comments about an individual worker.
+- **Rating helpers and supervisors:** rating them is optional. For each person the customer rates, overall stars from 1 to 5 are required, and stars for each **helper category** are optional. There is no written feedback for helpers or supervisors, so no one writes comments about an individual worker. Supervisors are rated with the helper categories.
 - **Showing ratings:** a provider's or helper's overall average is shown only once they have at least the **minimum ratings to show**. Until then, the count is shown with "New". Each category's average is shown once that category has its own minimum ratings to show, because customers may skip categories.
 - **Ratings and reports are separate.** A rating is an opinion and never changes a payout, a fine or a decision. A problem that needs Homa's decision is a report.
 - **Hiding:** Homa can hide a rating that breaks the rules (abuse, personal details, or talk of paying outside Homa), with a recorded reason. A hidden rating no longer counts. Homa never edits a rating.
@@ -187,14 +200,35 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 
 ### Verification Policy
 
-- Every provider is an individual and is verified through eKYC.
-- A provider runs a team by **inviting** helpers. Helpers have no accounts, so the provider adds the helper's name and photo and sends them an eKYC verification link from the provider app. A helper becomes a **team member** only once their eKYC is verified. Until then they are an invited helper: not on the team, not shown to customers, not counted in the provider's team size and not able to be named for jobs.
+**Provider types.** At onboarding a provider chooses one type:
+
+| | Independent provider | Business provider |
+|---|---|---|
+| Who | A Malaysian, not registered as a business | A business registered with SSM |
+| Verified | The provider's eKYC | The owner's or director's eKYC, and the business registration, checked by Homa |
+| Team members | Malaysian | Malaysian and foreign |
+| Payouts to | A personal bank account | A business bank account |
+
+Both types can have a team of helpers and supervisors, and everything else is the same for both.
+
+**Identity documents.** Every person verifies with a document from Homa's **accepted documents** list. The provider (or the business's owner or director) must be Malaysian, with a MyKad or a Malaysian passport. A team member chooses the issuing country and the document type (identity card or passport). Only a business provider can add team members from outside Malaysia.
+
+**Registered name.** Each person's name is the name on their identity document, from the eKYC result. The provider cannot type or change it. Customers see the name as registered.
+
+**Adding a team member.** The provider fills in one form and the person verifies; nothing is on the team until the eKYC is verified.
+1. **Add:** the provider chooses the role (helper or supervisor), the document type (identity card or passport) and, for a business provider only, the issuing country; an independent provider's members are always Malaysian. The provider adds a profile photo and, on the same form, ticks that **this person** is lawfully employed by or engaged with them and allowed to work in Malaysia. The form cannot be sent without the tick.
+2. **Verify:** the person completes eKYC through a link from the provider app; team members have no accounts. Once it is verified, the person is added to the team automatically, with their registered name from the eKYC. The profile photo is matched against the eKYC once, so it shows the verified person.
+
+While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. If the eKYC is rejected or not finished within the **verification link expiry**, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
+
+**Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members submit only their eKYC. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Only a business provider can add team members from outside Malaysia. Homa removes a team member, and can remove the provider, if it learns a team member is not allowed to work. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
+
 - Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
-- A provider or invited helper whose eKYC is rejected is told to redo it, and can be verified on a later attempt; an invited helper then becomes a team member. The provider can withdraw an invite or remove a team member at any time. A removed helper is no longer on the team and can no longer be named for jobs.
-- **Re-verification:** every provider and team member is re-verified through eKYC every **re-verification period**, counted from their own last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date, with a link for each.
+- A provider whose eKYC is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
+- **Re-verification:** every provider and team member is re-verified through eKYC, by the same steps, at their **due date**: the **re-verification period** after their last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date, with a link for each.
 - Until the due date nothing changes. A person who passes stays verified, and their next due date is counted from the new verification.
 - **Missing the due date:** a team member who isn't re-verified by their due date **lapses** and leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A provider who isn't re-verified by their due date has their listing **paused**: it takes no new requests until they pass. Reservations already accepted still go ahead.
-- **Verified for the whole job:** a provider can be requested, and can accept, only for a job that ends by their re-verification due date. Search leaves a provider out for any job that would end later. Once they pass the re-check, their next due date moves 3 months out and those dates open up.
+- **Verified for the whole job:** a provider can be requested, and can accept, only for a job that ends by their re-verification due date. Search leaves a provider out for any job that would end later. Once they pass the re-check, their next due date moves out and those dates open up.
 - **Early re-check:** Homa can ask for an early re-verification of a provider or team member, for example after a safety-related report. The due date then moves to the **early re-check deadline**, if that is sooner.
 - The **Verified ID** badge shows when each person was last verified.
 
@@ -204,12 +238,12 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 
 - **What Homa collects and why:**
   - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
-  - Providers and helpers: eKYC identity data, name and photo, to verify them and show customers who is coming; providers' payout details, handled by Stripe.
+  - Providers and team members: eKYC identity data (registered name, document type and issuing country), profile photo, and face check results at check-in (result and time only, never the selfie), to verify them and show customers who is coming; providers' payout details, handled by Stripe. Face data is biometric and is used only to match a person to their own eKYC.
   - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and the provider's written feedback. Helpers agree to being rated as part of their eKYC consent.
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.
-- **Consent:** asked at sign-up and at eKYC. Location permission is asked only when checking in. Each helper consents through their own eKYC link.
+- **Consent:** asked at sign-up and at eKYC. Location permission is asked only when checking in. Each team member consents through their own eKYC link, including to face checks at check-in and to being rated.
 - **Retention:** evidence is kept for the **evidence retention period**. Other personal data is kept while the account is active and deleted or anonymised after the account is closed, except records Homa must keep by law (such as payment records).
 - **User rights:** customers, providers and helpers can see their data, correct it, get a copy, and ask to close their account and delete their data.
 - **Sharing:** personal data is shared only with the external services listed below, to run Homa, and with authorities when the law requires. Customers see only what they need about providers and helpers (names, photos, check-in time), and providers see only the customer's name, address and reservation details.
@@ -263,13 +297,14 @@ When Homa changes a value, the change applies to new reservations only. Each res
 |---|---|---|
 | **Service fee** | Pricing | 15% of the provider price, paid by the customer |
 | **Duration range** | How Homa Works | 1 to 6 hours; each provider sets their own minimum and maximum within it |
-| **Helpers per search** | How Homa Works | 1 to 10 |
 | **Minimum notice** | How Homa Works | The start time must be at least 2 hours from now |
 | **Booking horizon** | How Homa Works | Up to 30 days ahead |
 | **Team reminder time** | Check-in Policy | 6 hours before the booked start, while the team is not named |
 | **Earliest check-in** | Check-in Policy | 15 minutes before the booked start |
 | **Check-in period** | Check-in Policy | 15 minutes after the booked start |
 | **Check-in radius** | Check-in Policy | 300 metres |
+| **Face check attempts** | Check-in Policy | 3 per person per check-in |
+| **Verification link expiry** | Verification Policy | 7 days to complete eKYC when adding a team member |
 | **Customer no-show wait** | Check-in Policy | 15 minutes |
 | **Customer no-show fee** | Check-in Policy | Travel fee plus 30% of the hours fee |
 | **No-show report window** | Check-in Policy | 1 hour after the provider reports a customer no-show |
@@ -283,7 +318,8 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within 24 hours before the booked start |
 | **Provider no-show fine** | Provider Cancellation Fines | 30% of the hours fee, for no check-in, or a cancellation after the booked start or after check-in |
 | **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout |
-| **Re-verification period** | Verification Policy | Every 3 months, from each person's last successful verification |
+| **Accepted documents** | Verification Policy | Provider, owner or director: Malaysian MyKad or Malaysian passport. Team member of an independent provider: Malaysian identity card or passport. Team member of a business provider: identity card or passport from any country |
+| **Re-verification period** | Verification Policy | Every 3 months from each person's last successful verification |
 | **Re-verification reminder** | Verification Policy | 14 days before a person's re-verification is due |
 | **Early re-check deadline** | Verification Policy | 14 days after Homa asks for an early re-verification |
 | **Rating window** | Rating Policy | 14 days after the reservation becomes Completed |
@@ -305,9 +341,11 @@ A greeting and a search bar to start a search. Below it are shelves curated by H
 - Jobs grouped to be easy to scan, such as kitchen or living room
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
-- The provider's team: every team member's name, photo and average stars, so you know who may come. Invited helpers who are not yet verified are not shown.
+- The provider type: **Independent** or **Business · SSM registered**
+- The provider's team: every team member's registered name, role (helper or supervisor), photo and average stars, so you know who may come. Only added team members are shown. Nationality is never shown.
+- When a supervisor is included, if the provider sends one
 - Ratings: the average for each provider category once it has the minimum ratings to show, and written feedback from customers, newest first
-- A **Verified ID** badge: every provider and team member is verified through eKYC and re-verified every 3 months, with the date of their last verification
+- A **Verified ID** badge: every provider and team member is verified through eKYC, re-verified regularly and face-checked at every job, with the date of their last verification
 
 
 ### Ratings
@@ -340,24 +378,24 @@ Homa has a separate app that helps providers manage their reservations, calendar
 
 ### Onboarding
 
-1. **Register** as a provider. Every provider is an individual.
-2. **Verify** through eKYC.
-3. **Set up your team:** by default you are the helper. You can invite other helpers to run a team, and choose whether to include yourself as a helper. Each invited helper verifies through an eKYC link you send them, and joins your team once verified.
-4. **Set up the profile:** profile name, picture and offerings.
-5. **Add a payout account:** the bank account Homa pays out to.
+1. **Choose the provider type:** Independent or Business.
+2. **Verify:** choose the identity document (MyKad or Malaysian passport) and complete eKYC. A business also submits its SSM registration, which Homa checks.
+3. **Set up your team:** by default you are a helper. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify through the eKYC link you send them, and they join your team once verified. You can remove yourself from the team.
+4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
+5. **Add a payout account:** a personal bank account for an independent provider, a business bank account for a business.
 6. **Go live** once everything is set up.
 
-Providers cannot go live until they are verified, their profile is complete, their payout account is added, and their team has at least as many members as their minimum helpers per booking. Invites still waiting for eKYC do not block going live; those helpers join the team when verified. When a provider tries to go live too early, Homa lists everything still missing, for example the profile picture or the cities.
+Providers cannot go live until they are verified (and, for a business, its registration is checked), their profile is complete, their payout account is added, and their team has at least as many helpers as their minimum helpers per booking, plus a supervisor if they set a supervisor threshold. People still waiting for verification do not block going live. When a provider tries to go live too early, Homa lists everything still missing.
 
 ### Teams
 
-A provider invites helpers and manages the team in Homa, and chooses whether to include themselves as a helper. Only verified helpers are team members; invited helpers join once their eKYC is verified. Helpers do not have their own accounts in the MVP. Each helper has a name and photo shown to customers. For each reservation the provider names the lead and helpers before the booked start, then checks in and submits completion through the lead on site.
+A provider adds helpers and supervisors and manages the team in Homa. Only people who are verified and confirmed are team members. Team members do not have their own accounts in the MVP; the provider app on site is used for check-in, face checks and completion. For each reservation the provider names the helpers, and a supervisor when one is due, before the booked start.
 
 ### After going live
 
-- **Reservations:** accept or decline requests, name the lead and helpers for each reservation, check in on the job day, and mark jobs completed with photo or video evidence.
+- **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
-- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy. A change applies to new requests only; a request already made keeps the offering it was made with.
 - **Verification:** see when the provider and each team member are next due for re-verification, and send the eKYC links.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
@@ -377,7 +415,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 - **Overview:** reservations, total booking value, service fee earned, cancellation and no-show rates, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
-- **Providers:** verification status of providers, their team members and their open invites, upcoming and lapsed re-verifications, and the option to ask for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
+- **Providers:** provider type, business registration checks, lawful-employment confirmations for each team member with their time and terms version, verification status of providers, their team members and anyone waiting for verification, face check failures, upcoming and lapsed re-verifications, and the option to ask for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
 - **Customers:** accounts, reservations and reports filed.
 - **Fines:** every fine with its reason, amount, what has been deducted so far, and any waiver.
 - **Ratings:** every rating, with the option to hide one that breaks the rules, recorded with a reason.
@@ -397,8 +435,10 @@ These are deliberately left out of the MVP:
 - Consequences of violations and provider suspension (late cancellations and no-shows are only tracked in the admin console)
 - Homa credit, account top-ups and e-wallet payments
 - Rescheduling a reserved booking
-- Helper accounts
-- Automatic re-verification when an identity document expires (re-verification is every 3 months, or early on Homa's request)
+- Accounts for helpers and supervisors
+- Showing nationality
+- Checking work permits (the provider confirms lawful employment and is responsible for it)
+- Re-verifying when an identity document expires (re-verification follows the 3-month cycle only)
 - Skilled trade jobs such as plumbing, air-conditioning or electrical work
 
 ## External Services Homa Will Use and Not Develop
@@ -407,7 +447,7 @@ Homa will use outside services for these instead of developing them. Stripe Conn
 
 | Capability | What it does for Homa |
 |---|---|
-| **eKYC provider (Kenal)** | Verifies the identity of providers and their helpers during onboarding |
+| **eKYC provider (Kenal)** | Verifies the identity of providers and team members (MyKad, passport and other identity cards), re-verifies them, and matches faces at check-in and against profile photos |
 | **Payment provider (Stripe Connect)** | Authorises and charges cards, takes upfront FPX payments, holds payments until release, onboards providers for payouts, pays out to providers and processes refunds to the original method |
 | **Push notification service (to be chosen)** | Sends reminders and alerts to customers and providers, such as new requests, check-in, completion and reports |
 | **Geoservice (open source)** | Handles addresses, locations and distance, including the location check at check-in |

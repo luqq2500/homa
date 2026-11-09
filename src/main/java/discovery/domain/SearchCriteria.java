@@ -42,8 +42,8 @@ public record SearchCriteria(Set<JobCode> jobs, Instant start, int hours, int he
         if (hours < limits.minHours() || hours > limits.maxHours()) {
             throw new DurationOutOfRangeException(hours, limits.minHours(), limits.maxHours());
         }
-        if (helpers < limits.minHelpers() || helpers > limits.maxHelpers()) {
-            throw new HelpersOutOfRangeException(helpers, limits.minHelpers(), limits.maxHelpers());
+        if (helpers < 1) {
+            throw new HelpersOutOfRangeException(helpers);
         }
     }
 

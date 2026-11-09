@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 import kernel.Money;
 
-/** A provider's listing went live, with what search needs to match it. When travel is included, {@code travelFee} is RM0.00. */
+/** A provider's listing went live, with what search needs to match it. When travel is included, {@code travelFee} is RM0.00. {@code supervisorFromHelpers} and {@code supervisorFromHours} are 0 when that threshold is not set. */
 public record ListingWentLiveIE(
         String listingId,
         String providerId,
@@ -21,7 +21,11 @@ public record ListingWentLiveIE(
         int maxHelpers,
         Set<String> cities,
         String cancellationTier,
-        Set<String> teamMemberIds,
+        String providerType,
+        Set<String> helperIds,
+        Set<String> supervisorIds,
+        int supervisorFromHelpers,
+        int supervisorFromHours,
         Instant occurredAt) implements OfferingIE {
 
     public ListingWentLiveIE {
@@ -33,7 +37,9 @@ public record ListingWentLiveIE(
         Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
-        teamMemberIds = Set.copyOf(teamMemberIds);
+        Objects.requireNonNull(providerType, "providerType");
+        helperIds = Set.copyOf(helperIds);
+        supervisorIds = Set.copyOf(supervisorIds);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

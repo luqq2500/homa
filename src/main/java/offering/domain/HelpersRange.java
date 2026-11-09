@@ -3,11 +3,14 @@ package offering.domain;
 import offering.domain.exception.InvalidHelpersRangeException;
 import java.util.Optional;
 
-/** The minimum and maximum number of helpers a customer can book with this provider. */
+/**
+ * The minimum and maximum number of helpers a customer can book with this provider. Homa sets no upper
+ * limit; the maximum is capped by the helpers on the team.
+ */
 public record HelpersRange(int min, int max) {
 
     public HelpersRange {
-        if (min > max) {
+        if (min < 1 || min > max) {
             throw new InvalidHelpersRangeException(min, max);
         }
     }
@@ -21,13 +24,13 @@ public record HelpersRange(int min, int max) {
     }
 
     /**
-     * The range for a team of {@code teamSize} verified helpers: the maximum shrinks to the team size,
-     * and the minimum with it if needed. A team of no one has no range.
+     * The range for a team with {@code helpers} helpers: the maximum shrinks to match, and the minimum with
+     * it if needed. A team with no helper has no range.
      */
-    Optional<HelpersRange> fittedTo(int teamSize) {
-        if (teamSize < 1) {
+    Optional<HelpersRange> fittedTo(int helpers) {
+        if (helpers < 1) {
             return Optional.empty();
         }
-        return Optional.of(new HelpersRange(Math.min(min, teamSize), Math.min(max, teamSize)));
+        return Optional.of(new HelpersRange(Math.min(min, helpers), Math.min(max, helpers)));
     }
 }

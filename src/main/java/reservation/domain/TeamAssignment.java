@@ -1,23 +1,41 @@
 package reservation.domain;
 
+import java.util.HashSet;
 import java.util.Set;
-import reservation.domain.exception.LeadNotInTeamException;
+import reservation.domain.exception.MemberNamedTwiceException;
 
 /**
- * Who is coming: the helpers named for this reservation, and the lead, the person in charge on site, who
- * is one of them. A provider who is their own helper can be the lead.
+ * Who is coming: the helpers named for this reservation, matching the helpers booked, and any supervisors,
+ * the people in charge on site. The same person is never named twice.
  */
-public record TeamAssignment(String lead, Set<String> helpers) {
+public record TeamAssignment(Set<String> helpers, Set<String> supervisors) {
 
     public TeamAssignment {
-        lead = ReservationText.require(lead, "A lead");
         helpers = Set.copyOf(helpers);
-        if (!helpers.contains(lead)) {
-            throw new LeadNotInTeamException(lead);
-        }
+        supervisors = Set.copyOf(supervisors);
+        helpers.forEach(id -> ReservationText.require(id, "A helper id"));
+        supervisors.forEach(id -> ReservationText.require(id, "A supervisor id"));
+        helpers.stream().filter(supervisors::contains).findFirst().ifPresent(id -> {
+            throw new MemberNamedTwiceException(id);
+        });
     }
 
-    public static TeamAssignment of(String lead, String... helpers) {
-        return new TeamAssignment(lead, Set.of(helpers));
+    public static TeamAssignment helpers(String... helperIds) {
+        return new TeamAssignment(Set.of(helperIds), Set.of());
+    }
+
+    public TeamAssignment withSupervisors(String... supervisorIds) {
+        return new TeamAssignment(helpers, Set.of(supervisorIds));
+    }
+
+    /** Everyone named: the helpers and the supervisors. */
+    public Set<String> members() {
+        Set<String> everyone = new HashSet<>(helpers);
+        everyone.addAll(supervisors);
+        return Set.copyOf(everyone);
+    }
+
+    boolean names(String memberId) {
+        return helpers.contains(memberId) || supervisors.contains(memberId);
     }
 }

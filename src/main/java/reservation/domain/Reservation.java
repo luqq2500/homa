@@ -2,6 +2,7 @@ package reservation.domain;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ import reservation.domain.exception.CompletionDeadlineNotReachedException;
 import reservation.domain.exception.CompletionNotSubmittedException;
 import reservation.domain.exception.DisputeWindowStillOpenException;
 import reservation.domain.exception.EvidenceRequiredException;
+import reservation.domain.exception.FaceCheckAlreadyPassedException;
+import reservation.domain.exception.FaceCheckAttemptsUsedException;
 import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
@@ -27,6 +30,8 @@ import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.JobEndsAfterProviderVerificationException;
 import reservation.domain.exception.JobNotOfferedException;
 import reservation.domain.exception.ListingPausedException;
+import reservation.domain.exception.LocationNotCheckedException;
+import reservation.domain.exception.MemberNotNamedException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
 import reservation.domain.exception.ProviderMissedCheckInException;
@@ -38,6 +43,8 @@ import reservation.domain.exception.ReservationNotEditableException;
 import reservation.domain.exception.StartBeyondHorizonException;
 import reservation.domain.exception.StartNotOnQuarterHourException;
 import reservation.domain.exception.StartTooSoonException;
+import reservation.domain.exception.SupervisorNotOnRosterException;
+import reservation.domain.exception.SupervisorRequiredException;
 import reservation.domain.exception.TeamLockedException;
 import reservation.domain.exception.TeamNotNamedException;
 import reservation.domain.exception.TeamSizeMismatchException;
@@ -63,6 +70,9 @@ public final class Reservation {
     private ReservationStatus status;
     private TeamAssignment team;
     private CheckIn checkIn;
+    private final List<FaceCheck> faceChecks = new ArrayList<>();
+    private boolean faceCheckUnavailable;
+    private Instant checkedInAt;
     private Ending ending;
     private Instant noShowReportedAt;
     private Completion completion;
@@ -216,7 +226,11 @@ public final class Reservation {
 
     // ---- Job day ----
 
-    /** Names who is coming. The team can change until the booked start. */
+    /**
+     * Names who is coming: as many helpers as were booked, each a helper on the team, and at least one
+     * supervisor from the team when the booking reaches the provider's supervisor rule. The team can change
+     * until the booked start.
+     */
     public void nameTeam(TeamAssignment newTeam, TeamRoster roster, Instant now) {
         requireStatus(ReservationStatus.RESERVED, "given a team");
         if (!now.isBefore(start())) {
@@ -225,19 +239,26 @@ public final class Reservation {
         if (newTeam.helpers().size() != details.helpers()) {
             throw new TeamSizeMismatchException(newTeam.helpers().size(), details.helpers());
         }
-        newTeam.helpers().stream().filter(helper -> !roster.includes(helper)).findFirst().ifPresent(helper -> {
-            throw new HelperNotOnRosterException(helper);
-        });
+        requireOnRoster(newTeam, roster);
+        if (newTeam.supervisors().isEmpty() && offering.requiresSupervisor(details.helpers(), details.hours())) {
+            throw new SupervisorRequiredException();
+        }
         team = newTeam;
     }
 
-    /** The lead checks in at the customer's location, from the earliest check-in to the end of the check-in period. */
+    /**
+     * The location check, the first step of check-in: the device is within the check-in radius, from the
+     * earliest check-in to the end of the check-in period. Check-in completes with the first face check
+     * passed, or when the face check service is unavailable.
+     */
     public void checkIn(int distanceMetres, Instant now) {
         requireStatus(ReservationStatus.RESERVED, "checked in");
         if (team == null) {
             throw new TeamNotNamedException();
         }
-        requireNotCheckedIn();
+        if (checkIn != null) {
+            throw new AlreadyCheckedInException(checkIn.at());
+        }
         requireInsideCheckInTimes(now);
         if (distanceMetres > policy.checkInRadiusMetres()) {
             throw new TooFarToCheckInException(distanceMetres, policy.checkInRadiusMetres());
@@ -245,7 +266,57 @@ public final class Reservation {
         checkIn = new CheckIn(now, distanceMetres);
     }
 
-    /** No check-in by the end of the check-in period: the customer is refunded in full and the provider is fined. */
+    /**
+     * Records one face check of a named person, after the location check. The first pass completes check-in,
+     * which must happen by the end of the check-in period. Each person gets the face check attempts; one who
+     * fails them all cannot work on the job.
+     */
+    public void recordFaceCheck(String memberId, FaceCheckResult result, Instant now) {
+        requireLocationChecked();
+        if (!team.names(memberId)) {
+            throw new MemberNotNamedException(memberId);
+        }
+        if (hasPassedFaceCheck(memberId)) {
+            throw new FaceCheckAlreadyPassedException(memberId);
+        }
+        if (faceCheckAttempts(memberId) >= policy.faceCheckAttempts()) {
+            throw new FaceCheckAttemptsUsedException(memberId, policy.faceCheckAttempts());
+        }
+        requireCheckInStillOpen(now);
+        faceChecks.add(new FaceCheck(memberId, result, now));
+        if (result == FaceCheckResult.PASSED) {
+            completeCheckIn(now);
+        }
+    }
+
+    /**
+     * The face check service is unavailable: check-in goes ahead on location only, marked "face check
+     * unavailable" for the customer, and the provider is not fined. An outage never makes a no-show.
+     */
+    public void recordFaceCheckUnavailable(Instant now) {
+        requireLocationChecked();
+        requireCheckInStillOpen(now);
+        faceCheckUnavailable = true;
+        completeCheckIn(now);
+    }
+
+    /** Checked in: the location check passed, and one face check passed or the face check service was unavailable. */
+    public boolean isCheckedIn() {
+        return checkedInAt != null;
+    }
+
+    /**
+     * Whether a named person can work on the job: they passed their face check, or the service was
+     * unavailable and they had not failed every attempt.
+     */
+    public boolean canWork(String memberId) {
+        return isNamed(memberId) && (hasPassedFaceCheck(memberId) || coveredByOutage(memberId));
+    }
+
+    /**
+     * Check-in not complete by the end of the check-in period, including when the location check passed but
+     * no face check did: the customer is refunded in full and the provider is fined.
+     */
     public CancellationResult markProviderNoShow(Instant now) {
         requireStatus(ReservationStatus.RESERVED, "marked a provider no-show");
         requireNotCheckedIn();
@@ -426,8 +497,23 @@ public final class Reservation {
         return Optional.ofNullable(team);
     }
 
+    /** The location check; check-in is complete only with {@link #isCheckedIn()}. */
     public Optional<CheckIn> checkInRecord() {
         return Optional.ofNullable(checkIn);
+    }
+
+    /** When check-in completed, as the customer sees it. */
+    public Optional<Instant> checkedInAt() {
+        return Optional.ofNullable(checkedInAt);
+    }
+
+    /** Every face check attempt, with its result and time. */
+    public List<FaceCheck> faceChecks() {
+        return List.copyOf(faceChecks);
+    }
+
+    public boolean isFaceCheckUnavailable() {
+        return faceCheckUnavailable;
     }
 
     public Optional<Ending> ending() {
@@ -466,7 +552,7 @@ public final class Reservation {
 
     /** The wait runs from the later of the booked start and the check-in. */
     private Instant noShowWaitEndsAt() {
-        Instant from = checkIn.at().isAfter(start()) ? checkIn.at() : start();
+        Instant from = checkedInAt.isAfter(start()) ? checkedInAt : start();
         return from.plus(policy.customerNoShowWait());
     }
 
@@ -499,7 +585,7 @@ public final class Reservation {
 
     private Settlement cancelReservedByCustomer(Instant now) {
         requireNoCompletion();
-        if (checkIn != null) {
+        if (isCheckedIn()) {
             return endCancelled(Ending.CUSTOMER_CANCELLED_AFTER_CHECK_IN, customerNoShowFee(), now);
         }
         if (now.isBefore(start())) {
@@ -519,7 +605,7 @@ public final class Reservation {
     }
 
     private Optional<FineCharge> providerCancellationFine(Instant now) {
-        if (checkIn != null || !now.isBefore(start())) {
+        if (isCheckedIn() || !now.isBefore(start())) {
             return fine(FineReason.NO_SHOW, policy.providerNoShowFine());
         }
         if (!now.isBefore(feeWindowOpensAt())) {
@@ -529,9 +615,57 @@ public final class Reservation {
     }
 
     private void requireCheckedIn() {
-        if (checkIn == null) {
+        if (!isCheckedIn()) {
             throw new NotCheckedInException();
         }
+    }
+
+    private void requireLocationChecked() {
+        requireStatus(ReservationStatus.RESERVED, "face checked");
+        if (checkIn == null) {
+            throw new LocationNotCheckedException();
+        }
+    }
+
+    /** Before check-in completes, its next step must still be inside the check-in period. */
+    private void requireCheckInStillOpen(Instant now) {
+        if (!isCheckedIn() && now.isAfter(checkInClosesAt())) {
+            throw new CheckInPeriodOverException(checkInClosesAt());
+        }
+    }
+
+    private void completeCheckIn(Instant now) {
+        if (!isCheckedIn()) {
+            checkedInAt = now;
+        }
+    }
+
+    private boolean hasPassedFaceCheck(String memberId) {
+        return faceChecks.stream().anyMatch(check -> check.memberId().equals(memberId) && check.passed());
+    }
+
+    /** Every attempt counts; once someone passes they take no more, so these are their failed attempts and at most one pass. */
+    private long faceCheckAttempts(String memberId) {
+        return faceChecks.stream().filter(check -> check.memberId().equals(memberId)).count();
+    }
+
+    private boolean isNamed(String memberId) {
+        return team != null && team.names(memberId);
+    }
+
+    /** During an outage, everyone named works except someone who already failed every attempt. */
+    private boolean coveredByOutage(String memberId) {
+        return faceCheckUnavailable && faceCheckAttempts(memberId) < policy.faceCheckAttempts();
+    }
+
+    private void requireOnRoster(TeamAssignment newTeam, TeamRoster roster) {
+        newTeam.helpers().stream().filter(helper -> !roster.helperIds().contains(helper)).findFirst().ifPresent(helper -> {
+            throw new HelperNotOnRosterException(helper);
+        });
+        newTeam.supervisors().stream().filter(supervisor -> !roster.supervisorIds().contains(supervisor)).findFirst()
+                .ifPresent(supervisor -> {
+                    throw new SupervisorNotOnRosterException(supervisor);
+                });
     }
 
     private void requireNoCompletion() {
@@ -558,8 +692,8 @@ public final class Reservation {
     }
 
     private void requireNotCheckedIn() {
-        if (checkIn != null) {
-            throw new AlreadyCheckedInException(checkIn.at());
+        if (isCheckedIn()) {
+            throw new AlreadyCheckedInException(checkedInAt);
         }
     }
 

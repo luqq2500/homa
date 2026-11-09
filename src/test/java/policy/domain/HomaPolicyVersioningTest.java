@@ -11,7 +11,6 @@ import policy.domain.PolicyValue.CancellationTierFee;
 import policy.domain.PolicyValue.CheckInPeriod;
 import policy.domain.PolicyValue.CustomerNoShowFee;
 import policy.domain.PolicyValue.DurationRange;
-import policy.domain.PolicyValue.HelpersPerSearch;
 import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.ServiceFee;
@@ -42,9 +41,8 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
-        void bookingsAreOneToSixHoursWithOneToTenHelpersStartingTwoHoursToThirtyDaysAhead() {
+        void bookingsAreOneToSixHoursStartingTwoHoursToThirtyDaysAhead() {
             assertThat(launch.durationRange()).isEqualTo(new DurationRange(1, 6));
-            assertThat(launch.helpersPerSearch()).isEqualTo(new HelpersPerSearch(1, 10));
             assertThat(launch.minimumNotice()).isEqualTo(Duration.ofHours(2));
             assertThat(launch.bookingHorizon()).isEqualTo(Duration.ofDays(30));
         }
@@ -108,8 +106,25 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
+        void eachPersonGetsThreeFaceCheckAttemptsAndSevenDaysToVerify() {
+            assertThat(launch.faceCheckAttempts()).isEqualTo(3);
+            assertThat(launch.verificationLinkExpiry()).isEqualTo(Duration.ofDays(7));
+        }
+
+        @Test
+        void providersAndIndependentMembersUseMalaysianDocumentsAndBusinessMembersAnyCountry() {
+            assertThat(launch.acceptedDocuments()).containsExactlyInAnyOrder(
+                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, "MY"),
+                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.PASSPORT, "MY"),
+                    AcceptedDocument.issuedBy(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.IDENTITY_CARD, "MY"),
+                    AcceptedDocument.issuedBy(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.PASSPORT, "MY"),
+                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.IDENTITY_CARD),
+                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.PASSPORT));
+        }
+
+        @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(29);
+            assertThat(launch.values()).hasSize(31);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -145,7 +160,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(29);
+            assertThat(version2.snapshot().values()).hasSize(31);
         }
 
         @Test

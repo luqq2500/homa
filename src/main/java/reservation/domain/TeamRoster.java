@@ -2,18 +2,22 @@ package reservation.domain;
 
 import java.util.Set;
 
-/** The provider's team members when the team is named, including the provider if they are their own helper. Invited helpers are never on it. */
-public record TeamRoster(Set<String> memberIds) {
+/**
+ * The provider's team when the team is named, by role. The provider is a helper on it when they are on their
+ * own team. Only verified team members are ever on it.
+ */
+public record TeamRoster(Set<String> helperIds, Set<String> supervisorIds) {
 
     public TeamRoster {
-        memberIds = Set.copyOf(memberIds);
+        helperIds = Set.copyOf(helperIds);
+        supervisorIds = Set.copyOf(supervisorIds);
     }
 
-    public static TeamRoster of(String... memberIds) {
-        return new TeamRoster(Set.of(memberIds));
+    public static TeamRoster ofHelpers(String... helperIds) {
+        return new TeamRoster(Set.of(helperIds), Set.of());
     }
 
-    public boolean includes(String helperId) {
-        return memberIds.contains(helperId);
+    public TeamRoster withSupervisors(String... ids) {
+        return new TeamRoster(helperIds, Set.of(ids));
     }
 }

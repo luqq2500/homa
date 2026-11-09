@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import kernel.Money;
 import offering.domain.exception.CityNotInServiceAreaException;
 import offering.domain.exception.HelpersExceedTeamSizeException;
-import offering.domain.exception.HelpersOutOfRangeException;
 import offering.domain.exception.HoursOutOfRangeException;
 import offering.domain.exception.InvalidHoursRangeException;
 import offering.domain.exception.JobNotInCatalogueException;
@@ -38,7 +37,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aNewListingIsADraftWithNothingSetUp() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             assertThat(listing.providerId()).isEqualTo("provider-1");
             assertThat(listing.id()).isNotBlank();
@@ -52,12 +51,12 @@ class ProviderListingSetupTest {
             assertThat(listing.helpers()).isEmpty();
             assertThat(listing.cities()).isEmpty();
             assertThat(listing.cancellationTier()).isEmpty();
-            assertThat(listing.roster().size()).isZero();
+            assertThat(listing.roster().helperCount()).isZero();
         }
 
         @Test
         void aListingBelongsToAProvider() {
-            assertThatThrownBy(() -> ProviderListing.draft(" ")).isInstanceOf(OfferingDetailRequiredException.class);
+            assertThatThrownBy(() -> ProviderListing.draft(" ", ProviderType.INDEPENDENT)).isInstanceOf(OfferingDetailRequiredException.class);
         }
     }
 
@@ -66,7 +65,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderCanOnlyOfferJobsFromHomasJobList() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             assertThatThrownBy(() -> listing.offerJobs(Set.of(job("KITCHEN"), job("DECLUTTER_GARAGE")), CATALOGUE_JOBS))
                     .isInstanceOf(JobNotInCatalogueException.class)
@@ -76,7 +75,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderOffersJobsFromTheList() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             listing.offerJobs(Set.of(job("KITCHEN"), job("LAUNDRY_FOLD")), CATALOGUE_JOBS);
 
@@ -85,13 +84,13 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderOffersAtLeastOneJob() {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1").offerJobs(Set.of(), CATALOGUE_JOBS))
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).offerJobs(Set.of(), CATALOGUE_JOBS))
                     .isInstanceOf(NoJobsOfferedException.class);
         }
 
         @Test
         void aProviderCanOnlyBringToolsFromHomasToolList() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             assertThatThrownBy(() -> listing.bringTools(Set.of(tool("LADDER")), CATALOGUE_TOOLS))
                     .isInstanceOf(ToolNotInCatalogueException.class)
@@ -111,7 +110,7 @@ class ProviderListingSetupTest {
         @ParameterizedTest(name = "hours {0} to {1} are accepted")
         @CsvSource({"1, 4", "2, 6", "3, 3"})
         void hoursWithinHomasRangeAreAccepted(int min, int max) {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             listing.setHours(HoursRange.of(min, max), HOMA_LIMITS);
 
@@ -121,7 +120,7 @@ class ProviderListingSetupTest {
         @ParameterizedTest(name = "hours {0} to {1} are outside Homa's range")
         @CsvSource({"0, 4", "2, 7"})
         void hoursMustSitWithinHomasRange(int min, int max) {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1").setHours(HoursRange.of(min, max), HOMA_LIMITS))
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).setHours(HoursRange.of(min, max), HOMA_LIMITS))
                     .isInstanceOf(HoursOutOfRangeException.class);
         }
 
@@ -138,7 +137,7 @@ class ProviderListingSetupTest {
         void maxHelpersCannotExceedTheVerifiedTeamSize() {
             ProviderListing listing = aDraftWithATeamOf(3);
 
-            assertThatThrownBy(() -> listing.setHelpers(HelpersRange.of(1, 4), HOMA_LIMITS))
+            assertThatThrownBy(() -> listing.setHelpers(HelpersRange.of(1, 4)))
                     .isInstanceOf(HelpersExceedTeamSizeException.class)
                     .hasMessageContaining("3");
             assertThat(listing.helpers()).isEmpty();
@@ -148,24 +147,30 @@ class ProviderListingSetupTest {
         void maxHelpersCanEqualTheVerifiedTeamSize() {
             ProviderListing listing = aDraftWithATeamOf(3);
 
-            listing.setHelpers(HelpersRange.of(1, 3), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 3));
 
             assertThat(listing.helpers()).contains(HelpersRange.of(1, 3));
         }
 
         @Test
-        void maxHelpersCannotExceedTen() {
-            assertThatThrownBy(() -> aDraftWithATeamOf(12).setHelpers(HelpersRange.of(1, 11), HOMA_LIMITS))
-                    .isInstanceOf(HelpersOutOfRangeException.class);
-            ProviderListing listing = aDraftWithATeamOf(12);
-            listing.setHelpers(HelpersRange.of(1, 10), HOMA_LIMITS);
-            assertThat(listing.helpers()).contains(HelpersRange.of(1, 10));
+        void homaSetsNoUpperLimitOnHelpers() {
+            ProviderListing listing = aDraftWithATeamOf(25);
+
+            listing.setHelpers(HelpersRange.of(1, 25));
+
+            assertThat(listing.helpers()).contains(HelpersRange.of(1, 25));
         }
 
         @Test
-        void minHelpersIsAtLeastOne() {
-            assertThatThrownBy(() -> aDraftWithATeamOf(3).setHelpers(HelpersRange.of(0, 2), HOMA_LIMITS))
-                    .isInstanceOf(HelpersOutOfRangeException.class);
+        void supervisorsDoNotCountTowardsTheHelpersRange() {
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
+            listing.updateRoster(aRosterOf(4, 1));
+
+            assertThatThrownBy(() -> listing.setHelpers(HelpersRange.of(1, 5)))
+                    .isInstanceOf(HelpersExceedTeamSizeException.class)
+                    .hasMessageContaining("4 helpers");
+            listing.setHelpers(HelpersRange.of(1, 4));
+            assertThat(listing.helpers()).contains(HelpersRange.of(1, 4));
         }
 
         @Test
@@ -181,7 +186,7 @@ class ProviderListingSetupTest {
         @Test
         void theMinimumShrinksTooWhenTheTeamFallsBelowIt() {
             ProviderListing listing = aDraftWithATeamOf(4);
-            listing.setHelpers(HelpersRange.of(3, 4), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(3, 4));
 
             listing.updateRoster(aRosterOf(2));
 
@@ -191,18 +196,18 @@ class ProviderListingSetupTest {
         @Test
         void aGrowingTeamDoesNotWidenTheRange() {
             ProviderListing listing = aDraftWithATeamOf(2);
-            listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 2));
 
             listing.updateRoster(aRosterOf(5));
 
             assertThat(listing.helpers()).contains(HelpersRange.of(1, 2));
-            assertThat(listing.roster().size()).isEqualTo(5);
+            assertThat(listing.roster().helperCount()).isEqualTo(5);
         }
 
         @Test
         void aDraftStaysADraftWhenItsTeamChanges() {
             ProviderListing listing = aDraftWithATeamOf(2);
-            listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 2));
 
             listing.updateRoster(aRosterOf(3));
 
@@ -232,7 +237,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aTeamCanBeRecordedBeforeAnyHelperRangeIsSet() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             listing.updateRoster(aRosterOf(2));
 
@@ -246,7 +251,7 @@ class ProviderListingSetupTest {
 
         @Test
         void citiesMustBeLaunchCities() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             assertThatThrownBy(() -> listing.coverCities(Set.of(city("Cyberjaya"), city("Kajang")), LAUNCH_AREA))
                     .isInstanceOf(CityNotInServiceAreaException.class)
@@ -256,7 +261,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderCoversLaunchCities() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             listing.coverCities(Set.of(city("Cyberjaya"), city("Putrajaya")), LAUNCH_AREA);
 
@@ -265,7 +270,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderCoversAtLeastOneCity() {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1").coverCities(Set.of(), LAUNCH_AREA))
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).coverCities(Set.of(), LAUNCH_AREA))
                     .isInstanceOf(NoCitiesCoveredException.class);
         }
     }
@@ -275,7 +280,7 @@ class ProviderListingSetupTest {
 
         @Test
         void aProviderSetsTheirRateTravelFeeProfileAndTier() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             listing.setPricing(HourlyRate.of(Money.parse("35")), TravelFee.included());
             listing.setProfile(Profile.of("Kemas Home Care", "photos/kemas.jpg"));
@@ -289,7 +294,7 @@ class ProviderListingSetupTest {
 
         @Test
         void pricingProfileAndTierCannotBeLeftOut() {
-            ProviderListing listing = ProviderListing.draft("provider-1");
+            ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
 
             assertThatThrownBy(() -> listing.setPricing(null, TravelFee.included())).isInstanceOf(NullPointerException.class);
             assertThatThrownBy(() -> listing.setPricing(HourlyRate.of(Money.parse("35")), null))

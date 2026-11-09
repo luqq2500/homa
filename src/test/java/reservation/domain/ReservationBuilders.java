@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 import kernel.Money;
@@ -87,13 +88,14 @@ final class ReservationBuilders {
                 Duration.ofMinutes(30),
                 Duration.ofHours(24),
                 Duration.ofHours(1),
-                Duration.ofHours(6));
+                Duration.ofHours(6),
+                3);
     }
 
     static final EvidenceRef A_PHOTO = EvidenceRef.of("evidence/kitchen-after.jpg");
 
-    /** The provider's verified roster: Aina, Ben and Chan. */
-    static final TeamRoster ROSTER = TeamRoster.of("aina", "ben", "chan");
+    /** The provider's team: Aina, Ben and Chan as helpers, and Siti as a supervisor. */
+    static final TeamRoster ROSTER = TeamRoster.ofHelpers("aina", "ben", "chan").withSupervisors("siti");
 
     /** The provider's re-verification due date in most features: well after every booking. */
     static final Instant VERIFIED_UNTIL = Instant.parse("2027-02-01T00:00:00Z");
@@ -117,6 +119,13 @@ final class ReservationBuilders {
         private CancellationTier tier = CancellationTier.STANDARD;
         private Set<City> cities = Set.of(City.of("Cyberjaya"));
         private boolean takesRequests = true;
+        private Optional<SupervisorRule> supervisorRule = Optional.empty();
+
+        /** The provider sends a supervisor from {@code helpers} helpers or from {@code hours} hours. */
+        OfferingBuilder sendingASupervisorFrom(int helpers, int hours) {
+            supervisorRule = Optional.of(new SupervisorRule(OptionalInt.of(helpers), OptionalInt.of(hours)));
+            return this;
+        }
 
         /** The listing is paused because the provider's re-verification lapsed. */
         OfferingBuilder paused() {
@@ -152,7 +161,7 @@ final class ReservationBuilders {
         OfferingSnapshot build() {
             return new OfferingSnapshot(
                     "provider-1", rate, travel, 2, 4, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier,
-                    takesRequests);
+                    supervisorRule, takesRequests);
         }
     }
 
@@ -238,10 +247,10 @@ final class ReservationBuilders {
             return reservation;
         }
 
-        /** Reserved, with Aina as lead and Aina and Ben named as the two helpers. */
+        /** Reserved, with Aina and Ben named as the two helpers. */
         Reservation reservedWithTeamNamed() {
             Reservation reservation = reserved();
-            reservation.nameTeam(TeamAssignment.of("aina", "aina", "ben"), ROSTER, requestedAt.plus(Duration.ofHours(2)));
+            reservation.nameTeam(TeamAssignment.helpers("aina", "ben"), ROSTER, requestedAt.plus(Duration.ofHours(2)));
             return reservation;
         }
 
@@ -252,10 +261,11 @@ final class ReservationBuilders {
             return reservation;
         }
 
-        /** Reserved with the team named, and the lead checked in 120 metres away at {@code at}. */
+        /** Reserved with the team named, the location check passed 120 metres away at {@code at}, and Aina's face check passed then. */
         Reservation checkedInAt(Instant at) {
             Reservation reservation = reservedWithTeamNamed();
             reservation.checkIn(120, at);
+            reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, at);
             return reservation;
         }
     }

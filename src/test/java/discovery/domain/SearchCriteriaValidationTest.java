@@ -20,7 +20,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 /** Feature: Search criteria. */
 class SearchCriteriaValidationTest {
 
-    static final SearchLimits LAUNCH_LIMITS = new SearchLimits(1, 6, 1, 10, Duration.ofHours(2), Duration.ofDays(30));
+    static final SearchLimits LAUNCH_LIMITS = new SearchLimits(1, 6, Duration.ofHours(2), Duration.ofDays(30));
     static final Instant SATURDAY_0900 = Instant.parse("2026-11-14T01:00:00Z");
     static final Instant SATURDAY_1200 = Instant.parse("2026-11-14T04:00:00Z");
 
@@ -29,7 +29,7 @@ class SearchCriteriaValidationTest {
     }
 
     @ParameterizedTest(name = "{0} hours with {1} helpers is accepted")
-    @CsvSource({"1, 1", "6, 10"})
+    @CsvSource({"1, 1", "6, 10", "6, 25"})
     void searchValuesWithinHomasRangesAreAccepted(int hours, int helpers) {
         SearchCriteria criteria = search(hours, helpers, SATURDAY_1200);
 
@@ -44,10 +44,12 @@ class SearchCriteriaValidationTest {
         assertThatThrownBy(() -> search(hours, 1, SATURDAY_1200)).isInstanceOf(DurationOutOfRangeException.class);
     }
 
-    @ParameterizedTest(name = "{0} helpers is outside Homa's range")
-    @CsvSource({"11", "0"})
-    void theHelpersMustBeWithinHomasRange(int helpers) {
-        assertThatThrownBy(() -> search(2, helpers, SATURDAY_1200)).isInstanceOf(HelpersOutOfRangeException.class);
+    @ParameterizedTest(name = "{0} helpers is refused")
+    @CsvSource({"0", "-1"})
+    void aSearchIsForAtLeastOneHelper(int helpers) {
+        assertThatThrownBy(() -> search(2, helpers, SATURDAY_1200))
+                .isInstanceOf(HelpersOutOfRangeException.class)
+                .hasMessageContaining("was " + helpers);
     }
 
     @Test
@@ -82,7 +84,7 @@ class SearchCriteriaValidationTest {
         assertThatThrownBy(() -> JobCode.of(" ")).isInstanceOf(DiscoveryDetailRequiredException.class);
         assertThatThrownBy(() -> City.of(null)).isInstanceOf(DiscoveryDetailRequiredException.class);
         assertThat(City.of(" Cyberjaya ")).isEqualTo(City.of("Cyberjaya"));
-        assertThatThrownBy(() -> new SearchLimits(1, 6, 1, 10, null, Duration.ofDays(30))).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new SearchLimits(1, 6, 1, 10, Duration.ofHours(2), null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new SearchLimits(1, 6, null, Duration.ofDays(30))).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new SearchLimits(1, 6, Duration.ofHours(2), null)).isInstanceOf(NullPointerException.class);
     }
 }

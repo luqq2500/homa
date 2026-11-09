@@ -8,9 +8,10 @@ public enum GoLiveRequirement {
     PRICING("pricing"),
     HOURS("hours"),
     HELPERS("helpers"),
+    SUPERVISOR("a supervisor on the team, for the supervisor rule"),
     CITIES("cities"),
     CANCELLATION_TIER("cancellation tier"),
-    PROVIDER_VERIFIED_AND_PAYOUT_READY("provider verified with a ready payout account");
+    PROVIDER_VERIFIED_AND_PAYOUT_READY("provider verified with a ready payout account, and a business registration checked");
 
     private final String description;
 

@@ -4,7 +4,7 @@ import ie.port.ReservationIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** The lead checked in at the customer's location. */
+/** The location check passed at the customer's location; check-in completes with {@code CheckInCompletedIE}. */
 public record ProviderCheckedInIE(
         String reservationId,
         Instant checkedInAt,

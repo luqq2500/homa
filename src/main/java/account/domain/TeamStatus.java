@@ -1,15 +1,14 @@
 package account.domain;
 
-/** Where a helper stands with a provider's team. Only a {@code MEMBER} is on the team. */
+/**
+ * Where a team member stands. A person exists as a team member only once their eKYC is verified, so there
+ * is no invited state; before that they are a {@link MemberVerification}.
+ */
 public enum TeamStatus {
-    /** Invited; eKYC is pending. Not on the team. */
-    INVITED,
-    /** Invited, but eKYC failed. Not on the team; the helper can redo eKYC. */
-    INVITE_REJECTED,
-    /** eKYC verified: on the team, shown to customers, counted in the team size, and can be named for jobs. */
+    /** On the team: shown to customers, counted in the team, and can be named for jobs. */
     MEMBER,
-    /** Re-verification was missed: off the team until the helper passes eKYC again. */
+    /** Re-verification was missed: off the team until they pass eKYC again. */
     LAPSED,
-    /** The invite was withdrawn or the member was removed. Cannot come back. */
+    /** Removed by the provider, or by Homa. Cannot come back. */
     REMOVED
 }

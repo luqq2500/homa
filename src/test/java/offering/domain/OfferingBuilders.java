@@ -8,7 +8,7 @@ import java.util.stream.IntStream;
 /** Test-data builders for offerings, read as domain sentences. */
 final class OfferingBuilders {
 
-    static final HomaLimits HOMA_LIMITS = new HomaLimits(1, 6, 1, 10);
+    static final HomaLimits HOMA_LIMITS = new HomaLimits(1, 6);
     static final Set<JobCode> CATALOGUE_JOBS = Set.of(job("KITCHEN"), job("LAUNDRY_FOLD"), job("TOILET_CARE"));
     static final Set<ToolCode> CATALOGUE_TOOLS = Set.of(tool("STEAM_MOP"), tool("VACUUM"));
     static final ServiceAreaView LAUNCH_AREA =
@@ -30,13 +30,22 @@ final class OfferingBuilders {
         return City.of(name);
     }
 
-    /** A verified team of {@code size} helpers, with ids helper-1, helper-2, ... */
+    /** A team of {@code size} helpers, with ids helper-1, helper-2, ..., and no supervisor. */
     static TeamRoster aRosterOf(int size) {
-        return TeamRoster.of(IntStream.rangeClosed(1, size).mapToObj(i -> "helper-" + i).collect(Collectors.toSet()));
+        return TeamRoster.ofHelpers(ids("helper-", size));
+    }
+
+    /** A team of {@code helpers} helpers and {@code supervisors} supervisors, with ids supervisor-1, ... */
+    static TeamRoster aRosterOf(int helpers, int supervisors) {
+        return TeamRoster.of(ids("helper-", helpers), ids("supervisor-", supervisors));
+    }
+
+    private static Set<String> ids(String prefix, int count) {
+        return IntStream.rangeClosed(1, count).mapToObj(i -> prefix + i).collect(Collectors.toSet());
     }
 
     static ProviderListing aDraftWithATeamOf(int size) {
-        ProviderListing listing = ProviderListing.draft("provider-1");
+        ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
         listing.updateRoster(aRosterOf(size));
         return listing;
     }
@@ -49,7 +58,7 @@ final class OfferingBuilders {
         listing.bringTools(Set.of(tool("STEAM_MOP")), CATALOGUE_TOOLS);
         listing.setPricing(HourlyRate.of(Money.parse("30")), TravelFee.separate(Money.parse("20")));
         listing.setHours(HoursRange.of(2, 4), HOMA_LIMITS);
-        listing.setHelpers(HelpersRange.of(1, 4), HOMA_LIMITS);
+        listing.setHelpers(HelpersRange.of(1, 4));
         listing.coverCities(Set.of(city("Cyberjaya")), LAUNCH_AREA);
         listing.chooseCancellationTier(CancellationTier.STANDARD);
         return listing;

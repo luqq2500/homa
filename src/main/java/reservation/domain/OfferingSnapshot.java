@@ -10,6 +10,7 @@ import kernel.Money;
  * listing do not change it.
  *
  * @param separateTravelFee the flat travel fee when charged separately; empty when travel is included
+ * @param supervisorRule when the provider sends a supervisor; empty when they set none
  * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
  */
 public record OfferingSnapshot(
@@ -23,6 +24,7 @@ public record OfferingSnapshot(
         Set<JobCode> jobs,
         Set<City> cities,
         CancellationTier cancellationTier,
+        Optional<SupervisorRule> supervisorRule,
         boolean takesRequests) {
 
     public OfferingSnapshot {
@@ -32,6 +34,11 @@ public record OfferingSnapshot(
         jobs = Set.copyOf(jobs);
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier);
+        Objects.requireNonNull(supervisorRule);
+    }
+
+    boolean requiresSupervisor(int helpers, int hours) {
+        return supervisorRule.filter(rule -> rule.requiresSupervisor(helpers, hours)).isPresent();
     }
 
     boolean offersHours(int hours) {

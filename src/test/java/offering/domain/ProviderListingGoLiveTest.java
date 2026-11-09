@@ -50,14 +50,14 @@ class ProviderListingGoLiveTest {
             listing.offerJobs(Set.of(job("KITCHEN")), CATALOGUE_JOBS);
             listing.setPricing(HourlyRate.of(Money.parse("30")), TravelFee.included());
             listing.setHours(HoursRange.of(2, 4), HOMA_LIMITS);
-            listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 2));
             listing.coverCities(Set.of(city("Cyberjaya")), LAUNCH_AREA);
             listing.chooseCancellationTier(CancellationTier.STANDARD);
 
             listing.goLive(true);
 
             assertThat(listing.isLive()).isTrue();
-            assertThat(listing.roster().size()).isEqualTo(2);
+            assertThat(listing.roster().helperCount()).isEqualTo(2);
         }
 
         @Test
@@ -86,7 +86,7 @@ class ProviderListingGoLiveTest {
             listing.offerJobs(Set.of(job("KITCHEN")), CATALOGUE_JOBS);
             listing.setPricing(HourlyRate.of(Money.parse("30")), TravelFee.included());
             listing.setHours(HoursRange.of(2, 4), HOMA_LIMITS);
-            listing.setHelpers(HelpersRange.of(1, 2), HOMA_LIMITS);
+            listing.setHelpers(HelpersRange.of(1, 2));
             listing.chooseCancellationTier(CancellationTier.FLEXIBLE);
 
             assertThatThrownBy(() -> listing.goLive(true))
@@ -99,7 +99,7 @@ class ProviderListingGoLiveTest {
 
         @Test
         void aDraftIsMissingEverything() {
-            assertThat(ProviderListing.draft("provider-1").missingForGoLive()).containsExactlyInAnyOrder(
+            assertThat(ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).missingForGoLive()).containsExactlyInAnyOrder(
                     GoLiveRequirement.PROFILE,
                     GoLiveRequirement.PROFILE_PICTURE,
                     GoLiveRequirement.JOBS,
@@ -111,12 +111,12 @@ class ProviderListingGoLiveTest {
         }
 
         @Test
-        void aDraftWithAnUnverifiedProviderListsEverythingMissing() {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1").goLive(false))
+        void aDraftWithAnUnverifiedProviderListsEverythingMissingButASupervisorItNeverAskedFor() {
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).goLive(false))
                     .isInstanceOf(ListingNotReadyException.class)
                     .extracting(e -> ((ListingNotReadyException) e).missing(), collection(Object.class))
                     .hasSize(9)
-                    .containsAll(EnumSet.allOf(GoLiveRequirement.class));
+                    .containsAll(EnumSet.complementOf(EnumSet.of(GoLiveRequirement.SUPERVISOR)));
         }
 
         @Test

@@ -1,6 +1,7 @@
 package offering.domain;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -8,6 +9,7 @@ import java.util.Set;
  * to the listing affects new requests only.
  *
  * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
+ * @param supervisorRule when a supervisor is sent; empty when the provider sets none
  */
 public record OfferingSnapshot(
         String providerId,
@@ -20,6 +22,8 @@ public record OfferingSnapshot(
         Set<City> cities,
         CancellationTier cancellationTier,
         TeamRoster roster,
+        Optional<SupervisorRule> supervisorRule,
+        ProviderType providerType,
         boolean takesRequests) {
 
     public OfferingSnapshot {
@@ -33,5 +37,7 @@ public record OfferingSnapshot(
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier);
         Objects.requireNonNull(roster);
+        Objects.requireNonNull(supervisorRule);
+        Objects.requireNonNull(providerType);
     }
 }

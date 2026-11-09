@@ -328,3 +328,40 @@ by their re-verification due date. Search leaves them out for any later job.
   plan adds required rule R6.
 - **Scenarios:** the "Verified for the whole job" feature adds five, and the audit maps 175 of 175.
 - **Gates:** whole build 1,038 tests, 1,253 mutants, all killed.
+
+## 14. Addendum: provider types, team roles, documents, face check-in and adding a team member
+
+Changed after the phase closed. Safety principle: only verified people enter a customer's home, and the
+customer knows who they are before they arrive.
+
+- **`policy`:**
+  - No Homa limit on helpers.
+  - New values: face check attempts (3), verification link expiry (7 days) and the accepted documents
+    list. That makes 31 values.
+- **`account`:**
+  - **Providers:** a provider is independent or a business. A business's SSM registration is checked
+    before it can go live.
+  - **Names:** everyone verifies with an accepted document, and their registered name comes from the
+    eKYC result.
+  - **Adding a team member:** it is a `MemberVerification`: the add form, with the lawful-employment
+    confirmation for that person, then the eKYC.
+  - **Team members:** a `TeamMember` exists only from a verified `MemberVerification`, as a helper or a
+    supervisor. Invites are gone.
+- **`offering`:**
+  - The roster holds helpers and supervisors, and only helpers cap the helpers range.
+  - A `SupervisorRule` sends a supervisor from a number of helpers, of hours, or both. It needs a
+    supervisor on the team.
+- **`discovery`:** a search is for at least 1 helper.
+- **`reservation`:**
+  - **The team:** it is helpers plus supervisors, and the lead is gone. A booking that reaches the
+    supervisor rule needs a supervisor. Supervisors are not charged.
+  - **Check-in:** it is the location check, then face checks. It completes with the first pass, or
+    when the face check service is unavailable. Someone who fails every attempt cannot work, and an
+    outage never makes a no-show.
+- **`feedback`:** named supervisors are rated like helpers.
+- **`ie/`:** 53 events.
+- **Scenarios:** the audit maps 199 of 199. The older invite, lead and 1 to 10 helper scenarios point
+  to the tests of the rules that replaced them.
+- **Gates:** whole build 1,145 tests, 1,480 mutants, all killed, worst CRAP 5.0.
+- **To confirm:** the decisions made while building, listed in the plan under "Decided while building:
+  provider types, team roles, documents, face check-in and adding a team member".

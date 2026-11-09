@@ -13,7 +13,7 @@ public record RatingSubmittedIE(
         String providerId,
         int overallStars,
         boolean hasWrittenFeedback,
-        Set<String> ratedHelperIds,
+        Set<String> ratedMemberIds,
         Instant occurredAt) implements FeedbackIE {
 
     public RatingSubmittedIE {
@@ -21,7 +21,7 @@ public record RatingSubmittedIE(
         Objects.requireNonNull(reservationId, "reservationId");
         Objects.requireNonNull(customerId, "customerId");
         Objects.requireNonNull(providerId, "providerId");
-        ratedHelperIds = Set.copyOf(ratedHelperIds);
+        ratedMemberIds = Set.copyOf(ratedMemberIds);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

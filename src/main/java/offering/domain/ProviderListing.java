@@ -2,7 +2,6 @@ package offering.domain;
 
 import offering.domain.exception.CityNotInServiceAreaException;
 import offering.domain.exception.HelpersExceedTeamSizeException;
-import offering.domain.exception.HelpersOutOfRangeException;
 import offering.domain.exception.HoursOutOfRangeException;
 import offering.domain.exception.JobNotInCatalogueException;
 import offering.domain.exception.ListingAlreadyLiveException;
@@ -12,6 +11,7 @@ import offering.domain.exception.ListingNotPausedException;
 import offering.domain.exception.ListingNotReadyException;
 import offering.domain.exception.NoCitiesCoveredException;
 import offering.domain.exception.NoJobsOfferedException;
+import offering.domain.exception.NoSupervisorOnTeamException;
 import offering.domain.exception.ToolNotInCatalogueException;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -35,6 +35,7 @@ public final class ProviderListing {
 
     private final String id;
     private final String providerId;
+    private final ProviderType providerType;
     private Profile profile;
     private Set<JobCode> jobs = Set.of();
     private Set<ToolCode> tools = Set.of();
@@ -45,16 +46,19 @@ public final class ProviderListing {
     private Set<City> cities = Set.of();
     private CancellationTier cancellationTier;
     private TeamRoster roster = TeamRoster.empty();
+    private SupervisorRule supervisorRule;
     private boolean live;
     private boolean paused;
 
-    private ProviderListing(String id, String providerId) {
+    private ProviderListing(String id, String providerId, ProviderType providerType) {
         this.id = id;
         this.providerId = providerId;
+        this.providerType = providerType;
     }
 
-    public static ProviderListing draft(String providerId) {
-        return new ProviderListing(new ProviderListingId().generate(), OfferingText.require(providerId, "A provider id"));
+    public static ProviderListing draft(String providerId, ProviderType providerType) {
+        return new ProviderListing(
+                new ProviderListingId().generate(), OfferingText.require(providerId, "A provider id"), Objects.requireNonNull(providerType));
     }
 
     public void setProfile(Profile newProfile) {
@@ -99,15 +103,29 @@ public final class ProviderListing {
         hours = range;
     }
 
-    /** Sets the helpers a customer can book: within Homa's helpers per search and at most the verified team size. */
-    public void setHelpers(HelpersRange range, HomaLimits limits) {
-        if (range.min() < limits.minHelpers() || range.max() > limits.maxHelpers()) {
-            throw new HelpersOutOfRangeException(range.min(), range.max(), limits.minHelpers(), limits.maxHelpers());
-        }
-        if (range.max() > roster.size()) {
-            throw new HelpersExceedTeamSizeException(range.max(), roster.size());
+    /**
+     * Sets the helpers a customer can book. Homa sets no upper limit; the maximum is at most the helpers on
+     * the team, and supervisors never count towards it.
+     */
+    public void setHelpers(HelpersRange range) {
+        if (range.max() > roster.helperCount()) {
+            throw new HelpersExceedTeamSizeException(range.max(), roster.helperCount());
         }
         helpers = range;
+    }
+
+    /** Sets when a supervisor is sent. It needs a supervisor on the team. */
+    public void setSupervisorRule(SupervisorRule rule) {
+        Objects.requireNonNull(rule);
+        if (!roster.hasSupervisor()) {
+            throw new NoSupervisorOnTeamException();
+        }
+        supervisorRule = rule;
+    }
+
+    /** The provider no longer has to send a supervisor, though they still can. */
+    public void clearSupervisorRule() {
+        supervisorRule = null;
     }
 
     public void coverCities(Set<City> covered, ServiceAreaView area) {
@@ -128,21 +146,29 @@ public final class ProviderListing {
     }
 
     /**
-     * Records the provider's verified team. If the team shrinks below the helpers range, the range
-     * shrinks with it, so the provider can always name everyone who is coming. A live listing whose team
-     * becomes empty is no longer live.
+     * Records the provider's team. If the team's helpers drop below the helpers range, the range shrinks
+     * with them, so the provider can always name everyone who is coming. A live listing with no helper
+     * left, or with a supervisor rule and no supervisor left, is no longer live.
      */
     public void updateRoster(TeamRoster newRoster) {
         roster = Objects.requireNonNull(newRoster);
         fitHelpersToRoster();
-        live = live && helpers != null;
+        live = live && keepsItsTeamRequirements();
         paused = paused && live;
     }
 
     private void fitHelpersToRoster() {
         if (helpers != null) {
-            helpers = helpers.fittedTo(roster.size()).orElse(null);
+            helpers = helpers.fittedTo(roster.helperCount()).orElse(null);
         }
+    }
+
+    private boolean keepsItsTeamRequirements() {
+        return helpers != null && hasSupervisorIfRequired();
+    }
+
+    private boolean hasSupervisorIfRequired() {
+        return supervisorRule == null || roster.hasSupervisor();
     }
 
     /**
@@ -202,7 +228,8 @@ public final class ProviderListing {
             throw new ListingNotLiveException();
         }
         return new OfferingSnapshot(
-                providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster, !paused);
+                providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster,
+                Optional.ofNullable(supervisorRule), providerType, !paused);
     }
 
     public boolean isLive() {
@@ -266,6 +293,14 @@ public final class ProviderListing {
         return roster;
     }
 
+    public Optional<SupervisorRule> supervisorRule() {
+        return Optional.ofNullable(supervisorRule);
+    }
+
+    public ProviderType providerType() {
+        return providerType;
+    }
+
     private Map<GoLiveRequirement, BooleanSupplier> requirements() {
         Map<GoLiveRequirement, BooleanSupplier> requirements = new EnumMap<>(GoLiveRequirement.class);
         requirements.put(GoLiveRequirement.PROFILE, () -> profile != null);
@@ -274,6 +309,7 @@ public final class ProviderListing {
         requirements.put(GoLiveRequirement.PRICING, () -> hourlyRate != null);
         requirements.put(GoLiveRequirement.HOURS, () -> hours != null);
         requirements.put(GoLiveRequirement.HELPERS, () -> helpers != null);
+        requirements.put(GoLiveRequirement.SUPERVISOR, this::hasSupervisorIfRequired);
         requirements.put(GoLiveRequirement.CITIES, () -> !cities.isEmpty());
         requirements.put(GoLiveRequirement.CANCELLATION_TIER, () -> cancellationTier != null);
         return requirements;

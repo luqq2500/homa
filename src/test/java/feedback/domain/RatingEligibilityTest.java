@@ -44,7 +44,7 @@ class RatingEligibilityTest {
         assertThat(completed.reservationId()).isEqualTo("R1");
         assertThat(completed.customerId()).isEqualTo("C1");
         assertThat(completed.providerId()).isEqualTo("P1");
-        assertThat(completed.namedHelperIds()).containsExactlyInAnyOrder("aina", "ben");
+        assertThat(completed.namedMemberIds()).containsExactlyInAnyOrder("aina", "ben");
         assertThat(completed.completedAt()).contains(FeedbackBuilders.saturday("14:00"));
         assertThat(completed.isRated()).isFalse();
         assertThat(completed.rated().isRated()).isTrue();
