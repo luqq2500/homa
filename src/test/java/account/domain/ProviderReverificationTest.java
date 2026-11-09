@@ -63,7 +63,7 @@ class ProviderReverificationTest {
         EkycOutcome outcome = provider.recordEkycResult(NUR_AINA, ACCEPTED, LIMITS, on("20 March"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.REVERIFIED);
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
         assertThat(verification()).isEqualTo(new Verification(on("20 March"), on("20 June"), false, Optional.empty()));
     }
 
@@ -74,7 +74,7 @@ class ProviderReverificationTest {
         EkycOutcome outcome = provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("20 March"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.RECHECK_FAILED);
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
         assertThat(provider.isReadyForGoLive()).isTrue();
         assertThat(verification().recheckOpen()).isTrue();
     }
@@ -92,14 +92,14 @@ class ProviderReverificationTest {
         assertThatThrownBy(() -> provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("2 January")))
                 .isInstanceOf(ProviderAlreadyVerifiedException.class)
                 .hasMessageContaining(provider.id());
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
     }
 
     @Test
     void aLapsedProviderIsNotReadyAndTakesNoNewRequests() {
         provider.lapse(on("1 April"));
 
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.LAPSED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.LAPSED);
         assertThat(provider.isReadyForGoLive()).isFalse();
     }
 
@@ -107,7 +107,7 @@ class ProviderReverificationTest {
     void aProviderDoesNotLapseBeforeTheDueDate() {
         assertThatThrownBy(() -> provider.lapse(on("31 March")))
                 .isInstanceOf(ReverificationNotYetDueException.class);
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
     }
 
     @Test
@@ -117,7 +117,7 @@ class ProviderReverificationTest {
         EkycOutcome outcome = provider.recordEkycResult(NUR_AINA, ACCEPTED, LIMITS, on("5 April"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.REVERIFIED);
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
         assertThat(provider.isReadyForGoLive()).isTrue();
         assertThat(verification().dueAt()).isEqualTo(on("5 July"));
     }
@@ -129,7 +129,7 @@ class ProviderReverificationTest {
         EkycOutcome outcome = provider.recordEkycResult(EkycResult.rejected(), ACCEPTED, LIMITS, on("5 April"));
 
         assertThat(outcome).isEqualTo(EkycOutcome.RECHECK_FAILED);
-        assertThat(provider.ekycStatus()).isEqualTo(VerificationStatus.LAPSED);
+        assertThat(provider.verificationStatus()).isEqualTo(VerificationStatus.LAPSED);
     }
 
     @Test
@@ -139,6 +139,23 @@ class ProviderReverificationTest {
         assertThat(verification().recheckOpen()).isTrue();
         assertThat(verification().dueAt()).isEqualTo(on("24 January"));
         assertThat(verification().earlyRecheckReason()).contains("Report R12: different person attended");
+    }
+
+    @Test
+    void aBusinessIsReverifiedThroughEkyb() {
+        ProviderAccount business = AccountBuilders.aBusinessProvider();
+        EkybResult kemas = EkybResult.verified(
+                new BusinessRegistration("202601012345", "Kemas Home Care Sdn Bhd"), aMyKad("Nur Aina binti Ahmad"));
+        business.recordEkybResult(kemas, ACCEPTED, LIMITS, on("1 January"));
+        business.openRecheck(LIMITS, on("18 March"));
+
+        EkycOutcome outcome = business.recordEkybResult(kemas, ACCEPTED, LIMITS, on("20 March"));
+
+        assertThat(outcome).isEqualTo(EkycOutcome.REVERIFIED);
+        assertThat(business.verification().orElseThrow().dueAt()).isEqualTo(on("20 June"));
+        assertThat(business.businessRegistration().orElseThrow().ssmNumber()).isEqualTo("202601012345");
+        assertThatThrownBy(() -> business.recordEkybResult(EkybResult.rejected(), ACCEPTED, LIMITS, on("21 March")))
+                .isInstanceOf(ProviderAlreadyVerifiedException.class);
     }
 
     @Nested
@@ -175,7 +192,7 @@ class ProviderReverificationTest {
                     .isInstanceOf(ProviderNotVerifiedException.class)
                     .hasMessageContaining(notVerified.id())
                     .hasMessageContaining(status.name());
-            assertThat(notVerified.ekycStatus()).isEqualTo(status);
+            assertThat(notVerified.verificationStatus()).isEqualTo(status);
         }
     }
 }

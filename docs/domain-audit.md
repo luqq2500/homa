@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **198 of 198** scenarios in the plan have a test. That is the original 122, plus:
+All **205 of 205** scenarios in the plan have a test. That is the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -14,6 +14,8 @@ All **198 of 198** scenarios in the plan have a test. That is the original 122, 
 - five in "Verified for the whole job"
 - 23 in the four features for provider types, supervisors, face check-in and adding a team member
   (the expiry scenario was removed with the time limit)
+- seven in "Business verification through eKYB"; the older "A business cannot go live before its
+  registration is checked" now maps to the eKYB test
 
 The plan's older scenarios on invites, the lead and the 1 to 10 helper limit describe rules these
 changes replaced. Their rows point to the tests of the rule that replaced them:
@@ -226,7 +228,7 @@ Two scenarios map to more than one test:
 | 179 | Provider types and documents | The confirmation is recorded with its time and terms version | `TeamMemberAddingTest` | `theConfirmationRecordsItsTimeAndTermsVersion` |
 | 180 | Provider types and documents | The due date follows the cycle only | `TeamMemberAddingTest` | `theDueDateFollowsTheCycleOnly` |
 | 181 | Provider types and documents | The registered name comes from the eKYC result | `TeamMemberAddingTest` | `aBusinessCanAddAForeignTeamMember` |
-| 182 | Provider types and documents | A business cannot go live before its registration is checked | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsRegistrationIsChecked` |
+| 182 | Provider types and documents | A business cannot go live before its registration is checked | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsEkybPasses` |
 | 183 | Supervisors | A supervisor is required from either threshold (outline) | `ProviderListingSupervisorTest` | `aSupervisorIsRequiredFromEitherThreshold` |
 | 184 | Supervisors | Naming the team without a required supervisor is refused | `ReservationTeamNamingTest` | `namingTheTeamWithoutARequiredSupervisorIsRefused` |
 | 185 | Supervisors | Supervisors do not count towards the helpers range | `ProviderListingSetupTest` | `supervisorsDoNotCountTowardsTheHelpersRange` |
@@ -243,6 +245,13 @@ Two scenarios map to more than one test:
 | 196 | Adding a team member | A person cannot be added before verification | `TeamMemberAddingTest` | `aPersonCannotBeAddedBeforeVerification` |
 | 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
 | 198 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
+| 199 | Business verification through eKYB | A business is verified through eKYB | `ProviderAccountReadinessTest` | `aBusinessIsVerifiedThroughEkyb` |
+| 200 | Business verification through eKYB | A business has no team members after eKYB | `ProviderAccountReadinessTest` | `aBusinessHasNoTeamMembersAfterEkyb` |
+| 201 | Business verification through eKYB | A rejected eKYB can be redone | `ProviderAccountReadinessTest` | `aRejectedEkybCanBeRedone` |
+| 202 | Business verification through eKYB | The owner or director must be Malaysian | `ProviderAccountReadinessTest` | `theOwnerOrDirectorMustBeMalaysian` |
+| 203 | Business verification through eKYB | A business does not take a separate eKYC | `ProviderAccountReadinessTest` | `aBusinessDoesNotTakeASeparateEkyc` |
+| 204 | Business verification through eKYB | A business cannot go live before its eKYB passes | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsEkybPasses` |
+| 205 | Business verification through eKYB | A business is re-verified through eKYB | `ProviderReverificationTest` | `aBusinessIsReverifiedThroughEkyb` |
 
 ## 2. Product spec rules with no test
 
@@ -321,7 +330,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 79 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 249 | `AccountArchitectureTest` |
+| account | 5.0 | 100% | 100% | 264 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 198 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
 | reservation | 5.0 | 100% | 100% | 379 | `ReservationArchitectureTest` |
@@ -335,7 +344,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,472 of 1,472 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,487 of 1,487 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -386,4 +395,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
       `CheckInCompletedIE` were added.
     - The listing, policy and team-naming events carry roles, supervisor thresholds, the face check
       values and the accepted documents.
-  - The contract test now covers 53 events.
+  - With business verification through eKYB, `BusinessRegistrationCheckedIE` was removed;
+    `ProviderVerifiedIE` and `ProviderVerificationRejectedIE` cover eKYB too.
+  - The contract test now covers 52 events.

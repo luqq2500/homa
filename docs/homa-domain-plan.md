@@ -178,7 +178,7 @@ Feature: Homa-set values
 |---|---|---|
 | `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
-| `ProviderAccount` | Aggregate | Independent or business provider: eKYC status and document, business registration, payout account status, whether they are a helper on their own team |
+| `ProviderAccount` | Aggregate | Independent provider (eKYC) or business (eKYB): verification status, the owner's or director's document, the business registration, payout account status, whether they are a helper on their own team (never for a business) |
 | `MemberVerification` | Aggregate | Adding a team member before they exist: the add form and the eKYC outcome (see "adding a team member") |
 | `TeamMember` | Aggregate | Replaces `Helper`. Belongs to one provider: role, registered name and document, photo, team status and verification. Only a `MEMBER` is on the team |
 | `TeamStatus` | Enum | `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
@@ -195,7 +195,7 @@ CustomerAccount.changeAddress(Address address)
 
 ProviderAccount.register(PhoneVerification verified, ProviderType type)
 ProviderAccount.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome
-ProviderAccount.recordBusinessRegistrationChecked(String ssmNumber, Instant now)
+ProviderAccount.recordEkybResult(EkybResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome   // a business
 ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.includeSelfAsHelper(boolean include)
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready, and a business's registration checked
@@ -1451,9 +1451,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
 | `ProviderRegisteredIE` | account | offering | `ProviderAccount.register`, with the provider type |
-| `BusinessRegistrationCheckedIE` | account | offering | `ProviderAccount.recordBusinessRegistrationChecked` |
-| `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED`, with `verification().dueAt()` |
-| `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
+| `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` or `recordEkybResult` returning `VERIFIED`, with `verification().dueAt()` |
+| `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` or `recordEkybResult` returning `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
 | `MemberVerificationStartedIE` | account | (provider app, notifications) | `MemberVerification.start` |
 | `MemberVerificationRejectedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED` |
@@ -1735,7 +1734,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 52 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2312,8 +2311,8 @@ These cover both sections above. All of them are confirmed by the product owner.
 - **The provider:**
   - `ProviderAccount.register` takes the type and no legal name; the registered name comes from the
     eKYC result.
-  - A business registration is checked once (`BusinessRegistrationAlreadyCheckedException`). An
-    independent provider has none (`NotABusinessProviderException`).
+  - *Superseded by "business verification through eKYB":* a business registration was first checked
+    by Homa once. A business is now verified through eKYB, and Homa does no check of its own.
 - **`MemberVerification`:**
   - Its statuses are `WAITING`, `VERIFIED`, `REJECTED` and `ADDED`.
   - The verified document must be the type and country chosen on the form, and still accepted.
@@ -2381,7 +2380,8 @@ These cover both sections above. All of them are confirmed by the product owner.
   - `HomaPolicyChangedIE` drops the helper limits and adds `faceCheckAttempts` and
     `acceptedDocuments`, each written as "holder:type:country", with `*` for any country.
   - `TeamNamedIE` carries `helperIds` and `supervisorIds`.
-- **53 events in all.**
+- **53 events in all** at the time. `BusinessRegistrationCheckedIE` was removed later with business
+  verification through eKYB, which makes 52.
 
 **Not built in the domain:** Homa removing a provider when it learns a team member may not work is
 left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
@@ -2411,6 +2411,86 @@ and then, on the provider's phone. All of these are confirmed by the product own
   scheduled job asks Kenal for the session's status. This is not a domain rule.
 - **Domain rules unchanged:** that the person is present and uses the provider's phone is how the
   provider app runs the eKYC. The domain rules do not change.
+
+
+## Change after the domain phase: business verification through eKYB
+
+Decided after the domain phase closed. A business provider is verified through **eKYB**. The eKYB
+provider checks the business's SSM registration, and the owner's or director's eKYC is part of the same
+flow. Homa does no check of its own, just as with eKYC. This supersedes the business registration check
+by Homa in "provider types, team roles, documents and face check-in".
+
+**`account`**
+
+| Object | Kind | Responsibility |
+|---|---|---|
+| `EkybResult` | Value object | `verified(BusinessRegistration, IdentityDocument director)` or `rejected()` |
+| `BusinessRegistration` | Value object | The SSM number and the registered business name, read by eKYB; kept for Homa's records |
+
+```java
+ProviderAccount.recordEkybResult(EkybResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome
+ProviderAccount.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome   // independent only
+ProviderAccount.verificationStatus() : VerificationStatus    // replaces ekycStatus(): eKYC or eKYB
+```
+
+- **The rules are the same as eKYC:**
+  - A rejected first attempt can be redone.
+  - A business is re-verified through eKYB every re-verification period, with the same reminder,
+    early re-check and lapse rules. A business that misses its due date lapses, and its listing pauses.
+  - The one event per outcome is the same too: `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`,
+    `ProviderReverifiedIE` and `RecheckFailedIE`.
+- **The owner or director** must hold a document on the accepted list for providers: a Malaysian MyKad
+  or passport (`DocumentNotAcceptedException`).
+- **One flow per provider type:**
+  - A business takes no separate eKYC result (`BusinessVerifiesThroughEkybException`).
+  - An independent provider takes no eKYB result (`NotABusinessProviderException`).
+- **Going live:** a business is ready once its eKYB is verified and its payout account is ready. There
+  is no separate registration check.
+- **No team at the start:** a business is never a helper on its own team (`BusinessIsNotAHelperException`).
+  After eKYB it has no team members, and adds its helpers and supervisors, including an owner or
+  director who works on site.
+- **Name:** the provider page shows the profile's display name. The registered business name is kept
+  in account, for Homa's records only.
+- **Removed:**
+  - `ProviderAccount.recordBusinessRegistrationChecked` and `BusinessRegistrationAlreadyCheckedException`.
+  - `BusinessRegistrationCheckedIE`, which makes 52 events.
+- **Providers:** the domain never names the eKYC or eKYB provider. Changing provider, or using
+  different providers for eKYC and eKYB, changes only the infra adapters.
+
+```gherkin
+Feature: Business verification through eKYB
+  Scenario: A business is verified through eKYB
+    Given a business provider
+    When its eKYB is VERIFIED with SSM number "202601012345" and director "Nur Aina binti Ahmad"
+    Then the business is verified, with the SSM registration and the director's registered name
+    And its re-verification is due 3 months later
+
+  Scenario: A business has no team members after eKYB
+    When a business's eKYB is VERIFIED
+    Then the business is not a helper on its own team
+
+  Scenario: A rejected eKYB can be redone
+    Given a business's eKYB was REJECTED
+    When its eKYB is VERIFIED on a later attempt
+    Then the business is verified
+
+  Scenario: The owner or director must be Malaysian
+    When a business's eKYB is VERIFIED with an Indonesian passport for the director
+    Then it is rejected with DocumentNotAcceptedException
+
+  Scenario: A business does not take a separate eKYC
+    When an eKYC result is recorded for a business
+    Then it is rejected with BusinessVerifiesThroughEkybException
+
+  Scenario: A business cannot go live before its eKYB passes
+    Given a business with a ready payout account and no eKYB yet
+    Then the business is not ready for go-live
+
+  Scenario: A business is re-verified through eKYB
+    Given a business verified on 1 January, with its re-check open on 18 March
+    When its eKYB is VERIFIED on 20 March
+    Then its re-verification is due on 20 June
+```
 
 ## Open questions
 

@@ -393,3 +393,28 @@ limit.
   are in the plan under "Decided while building: verification on the spot".
 - **To check before launch:** that Kenal's sessions time out and report a final result. This is listed
   in the plan's open questions.
+
+## 16. Addendum: business verification through eKYB
+
+Changed after the phase closed. A business provider is verified through eKYB. The eKYB provider checks
+the SSM registration, and the owner's or director's eKYC is part of the same flow. Homa does no check of
+its own, just as with eKYC.
+
+- **`account`:**
+  - `ProviderAccount.recordEkybResult` records an `EkybResult`: the SSM number and registered business
+    name, and the owner's or director's document, which must be Malaysian.
+  - The re-verification rules are the same as eKYC: the 3-month period, reminder, early re-check and
+    lapse.
+  - A business takes no separate eKYC, and an independent provider takes no eKYB.
+  - `ekycStatus()` is now `verificationStatus()`.
+- **No team at the start:** a business starts with no team members and is never a helper on its own
+  team, so it adds its helpers and supervisors.
+- **Going live:** a business is ready once its eKYB is verified and its payout account is ready.
+- **Removed:**
+  - The registration check by Homa: `recordBusinessRegistrationChecked`,
+    `BusinessRegistrationAlreadyCheckedException` and `BusinessRegistrationCheckedIE`. That makes 52
+    events.
+- **Providers:** the domain never names the eKYC or eKYB provider, so changing provider, or using
+  different ones, affects only the infra adapters.
+- **Scenarios:** seven new ones, and the audit maps 205 of 205.
+- **Gates:** whole build 1,141 tests, 1,487 mutants, all killed, worst CRAP 5.0.

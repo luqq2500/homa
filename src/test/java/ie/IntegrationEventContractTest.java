@@ -3,7 +3,6 @@ package ie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ie.events.BusinessRegistrationCheckedIE;
 import ie.events.CaseDecidedIE;
 import ie.events.CheckInCompletedIE;
 import ie.events.CompletionDeadlineMissedIE;
@@ -106,7 +105,6 @@ class IntegrationEventContractTest {
                 Arguments.of(ProviderVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(PayoutAccountReadyIE.class, AccountIE.class),
                 Arguments.of(ProviderRegisteredIE.class, AccountIE.class),
-                Arguments.of(BusinessRegistrationCheckedIE.class, AccountIE.class),
                 Arguments.of(MemberVerificationStartedIE.class, AccountIE.class),
                 Arguments.of(MemberVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberAddedIE.class, AccountIE.class),
@@ -219,7 +217,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(53);
+        assertThat(events().count()).isEqualTo(52);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

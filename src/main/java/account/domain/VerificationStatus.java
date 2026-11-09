@@ -1,8 +1,8 @@
 package account.domain;
 
 /**
- * Where a provider's eKYC stands. Everyone starts {@code PENDING} until Kenal returns a result, and a
- * result from Kenal is {@code VERIFIED} or {@code REJECTED}.
+ * Where a provider's eKYC, or a business's eKYB, stands. Everyone starts {@code PENDING} until the
+ * verification provider returns a result, and a result is {@code VERIFIED} or {@code REJECTED}.
  */
 public enum VerificationStatus {
     PENDING,

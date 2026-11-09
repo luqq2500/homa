@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A provider's eKYC came back verified. A job must end by {@code reverificationDueAt}. */
+/** A provider passed verification: eKYC for an independent provider, eKYB for a business. A job must end by {@code reverificationDueAt}. */
 public record ProviderVerifiedIE(
         String providerId,
         Instant reverificationDueAt,

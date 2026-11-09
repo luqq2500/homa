@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A provider's eKYC came back rejected; the provider must redo eKYC. */
+/** A provider's eKYC, or a business's eKYB, came back rejected; the provider must redo it. */
 public record ProviderVerificationRejectedIE(
         String providerId,
         Instant occurredAt) implements AccountIE {

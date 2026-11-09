@@ -1,6 +1,7 @@
 package account.domain;
 
-import account.domain.exception.BusinessRegistrationAlreadyCheckedException;
+import account.domain.exception.BusinessIsNotAHelperException;
+import account.domain.exception.BusinessVerifiesThroughEkybException;
 import account.domain.exception.NotABusinessProviderException;
 import account.domain.exception.ProviderAlreadyVerifiedException;
 import account.domain.exception.ProviderNotVerifiedException;
@@ -10,10 +11,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * A provider: an independent provider, or a business registered with SSM, verified through its owner or
- * director. The provider verifies through eKYC with a Malaysian document, and their registered name comes
- * from the eKYC result. A business's registration is also checked by Homa. By default the provider is a
- * helper on their own team, and can remove themselves.
+ * A provider: an independent provider, verified through eKYC, or a business registered with SSM, verified
+ * through eKYB, which checks the registration and includes its owner's or director's eKYC in one flow. The
+ * person verifies with a Malaysian document, and their registered name comes from the result. Homa does no
+ * check of its own. By default an independent provider is a helper on their own team and can remove
+ * themselves; a business starts with no team members and adds its helpers and supervisors.
  *
  * <p>A verified provider is re-verified every re-verification period. One who misses their due date
  * lapses: they are not ready for go-live, and their listing takes no new requests until they pass.
@@ -23,17 +25,18 @@ public final class ProviderAccount {
     private final String id;
     private final PhoneNumber phone;
     private final ProviderType type;
-    private VerificationStatus ekyc = VerificationStatus.PENDING;
+    private VerificationStatus status = VerificationStatus.PENDING;
     private IdentityDocument document;
     private Verification verification;
     private BusinessRegistration businessRegistration;
     private boolean payoutAccountReady;
-    private boolean includesSelfAsHelper = true;
+    private boolean includesSelfAsHelper;
 
     private ProviderAccount(String id, PhoneNumber phone, ProviderType type) {
         this.id = id;
         this.phone = phone;
         this.type = type;
+        this.includesSelfAsHelper = type == ProviderType.INDEPENDENT;
     }
 
     /** Registers with a confirmed phone number and the provider type chosen at onboarding. */
@@ -42,34 +45,40 @@ public final class ProviderAccount {
         return new ProviderAccount(new ProviderId().generate(), verified.phone(), Objects.requireNonNull(type));
     }
 
-    /** Records that Homa checked a business provider's SSM registration, once. */
-    public void recordBusinessRegistrationChecked(String ssmNumber, Instant now) {
-        if (type != ProviderType.BUSINESS) {
-            throw new NotABusinessProviderException(id);
+    /**
+     * Records the eKYC result for an independent provider. Before the first verification, a rejected
+     * provider can be verified on a later attempt. Once verified, the same rules as for a team member
+     * apply: with a re-check open a pass starts a new period and a rejection changes nothing yet; with no
+     * re-check open a repeated pass changes nothing and a rejection is refused; a lapsed provider who
+     * passes is verified again. A verified document must be on the accepted list for providers: a
+     * Malaysian MyKad or passport.
+     */
+    public EkycOutcome recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) {
+        if (type == ProviderType.BUSINESS) {
+            throw new BusinessVerifiesThroughEkybException(id);
         }
-        if (businessRegistration != null) {
-            throw new BusinessRegistrationAlreadyCheckedException(id);
+        if (result.isVerified()) {
+            requireProviderDocument(result.verifiedDocument(), accepted);
         }
-        businessRegistration = new BusinessRegistration(ssmNumber, now);
+        return record(result.isVerified(), () -> document = result.verifiedDocument(), limits, now);
     }
 
     /**
-     * Records Kenal's result. Before the first verification, a rejected provider can be verified on a later
-     * attempt. Once verified, the same rules as for a team member apply: with a re-check open a pass starts
-     * a new period and a rejection changes nothing yet; with no re-check open a repeated pass changes
-     * nothing and a rejection is refused; a lapsed provider who passes is verified again. A verified
-     * document must be on the accepted list for providers: a Malaysian MyKad or passport.
+     * Records the eKYB result for a business: its SSM registration and its owner's or director's eKYC,
+     * checked together by the eKYB provider. The rules are the same as for eKYC, including re-verification
+     * through eKYB. The owner's or director's document must be on the accepted list for providers.
      */
-    public EkycOutcome recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) {
-        if (result.isVerified()) {
-            IdentityDocument read = result.verifiedDocument();
-            accepted.require(DocumentHolder.PROVIDER, read.type(), read.issuingCountry());
+    public EkycOutcome recordEkybResult(EkybResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) {
+        if (type != ProviderType.BUSINESS) {
+            throw new NotABusinessProviderException(id);
         }
-        return switch (ekyc) {
-            case VERIFIED -> recordVerifiedResult(result, limits, now);
-            case LAPSED -> recordRecheckResult(result, limits, now);
-            default -> recordFirstResult(result, limits, now);
-        };
+        if (result.isVerified()) {
+            requireProviderDocument(result.director().orElseThrow(), accepted);
+        }
+        return record(result.isVerified(), () -> {
+            document = result.director().orElseThrow();
+            businessRegistration = result.business().orElseThrow();
+        }, limits, now);
     }
 
     /** Opens the regular re-check, from the re-verification reminder before the due date. */
@@ -88,7 +97,7 @@ public final class ProviderAccount {
         if (!current.isDue(now)) {
             throw new ReverificationNotYetDueException(current.dueAt());
         }
-        ekyc = VerificationStatus.LAPSED;
+        status = VerificationStatus.LAPSED;
     }
 
     /** Records that Stripe reports the provider's payout account as ready. */
@@ -96,16 +105,20 @@ public final class ProviderAccount {
         payoutAccountReady = true;
     }
 
+    /** An independent provider chooses whether they are a helper on their own team. A business never is. */
     public void includeSelfAsHelper(boolean include) {
+        if (include && type == ProviderType.BUSINESS) {
+            throw new BusinessIsNotAHelperException(id);
+        }
         includesSelfAsHelper = include;
     }
 
     /**
-     * The provider's own part of going live: their eKYC is verified, not lapsed, their payout account is
-     * ready, and for a business, its registration is checked.
+     * The provider's own part of going live: verified through eKYC, or eKYB for a business, not lapsed, and
+     * the payout account is ready.
      */
     public boolean isReadyForGoLive() {
-        return ekyc == VerificationStatus.VERIFIED && payoutAccountReady && isRegistrationReady();
+        return status == VerificationStatus.VERIFIED && payoutAccountReady;
     }
 
     public String id() {
@@ -120,7 +133,7 @@ public final class ProviderAccount {
         return type;
     }
 
-    /** The name on the provider's identity document, from the eKYC result; empty until verified. */
+    /** The name on the provider's, or the business owner's or director's, identity document; empty until verified. */
     public Optional<String> registeredName() {
         return document().map(IdentityDocument::registeredName);
     }
@@ -130,13 +143,14 @@ public final class ProviderAccount {
         return Optional.ofNullable(document);
     }
 
-    /** A business's checked SSM registration; empty until Homa checks it, and always for an independent provider. */
+    /** A business's SSM registration from the eKYB result; empty until verified, and always for an independent provider. */
     public Optional<BusinessRegistration> businessRegistration() {
         return Optional.ofNullable(businessRegistration);
     }
 
-    public VerificationStatus ekycStatus() {
-        return ekyc;
+    /** Where the provider's eKYC, or a business's eKYB, stands. */
+    public VerificationStatus verificationStatus() {
+        return status;
     }
 
     /** When the provider was last verified and when re-verification is due; empty until first verified. */
@@ -152,47 +166,55 @@ public final class ProviderAccount {
         return includesSelfAsHelper;
     }
 
-    /** An independent provider has no registration to check; a business needs Homa's check. */
-    private boolean isRegistrationReady() {
-        return type == ProviderType.INDEPENDENT || businessRegistration != null;
+    private void requireProviderDocument(IdentityDocument read, AcceptedDocuments accepted) {
+        accepted.require(DocumentHolder.PROVIDER, read.type(), read.issuingCountry());
     }
 
-    private EkycOutcome recordFirstResult(EkycResult result, VerificationLimits limits, Instant now) {
-        if (!result.isVerified()) {
-            ekyc = VerificationStatus.REJECTED;
+    /** The rules shared by eKYC and eKYB results; {@code onPass} keeps what the result read. */
+    private EkycOutcome record(boolean verified, Runnable onPass, VerificationLimits limits, Instant now) {
+        return switch (status) {
+            case VERIFIED -> recordVerifiedResult(verified, onPass, limits, now);
+            case LAPSED -> recordRecheckResult(verified, onPass, limits, now);
+            default -> recordFirstResult(verified, onPass, limits, now);
+        };
+    }
+
+    private EkycOutcome recordFirstResult(boolean verified, Runnable onPass, VerificationLimits limits, Instant now) {
+        if (!verified) {
+            status = VerificationStatus.REJECTED;
             return EkycOutcome.REJECTED;
         }
-        pass(result, limits, now);
+        pass(onPass, limits, now);
         return EkycOutcome.VERIFIED;
     }
 
-    private EkycOutcome recordVerifiedResult(EkycResult result, VerificationLimits limits, Instant now) {
+    private EkycOutcome recordVerifiedResult(boolean verified, Runnable onPass, VerificationLimits limits, Instant now) {
         if (!verification.recheckOpen()) {
-            if (!result.isVerified()) {
+            if (!verified) {
                 throw new ProviderAlreadyVerifiedException(id);
             }
             return EkycOutcome.UNCHANGED;
         }
-        return recordRecheckResult(result, limits, now);
+        return recordRecheckResult(verified, onPass, limits, now);
     }
 
-    private EkycOutcome recordRecheckResult(EkycResult result, VerificationLimits limits, Instant now) {
-        if (!result.isVerified()) {
+    private EkycOutcome recordRecheckResult(boolean verified, Runnable onPass, VerificationLimits limits, Instant now) {
+        if (!verified) {
             return EkycOutcome.RECHECK_FAILED;
         }
-        pass(result, limits, now);
+        pass(onPass, limits, now);
         return EkycOutcome.REVERIFIED;
     }
 
-    private void pass(EkycResult result, VerificationLimits limits, Instant now) {
-        ekyc = VerificationStatus.VERIFIED;
-        document = result.verifiedDocument();
+    private void pass(Runnable onPass, VerificationLimits limits, Instant now) {
+        onPass.run();
+        status = VerificationStatus.VERIFIED;
         verification = Verification.passedAt(now, limits);
     }
 
     private Verification verifiedVerification() {
-        if (ekyc != VerificationStatus.VERIFIED) {
-            throw new ProviderNotVerifiedException(id, ekyc);
+        if (status != VerificationStatus.VERIFIED) {
+            throw new ProviderNotVerifiedException(id, status);
         }
         return verification;
     }

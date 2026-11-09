@@ -29,7 +29,7 @@ Homeowners who don't have the time to finish their home chores.
 
 ### Safety principle
 
-**Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider and team member passes eKYC to join, is re-verified regularly, is shown to the customer before the job, and verifies their face at the door. Homa verifies who people are; it does not inspect how they work, which is judged through ratings and disputes.
+**Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider and team member passes eKYC to join (a business passes eKYB, which includes its owner's or director's eKYC), is re-verified regularly, is shown to the customer before the job, and verifies their face at the door. Homa verifies who people are; it does not inspect how they work, which is judged through ratings and disputes.
 
 ## Where Homa Operates
 
@@ -205,13 +205,14 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 | | Independent provider | Business provider |
 |---|---|---|
 | Who | A Malaysian, not registered as a business | A business registered with SSM |
-| Verified | The provider's eKYC | The owner's or director's eKYC, and the business registration, checked by Homa |
+| Verified | eKYC of the provider | eKYB: the eKYB provider verifies the SSM registration and the owner's or director's eKYC in one flow. Homa does no check of its own |
+| Team at the start | The provider is a helper on their own team, and can remove themselves | No team members: the business adds its helpers and supervisors, including an owner or director who works on site |
 | Team members | Malaysian | Malaysian and foreign |
 | Payouts to | A personal bank account | A business bank account |
 
 Both types can have a team of helpers and supervisors, and everything else is the same for both.
 
-**Identity documents.** Every person verifies with a document from Homa's **accepted documents** list. The provider (or the business's owner or director) must be Malaysian, with a MyKad or a Malaysian passport. A team member chooses the issuing country and the document type (identity card or passport). Only a business provider can add team members from outside Malaysia.
+**Identity documents.** Every person verifies with a document from Homa's **accepted documents** list. The provider (or the business's owner or director, verified within eKYB) must be Malaysian, with a MyKad or a Malaysian passport. A team member chooses the issuing country and the document type (identity card or passport). Only a business provider can add team members from outside Malaysia.
 
 **Registered name.** Each person's name is the name on their identity document, from the eKYC result. The provider cannot type or change it. Customers see the name as registered.
 
@@ -219,13 +220,13 @@ Both types can have a team of helpers and supervisors, and everything else is th
 1. **Add:** the provider chooses the role (helper or supervisor), the document type (identity card or passport) and, for a business provider only, the issuing country; an independent provider's members are always Malaysian. The provider adds a profile photo and, on the same form, ticks that **this person** is lawfully employed by or engaged with them and allowed to work in Malaysia. The form cannot be sent without the tick.
 2. **Verify on the spot:** the person must be with the provider. On the provider's phone, the person scans their own identity document and takes their own live selfie; team members have no accounts and need no phone of their own. Once it is verified, the person is added to the team automatically, with their registered name from the eKYC. The profile photo is matched against the eKYC once, so it shows the verified person.
 
-While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. Homa sets no time limit: the person verifies there and then, and the eKYC provider ends a session that is not finished. If the eKYC is rejected or the session times out, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
+While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. Homa sets no time limit: the person verifies there and then, and the eKYC provider ends a session that is not finished. If the eKYC is rejected or the session times out, nothing is added, and the provider can start again. By default an independent provider is a helper on their own team, and can remove themselves. A business starts with no team members.
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members submit only their eKYC. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Only a business provider can add team members from outside Malaysia. Homa removes a team member, and can remove the provider, if it learns a team member is not allowed to work. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
 - Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
-- A provider whose eKYC is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
-- **Re-verification:** every provider and team member is re-verified through eKYC, by the same steps, at their **due date**: the **re-verification period** after their last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present.
+- A provider whose eKYC, or a business whose eKYB, is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
+- **Re-verification:** every provider and team member is re-verified, by the same steps, at their **due date**: through eKYC, or through eKYB for a business. The due date is the **re-verification period** after their last successful verification. Homa reminds the provider the **re-verification reminder** before each person's due date. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present.
 - Until the due date nothing changes. A person who passes stays verified, and their next due date is counted from the new verification.
 - **Missing the due date:** a team member who isn't re-verified by their due date **lapses** and leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A provider who isn't re-verified by their due date has their listing **paused**: it takes no new requests until they pass. Reservations already accepted still go ahead.
 - **Verified for the whole job:** a provider can be requested, and can accept, only for a job that ends by their re-verification due date. Search leaves a provider out for any job that would end later. Once they pass the re-check, their next due date moves out and those dates open up.
@@ -238,6 +239,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 
 - **What Homa collects and why:**
   - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
+  - Businesses: eKYB data (SSM registration number and registered business name), for Homa's records.
   - Providers and team members: eKYC identity data (registered name, document type and issuing country), profile photo, and face check results at check-in (result and time only, never the selfie), to verify them and show customers who is coming; providers' payout details, handled by Stripe. Face data is biometric and is used only to match a person to their own eKYC.
   - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and the provider's written feedback. Helpers agree to being rated as part of their eKYC consent.
   - Location: only the device's location at the moment of check-in, never continuously.
@@ -378,13 +380,13 @@ Homa has a separate app that helps providers manage their reservations, calendar
 ### Onboarding
 
 1. **Choose the provider type:** Independent or Business.
-2. **Verify:** choose the identity document (MyKad or Malaysian passport) and complete eKYC. A business also submits its SSM registration, which Homa checks.
-3. **Set up your team:** by default you are a helper. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify on the spot on your phone, scanning their own document and taking their own selfie, and they join your team once verified. You can remove yourself from the team.
+2. **Verify:** an independent provider chooses the identity document (MyKad or Malaysian passport) and completes eKYC. A business completes eKYB: the eKYB provider verifies its SSM registration and its owner's or director's eKYC in one flow.
+3. **Set up your team:** an independent provider is a helper by default; a business starts with no team members. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify on the spot on your phone, scanning their own document and taking their own selfie, and they join your team once verified. You can remove yourself from the team.
 4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
 5. **Add a payout account:** a personal bank account for an independent provider, a business bank account for a business.
 6. **Go live** once everything is set up.
 
-Providers cannot go live until they are verified (and, for a business, its registration is checked), their profile is complete, their payout account is added, and their team has at least as many helpers as their minimum helpers per booking, plus a supervisor if they set a supervisor threshold. People still waiting for verification do not block going live. When a provider tries to go live too early, Homa lists everything still missing.
+Providers cannot go live until they are verified (eKYC for an independent provider, eKYB for a business), their profile is complete, their payout account is added, and their team has at least as many helpers as their minimum helpers per booking, plus a supervisor if they set a supervisor threshold. People still waiting for verification do not block going live. When a provider tries to go live too early, Homa lists everything still missing.
 
 ### Teams
 
@@ -414,7 +416,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 - **Overview:** reservations, total booking value, service fee earned, cancellation and no-show rates, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
-- **Providers:** provider type, business registration checks, lawful-employment confirmations for each team member with their time and terms version, verification status of providers, their team members and anyone waiting for verification, face check failures, upcoming and lapsed re-verifications, and the option to ask for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
+- **Providers:** provider type, eKYB results for businesses (SSM number and registered business name), lawful-employment confirmations for each team member with their time and terms version, verification status of providers, their team members and anyone waiting for verification, face check failures, upcoming and lapsed re-verifications, and the option to ask for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
 - **Customers:** accounts, reservations and reports filed.
 - **Fines:** every fine with its reason, amount, what has been deducted so far, and any waiver.
 - **Ratings:** every rating, with the option to hide one that breaks the rules, recorded with a reason.
@@ -442,11 +444,12 @@ These are deliberately left out of the MVP:
 
 ## External Services Homa Will Use and Not Develop
 
-Homa will use outside services for these instead of developing them. Stripe Connect is chosen for payments and Kenal for eKYC; the others are still to be chosen.
+Homa will use outside services for these instead of developing them. Stripe Connect is chosen for payments and Kenal for eKYC; the others are still to be chosen. Homa's rules do not depend on which eKYC or eKYB provider is used, or whether one provider does both.
 
 | Capability | What it does for Homa |
 |---|---|
 | **eKYC provider (Kenal)** | Verifies the identity of providers and team members (MyKad, passport and other identity cards), re-verifies them, and matches faces at check-in and against profile photos. Runs each on-the-spot session, times out a session that is not finished, and always reports a final result |
+| **eKYB provider (to be chosen; may be Kenal)** | Verifies a business's SSM registration and its owner's or director's eKYC in one flow, re-verifies the business, and reports a final result |
 | **Payment provider (Stripe Connect)** | Authorises and charges cards, takes upfront FPX payments, holds payments until release, onboards providers for payouts, pays out to providers and processes refunds to the original method |
 | **Push notification service (to be chosen)** | Sends reminders and alerts to customers and providers, such as new requests, check-in, completion and reports |
 | **Geoservice (open source)** | Handles addresses, locations and distance, including the location check at check-in |

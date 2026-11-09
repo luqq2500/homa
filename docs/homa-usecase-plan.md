@@ -47,7 +47,7 @@ fed by event handlers and stored behind its own out port:
 |---|---|---|
 | offering | active catalogue jobs and tools | `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE` |
 | offering | Homa's hours and helpers limits | `HomaPolicyChangedIE` |
-| offering | provider type and readiness, and the team roster by role | `ProviderRegisteredIE`, `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `BusinessRegistrationCheckedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
+| offering | provider type and readiness, and the team roster by role | `ProviderRegisteredIE`, `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
 | offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
@@ -74,9 +74,9 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
-- Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`; `HomaCheckBusinessRegistration` → `BusinessRegistrationCheckedIE`
+- Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (an independent provider; eKYC out port) or `ProviderStartEkyb` (a business; eKYB out port, which includes the owner's or director's eKYC), `ProviderIncludeSelfAsHelper` (independent providers only)
 - Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens a Kenal on-the-spot session on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens an on-the-spot session for a provider or team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
-- Kenal reporting back: `KenalRecordProviderResult`, `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
+- Verification providers reporting back: `KenalRecordProviderResult` (eKYC), `EkybRecordBusinessResult` (eKYB), `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
 - Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
