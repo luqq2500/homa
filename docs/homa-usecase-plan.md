@@ -75,7 +75,7 @@ Availability is the exception: a request needs a live answer (see U1).
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
 - Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (Kenal out port), `ProviderIncludeSelfAsHelper`; `HomaCheckBusinessRegistration` → `BusinessRegistrationCheckedIE`
-- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; Kenal link out port) → `MemberVerificationStartedIE`; `HomaExpireMemberVerifications` (scheduled) → `MemberVerificationEndedIE`; `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
+- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; Kenal link out port) → `MemberVerificationStartedIE`; `HomaExpireMemberVerifications` (scheduled) → `MemberVerificationExpiredIE`; `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
 - Kenal reporting back: `KenalRecordProviderResult`, `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
 - Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
@@ -126,7 +126,7 @@ These rules come from decisions made after the domain phase. Each one needs a us
    | Outcome | Team member | Provider |
    |---|---|---|
    | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` (R7) | `ProviderVerifiedIE` |
-   | `REJECTED` | `MemberVerificationEndedIE` | `ProviderVerificationRejectedIE` |
+   | `REJECTED` | `MemberVerificationRejectedIE` | `ProviderVerificationRejectedIE` |
    | `REVERIFIED` | `TeamMemberReverifiedIE` | `ProviderReverifiedIE` |
    | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
    | `UNCHANGED` | none | none |

@@ -379,10 +379,10 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     `reverificationDueAt`.
   - With provider types and adding a team member:
     - The three helper invite events gave way to `MemberVerificationStartedIE`,
-      `MemberVerificationEndedIE` and `TeamMemberAddedIE`.
+      `MemberVerificationRejectedIE`, `MemberVerificationExpiredIE` and `TeamMemberAddedIE`.
     - The other helper events became team member events.
     - `ProviderRegisteredIE`, `BusinessRegistrationCheckedIE`, `FaceCheckRecordedIE` and
       `CheckInCompletedIE` were added.
     - The listing, policy and team-naming events carry roles, supervisor thresholds, the face check
       values and the accepted documents.
-  - The contract test now covers 53 events.
+  - The contract test now covers 54 events.

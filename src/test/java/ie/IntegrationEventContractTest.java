@@ -23,7 +23,8 @@ import ie.events.ListingPausedIE;
 import ie.events.ListingResumedIE;
 import ie.events.ListingWentLiveIE;
 import ie.events.ListingWentOfflineIE;
-import ie.events.MemberVerificationEndedIE;
+import ie.events.MemberVerificationExpiredIE;
+import ie.events.MemberVerificationRejectedIE;
 import ie.events.MemberVerificationStartedIE;
 import ie.events.NoShowChallengedIE;
 import ie.events.PaymentCapturedIE;
@@ -108,7 +109,8 @@ class IntegrationEventContractTest {
                 Arguments.of(ProviderRegisteredIE.class, AccountIE.class),
                 Arguments.of(BusinessRegistrationCheckedIE.class, AccountIE.class),
                 Arguments.of(MemberVerificationStartedIE.class, AccountIE.class),
-                Arguments.of(MemberVerificationEndedIE.class, AccountIE.class),
+                Arguments.of(MemberVerificationRejectedIE.class, AccountIE.class),
+                Arguments.of(MemberVerificationExpiredIE.class, AccountIE.class),
                 Arguments.of(TeamMemberAddedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberRemovedIE.class, AccountIE.class),
                 Arguments.of(RecheckOpenedIE.class, AccountIE.class),
@@ -219,7 +221,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(53);
+        assertThat(events().count()).isEqualTo(54);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

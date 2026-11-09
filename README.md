@@ -88,5 +88,4 @@ while building" (`docs/homa-domain-plan.md`). The plan's method blocks and objec
 The re-verification decisions are listed under "Change after the domain phase: periodic
 re-verification" in the plan, and are confirmed too.
 The decisions for provider types, team roles, documents, face check-in and adding a team member are
-listed under "Decided while building: provider types, ..." in the plan. They are waiting for
-confirmation.
+listed under "Decided while building: provider types, ..." in the plan, and are confirmed too.

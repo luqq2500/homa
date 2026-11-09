@@ -359,9 +359,10 @@ customer knows who they are before they arrive.
     when the face check service is unavailable. Someone who fails every attempt cannot work, and an
     outage never makes a no-show.
 - **`feedback`:** named supervisors are rated like helpers.
-- **`ie/`:** 53 events.
+- **`ie/`:** 54 events. Adding a team member ends with `MemberVerificationRejectedIE` or
+  `MemberVerificationExpiredIE`, one event per outcome.
 - **Scenarios:** the audit maps 199 of 199. The older invite, lead and 1 to 10 helper scenarios point
   to the tests of the rules that replaced them.
-- **Gates:** whole build 1,145 tests, 1,480 mutants, all killed, worst CRAP 5.0.
-- **To confirm:** the decisions made while building, listed in the plan under "Decided while building:
-  provider types, team roles, documents, face check-in and adding a team member".
+- **Gates:** whole build 1,149 tests, 1,480 mutants, all killed, worst CRAP 5.0.
+- **Decisions:** the decisions made while building are confirmed, and listed in the plan under "Decided
+  while building: provider types, team roles, documents, face check-in and adding a team member".

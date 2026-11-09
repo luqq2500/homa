@@ -1456,7 +1456,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` with `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
 | `MemberVerificationStartedIE` | account | (provider app, notifications) | `MemberVerification.start` |
-| `MemberVerificationEndedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED`, `MemberVerification.expire` |
+| `MemberVerificationRejectedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED` |
+| `MemberVerificationExpiredIE` | account | (provider app, notifications) | `MemberVerification.expire` |
 | `TeamMemberAddedIE` | account | offering | `TeamMember.add`, with the role, registered name and lawful-employment confirmation |
 | `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `TeamMember.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
 | `RecheckFailedIE` | account | (notifications) | `TeamMember.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
@@ -1735,7 +1736,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 54 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -1847,7 +1848,7 @@ Helper.verification() : Verification
   | Outcome | Helper | Provider |
   |---|---|---|
   | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` | `ProviderVerifiedIE` |
-  | `REJECTED` | `MemberVerificationEndedIE` | `ProviderVerificationRejectedIE` |
+  | `REJECTED` | `MemberVerificationRejectedIE` | `ProviderVerificationRejectedIE` |
   | `REVERIFIED` | `TeamMemberReverifiedIE` | `ProviderReverifiedIE` |
   | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
   | `UNCHANGED` | none | none |
@@ -2258,7 +2259,7 @@ TeamMember.add(MemberVerification verified, Instant now)                        
 
 **`policy`:** add the **verification link expiry**, 7 days.
 
-**`ie/`:** `MemberVerificationStartedIE`, `MemberVerificationEndedIE` (rejected or expired) and `TeamMemberAddedIE` replace `TeamMemberInvitedIE`, `TeamMemberInviteRejectedIE` and `TeamMemberJoinedIE`; `LawfulEmploymentConfirmedIE` is folded into `TeamMemberAddedIE`.
+**`ie/`:** `MemberVerificationStartedIE`, `MemberVerificationRejectedIE`, `MemberVerificationExpiredIE` (one event per outcome) and `TeamMemberAddedIE` replace `TeamMemberInvitedIE`, `TeamMemberInviteRejectedIE` and `TeamMemberJoinedIE`; `LawfulEmploymentConfirmedIE` is folded into `TeamMemberAddedIE`.
 
 ```gherkin
 Feature: Adding a team member
@@ -2309,7 +2310,7 @@ Feature: Adding a team member
 
 ## Decided while building: provider types, team roles, documents, face check-in and adding a team member
 
-These cover both sections above. All of them are waiting for confirmation.
+These cover both sections above. All of them are confirmed by the product owner.
 
 **`account`**
 
@@ -2379,8 +2380,8 @@ These cover both sections above. All of them are waiting for confirmation.
 
 - **Events added:**
   - `ProviderRegisteredIE` gives offering the provider type.
-  - `MemberVerificationEndedIE` carries a `reason` (`REJECTED` or `EXPIRED`), as the plan names one
-    event, though the event rule prefers one event per outcome.
+  - `MemberVerificationEndedIE` is split into `MemberVerificationRejectedIE` and
+    `MemberVerificationExpiredIE`, following the one-event-per-outcome rule.
 - **Events renamed:** the remaining helper events are renamed for team members, since supervisors are
   members too: `TeamMemberRemovedIE`, `TeamMemberReverifiedIE` and `TeamMemberLapsedIE`. They carry
   `memberId` and the role.
@@ -2391,7 +2392,7 @@ These cover both sections above. All of them are waiting for confirmation.
     `verificationLinkExpiry` and `acceptedDocuments`, each written as "holder:type:country", with
     `*` for any country.
   - `TeamNamedIE` carries `helperIds` and `supervisorIds`.
-- **53 events in all.**
+- **54 events in all.**
 
 **Not built in the domain:** Homa removing a provider when it learns a team member may not work is
 left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
