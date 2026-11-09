@@ -72,7 +72,7 @@ Build order from the domain plan:
 | 14 | Periodic re-verification, changed after closing: every 3 months, with lapsing, early re-checks and listing pause; eight new events | Done |
 | 15 | Verified for the whole job: a provider is requested, accepts and is found in search only for jobs that end by their re-verification due date | Done |
 | 16 | Provider types, team roles (helpers and supervisors), accepted documents, face check-in, and adding a team member through a lawful-employment confirmation and eKYC | Done |
-| 17 | Verification on the spot: eKYC on the provider's phone with the person present, within a 1-hour session | Done |
+| 17 | Verification on the spot: eKYC on the provider's phone with the person present, with no time limit | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.
 

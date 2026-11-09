@@ -312,10 +312,10 @@ class TeamMemberReverificationTest {
 
         @Test
         void theLimitsNeedAPeriodOfAtLeastAMonth() {
-            assertThatThrownBy(() -> new VerificationLimits(0, Duration.ofDays(14), Duration.ofDays(14), Duration.ofHours(1)))
+            assertThatThrownBy(() -> new VerificationLimits(0, Duration.ofDays(14), Duration.ofDays(14)))
                     .isInstanceOf(InvalidVerificationLimitsException.class)
                     .hasMessageContaining("0");
-            assertThat(new VerificationLimits(1, Duration.ofDays(14), Duration.ofDays(14), Duration.ofHours(1)).periodMonths()).isEqualTo(1);
+            assertThat(new VerificationLimits(1, Duration.ofDays(14), Duration.ofDays(14)).periodMonths()).isEqualTo(1);
         }
 
         static Stream<Duration> notLongerThanZero() {
@@ -325,32 +325,23 @@ class TeamMemberReverificationTest {
         @ParameterizedTest(name = "a reminder of {0} is refused")
         @MethodSource("notLongerThanZero")
         void theReminderIsLongerThanZero(Duration reminder) {
-            assertThatThrownBy(() -> new VerificationLimits(3, reminder, Duration.ofDays(14), Duration.ofHours(1)))
+            assertThatThrownBy(() -> new VerificationLimits(3, reminder, Duration.ofDays(14)))
                     .isInstanceOf(InvalidVerificationLimitsException.class);
         }
 
         @ParameterizedTest(name = "an early re-check deadline of {0} is refused")
         @MethodSource("notLongerThanZero")
         void theEarlyRecheckDeadlineIsLongerThanZero(Duration deadline) {
-            assertThatThrownBy(() -> new VerificationLimits(3, Duration.ofDays(14), deadline, Duration.ofHours(1)))
-                    .isInstanceOf(InvalidVerificationLimitsException.class);
-        }
-
-        @ParameterizedTest(name = "a verification session expiry of {0} is refused")
-        @MethodSource("notLongerThanZero")
-        void theVerificationSessionExpiryIsLongerThanZero(Duration expiry) {
-            assertThatThrownBy(() -> new VerificationLimits(3, Duration.ofDays(14), Duration.ofDays(14), expiry))
+            assertThatThrownBy(() -> new VerificationLimits(3, Duration.ofDays(14), deadline))
                     .isInstanceOf(InvalidVerificationLimitsException.class);
         }
 
         @Test
         void theShortestLimitsAreAllowed() {
-            VerificationLimits shortest =
-                    new VerificationLimits(1, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1));
+            VerificationLimits shortest = new VerificationLimits(1, Duration.ofSeconds(1), Duration.ofSeconds(1));
 
             assertThat(shortest.reminder()).isEqualTo(Duration.ofSeconds(1));
             assertThat(shortest.earlyRecheckDeadline()).isEqualTo(Duration.ofSeconds(1));
-            assertThat(shortest.sessionExpiry()).isEqualTo(Duration.ofSeconds(1));
         }
 
         @Test

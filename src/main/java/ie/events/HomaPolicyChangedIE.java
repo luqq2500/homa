@@ -41,7 +41,6 @@ public record HomaPolicyChangedIE(
         int reverificationPeriodMonths,
         Duration reverificationReminder,
         Duration earlyRecheckDeadline,
-        Duration verificationSessionExpiry,
         Set<String> acceptedDocuments,
         Instant occurredAt) implements PolicyIE {
 
@@ -71,7 +70,6 @@ public record HomaPolicyChangedIE(
         Objects.requireNonNull(ratingWindow, "ratingWindow");
         Objects.requireNonNull(reverificationReminder, "reverificationReminder");
         Objects.requireNonNull(earlyRecheckDeadline, "earlyRecheckDeadline");
-        Objects.requireNonNull(verificationSessionExpiry, "verificationSessionExpiry");
         acceptedDocuments = Set.copyOf(acceptedDocuments);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }

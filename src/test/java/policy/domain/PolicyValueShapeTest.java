@@ -21,7 +21,6 @@ import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
 import policy.domain.PolicyValue.AcceptedDocuments;
 import policy.domain.PolicyValue.FaceCheckAttempts;
-import policy.domain.PolicyValue.VerificationSessionExpiry;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -81,8 +80,7 @@ class PolicyValueShapeTest {
                     Named.of("evidence retention", EvidenceRetention::new),
                     Named.of("rating window", RatingWindow::new),
                     Named.of("re-verification reminder", ReverificationReminder::new),
-                    Named.of("early re-check deadline", EarlyRecheckDeadline::new),
-                    Named.of("verification session expiry", VerificationSessionExpiry::new));
+                    Named.of("early re-check deadline", EarlyRecheckDeadline::new));
         }
 
         @ParameterizedTest(name = "the {0} must be longer than zero")

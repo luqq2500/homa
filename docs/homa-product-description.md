@@ -219,7 +219,7 @@ Both types can have a team of helpers and supervisors, and everything else is th
 1. **Add:** the provider chooses the role (helper or supervisor), the document type (identity card or passport) and, for a business provider only, the issuing country; an independent provider's members are always Malaysian. The provider adds a profile photo and, on the same form, ticks that **this person** is lawfully employed by or engaged with them and allowed to work in Malaysia. The form cannot be sent without the tick.
 2. **Verify on the spot:** the person must be with the provider. On the provider's phone, the person scans their own identity document and takes their own live selfie; team members have no accounts and need no phone of their own. Once it is verified, the person is added to the team automatically, with their registered name from the eKYC. The profile photo is matched against the eKYC once, so it shows the verified person.
 
-While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. If the eKYC is rejected or not finished within the **verification session expiry**, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
+While the eKYC is waiting, the provider app shows it as **waiting for verification**: it is not on the team, not shown to customers and cannot be named for jobs. There is no time limit: the person verifies there and then. If the eKYC is rejected, nothing is added, and the provider can start again. By default the provider is a helper on their own team, and can remove themselves.
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members submit only their eKYC. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Only a business provider can add team members from outside Malaysia. Homa removes a team member, and can remove the provider, if it learns a team member is not allowed to work. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
@@ -304,7 +304,6 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Check-in period** | Check-in Policy | 15 minutes after the booked start |
 | **Check-in radius** | Check-in Policy | 300 metres |
 | **Face check attempts** | Check-in Policy | 3 per person per check-in |
-| **Verification session expiry** | Verification Policy | 1 hour to complete eKYC on the spot when adding or re-verifying a team member |
 | **Customer no-show wait** | Check-in Policy | 15 minutes |
 | **Customer no-show fee** | Check-in Policy | Travel fee plus 30% of the hours fee |
 | **No-show report window** | Check-in Policy | 1 hour after the provider reports a customer no-show |

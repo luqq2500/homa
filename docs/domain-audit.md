@@ -5,14 +5,15 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **199 of 199** scenarios in the plan have a test. That is the original 122, plus:
+All **198 of 198** scenarios in the plan have a test. That is the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
   go-live scenario
 - 14 in the two re-verification features
 - five in "Verified for the whole job"
-- 24 in the four features for provider types, supervisors, face check-in and adding a team member
+- 23 in the four features for provider types, supervisors, face check-in and adding a team member
+  (the expiry scenario was removed with the time limit)
 
 The plan's older scenarios on invites, the lead and the 1 to 10 helper limit describe rules these
 changes replaced. Their rows point to the tests of the rule that replaced them:
@@ -241,8 +242,7 @@ Two scenarios map to more than one test:
 | 195 | Adding a team member | Only a business chooses the issuing country (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry` |
 | 196 | Adding a team member | A person cannot be added before verification | `TeamMemberAddingTest` | `aPersonCannotBeAddedBeforeVerification` |
 | 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
-| 198 | Adding a team member | An unfinished on-the-spot eKYC expires after 1 hour (outline) | `TeamMemberAddingTest` | `anUnfinishedOnTheSpotEkycExpiresAfterAnHour`, `anOnTheSpotEkycDoesNotExpireBeforeAnHour` |
-| 199 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
+| 198 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
 
 ## 2. Product spec rules with no test
 
@@ -320,8 +320,8 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 80 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 256 | `AccountArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 79 | `PolicyArchitectureTest` |
+| account | 5.0 | 100% | 100% | 249 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 198 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
 | reservation | 5.0 | 100% | 100% | 379 | `ReservationArchitectureTest` |
@@ -335,7 +335,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,480 of 1,480 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,472 of 1,472 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -379,10 +379,11 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     `reverificationDueAt`.
   - With provider types and adding a team member:
     - The three helper invite events gave way to `MemberVerificationStartedIE`,
-      `MemberVerificationRejectedIE`, `MemberVerificationExpiredIE` and `TeamMemberAddedIE`.
+      `MemberVerificationRejectedIE` and `TeamMemberAddedIE`. A `MemberVerificationExpiredIE` was
+      added and then removed with the time limit for adding a team member.
     - The other helper events became team member events.
     - `ProviderRegisteredIE`, `BusinessRegistrationCheckedIE`, `FaceCheckRecordedIE` and
       `CheckInCompletedIE` were added.
     - The listing, policy and team-naming events carry roles, supervisor thresholds, the face check
       values and the accepted documents.
-  - The contract test now covers 54 events.
+  - The contract test now covers 53 events.

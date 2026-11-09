@@ -8,8 +8,6 @@ public enum MemberVerificationStatus {
     VERIFIED,
     /** The eKYC was rejected: ended, nothing is added, and the provider can start again. */
     REJECTED,
-    /** Not finished within the verification session expiry: ended, and the provider can start again. */
-    EXPIRED,
     /** The team member was added from it. */
     ADDED
 }

@@ -3,7 +3,6 @@ package account.domain;
 import account.domain.exception.DocumentNotAcceptedException;
 import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.PhotoRequiredException;
-import account.domain.exception.VerificationNotExpiredException;
 import account.domain.exception.VerificationNotWaitingException;
 import java.time.Instant;
 import java.util.Objects;
@@ -14,7 +13,7 @@ import java.util.Optional;
  * document type, the issuing country (a business only), a profile photo, and the lawful-employment
  * confirmation for this person. The person then completes eKYC on the spot, on the provider's phone: they
  * scan their own document and take their own live selfie, and need no account or phone of their own.
- * The session must finish within the verification session expiry. Until it is verified this is
+ * There is no time limit: it waits for the eKYC result. Until it is verified this is
  * shown to the provider as waiting for verification: not on the team, never shown to customers, and it
  * cannot be named for jobs.
  */
@@ -29,7 +28,7 @@ public final class MemberVerification {
     private final Photo photo;
     private final EmploymentConfirmation confirmation;
     private final VerificationLimits limits;
-    private final Instant expiresAt;
+    private final Instant startedAt;
     private MemberVerificationStatus status = MemberVerificationStatus.WAITING;
     private IdentityDocument document;
     private Verification verification;
@@ -46,7 +45,7 @@ public final class MemberVerification {
         this.photo = photo;
         this.confirmation = confirmation;
         this.limits = limits;
-        this.expiresAt = now.plus(limits.sessionExpiry());
+        this.startedAt = now;
     }
 
     /**
@@ -92,18 +91,9 @@ public final class MemberVerification {
         return EkycOutcome.VERIFIED;
     }
 
-    /** An eKYC not finished within the verification session expiry ends, and nothing is added. */
-    public void expire(Instant now) {
-        requireWaiting();
-        if (now.isBefore(expiresAt)) {
-            throw new VerificationNotExpiredException(expiresAt);
-        }
-        status = MemberVerificationStatus.EXPIRED;
-    }
-
-    /** Whether it ended without adding anyone, after a rejection or the session expiry. */
+    /** Whether it ended without adding anyone: the eKYC was rejected, and the provider can start again. */
     public boolean hasEnded() {
-        return status == MemberVerificationStatus.REJECTED || status == MemberVerificationStatus.EXPIRED;
+        return status == MemberVerificationStatus.REJECTED;
     }
 
     void markAdded() {
@@ -142,8 +132,9 @@ public final class MemberVerification {
         return confirmation;
     }
 
-    public Instant expiresAt() {
-        return expiresAt;
+    /** When the provider sent the add form. */
+    public Instant startedAt() {
+        return startedAt;
     }
 
     public MemberVerificationStatus status() {
@@ -177,12 +168,6 @@ public final class MemberVerification {
     private void requireDocumentAsChosen(IdentityDocument read) {
         if (read.type() != documentType || !read.issuingCountry().equals(issuingCountry)) {
             throw new DocumentNotAcceptedException(DocumentHolder.teamMemberOf(providerType), read.type(), read.issuingCountry());
-        }
-    }
-
-    private void requireWaiting() {
-        if (status != MemberVerificationStatus.WAITING) {
-            throw new VerificationNotWaitingException(id, status);
         }
     }
 }

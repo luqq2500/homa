@@ -106,9 +106,8 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
-        void eachPersonGetsThreeFaceCheckAttemptsAndAnHourToVerifyOnTheSpot() {
+        void eachPersonGetsThreeFaceCheckAttempts() {
             assertThat(launch.faceCheckAttempts()).isEqualTo(3);
-            assertThat(launch.verificationSessionExpiry()).isEqualTo(Duration.ofHours(1));
         }
 
         @Test
@@ -124,7 +123,7 @@ class HomaPolicyVersioningTest {
 
         @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(31);
+            assertThat(launch.values()).hasSize(30);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -160,7 +159,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(31);
+            assertThat(version2.snapshot().values()).hasSize(30);
         }
 
         @Test

@@ -183,7 +183,7 @@ Feature: Homa-set values
 | `TeamMember` | Aggregate | Replaces `Helper`. Belongs to one provider: role, registered name and document, photo, team status and verification. Only a `MEMBER` is on the team |
 | `TeamStatus` | Enum | `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
 | `Verification` | Value object | When a provider or team member was last verified, when re-verification is due, and whether a re-check is open |
-| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline, verification session expiry |
+| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline |
 | `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED`, `LAPSED` (a provider's state only; never a result) |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
 
@@ -200,7 +200,7 @@ ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.includeSelfAsHelper(boolean include)
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready, and a business's registration checked
 
-// Adding a team member: MemberVerification.start, recordEkycResult and expire, then TeamMember.add (see "adding a team member")
+// Adding a team member: MemberVerification.start and recordEkycResult, then TeamMember.add (see "adding a team member")
 TeamMember.remove()                                          // removes a member -> REMOVED
 TeamMember.isTeamMember() : boolean                          // true only for MEMBER
 ```
@@ -1457,7 +1457,6 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
 | `MemberVerificationStartedIE` | account | (provider app, notifications) | `MemberVerification.start` |
 | `MemberVerificationRejectedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED` |
-| `MemberVerificationExpiredIE` | account | (provider app, notifications) | `MemberVerification.expire` |
 | `TeamMemberAddedIE` | account | offering | `TeamMember.add`, with the role, registered name and lawful-employment confirmation |
 | `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `TeamMember.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
 | `RecheckFailedIE` | account | (notifications) | `TeamMember.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
@@ -1736,7 +1735,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 54 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2239,7 +2238,7 @@ Supersedes the invite model in "team membership" and "provider types". There are
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `MemberVerification` | Aggregate | The pending step before a member exists: provider, role, document type, issuing country (Malaysia for an independent provider), photo, the `EmploymentConfirmation`, session expiry and the eKYC outcome. Not a team member and never shown to customers |
+| `MemberVerification` | Aggregate | The pending step before a member exists: provider, role, document type, issuing country (Malaysia for an independent provider), photo, the `EmploymentConfirmation` and the eKYC outcome. Not a team member and never shown to customers |
 | `TeamMember` | Aggregate | Created only from a verified `MemberVerification`. `TeamStatus` is now `MEMBER`, `LAPSED`, `REMOVED` (`INVITED` and `INVITE_REJECTED` are gone) |
 | `EmploymentConfirmation` | Value object | Given on the add form for one person: when it was given and the terms version. Required to start a `MemberVerification`. Replaces the one-off provider-level confirmation |
 
@@ -2248,7 +2247,6 @@ MemberVerification.start(String providerId, ProviderType type, TeamRole role, Do
                          String issuingCountry, Photo photo, EmploymentConfirmation confirmation,
                          AcceptedDocuments accepted, VerificationLimits limits, Instant now)
 MemberVerification.recordEkycResult(EkycResult result, AcceptedDocuments accepted, Instant now)  // VERIFIED -> ready to add; REJECTED -> ended
-MemberVerification.expire(Instant now)                                                         // not finished within the session expiry -> ended
 TeamMember.add(MemberVerification verified, Instant now)                                       // the only way a TeamMember exists; the usecase calls it on VERIFIED
 ```
 
@@ -2257,9 +2255,9 @@ TeamMember.add(MemberVerification verified, Instant now)                        
 - `TeamMember.add` refuses a `MemberVerification` that is not verified (`MemberNotVerifiedException`) or has already been used (`MemberAlreadyAddedException`).
 - Re-verification of an existing member is unchanged; it does not need a new confirmation.
 
-**`policy`:** add the **verification session expiry**, 1 hour. eKYC is done on the spot on the provider's phone, with the person present (the person scans their own document and takes their own selfie); there is no link.
+**`policy`:** no new value. eKYC is done on the spot on the provider's phone, with the person present (the person scans their own document and takes their own selfie); there is no link and no time limit.
 
-**`ie/`:** `MemberVerificationStartedIE`, `MemberVerificationRejectedIE`, `MemberVerificationExpiredIE` (one event per outcome) and `TeamMemberAddedIE` replace `TeamMemberInvitedIE`, `TeamMemberInviteRejectedIE` and `TeamMemberJoinedIE`; `LawfulEmploymentConfirmedIE` is folded into `TeamMemberAddedIE`.
+**`ie/`:** `MemberVerificationStartedIE`, `MemberVerificationRejectedIE` and `TeamMemberAddedIE` replace `TeamMemberInvitedIE`, `TeamMemberInviteRejectedIE` and `TeamMemberJoinedIE`; `LawfulEmploymentConfirmedIE` is folded into `TeamMemberAddedIE`.
 
 ```gherkin
 Feature: Adding a team member
@@ -2293,15 +2291,6 @@ Feature: Adding a team member
     Then the verification has ended
     And Aina is not on the team
 
-  Scenario Outline: An unfinished on-the-spot eKYC expires after 1 hour
-    Given verification started on 1 March at 10:00
-    When Homa expires it at <time>
-    Then the result is <result>
-    Examples:
-      | time           | result                            |
-      | 1 March, 11:00 | the verification has ended        |
-      | 1 March, 10:59 | VerificationNotExpiredException   |
-
   Scenario: A verification is used once
     Given Aina was added from this verification
     When the provider adds from it again
@@ -2326,7 +2315,7 @@ These cover both sections above. All of them are confirmed by the product owner.
   - A business registration is checked once (`BusinessRegistrationAlreadyCheckedException`). An
     independent provider has none (`NotABusinessProviderException`).
 - **`MemberVerification`:**
-  - Its statuses are `WAITING`, `VERIFIED`, `REJECTED`, `EXPIRED` and `ADDED`.
+  - Its statuses are `WAITING`, `VERIFIED`, `REJECTED` and `ADDED`.
   - The verified document must be the type and country chosen on the form, and still accepted.
     Otherwise `DocumentNotAcceptedException`, and it stays waiting.
   - A repeated result changes nothing (`UNCHANGED`). A different result after it has ended or been
@@ -2380,37 +2369,42 @@ These cover both sections above. All of them are confirmed by the product owner.
 
 - **Events added:**
   - `ProviderRegisteredIE` gives offering the provider type.
-  - `MemberVerificationEndedIE` is split into `MemberVerificationRejectedIE` and
-    `MemberVerificationExpiredIE`, following the one-event-per-outcome rule.
+  - `MemberVerificationEndedIE` was split into `MemberVerificationRejectedIE` and
+    `MemberVerificationExpiredIE`, following the one-event-per-outcome rule. The expired event was
+    removed later, with the time limit (see "verification on the spot").
 - **Events renamed:** the remaining helper events are renamed for team members, since supervisors are
   members too: `TeamMemberRemovedIE`, `TeamMemberReverifiedIE` and `TeamMemberLapsedIE`. They carry
   `memberId` and the role.
 - **New fields:**
   - The listing events carry `providerType`, `helperIds`, `supervisorIds`, `supervisorFromHelpers` and
     `supervisorFromHours`; a threshold that isn't set is 0.
-  - `HomaPolicyChangedIE` drops the helper limits and adds `faceCheckAttempts`,
-    `verificationSessionExpiry` and `acceptedDocuments`, each written as "holder:type:country", with
-    `*` for any country.
+  - `HomaPolicyChangedIE` drops the helper limits and adds `faceCheckAttempts` and
+    `acceptedDocuments`, each written as "holder:type:country", with `*` for any country.
   - `TeamNamedIE` carries `helperIds` and `supervisorIds`.
-- **54 events in all.**
+- **53 events in all.**
 
 **Not built in the domain:** Homa removing a provider when it learns a team member may not work is
 left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
 
 ## Decided while building: verification on the spot
 
-All of these are waiting for confirmation.
+Adding a team member has no time limit, as the product owner decided: the person verifies there and
+then, on the provider's phone.
 
-- **The expiry:** the 7-day link expiry is replaced by the 1-hour verification session expiry, as
-  `VerificationSessionExpiry` in `policy`, `VerificationLimits.sessionExpiry` in `account` and
-  `verificationSessionExpiry` on `HomaPolicyChangedIE`.
-  - `MemberVerification.expire` ends an unfinished verification from 1 hour after it started.
-- **No session in the domain for a re-verification:** a session that runs out sends no eKYC result. So
-  nothing changes, and the re-check stays open until the due date, as before. The provider starts
-  another session with the person present. The session's timeout is Kenal's and the usecase's (required
-  rule R9 in `docs/homa-usecase-plan.md`).
+- **The time limit is gone:**
+  - The 1-hour session expiry and the 7-day link expiry before it are removed: from `policy`, from
+    `VerificationLimits` and from `HomaPolicyChangedIE`.
+  - `MemberVerification.expire`, the `EXPIRED` status, `VerificationNotExpiredException` and
+    `MemberVerificationExpiredIE` are removed too.
+  - A waiting verification takes its eKYC result whenever it arrives.
+- **An unfinished verification stays waiting.** It is never on the team, never shown to customers, and
+  cannot be named. The provider can start again with a new add form. *To confirm:* whether the
+  provider should be able to discard it, or whether the provider app simply shows the latest one.
+- **Re-verification has no time limit either.** A rejected or abandoned on-the-spot session changes
+  nothing, and the re-check stays open until the due date, as before. The provider starts another
+  session with the person present.
 - **Domain rules unchanged:** that the person is present and uses the provider's phone is how the
-  provider app runs the session. The domain rules do not change.
+  provider app runs the eKYC. The domain rules do not change.
 
 ## Open questions
 

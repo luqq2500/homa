@@ -18,7 +18,7 @@ final class AccountBuilders {
     static final PhoneNumber PHONE = PhoneNumber.of("+60123456789");
     static final String CODE = "482913";
     static final VerificationLimits LIMITS =
-            new VerificationLimits(3, Duration.ofDays(14), Duration.ofDays(14), Duration.ofHours(1));
+            new VerificationLimits(3, Duration.ofDays(14), Duration.ofDays(14));
     static final Country INDONESIA = Country.of("ID");
 
     /** The launch list: Malaysian documents for providers and independent members, any country for business members. */
