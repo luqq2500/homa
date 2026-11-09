@@ -2418,7 +2418,8 @@ and then, on the provider's phone. All of these are confirmed by the product own
 Decided after the domain phase closed. A business provider is verified through **eKYB**. The eKYB
 provider checks the business's SSM registration, and the owner's or director's eKYC is part of the same
 flow. Homa does no check of its own, just as with eKYC. This supersedes the business registration check
-by Homa in "provider types, team roles, documents and face check-in".
+by Homa in "provider types, team roles, documents and face check-in". Everything in this section, including the
+rename of `ekycStatus()` to `verificationStatus()`, is confirmed by the product owner.
 
 **`account`**
 
