@@ -2388,8 +2388,8 @@ left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
 
 ## Decided while building: verification on the spot
 
-Adding a team member has no time limit, as the product owner decided: the person verifies there and
-then, on the provider's phone.
+Adding a team member has no Homa time limit, as the product owner decided: the person verifies there
+and then, on the provider's phone. All of these are confirmed by the product owner.
 
 - **The time limit is gone:**
   - The 1-hour session expiry and the 7-day link expiry before it are removed: from `policy`, from
@@ -2397,12 +2397,18 @@ then, on the provider's phone.
   - `MemberVerification.expire`, the `EXPIRED` status, `VerificationNotExpiredException` and
     `MemberVerificationExpiredIE` are removed too.
   - A waiting verification takes its eKYC result whenever it arrives.
-- **An unfinished verification stays waiting.** It is never on the team, never shown to customers, and
-  cannot be named. The provider can start again with a new add form. *To confirm:* whether the
-  provider should be able to discard it, or whether the provider app simply shows the latest one.
-- **Re-verification has no time limit either.** A rejected or abandoned on-the-spot session changes
-  nothing, and the re-check stays open until the due date, as before. The provider starts another
-  session with the person present.
+- **Kenal owns the session and its timeout.** Kenal runs the on-the-spot session, times out one that
+  is not finished, and always reports a final result:
+  - A timed-out or abandoned session counts as a failed result, `EkycResult.rejected()`. For adding a
+    member, the verification ends (`REJECTED`), nothing is added, and the provider starts again with a
+    new add form. The domain needs no new state, and no verification stays waiting for ever.
+  - The provider app can say "timed out" rather than "rejected" from Kenal's own session status. The
+    rules are the same.
+- **Re-verification works the same way.** A rejected, timed-out or abandoned session changes nothing,
+  and the re-check stays open until the due date, as before. The provider starts another session with
+  the person present.
+- **A lost result is an infra concern.** If Kenal's result never arrives, the provider app or a
+  scheduled job asks Kenal for the session's status. This is not a domain rule.
 - **Domain rules unchanged:** that the person is present and uses the provider's phone is how the
   provider app runs the eKYC. The domain rules do not change.
 
@@ -2419,6 +2425,12 @@ then, on the provider's phone.
 - **Availability at request and acceptance:** checked by the request and accept usecases, not by `Reservation`.
 - **Report evidence:** optional. A reason is required; evidence is encouraged, since some problems (a helper not turning up) have nothing to photograph, and Homa weighs missing evidence when deciding.
 - **Cancellation terms:** `Reservation.cancellationTerms()` gives what the review page shows, using the same base as the cancel rule.
+
+### To check before launch
+
+- **Kenal's sessions:** confirm with Kenal that an on-the-spot session times out when it is not
+  finished, and that Kenal then reports a final result. Homa relies on this instead of setting its own
+  time limit (see "Decided while building: verification on the spot").
 
 ### Answered while building
 

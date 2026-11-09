@@ -378,7 +378,8 @@ limit.
 - **`account`:**
   - `VerificationLimits` holds the re-verification values only.
   - `MemberVerification` has no `expire` and no `EXPIRED` status. A waiting verification takes its
-    result whenever it arrives, and one never finished stays waiting.
+    result whenever it arrives. Kenal times out an unfinished session and reports it as a failed
+    result.
 - **`ie/`:**
   - `MemberVerificationExpiredIE` is removed.
   - `MemberVerificationStartedIE` no longer carries `expiresAt`, and `HomaPolicyChangedIE` no longer
@@ -387,5 +388,8 @@ limit.
 - **Usecase plan:** required rule R9 covers verification on the spot, with no time limit.
 - **Scenarios:** the expiry scenario is removed, and the audit maps 198 of 198.
 - **Gates:** whole build 1,138 tests, 1,472 mutants, all killed.
-- **To confirm:** whether the provider can discard an unfinished verification. The other decisions are
-  in the plan under "Decided while building: verification on the spot".
+- **Kenal's timeout:** Kenal owns the session timeout and always reports a final result. A timed-out
+  session counts as rejected, so no verification stays waiting. All the decisions are confirmed, and
+  are in the plan under "Decided while building: verification on the spot".
+- **To check before launch:** that Kenal's sessions time out and report a final result. This is listed
+  in the plan's open questions.

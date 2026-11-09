@@ -166,10 +166,12 @@ These rules come from decisions made after the domain phase. Each one needs a us
 
 9. **R9. Verification on the spot.** eKYC for adding or re-verifying a team member runs as a Kenal
    session on the provider's phone, with the person scanning their own document and taking their own
-   selfie. There is no time limit.
-   - An unfinished verification stays waiting, and the provider can start again.
-   - A re-verification session that ends without a pass changes nothing, and the re-check stays open
-     until the due date.
+   selfie. Homa sets no time limit: Kenal times out a session that is not finished and reports a final
+   result.
+   - The Kenal adapter turns a timed-out or abandoned session into `EkycResult.rejected()`. When adding,
+     the verification ends and the provider starts again. When re-verifying, nothing changes and the
+     re-check stays open.
+   - If a result never arrives, the adapter or a scheduled job asks Kenal for the session's status.
 
 ## Build order
 
