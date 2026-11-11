@@ -84,7 +84,8 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 Paused: the repository holds the domain modules only for now. The draft plan,
 `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases, how one context gets
-another's data, the required rules R1 to R10, and open questions U1 to U7. It waits for review.
+another's data, the required rules R1 to R10, the admin console (with the founders' growth dashboard
+and rules A1 to A6), and open questions U1 to U11. It waits for review.
 
 ### Decisions taken while building
 

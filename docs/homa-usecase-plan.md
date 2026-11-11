@@ -201,6 +201,116 @@ These rules come from decisions made after the domain phase. Each one needs a us
     - reservation and discovery also update the verified-until date on `ReverificationRequiredIE`, as on
       the other verification events (R6).
 
+## Admin console
+
+The founders' console. The rule: **the Homa console handles only what Homa alone can decide or see, and
+links out for the rest.** The external providers have their own consoles for their own part:
+
+| Need | Where | Why |
+|---|---|---|
+| Identity review: documents, selfies, watchlist hits, KYB evidence, re-verification setup | **KYC provider console** | It holds the evidence and the personal data; copying it into Homa adds risk under the PDPA and no value |
+| Moving money: refund execution, failed payouts, chargebacks, connected accounts, fees, reconciliation, tax reports | **Stripe console** | Stripe is the source of truth for money |
+| Marketplace decisions: cases, flagged providers, held payouts, fines, ratings, team removals, catalogue, Homa-set values | **Homa console** | Only Homa's rules decide these |
+| Growth, retention and marketplace health | **Homa console** | Only Homa has bookings, searches, cities, providers and outcomes together |
+
+The Homa console shows each record's **status** (verified until, lapsed, flagged; payment held,
+refunded) and a **deep link** to the external console, using its reference id. It never copies
+identity documents, selfies or card details.
+
+Every admin usecase follows the conventions above: the actor is `Homa`, and the usecase lives in the
+context that owns the rule, for example `HomaDecideCase implements HomaCaseDecider` in
+`resolution/usecase`. Only the read-only views get a module of their own: `tracking` (below).
+
+### Growth dashboard
+
+The founders' incentive is **customer growth × provider growth × retention growth × revenue growth**.
+The console's home screen shows those four, with trends, defined so they can't be inflated by
+sign-ups that never book:
+
+| Metric | Defined as | Broken down by |
+|---|---|---|
+| **Customer growth** | **Active customers**: booked at least one completed job in the last 90 days. Also new customers, and first-booking conversion | City, how they found Homa (shelf or search), month |
+| **Provider growth** | **Active live providers**: live and completed a job in the last 30 days. Also the onboarding funnel: registered, KYB passed, first team member added, live, first job | City, job, team size |
+| **Retention** | **Customer repeat rate**: a second booking within 60 days of the first. Also monthly cohorts, and provider retention: active providers still active the next month | Cohort, city, provider |
+| **Revenue** | **Net service fee**: the service fee Homa keeps after refunds. Also total booking value and the take rate | City, month, provider |
+
+**Guardrails** sit on the same screen, so growth never costs safety or fairness:
+- request acceptance rate and response time;
+- expiry, cancellation and no-show rates;
+- dispute rate and refunds;
+- face check failures, lapses and serious flags;
+- the **fine waiver rate**, per provider and in total. A provider with repeated waivers is a pattern,
+  not bad luck.
+
+### Usecases at launch: decisions only Homa can make
+
+| Usecase | What it does | Context | Domain call | Event |
+|---|---|---|---|---|
+| `HomaViewCaseQueue` | Open cases, oldest first, with time since opened | resolution | (query) | — |
+| `HomaViewCase` | One case: the reservation, check-in, face checks, evidence and chat. Chat and evidence open only for a case | resolution, through query ports | (query) | — |
+| `HomaDecideCase` | Release, partial refund or full refund, with a reason | resolution | `Case.decide` | `CaseDecidedIE` |
+| `HomaViewFlaggedProviders` | Each seriously flagged business, its disputed reservations and its held payouts | tracking | (query) | — |
+| `HomaCancelFlaggedReservation` | Cancel with a full refund, no fine | reservation | `cancelForProviderFlag` | `ReservationCancelledIE`, `SettlementDecidedIE` |
+| `HomaRestoreFlaggedReservation` | Restore before the booked start, only once the KYC provider cleared the flag | reservation | `restoreAfterFlagCleared` | `ReservationRestoredIE` |
+| `HomaReleasePayout`, `HomaWithholdPayout` | Release a held payout, or keep it back with a reason | payment | `Payout.releaseHold`, `Payout.withhold` | `PayoutHoldReleasedIE`, `PayoutWithheldIE` |
+| `HomaWaiveFine` | Waive what is left of a fine, once, with a **reason category** (customer-caused, emergency, Homa fault, other) and free text | payment | `Fine.waive` | `FineWaivedIE` |
+| `HomaHideRating` | Hide a rating that breaks the rules, with a reason; the averages update | feedback | `Rating.hide`, `RatingSummary.withdraw` | `RatingHiddenIE` |
+| `HomaRemoveTeamMember` | Remove a team member who may not work | account | `TeamMember.remove` | `TeamMemberRemovedIE` |
+| `HomaRequestEarlyRecheck` | Ask the KYC provider for an early re-check, with a reason | account (KYC port) | (none until the KYC provider reports) | — |
+| `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob`, the same for tools, and `HomaCreateShelf` | The job list, tool list and homepage shelves | catalogue | `JobList`, `ToolList`, `Shelf` | `JobAddedIE`, `JobRetiredIE`, … |
+| `HomaChangePolicyValue` | Change one Homa-set value; a new version for new reservations only | policy | `HomaPolicy.change` | `HomaPolicyChangedIE` |
+| `HomaRecordDataRequest`, `HomaCloseDataRequest` | Record and track a PDPA request: see, correct, copy or delete | privacy (usecase only) | (none) | — |
+| `HomaViewProvider` | A provider's page: listing, verified-until date, team, go-live status, fines and waivers, cancellation count, reservations, held payouts; links to the KYC provider and Stripe | tracking | (query) | — |
+| `HomaViewCustomer` | A customer's page: reservations, payment states, reports; links to Stripe | tracking | (query) | — |
+| `HomaViewReservation` | A reservation's timeline: every status change, payment state, check-in, face check and decision, with times | tracking | (query) | — |
+| `HomaViewGrowth` | The growth dashboard and the guardrails | tracking | (query) | — |
+
+### Usecases soon after launch: levers that move the metrics
+
+| Usecase | Moves | What it shows or does |
+|---|---|---|
+| `HomaViewSearchGaps` | Providers, customers | Searches with no match or only close matches, by city, job, day and time: where to recruit providers. Needs U8 |
+| `HomaViewStuckOnboarding` | Providers | Businesses stuck at KYB, with no team member, or missing go-live requirements (`missingForGoLive`), to follow up |
+| `HomaViewSlowResponders` | Retention | Providers with low acceptance or many expired requests, the main cause of a customer's bad first experience |
+| `HomaViewOneTimeCustomers` | Retention | Customers who completed one job and didn't book again within 30 days, for a book-again prompt |
+| `HomaViewShelfPerformance` | Customers, revenue | Bookings and revenue per homepage shelf, to curate better |
+| `HomaViewCity` | All four | Supply against demand per city, before opening a new city |
+
+Later, when there is a team: roles (founders; support agents who read and reply but don't decide cases
+or release payouts), saved views, and exports for investors.
+
+### The `tracking` module
+
+A read-only module with no domain layer. It **listens** to the events already in `ie/` and builds its
+own tables:
+
+| View | Fed by |
+|---|---|
+| Growth dashboard | `CustomerRegisteredIE`, `ReservationRequestedIE`, `ReservationAcceptedIE`, `ReservationCompletedIE`, `ReservationCancelledIE`, `SettlementDecidedIE`, `PaymentRefundedIE`, `ListingWentLiveIE`, `ProviderVerifiedIE`, `TeamMemberAddedIE` |
+| Guardrails | `ReservationExpiredIE`, `ReservationDeclinedIE`, `ReservationCancelledIE`, `ReportFiledIE`, `CaseDecidedIE`, `FaceCheckRecordedIE`, `ProviderVerificationLapsedIE`, `ProviderFlaggedIE`, `FineChargedIE`, `FineWaivedIE` |
+| Provider, customer and reservation pages | Every event about them |
+| Flagged providers | `ProviderFlaggedIE`, `ReservationFlaggedIE`, `ReservationRestoredIE`, `PayoutHeldIE`, `PayoutHoldReleasedIE`, `PayoutWithheldIE` |
+
+Nothing depends on `tracking`. If it falls behind, no business rule is affected. Its tests feed events
+in and check the views; there are no domain rules to test.
+
+### Rules for the console (required, each with a usecase test)
+
+1. **A1. Every decision records who and why.** Each admin action takes the founder's id from
+   authentication (`decidedBy`) and a reason, and both are kept (U9). This matters more because the
+   founders' incentives depend on outcomes they also decide.
+2. **A2. Red-code rules can't be overridden.** A flagged reservation is cancelled with a full refund or
+   restored only once the flag is cleared; the console has no "let it go ahead" action.
+3. **A3. No editing.** Ratings, chats, evidence, check-in and face check records are never edited. A
+   rating can only be hidden, with a reason.
+4. **A4. Personal data only where needed.** Chats and evidence open only for a case. Identity data
+   stays in the KYC provider's console.
+5. **A5. Fine waivers stay exceptional.** A waiver needs a reason category and text, is given once and
+   only for what is left, and leaves the cancellation count unchanged. The waiver rate is on the growth
+   dashboard's guardrails.
+6. **A6. Money moves only through Homa's rules.** The founders never refund or pay out directly in
+   Stripe for a reservation; they decide in the Homa console, and payment instructs Stripe.
+
 ## Build order
 
 Same as the domain: catalogue, policy, account, offering, availability, reservation, payment, resolution,
@@ -233,3 +343,17 @@ tests across contexts.
 7. **U7. Loading aggregates from storage.** Domain constructors are private and generate new ids. The
    infra phase will need a way to rebuild an aggregate as it was saved. *Recommendation:* decide in the
    infra phase. Usecase tests keep the objects in memory.
+8. **U8. Searches aren't recorded.** The search gap report needs every search and its result.
+   *Recommendation:* discovery publishes `SearchPerformedIE` (jobs, start, hours, helpers, city, and the
+   numbers of exact and close matches), with no customer details. Alternatively, record searches as
+   analytics in infra.
+9. **U9. Who decided.** The domain records the reason for a decision, waiver, hide or withhold, but not
+   the founder. *Recommendation:* keep `decidedBy` in a usecase-level audit log for every admin action,
+   rather than on each domain object.
+10. **U10. Removing a provider.** The spec says Homa can remove a provider who learns a team member may
+    not work. It needs a domain rule first: what happens to the listing, waiting requests, accepted
+    reservations and outstanding fines.
+11. **U11. Fine waiver reason categories.** *Recommendation:* the categories (customer-caused, emergency,
+    Homa fault, other) are kept by the usecase with the free text; the domain keeps the text it has
+    today. Promote them to the domain only if a rule ever depends on them.
+
