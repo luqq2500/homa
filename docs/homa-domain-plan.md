@@ -1548,7 +1548,7 @@ Build in this order so each context only needs what already exists. Within `rese
 - **Gherkin is the spec, JUnit is the test.** Each feature above becomes a test class; each scenario a test method named after it; each Examples row a parameterised case. Cucumber is optional: if used, it runs with no Spring, matching the framework-free domain rule.
 ### Test naming convention
 
-Tests are named in the **ubiquitous language** of the bounded context: they describe business behaviour the way a founder or provider would say it, never the method or class being called. A test name should still make sense if the code inside were rewritten.
+Tests are named in the **ubiquitous language** of the bounded context (the glossary is in `docs/homa-domain-stories.md`, under "Ubiquitous language"): they describe business behaviour the way a founder or provider would say it, never the method or class being called. A test name should still make sense if the code inside were rewritten.
 
 **Test classes:** one per feature, named `<Aggregate or domain service><Behaviour>Test`, in the same package as the domain object.
 

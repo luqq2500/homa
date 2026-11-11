@@ -20,6 +20,7 @@ reader can go from a sentence to the rule that enforces it.
 - How to read the stories
 - Actors
 - Work objects
+- Ubiquitous language
 - The cast and the running example
 - Big picture
 - Stories
@@ -107,7 +108,7 @@ Homa's rules never depend on which KYC provider or payment provider is used.
 | *match list* | Exact matches, close matches, and why | `discovery` |
 | *enquiry* | Booking details to chat about before requesting; has no payment | `reservation` |
 | *chat* | One per enquiry or reservation | `conversation` |
-| *request*, *reservation* | The booking, from Requested to its end | `reservation` |
+| *request*, *reservation* | The reservation, from the request to its ending; called a request while it is Requested | `reservation` |
 | *price* | Hours fee, travel fee, provider price, service fee and total | `reservation` |
 | *payment* | A card authorisation or an upfront FPX payment, then held, released or refunded | `payment` |
 | *team assignment* | The helpers and any supervisors named for a reservation | `reservation` |
@@ -117,6 +118,203 @@ Homa's rules never depend on which KYC provider or payment provider is used.
 | *settlement* | Who gets what of the total: provider, Homa and customer | `reservation` |
 | *fine*, *payout* | A provider's fine, and a payout with fine deductions | `payment` |
 | *rating*, *rating summary* | A customer's stars and feedback, and the averages shown | `feedback` |
+
+## Ubiquitous language
+
+These are the words Homa uses, in the spec, the stories, the code and the tests. Each term belongs to one
+bounded context, which owns its meaning. **In the code** names the class, method or value that carries
+it. **Don't say** lists the words that drift from it; use the term instead.
+
+### Across Homa
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Homa** | The platform, acting on its own: applying a rule, reminding, or running a scheduled step | the usecases and domain methods | "the system", "the app" when Homa decides |
+| **Homa founders** | The people who decide cases, waive fines, hide ratings, and set the lists and values | the `Homa…` usecases | "admin", "support" |
+| **Customer** | A homeowner who books and pays | `CustomerAccount`, `Party.CUSTOMER` | "user", "client", "homeowner" in rules |
+| **Provider** | A homecare business registered with SSM that sells its team's time. Every provider is a business | `ProviderAccount`, `Party.PROVIDER` | "vendor", "partner", "cleaner", "individual provider" |
+| **Business** | The provider seen as a registered company: its SSM registration, KYB and payouts | `BusinessRegistration` | "company" in rules |
+| **KYC provider** | The outside service that verifies identities, re-verifies, monitors, and runs face checks. Not named in the rules | the account and reservation ports | a vendor's name, "eKYC", "Kenal" |
+| **Money** | An amount in ringgit, to the sen | `kernel.Money` | "price" for any amount |
+| **Percentage** | A share, rounded half up to the sen when applied | `kernel.Percentage` | "rate" for a share |
+
+### catalogue
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Job list** | Homa's list of jobs that providers choose from | `JobList` | "services", "menu" |
+| **Job** | One kind of home care on the job list, such as kitchen care, in a **job group** | `Job`, `JobCode`, `JobGroup` | "task", "service" |
+| **Tool list**, **tool** | Homa's list of tools that providers say they bring | `ToolList`, `Tool`, `ToolCode` | "equipment" |
+| **Retire** | Take a job or tool off what providers can pick; it is never deleted, and its code is never reused | `JobList.retire`, `ToolList.retire` | "delete", "remove" |
+| **Service area** | The launch cities: Salak Tinggi, Cyberjaya and Putrajaya | `ServiceArea`, `City` | "region", "zone" |
+| **Shelf** | A curated homepage row driven by a **preset search** | `Shelf`, `PresetSearch` | "banner", "collection" |
+
+### policy
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Homa-set values** | The values the policies use, set by Homa; each change is a new version for new reservations only | `HomaPolicy`, `PolicyValue`, `PolicySnapshot` | "settings", "config" |
+| **Service fee** | 15% of the provider price, paid by the customer; how Homa earns | `ServiceFee` | "commission", "platform fee" |
+| **Duration range** | 1 to 6 hours; each provider sets its own hours within it | `DurationRange` | "length" |
+| **Minimum notice**, **booking horizon** | A start must be at least 2 hours from now and at most 30 days ahead | `MinimumNotice`, `BookingHorizon` | "lead time" |
+| **Request expiry time** | 24 hours after the request, or the booked start if sooner | `RequestExpiry` | "timeout" |
+| **Cancellation tier** | The provider's cancellation policy: **Flexible**, **Standard** or **Firm** | `CancellationTier` | "plan", "cancellation level" |
+| **Fee window** | The 24 hours before the booked start, when Standard and Firm charge a fee | `FeeWindow` | "late period" |
+| **Late cancellation fine**, **no-show fine** | The provider's fines: 20% and 30% of the hours fee | `ProviderLateCancellationFine`, `ProviderNoShowFine` | "penalty" |
+| **Fine deduction cap** | At most 50% of a payout goes to fines | `FineDeductionCap` | "limit" |
+| **Team reminder time** | 6 hours before the start, while the team is not named | `TeamReminder` | — |
+| **Earliest check-in**, **check-in period** | Check-in opens 15 minutes before the start and closes 15 minutes after it | `EarliestCheckIn`, `CheckInPeriod` | "grace period" |
+| **Check-in radius** | 300 metres from the customer's location | `CheckInRadius` | "geofence" |
+| **Customer no-show wait**, **customer no-show fee**, **no-show report window** | 15 minutes; travel fee + 30% of the hours fee; 1 hour to challenge | `CustomerNoShowWait`, `CustomerNoShowFee`, `NoShowReportWindow` | — |
+| **Completion reminder time**, **completion deadline** | 30 minutes and 24 hours after the booked end | `CompletionReminder`, `CompletionDeadline` | — |
+| **Dispute window extension**, **evidence retention period** | 1 hour after the later of the end and completion; evidence kept 7 days after resolution | `DisputeWindowExtension`, `EvidenceRetention` | — |
+| **Rating window**, **minimum ratings to show** | 14 days to rate; 3 ratings before an average shows | `RatingWindow`, `MinimumRatingsToShow` | — |
+
+### account
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Customer account** | Name, Malaysian mobile number and address with its city | `CustomerAccount`, `Address` | "profile" |
+| **Phone verification** | A 6-digit SMS code, valid 5 minutes, 5 wrong attempts allowed | `PhoneVerification` | "OTP check" in rules |
+| **KYB** | The KYC provider's verification of a business's SSM registration, with its owner's or director's KYC in the same flow | `KybResult`, `recordKybResult` | "eKYB", "business check by Homa" |
+| **KYC** | The KYC provider's verification of a person's identity: document and live selfie | `KycResult`, `recordKycResult` | "eKYC" |
+| **Verified**, **rejected** | A result from the KYC provider; nothing else is a result | `VerificationStatus.VERIFIED`, `REJECTED` | "approved", "failed" |
+| **Verified-until date** | The date a business or person is verified until, from the KYC provider; a job must end by the business's | `verifiedUntil()` | "expiry date", "due date" |
+| **Re-verification** | Verifying again: businesses every year, team members every year and when their document expires | `recordKybResult`, `recordKycResult` returning `REVERIFIED` | "renewal", "re-check" for the regular one |
+| **Re-verification required** | Monitoring asks for re-verification by a date; the business or person keeps working, and the verified-until date moves sooner | `requireReverification` | "warning", "soft lapse" |
+| **Lapse**, **lapsed** | A missed re-verification, reported by the KYC provider: a business is paused, a team member leaves the team, until they pass | `lapse()`, `VerificationStatus.LAPSED`, `TeamStatus.LAPSED` | "expired", "suspended", "deactivated" |
+| **Serious flag** | A confirmed red-code finding from monitoring, such as struck off or a sanctions match: the business lapses at once | `recordSeriousFlag`, `seriousFlag()` | "warning", "suspension" |
+| **Early re-check** | Homa asks the KYC provider to re-verify sooner, with a reason | the `HomaRequestEarlyRecheck` usecase | "audit" |
+| **Verification outcome** | What a result did: `VERIFIED`, `REJECTED`, `REVERIFIED`, `RECHECK_FAILED` or `UNCHANGED` | `VerificationOutcome` | — |
+| **Team** | Everyone verified to work for a provider | the team members of one provider | "staff", "crew", "employees" |
+| **Team member** | A verified helper or supervisor on a provider's team; has no account | `TeamMember`, `TeamStatus.MEMBER` | "staff", "worker", or "helper" when it could be a supervisor |
+| **Helper** | A team member who does the booked jobs; the customer books and pays for helpers | `TeamRole.HELPER` | "cleaner", "maid" |
+| **Supervisor** | A team member in charge on site; not counted or charged as a helper | `TeamRole.SUPERVISOR` | "lead", "manager" |
+| **Add form** | What the provider fills in to add a team member: role, profile photo and the lawful-employment confirmation | `MemberVerification.start` | "invite" |
+| **Waiting for verification** | Added on the form, not yet verified: not on the team | `MemberVerificationStatus.WAITING` | "invited", "pending member" |
+| **Lawful-employment confirmation** | The provider's confirmation, for one person, that they are lawfully employed or engaged and allowed to work in Malaysia | `EmploymentConfirmation` | "work permit check" |
+| **Registered name** | The name on a person's identity document, from the KYC result; nobody types it | `registeredName()` | "display name", "nickname" |
+| **Remove** | The provider or Homa takes a team member off; they cannot come back | `TeamMember.remove` | "fire", "delete" |
+| **Payout account** | The business bank account Stripe pays out to | `recordPayoutAccountReady` | "wallet" |
+
+### offering
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Listing** | What a provider sells: profile, jobs, tools, pricing, hours, helpers, cities, tier, team and supervisor rule | `ProviderListing` | "shop", "store", "profile" for the whole |
+| **Profile** | The listing's display name and picture | `Profile` | — |
+| **Draft**, **live** | A listing being set up, and one customers can find and request | `isLive()`, `goLive` | "published", "active" |
+| **Go-live requirement** | Something still missing before going live, listed for the provider | `GoLiveRequirement` | — |
+| **Go offline** | A live listing stops being live, for example with no helper left | `updateRoster` | "unpublish" |
+| **Paused** | Live, but taking no new requests, because the business lapsed or was flagged | `pause`, `isPaused`, `takesRequests` | "suspended", "hidden" |
+| **Hourly rate** | The flat rate per helper per hour | `HourlyRate` | "price" |
+| **Travel fee** | A **separate** flat fee, or **included** in the price | `TravelFee` | "transport fee", "call-out fee" |
+| **Hours range**, **helpers range** | The provider's own minimum and maximum hours and helpers per booking | `HoursRange`, `HelpersRange` | — |
+| **Team roster** | The provider's team members by role, as the listing knows them: helpers and supervisors | `TeamRoster` | "team list" |
+| **Supervisor rule** | When a supervisor is sent: from a number of helpers, of hours, or both | `SupervisorRule` | "supervisor threshold" in code |
+| **Offering snapshot** | What a reservation copies from the listing at request time | `OfferingSnapshot` | — |
+
+### availability
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Calendar** | A provider's availability windows, synced busy blocks, holds and buffer | `ProviderCalendar` | "schedule" |
+| **Availability window** | A stretch when the provider can work | `AvailabilityWindow` | "opening hours" |
+| **Busy block** | A synced calendar event | `BusyBlock` | "appointment" |
+| **Hold** | An accepted reservation's slot in the calendar | `ReservationHold`, `hold`, `release` | "lock" |
+| **Buffer between jobs** | Time kept free before and after each accepted job | `setBufferBetweenJobs` | "gap" |
+
+### discovery
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Search** | Jobs, start, hours, helpers and city | `SearchCriteria` | "query", "filter" |
+| **Exact match** | Covers the city, offers every job, fits the helpers and hours, and is free at the chosen time | `Match.EXACT` | "perfect match" |
+| **Close match** | Offers some of the jobs, or is free within 2 hours either side | `Match.CLOSE`, `NEAR_THE_CHOSEN_TIME` | "partial match", "similar" |
+| **No match** | Fails a rule, with its **match reason** | `Match.NONE`, `MatchReason` | — |
+
+### reservation
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Enquiry** | Booking details to chat about before requesting; no payment and not a status | `Enquiry` | "draft booking", "quote" |
+| **Reservation** | A booking from the customer's request to its ending | `Reservation` | "order", "appointment" |
+| **Request** | A reservation while it is **Requested**, waiting for the provider | `Reservation.request`, `ReservationStatus.REQUESTED` | "booking request" |
+| **Booking**, **booked** | What the customer chose: jobs, start, hours, helpers and address; the *booked start* and *booked end* | `ReservationDetails` | — |
+| **Reservation status** | Requested, Reserved, Declined, Expired, Cancelled, Disputed or Completed | `ReservationStatus` | "state" for these |
+| **Hours fee** | Hourly rate per helper × helpers × hours; supervisors aren't charged | `PriceBreakdown.hoursFee` | "labour cost" |
+| **Provider price** | The hours fee plus a separate travel fee | `PriceBreakdown.providerPrice` | "subtotal" |
+| **Total** | Provider price plus service fee: what the customer pays | `PriceBreakdown.total` | "price" alone |
+| **Cancellation terms** | What cancelling costs, and from when, as the review page shows it | `cancellationTerms()` | — |
+| **Team assignment** | The helpers and any supervisors named for a reservation | `TeamAssignment`, `nameTeam` | "crew", "lead" |
+| **Location check** | The first step of check-in: the device within the check-in radius | `checkIn`, `CheckIn` | "check-in" alone |
+| **Face check** | A named person's live selfie matched by the KYC provider; one final result each, **passed** or **failed** | `recordFaceCheck`, `FaceCheck`, `FaceCheckResult` | "selfie check", "attempt" |
+| **Checked in** | Check-in complete: the location check and the first face pass, or a face check outage | `isCheckedIn`, `checkedInAt` | "arrived" |
+| **Can work** | A named person who passed their face check, or covered by an outage | `canWork` | — |
+| **Provider no-show** | No check-in by the end of the check-in period | `markProviderNoShow`, `Ending.PROVIDER_NO_SHOW` | — |
+| **Customer no-show** | The customer isn't there after the wait; the provider earns the customer no-show fee | `reportCustomerNoShow`, `Ending.CUSTOMER_NO_SHOW` | — |
+| **Challenge** | The customer reports a wrongful customer no-show | `challengeNoShow` | "appeal" |
+| **Completion** | The provider's photo or video evidence that the job is done | `submitCompletion`, `Completion`, `EvidenceRef` | "done", "finished" as a status |
+| **Dispute window** | From the booked start to the extension after the later of the end and completion | `disputeWindowEndsAt`, `closeDisputeWindow` | "review period" |
+| **Report** | One party's problem: **during the job** or **with the finished work** | `fileReport`, `Report`, `ReportType` | "complaint", "ticket" |
+| **Settlement** | Who gets what of the total: provider earning, service fee, customer refund | `Settlement` | "payout" |
+| **Ending** | Why a reservation ended, which decides the settlement | `Ending` | — |
+| **Fine charge** | A fine the reservation raises: late cancellation or no-show | `FineCharge`, `FineReason` | "penalty" |
+| **Verified for the whole job** | A job must end by the business's verified-until date, at request, edit and acceptance | `request`, `edit`, `accept` with `providerVerifiedUntil` | — |
+| **Flagged reservation** | An accepted reservation of a seriously flagged business: Disputed, then cancelled with a full refund, or restored if cleared before the start | `disputeForProviderFlag`, `cancelForProviderFlag`, `restoreAfterFlagCleared`, `Ending.PROVIDER_FLAGGED` | "suspended booking" |
+
+### payment
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Payment** | The customer's money for a reservation, by card or FPX | `Payment`, `PaymentMethod` | "transaction" |
+| **Authorised**, **authorisation released** | A card checked and nothing charged; let go when the request ends before acceptance | `PaymentState.AUTHORISED`, `AUTHORISATION_RELEASED` | "pre-charge" |
+| **Held**, **released**, **refunded** | Paid and held by Homa; paid to the provider; returned to the customer | `PaymentState.HELD`, `RELEASED`, `REFUNDED` | "escrow" |
+| **Capture** | Charging an authorised card when the provider accepts | `capture` | — |
+| **Payout** | What one reservation pays the provider, less fines deducted | `Payout`, `PayoutKind` | "settlement" |
+| **Fine** | A provider's fine, deducted from later payouts for completed jobs | `Fine`, `FineDeductionPolicy` | "penalty" |
+| **Waive** | Homa clears what is left of a fine, with a reason, once | `Fine.waive` | "forgive", "cancel a fine" |
+| **Held payout**, **withheld** | A flagged business's payout waiting for the founders, and one they kept back | `PayoutStatus.HELD`, `WITHHELD`, `hold`, `releaseHold`, `withhold` | "frozen" |
+
+### resolution
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Case** | One entry in the founders' queue for a reservation, with its evidence | `Case`, `CaseSource` | "ticket" |
+| **Decision** | **Release**, **partial refund** or **full refund**, with a short reason | `Decision`, `Case.decide` | "verdict", "ruling" |
+| **At stake** | The most the provider can receive: the provider price, or the no-show fee for a challenge | `atStake()` | — |
+
+### conversation
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Chat** | The messages for one enquiry or reservation; only the customer starts one | `Conversation`, `ChatSubject` | "thread", "inbox" for one chat |
+| **Archive** | A closed enquiry's chat, still readable | `archive` | "delete" |
+
+### feedback
+
+| Term | Meaning | In the code | Don't say |
+|---|---|---|---|
+| **Rating** | A customer's stars for a Completed reservation, once | `Rating` | "review" |
+| **Overall stars**, **category stars** | 1 to 5 stars; overall is required, categories optional | `Stars`, `ProviderCategory`, `HelperCategory` | "score" |
+| **Provider rating** | Overall stars, provider categories and optional written feedback | `ProviderRating` | — |
+| **Helper rating** | Overall stars and helper categories for one named team member, helper or supervisor; no written feedback | `HelperRating` | "staff review" |
+| **Rating summary** | The averages shown once there are enough ratings | `RatingSummary` | "score card" |
+| **Hide** | Homa takes a rating that breaks the rules out of the averages, with a reason; never edited | `Rating.hide` | "delete", "edit" |
+
+### Words to avoid
+
+- **"eKYC", "eKYB", "Kenal":** say **KYC**, **KYB** and **the KYC provider**. The provider is still to be
+  chosen, and the rules don't depend on it.
+- **"Independent provider":** every provider is a business.
+- **"Invite", "invited helper":** a person is added on the **add form** and is **waiting for
+  verification** until the KYC provider verifies them.
+- **"Lead":** the person in charge on site is a **supervisor**.
+- **"Helper" for anyone on the team:** say **team member** when it could be a supervisor.
+- **"Check-in" for the location step alone:** say **location check**; **checked in** means complete.
+- **"Expired" for a verification:** say **lapsed**. "Expired" is a request's status.
+- **"Suspended":** say **paused** for a listing, **lapsed** for verification. Suspension is not in the MVP.
+- **"Due date" for verification:** say **verified-until date**.
 
 ## The cast and the running example
 
@@ -458,7 +656,7 @@ the review page. Every chat reminds both sides that payments and messages outsid
 
 ### 10. The provider answers the request
 
-**Goal:** Kemas confirms Sarah's booking.
+**Goal:** Kemas confirms Sarah's request.
 
 1. **Nur Aina** opens the *request*.
 2. **Nur Aina** accepts it.
@@ -700,7 +898,7 @@ dispute window. A partial refund gives the provider any amount from RM0 up to wh
   Homa), with a reason. It no longer counts.
 
 **Rules:** a rating is an opinion and never changes a payout, a fine or a decision; there is no written
-feedback about an individual worker; Homa never edits a rating.
+feedback about an individual team member; Homa never edits a rating.
 
 **In the code:** `feedback` (`Rating.submit`, `hide`; `RatingSummary.record`, `withdraw`,
 `isOverallShown`, `isCategoryShown`). Events: `RatingSubmittedIE`, `RatingHiddenIE`.
