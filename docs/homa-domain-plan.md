@@ -2812,6 +2812,14 @@ Feature: A seriously flagged provider's payouts
   checks the flag; the domain checks that the booked start hasn't come.
 - A withheld payout stays with Homa; what happens to it next, such as with the authorities, is outside
   the domain.
+- **A serious flag is a red-code event: Homa does not compromise.** Confirmed by the product owner.
+  - **A job under way** is always cancelled with a full refund, and the provider earns nothing for the
+    partial work.
+  - **The timing rules:** restoring is possible only before the booked start. A flagged reservation is
+    never a provider no-show, so there is no fine. A job whose completion was submitted stands, with its
+    payout held.
+  - **What the app must do:** tell the team on site to stop and leave, and tell the customer at the
+    same moment. The `ProviderFlaggedIE` handler runs promptly (usecase rule R10).
 
 ## Open questions
 

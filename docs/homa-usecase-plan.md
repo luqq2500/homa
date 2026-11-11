@@ -194,6 +194,9 @@ These rules come from decisions made after the domain phase. Each one needs a us
     - payment holds the business's payouts on `ProviderFlaggedIE` (`Payout.hold`), including payouts
       created later, until the founders release or withhold each (`HomaReleasePayout`,
       `HomaWithholdPayout`). Only payable payouts are sent to Stripe.
+    - The handler runs promptly: the provider app tells the team on site to stop and leave, and the
+      customer is told at the same moment. A job under way is cancelled with a full refund, with nothing
+      paid for the partial work.
     - offering pauses the listing, as on a lapse.
     - reservation and discovery also update the verified-until date on `ReverificationRequiredIE`, as on
       the other verification events (R6).
