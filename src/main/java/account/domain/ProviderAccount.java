@@ -2,13 +2,14 @@ package account.domain;
 
 import account.domain.exception.ProviderNotVerifiedException;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
  * A provider: a business registered with SSM. Homa has only business providers. The KYC provider verifies
- * the business through KYB, with its owner's or director's KYC in the same flow, and re-verifies it on its
- * own schedule; Homa records the results and does no check of its own. A business starts with no team
- * members and adds its helpers and supervisors.
+ * the business through KYB, with its owner's or director's KYC in the same flow, re-verifies it every year,
+ * and monitors it in between; Homa records the results and does no check of its own. A business starts
+ * with no team members and adds its helpers and supervisors.
  */
 public final class ProviderAccount {
 
@@ -18,6 +19,7 @@ public final class ProviderAccount {
     private BusinessRegistration businessRegistration;
     private Instant verifiedUntil;
     private Instant lastVerifiedAt;
+    private String seriousFlag;
     private boolean payoutAccountReady;
 
     private ProviderAccount(String id, PhoneNumber phone) {
@@ -50,6 +52,34 @@ public final class ProviderAccount {
             throw new ProviderNotVerifiedException(id, status);
         }
         status = VerificationStatus.LAPSED;
+    }
+
+    /**
+     * The KYC provider's monitoring found a change, such as a new director, and asks for re-verification by
+     * {@code deadline}. The business keeps working, and its verified-until date moves to the deadline if
+     * that is sooner; it never moves later.
+     */
+    public void requireReverification(String reason, Instant deadline) {
+        AccountText.require(reason, "A reason for re-verification");
+        Objects.requireNonNull(deadline);
+        if (status != VerificationStatus.VERIFIED) {
+            throw new ProviderNotVerifiedException(id, status);
+        }
+        verifiedUntil = deadline.isBefore(verifiedUntil) ? deadline : verifiedUntil;
+    }
+
+    /**
+     * The KYC provider's monitoring found a serious flag, such as the business being struck off or a
+     * sanctions match: the business lapses at once. Its upcoming accepted reservations are disputed and
+     * cancelled with a full refund. A later pass clears the flag.
+     */
+    public void recordSeriousFlag(String reason) {
+        String why = AccountText.require(reason, "A reason for the flag");
+        if (status != VerificationStatus.VERIFIED && status != VerificationStatus.LAPSED) {
+            throw new ProviderNotVerifiedException(id, status);
+        }
+        status = VerificationStatus.LAPSED;
+        seriousFlag = why;
     }
 
     /** Records that the payment provider reports the business bank account as ready for payouts. */
@@ -93,6 +123,11 @@ public final class ProviderAccount {
         return payoutAccountReady;
     }
 
+    /** Why the KYC provider seriously flagged the business; empty when it is not flagged. */
+    public Optional<String> seriousFlag() {
+        return Optional.ofNullable(seriousFlag);
+    }
+
     /** Not verified before: pending, or rejected and redoing it. */
     private boolean isFirstVerification() {
         return status == VerificationStatus.PENDING || status == VerificationStatus.REJECTED;
@@ -114,6 +149,7 @@ public final class ProviderAccount {
         businessRegistration = business;
         verifiedUntil = until;
         lastVerifiedAt = now;
+        seriousFlag = null;
         status = VerificationStatus.VERIFIED;
         return first ? VerificationOutcome.VERIFIED : VerificationOutcome.REVERIFIED;
     }

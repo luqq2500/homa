@@ -402,6 +402,27 @@ public final class Reservation {
     }
 
     /** The dispute window ended with no report: the job is completed and the payment is released. */
+    /**
+     * The KYC provider seriously flagged the provider's business, for example struck off or a sanctions
+     * match. An accepted reservation whose job is not completed moves to Disputed at once: the team cannot
+     * check in, and nobody files reports on it.
+     */
+    public void disputeForProviderFlag(Instant now) {
+        requireStatus(ReservationStatus.RESERVED, "disputed for a flagged provider");
+        requireNoCompletion();
+        status = ReservationStatus.DISPUTED;
+        ending = Ending.PROVIDER_FLAGGED;
+    }
+
+    /** Homa cancels a reservation disputed for a flagged provider, with a full refund and no fine. */
+    public Settlement cancelForProviderFlag(Instant now) {
+        if (status != ReservationStatus.DISPUTED || ending != Ending.PROVIDER_FLAGGED) {
+            throw new InvalidStatusTransitionException(status, "cancelled for a flagged provider");
+        }
+        status = ReservationStatus.CANCELLED;
+        return settle(Money.ZERO, now);
+    }
+
     public Settlement closeDisputeWindow(Instant now) {
         requireStatus(ReservationStatus.RESERVED, "completed");
         Instant windowEnds = disputeWindowEndsAt().orElseThrow(CompletionNotSubmittedException::new);
@@ -419,6 +440,9 @@ public final class Reservation {
      */
     public Settlement resolve(CaseDecision decision, Instant now) {
         requireStatus(ReservationStatus.DISPUTED, "resolved");
+        if (ending == Ending.PROVIDER_FLAGGED) {
+            throw new InvalidStatusTransitionException(status, "resolved; a flagged provider's reservation is cancelled with a full refund");
+        }
         boolean challengedNoShow = ending == Ending.CUSTOMER_NO_SHOW;
         Money atStake = challengedNoShow ? customerNoShowFee() : price.providerPrice();
         Money earning = decision.providerEarning(atStake);

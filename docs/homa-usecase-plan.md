@@ -51,7 +51,7 @@ fed by event handlers and stored behind its own out port:
 | offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
-| reservation, discovery | each business's verified-until date | `ProviderVerifiedIE`, `ProviderReverifiedIE` |
+| reservation, discovery | each business's verified-until date | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `ReverificationRequiredIE` |
 | discovery | each live listing's search fields | the listing events |
 | conversation | customer names | `CustomerRegisteredIE` |
 
@@ -77,6 +77,7 @@ Availability is the exception: a request needs a live answer (see U1).
 - Provider: `ProviderRegisterAccount`; `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC)
 - Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens the KYC provider's re-verification for the business or a team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`
 - The KYC provider reporting back (webhooks, R9): `KycRecordBusinessResult`, `KycRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7), `KycRecordTeamMemberResult` and `KycRecordLapse` publish one event per `VerificationOutcome`, and nothing for `UNCHANGED` (see required rule R1)
+- Ongoing monitoring (webhooks): `KycRecordReverificationRequired` → `ReverificationRequiredIE`; `KycRecordSeriousFlag` → `ProviderFlaggedIE` for a business, or `TeamMemberLapsedIE` for a team member
 - Early re-check: `HomaRequestEarlyRecheck` asks the KYC provider for one, with a reason; nothing changes in Homa until the KYC provider reports a pass or a lapse
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
@@ -96,6 +97,7 @@ Availability is the exception: a request needs a live answer (see U1).
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
+- Flagged providers: the `ProviderFlaggedIE` handler disputes each accepted reservation whose job isn't completed → `ReservationFlaggedIE`; `HomaCancelFlaggedReservation` (from the case queue) → `ReservationCancelledIE` and `SettlementDecidedIE` (R10)
 - Handlers: `CaseDecidedIE` (resolve), `HomaPolicyChangedIE`, the listing events
 
 **payment**
@@ -177,6 +179,16 @@ These rules come from decisions made after the domain phase. Each one needs a us
      registered name, SSM registration or verified-until date is refused by the domain.
    - **A safety net:** if a result never arrives, a scheduled job asks the KYC provider for the status of
      checks that have been waiting too long.
+
+10. **R10. A seriously flagged provider's reservations.** When `ProviderFlaggedIE` arrives:
+    - reservation disputes every accepted reservation of that provider whose job isn't completed
+      (`disputeForProviderFlag`) and publishes `ReservationFlaggedIE`. The customer is told straight
+      away.
+    - Each one appears in the founders' queue, and `HomaCancelFlaggedReservation` cancels it with a
+      full refund (`cancelForProviderFlag`), with no fine and no cancellation fee.
+    - offering pauses the listing, as on a lapse.
+    - reservation and discovery also update the verified-until date on `ReverificationRequiredIE`, as on
+      the other verification events (R6).
 
 ## Build order
 

@@ -196,6 +196,8 @@ CustomerAccount.changeAddress(Address address)
 ProviderAccount.register(PhoneVerification verified)
 ProviderAccount.recordKybResult(KybResult result, Instant now) : VerificationOutcome
 ProviderAccount.lapse()                          // the KYC provider reports a missed re-verification
+ProviderAccount.requireReverification(String reason, Instant deadline)   // monitoring: verified-until moves sooner
+ProviderAccount.recordSeriousFlag(String reason)                         // monitoring: lapses at once
 ProviderAccount.recordPayoutAccountReady()
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready
 
@@ -203,7 +205,8 @@ MemberVerification.start(String providerId, TeamRole role, Photo photo, Employme
 MemberVerification.recordKycResult(KycResult result, Instant now) : VerificationOutcome
 TeamMember.add(MemberVerification verified, Instant now)
 TeamMember.recordKycResult(KycResult result, Instant now) : VerificationOutcome   // re-verification
-TeamMember.lapse()                                           // the KYC provider reports a missed re-verification
+TeamMember.lapse()                                           // the KYC provider reports a missed re-verification or a serious flag
+TeamMember.requireReverification(String reason, Instant deadline)       // monitoring, such as an expiring document
 TeamMember.remove()                                          // removes a member -> REMOVED
 TeamMember.isTeamMember() : boolean                          // true only for MEMBER
 ```
@@ -584,6 +587,8 @@ Reservation.checkIn(int distanceMetres, Instant now)                 // the loca
 Reservation.recordFaceCheck(String memberId, FaceCheckResult result, Instant now)
 Reservation.recordFaceCheckUnavailable(Instant now)
 Reservation.markProviderNoShow(Instant now) : CancellationResult
+Reservation.disputeForProviderFlag(Instant now)                       // the provider's business was seriously flagged
+Reservation.cancelForProviderFlag(Instant now) : Settlement           // full refund, no fine
 Reservation.reportCustomerNoShow(Instant now) : Settlement
 Reservation.challengeNoShow(Instant now)
 Reservation.submitCompletion(List<EvidenceRef> evidence, Instant now)
@@ -1465,6 +1470,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `TeamMemberLapsedIE` | account | offering | `TeamMember.lapse` |
 | `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `REVERIFIED`, with `verifiedUntil()` |
 | `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
+| `ReverificationRequiredIE` | account | reservation, discovery, (notifications) | `ProviderAccount.requireReverification`, `TeamMember.requireReverification` |
+| `ProviderFlaggedIE` | account | offering, reservation, (notifications) | `ProviderAccount.recordSeriousFlag` |
 | `TeamMemberRemovedIE` | account | offering | `TeamMember.remove` |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
@@ -1485,6 +1492,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `FaceCheckRecordedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` |
 | `CheckInCompletedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` with the first pass, or `Reservation.recordFaceCheckUnavailable` |
 | `CompletionSubmittedIE` | reservation | (notifications) | `Reservation.submitCompletion` |
+| `ReservationFlaggedIE` | reservation | (notifications, admin) | `Reservation.disputeForProviderFlag` |
 | `ReportFiledIE` | reservation | resolution | `Reservation.fileReport` |
 | `NoShowChallengedIE` | reservation | resolution | `Reservation.challengeNoShow` |
 | `CompletionDeadlineMissedIE` | reservation | resolution | `Reservation.missCompletionDeadline` |
@@ -1736,7 +1744,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 50 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2519,8 +2527,8 @@ Feature: Business verification through eKYB
 ## Change after the domain phase: business providers only, verification by a KYC provider
 
 Decided after the domain phase closed. Homa's development focuses on value for homeowners and homecare
-providers, so identity verification is handled entirely by a KYC provider (to be chosen; Persona is one
-candidate). Homa has only business providers. Confirmed by the product owner.
+providers, so identity verification is handled entirely by a KYC provider (to be chosen; Persona and Innov8tif are
+candidates). Homa has only business providers. Confirmed by the product owner.
 
 **What moves to the KYC provider:** the verification onboarding pages, KYB with the owner's or director's
 KYC, team members' KYC on the spot, the accepted documents, face matching (at onboarding and at
@@ -2654,6 +2662,94 @@ Feature: Face check at check-in by the KYC provider
 - **The registered name** follows the latest pass.
 - **The lawful-employment confirmation** stays in Homa: it is Homa's terms, not an identity check.
 
+
+## Change after the domain phase: ongoing monitoring and annual re-verification
+
+Decided after the domain phase closed, and confirmed by the product owner. A business's registration
+does not expire, but it can change. So the KYC provider:
+- re-verifies businesses **every year**;
+- re-verifies team members **every year and when their identity document expires**;
+- **monitors** both in between, and tells Homa what it finds.
+
+The cadence is the KYC provider's setting, so the domain needs no change for it. The monitoring signals
+are new.
+
+**`account`**
+
+- `ProviderAccount.requireReverification(reason, deadline)` and
+  `TeamMember.requireReverification(reason, deadline)` record "re-verification needed by a date", for
+  example after a director change or before a document expires.
+  - The business or person keeps working, and the verified-until date moves to the deadline if that is
+    sooner, never later.
+  - Only a verified business or a member on the team takes one (`ProviderNotVerifiedException`,
+    `NotATeamMemberException`, `TeamMemberRemovedException`).
+  - A reason and a deadline are required.
+  - If they don't pass by the date, the KYC provider reports the lapse, as before.
+- `ProviderAccount.recordSeriousFlag(reason)` records a serious flag, such as being struck off, wound up
+  or dissolved, or a sanctions match.
+  - The business lapses at once, from verified or already lapsed, and keeps the reason
+    (`seriousFlag()`).
+  - A later pass clears the flag.
+  - A seriously flagged team member is lapsed with `TeamMember.lapse()`.
+
+**`reservation`**
+
+- `disputeForProviderFlag(now)`: when the provider's business is seriously flagged, every accepted
+  reservation whose job is not completed moves to **Disputed**, with the ending `PROVIDER_FLAGGED`. The
+  team cannot check in, and nobody files reports on it. A job whose completion was submitted is not
+  disputed.
+- `cancelForProviderFlag(now)`: Homa cancels it, ending **Cancelled** with a full refund, no fine and no
+  cancellation fee.
+- Only a flagged reservation is cancelled this way, and only once. `resolve` refuses it, because a full
+  refund is the only outcome.
+
+**`ie/`:** `ReverificationRequiredIE`, `ProviderFlaggedIE` and `ReservationFlaggedIE` are added, which
+makes 53 events. offering pauses the listing on `ProviderFlaggedIE`, as on a lapse. reservation disputes
+the upcoming accepted reservations.
+
+```gherkin
+Feature: Ongoing monitoring by the KYC provider
+  Background:
+    Given Kemas and Aina are verified until 1 April
+
+  Scenario: A required re-verification moves the date sooner
+    When the KYC provider asks Kemas to re-verify by 15 February, because a director changed
+    Then Kemas is verified until 15 February and keeps working
+
+  Scenario: A required re-verification never moves the date later
+    When the KYC provider asks Kemas to re-verify by 1 May
+    Then Kemas is still verified until 1 April
+
+  Scenario: An expiring document moves a team member's date sooner
+    When the KYC provider asks Aina to re-verify by 10 March, because her passport expires
+    Then Aina is verified until 10 March and stays on the team
+
+  Scenario: A serious flag lapses the business at once
+    When the KYC provider reports that Kemas was struck off the SSM register
+    Then Kemas is lapsed and not ready for go-live
+
+  Scenario: A pass after a flag clears it
+    Given Kemas was seriously flagged
+    When its KYB is VERIFIED again
+    Then Kemas is verified and no longer flagged
+
+Feature: A seriously flagged provider
+  Scenario: An accepted reservation is disputed when the provider is flagged
+    Given a reserved booking with Kemas
+    When Kemas is seriously flagged
+    Then the reservation is Disputed
+
+  Scenario: A flagged reservation is cancelled with a full refund and no fine
+    Given a reservation disputed because Kemas was flagged
+    When Homa cancels it
+    Then the reservation is Cancelled and Sarah is refunded RM230.00
+
+  Scenario: A completed job is not disputed for a flag
+    Given Kemas submitted completion for a job
+    When Kemas is seriously flagged
+    Then it is rejected with CompletionAlreadySubmittedException
+```
+
 ## Open questions
 
 ### Decided
@@ -2670,10 +2766,12 @@ Feature: Face check at check-in by the KYC provider
 
 ### To check before launch
 
-- **The KYC provider:** choose it (Persona is one candidate), and confirm that it meets Homa's
+- **The KYC provider:** choose it (Persona and Innov8tif are candidates), and confirm that it meets Homa's
   requirements: KYB with the owner's or director's KYC; a Malaysian owner or director; team members
-  from any country; on-the-spot checks on the provider's phone; re-verification every 3 months with a
-  reminder; early re-checks on request; face checks at check-in with a limit on attempts; and a final
+  from any country; on-the-spot checks on the provider's phone; re-verification every year for
+  businesses, and every year and on document expiry for team members, with a reminder; ongoing
+  monitoring that reports "re-verification needed by a date" and serious flags; early re-checks on
+  request; face checks at check-in with a limit on attempts; and a final
   result for every check, including a timed-out session.
 - **Data protection:** a data processing agreement with the KYC provider, and the PDPA's rules on
   transfers if it processes data outside Malaysia.

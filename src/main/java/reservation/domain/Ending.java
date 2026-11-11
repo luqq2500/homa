@@ -19,5 +19,7 @@ public enum Ending {
     /** The dispute window closed with no report. */
     COMPLETED,
     /** Homa decided a disputed reservation. */
-    DECIDED_BY_HOMA
+    DECIDED_BY_HOMA,
+    /** The KYC provider seriously flagged the provider's business: Homa disputed and cancelled it with a full refund. */
+    PROVIDER_FLAGGED
 }

@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **216** scenarios: **204 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **224** scenarios: **212 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -17,6 +17,7 @@ The plan has **216** scenarios: **204 have a test**, and **12 are retired** beca
 - seven in "Business verification through eKYB"; the older "A business cannot go live before its
   registration is checked" now maps to the go-live test
 - eleven in the features for business providers only and verification by a KYC provider
+- eight in the features for ongoing monitoring and a seriously flagged provider
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -273,6 +274,14 @@ Two scenarios map to more than one test:
 | 214 | The KYC provider re-verifies a team member | A lapsed member leaves the team until they pass | `TeamMemberReverificationTest` | `aLapsedMemberLeavesTheTeam`, `aLapsedMemberWhoPassesRejoinsTheTeam` |
 | 215 | Face check at check-in by the KYC provider | A person whose face check failed cannot work | `ReservationFaceCheckTest` | `aPersonWhoseFaceCheckFailedCannotWork` |
 | 216 | Face check at check-in by the KYC provider | Each person has one face check result | `ReservationFaceCheckTest` | `eachPersonHasOneFaceCheckResult` |
+| 217 | Ongoing monitoring by the KYC provider | A required re-verification moves the date sooner | `OngoingMonitoringTest` | `aRequiredReverificationMovesTheDateSooner` |
+| 218 | Ongoing monitoring by the KYC provider | A required re-verification never moves the date later | `OngoingMonitoringTest` | `aRequiredReverificationNeverMovesTheDateLater` |
+| 219 | Ongoing monitoring by the KYC provider | An expiring document moves a team member's date sooner | `OngoingMonitoringTest` | `anExpiringDocumentMovesTheDateSooner` |
+| 220 | Ongoing monitoring by the KYC provider | A serious flag lapses the business at once | `OngoingMonitoringTest` | `aSeriousFlagLapsesTheBusinessAtOnce` |
+| 221 | Ongoing monitoring by the KYC provider | A pass after a flag clears it | `OngoingMonitoringTest` | `aPassAfterAFlagClearsIt` |
+| 222 | A seriously flagged provider | An accepted reservation is disputed when the provider is flagged | `ReservationProviderFlagTest` | `anAcceptedReservationIsDisputedWhenTheProviderIsFlagged` |
+| 223 | A seriously flagged provider | A flagged reservation is cancelled with a full refund and no fine | `ReservationProviderFlagTest` | `aFlaggedReservationIsCancelledWithAFullRefundAndNoFine` |
+| 224 | A seriously flagged provider | A completed job is not disputed for a flag | `ReservationProviderFlagTest` | `aCompletedJobIsNotDisputedForAFlag` |
 
 ## 2. Product spec rules with no test
 
@@ -351,10 +360,10 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 177 | `AccountArchitectureTest` |
+| account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 197 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 370 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 379 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
@@ -365,7 +374,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,370 of 1,370 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,393 of 1,393 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -421,4 +430,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
   - With verification by a KYC provider, `ProviderRegisteredIE` and `RecheckOpenedIE` were removed;
     `ProviderVerifiedIE` carries the SSM number and `verifiedUntil`, and the policy and listing events
     drop the verification values and the provider type.
-  - The contract test now covers 50 events.
+  - With ongoing monitoring, `ReverificationRequiredIE`, `ProviderFlaggedIE` and `ReservationFlaggedIE`
+    were added.
+  - The contract test now covers 53 events.

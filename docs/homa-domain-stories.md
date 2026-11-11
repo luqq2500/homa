@@ -7,7 +7,7 @@ tell it. They are written with **Domain Storytelling**: each story is a numbered
 of the form *actor – activity – work object – (to whom)*. Read in order, the sentences are the process.
 
 Every provider on Homa is a business, and identity verification is done by a **KYC provider** (to be
-chosen; Persona is one candidate). Homa's own work goes into value for homeowners and homecare
+chosen; Persona and Innov8tif are candidates). Homa's own work goes into value for homeowners and homecare
 providers. The stories show the KYC provider as an actor, and Homa only using its results.
 
 The stories describe Homa **as it is built**: the to-be process in the product description
@@ -41,7 +41,7 @@ reader can go from a sentence to the rule that enforces it.
   - 16. The job is completed and the provider is paid
   - 17. Something went wrong: a report and Homa's decision
   - 18. The customer rates the provider and the team
-  - 19. Re-verification every three months
+  - 19. Re-verification and ongoing monitoring
   - 20. Homa waives a fine
 - Story map: where each story lives in the code
 - Not told here
@@ -76,7 +76,7 @@ the whole journey; the big picture is coarse-grained, the rest are fine-grained.
 | **Supervisor** | A team member in charge on site. Not counted or charged as a helper. Has no account |
 | **Homa** | The platform: applies the rules, sends reminders, and runs scheduled steps such as expiring requests and closing dispute windows |
 | **Homa founders** | The people behind the admin console: they curate the lists and values, decide cases and waive fines |
-| **KYC provider** (to be chosen; Persona is one candidate) | Runs every identity check on its own pages: the business's KYB with its owner's or director's KYC, each team member's KYC, re-verification, early re-checks, and face checks at the door. Reports a final result for each |
+| **KYC provider** (to be chosen; Persona and Innov8tif are candidates) | Runs every identity check on its own pages: the business's KYB with its owner's or director's KYC, each team member's KYC, re-verification, early re-checks, and face checks at the door. Reports a final result for each |
 
 | **Stripe** | Authorises and charges cards, takes FPX payments, holds payments, pays out and refunds |
 | **SMS provider** | Sends the customer's phone verification code |
@@ -160,7 +160,7 @@ The whole journey, coarse-grained. Each step is told in detail by the story in b
 12. **The team** does the job, and **Nur Aina** submits the *completion* evidence. (16)
 13. **Homa** closes the *dispute window* and releases the *payout* to Kemas. (16)
 14. **Sarah** rates *Kemas*, *Aina* and *Ben*. (18)
-15. The **KYC provider** re-verifies **Kemas** and its team every three months. (19)
+15. The **KYC provider** re-verifies **Kemas** and its team every year, and monitors them in between. (19)
 
 What can go wrong along the way: cancellations (11, 12), a customer no-show (15), a report and a
 decision (17), and a waived fine (20).
@@ -208,8 +208,8 @@ reservation runs on known values.
   check-in radius 300 metres; customer no-show wait 15 minutes; no-show fee travel + 30%; no-show
   report window 1 hour; completion reminder 30 minutes; completion deadline 24 hours; dispute window
   extension 1 hour; evidence retention 7 days; rating window 14 days; and minimum ratings to show 3.
-- The verification rules (accepted documents, re-verification every 3 months, early re-checks, face
-  check attempts) are the KYC provider's, set up to Homa's requirements.
+- The verification rules (accepted documents, yearly re-verification, ongoing monitoring, early
+  re-checks, face check attempts) are the KYC provider's, set up to Homa's requirements.
 - Homa sets no limit on helpers.
 
 **In the code:** `catalogue` (`JobList.add`, `rename`, `retire`; `ToolList`; `Shelf.create`), `policy`
@@ -705,37 +705,53 @@ feedback about an individual worker; Homa never edits a rating.
 **In the code:** `feedback` (`Rating.submit`, `hide`; `RatingSummary.record`, `withdraw`,
 `isOverallShown`, `isCategoryShown`). Events: `RatingSubmittedIE`, `RatingHiddenIE`.
 
-### 19. Re-verification every three months
+### 19. Re-verification and ongoing monitoring
 
-**Goal:** everyone who enters a home stays verified.
+**Goal:** everyone who enters a home stays verified, and Homa hears about changes between checks.
 
-1. Aina is verified until 1 April.
-2. Before then, the **KYC provider** reminds **Nur Aina** that Aina's re-verification is due.
+1. Aina was added on 1 January, so she is verified until the next 1 January.
+2. 14 days before, the **KYC provider** reminds **Nur Aina** that Aina's re-verification is due.
 3. **Aina**, with Nur Aina, re-verifies on the spot on Nur Aina's phone with the **KYC provider**.
-4. The **KYC provider** reports a *verified result* on 20 March, with a new *verified-until date*,
-   20 June.
-5. **Homa** keeps Aina verified until 20 June.
+4. The **KYC provider** reports a *verified result* on 20 December, with a new *verified-until date* a
+   year later.
+5. **Homa** keeps Aina verified until then.
 
 **Variants**
 - 4a. The re-verification fails, or the session times out: nothing changes in Homa, and Aina can retry.
 - 5a. Aina isn't re-verified in time: the **KYC provider** reports the lapse. **Homa** takes her off the
   team: she can't be named for new jobs, and Nur Aina must name someone else for her upcoming jobs.
   When she passes, she rejoins.
+- 1a. Aina's passport expires on 10 March: the **KYC provider**'s monitoring asks for re-verification by
+  10 March, and **Homa** moves her verified-until date to 10 March. She keeps working until then.
+- 1b. **Kemas** changes a director: the **KYC provider**'s monitoring asks for KYB again by a date. Kemas
+  keeps working, and **Homa** moves its verified-until date sooner, so jobs ending after that date can't
+  be requested or accepted until it passes.
+- 1c. Kemas is struck off the SSM register (a **serious flag**): **Homa** lapses Kemas at once and pauses
+  its *listing*. Every accepted reservation whose job isn't completed, such as Sarah's on Saturday, moves
+  to **Disputed**, and Sarah is told. **Homa founders** cancel each one with a full refund, RM230.00, with
+  no fine and no cancellation fee.
+- 1d. A team member matches a watchlist (a serious flag): **Homa** takes them off the team at once.
 - 2a. After a safety report, **Homa founders** ask the **KYC provider** for an *early re-check*, with a
   reason. If Aina doesn't pass it in time, the KYC provider reports the lapse.
-- 1a. **Kemas** itself is re-verified the same way, through KYB. If it lapses, **Homa** pauses its
+- 1e. **Kemas** itself is re-verified every year, through KYB. If it lapses, **Homa** pauses its
   *listing*: it takes no new requests and leaves search, while accepted reservations go ahead. When
   Kemas passes, **Homa** resumes the listing.
-- 1b. Kemas can be requested, and can accept, only for jobs that end by its verified-until date.
+- 1f. Kemas can be requested, and can accept, only for jobs that end by its verified-until date.
 
-**Rules:** the re-verification schedule, reminders and early re-check deadlines are the KYC provider's,
-set up to Homa's requirements (every 3 months, a reminder 14 days before, early re-checks within
-14 days). A repeated pass changes nothing.
+**Rules**
+- The re-verification schedule is the KYC provider's, set up to Homa's requirements: businesses every
+  year, team members every year and when their document expires, with a reminder 14 days before and
+  early re-checks within 14 days.
+- A required re-verification moves the date sooner, never later. A repeated pass changes nothing.
 
-**In the code:** `account` (`TeamMember.recordKycResult`, `lapse`; `ProviderAccount.recordKybResult`,
-`lapse`), `offering` (`ProviderListing.pause`, `resume`). Events: `RecheckFailedIE`,
-`TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`,
-`ListingPausedIE`, `ListingResumedIE`.
+**In the code:**
+- `account`: `TeamMember.recordKycResult`, `requireReverification`, `lapse`; and
+  `ProviderAccount.recordKybResult`, `requireReverification`, `recordSeriousFlag`, `lapse`.
+- `offering`: `ProviderListing.pause`, `resume`.
+- `reservation`: `disputeForProviderFlag`, `cancelForProviderFlag`.
+- Events: `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE`, `RecheckFailedIE`,
+  `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`,
+  `ListingPausedIE`, `ListingResumedIE`.
 
 ### 20. Homa waives a fine
 
@@ -774,7 +790,7 @@ set up to Homa's requirements (every 3 months, a reminder 14 days before, early 
 | 16 | Completion and payout | reservation, payment | `ReservationCompletedIE`, `PayoutCreatedIE` |
 | 17 | Report and decision | reservation, resolution, payment | `ReportFiledIE`, `CaseDecidedIE` |
 | 18 | Ratings | feedback | `RatingSubmittedIE`, `RatingHiddenIE` |
-| 19 | Re-verification | account, offering | `TeamMemberReverifiedIE`, `ListingPausedIE` |
+| 19 | Re-verification and monitoring | account, offering, reservation | `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE` |
 | 20 | Fine waiver | payment | `FineWaivedIE` |
 
 ## Not told here

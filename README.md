@@ -75,6 +75,7 @@ Build order from the domain plan:
 | 17 | Verification on the spot: eKYC on the provider's phone with the person present, with no time limit | Done |
 | 18 | Business verification through eKYB, including the owner's or director's eKYC; a business starts with no team members | Done |
 | 19 | Business providers only; verification, re-verification and face checks handled by a KYC provider, with Homa keeping the marketplace rules | Done |
+| 20 | Ongoing monitoring and annual re-verification: "re-verification needed by a date", serious flags, and a flagged provider's reservations disputed and cancelled with a full refund | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.
 
@@ -82,7 +83,7 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 Paused: the repository holds the domain modules only for now. The draft plan,
 `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases, how one context gets
-another's data, the required rules R1 to R9, and open questions U1 to U7. It waits for review.
+another's data, the required rules R1 to R10, and open questions U1 to U7. It waits for review.
 
 ### Decisions taken while building
 

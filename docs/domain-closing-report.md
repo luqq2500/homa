@@ -425,7 +425,7 @@ Changed after the phase closed. Homa's development focuses on value for homeowne
 providers:
 - **Business providers only:** every provider is a business registered with SSM.
 - **Verification by a KYC provider:** identity verification is done entirely by a KYC provider (to be
-  chosen; Persona is one candidate). That covers the onboarding pages, KYB with the owner's or
+  chosen; Persona and Innov8tif are candidates). That covers the onboarding pages, KYB with the owner's or
   director's KYC, team members' KYC, document rules, re-verification schedules, early re-checks and
   face checks at check-in.
 
@@ -449,3 +449,31 @@ providers:
   pass, and Homa uses the verified-until date the KYC provider sends. All are confirmed.
 - **To check before launch:** choose the KYC provider and confirm it meets Homa's requirements, and
   set up a data processing agreement covering transfers outside Malaysia.
+
+## 18. Addendum: ongoing monitoring and annual re-verification
+
+Changed after the phase closed. A business's registration doesn't expire, but it can change. The KYC
+provider (Persona and Innov8tif are candidates):
+- re-verifies businesses every year;
+- re-verifies team members every year and when their document expires;
+- monitors both in between.
+
+- **`account`:**
+  - `requireReverification(reason, deadline)` on `ProviderAccount` and `TeamMember` moves the
+    verified-until date sooner, never later, while the business or person keeps working.
+  - `ProviderAccount.recordSeriousFlag(reason)` lapses the business at once, and a later pass clears it.
+  - A flagged team member is lapsed.
+- **`reservation`:**
+  - On a serious flag, every accepted reservation whose job isn't completed moves to Disputed
+    (`disputeForProviderFlag`).
+  - Homa cancels it with a full refund, no fine and no cancellation fee (`cancelForProviderFlag`). No
+    other decision is allowed.
+- **`ie/`:** `ReverificationRequiredIE`, `ProviderFlaggedIE` and `ReservationFlaggedIE`, which makes 53
+  events.
+- **Spec:**
+  - The KYC provider requirements become annual re-verification, re-verification on document expiry and
+    ongoing monitoring.
+  - The Disputed status covers a flagged provider.
+- **Usecase plan:** required rule R10.
+- **Scenarios:** 224 in the plan; 212 have a test and 12 are retired.
+- **Gates:** whole build 1,075 tests, 1,393 mutants, all killed, worst CRAP 5.0.

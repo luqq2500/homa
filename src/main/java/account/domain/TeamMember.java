@@ -5,12 +5,14 @@ import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.NotATeamMemberException;
 import account.domain.exception.TeamMemberRemovedException;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * A person verified to work for a business, as a helper or a supervisor. Team members have no accounts of
  * their own. A team member exists only from a verified {@link MemberVerification}, with the registered name
- * from the KYC result; nobody types or changes it. The KYC provider re-verifies them on its own schedule
- * and reports a missed re-verification, which takes them off the team until they pass.
+ * from the KYC result; nobody types or changes it. The KYC provider re-verifies them every year and when
+ * their document expires, monitors them in between, and reports a missed re-verification or a serious
+ * flag, which takes them off the team until they pass.
  */
 public final class TeamMember {
 
@@ -71,7 +73,25 @@ public final class TeamMember {
         return VerificationOutcome.REVERIFIED;
     }
 
-    /** The KYC provider reports a missed re-verification: the member leaves the team until they pass. */
+    /**
+     * The KYC provider asks for re-verification by {@code deadline}, for example because the member's
+     * document expires. The member stays on the team, and their verified-until date moves to the deadline
+     * if that is sooner; it never moves later.
+     */
+    public void requireReverification(String reason, Instant deadline) {
+        AccountText.require(reason, "A reason for re-verification");
+        Objects.requireNonNull(deadline);
+        requireNotRemoved();
+        if (status != TeamStatus.MEMBER) {
+            throw new NotATeamMemberException(id, status);
+        }
+        verifiedUntil = deadline.isBefore(verifiedUntil) ? deadline : verifiedUntil;
+    }
+
+    /**
+     * The KYC provider reports a missed re-verification, or a serious flag from its monitoring: the
+     * member leaves the team until they pass.
+     */
     public void lapse() {
         requireNotRemoved();
         if (status != TeamStatus.MEMBER) {
