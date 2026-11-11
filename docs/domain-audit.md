@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **231** scenarios: **219 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **239** scenarios: **227 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -18,6 +18,8 @@ The plan has **231** scenarios: **219 have a test**, and **12 are retired** beca
   registration is checked" now maps to the go-live test
 - eleven in the features for business providers only and verification by a KYC provider
 - fifteen in the features for ongoing monitoring, a seriously flagged provider and its payouts
+- eight in the two features added while reviewing the usecase plan: retired jobs and tools, and a
+  payment that fails at request
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -289,6 +291,14 @@ Two scenarios map to more than one test:
 | 229 | A seriously flagged provider's payouts | A flagged provider's payout is held | `PayoutHoldTest` | `aFlaggedProvidersPayoutIsHeld` |
 | 230 | A seriously flagged provider's payouts | The founders release a held payout | `PayoutHoldTest` | `theFoundersReleaseAHeldPayout` |
 | 231 | A seriously flagged provider's payouts | The founders withhold a held payout | `PayoutHoldTest` | `theFoundersWithholdAHeldPayout` |
+| 232 | Retired jobs and tools | A retired job comes off the listing | `ProviderListingRetiredCatalogueTest` | `aRetiredJobComesOffTheListing` |
+| 233 | Retired jobs and tools | A live listing left with no job goes offline | `ProviderListingRetiredCatalogueTest` | `aLiveListingLeftWithNoJobGoesOffline` |
+| 234 | Retired jobs and tools | The listing goes live again once the provider offers another job | `ProviderListingRetiredCatalogueTest` | `theListingGoesLiveAgainOnceTheProviderOffersAnotherJob` |
+| 235 | Retired jobs and tools | A request already made keeps the retired job | `ProviderListingRetiredCatalogueTest` | `aRequestAlreadyMadeKeepsTheRetiredJob` |
+| 236 | Retired jobs and tools | A retired tool comes off the listing and it stays live | `ProviderListingRetiredCatalogueTest` | `aRetiredToolComesOffTheListingAndItStaysLive` |
+| 237 | A payment that fails at request | A failed payment ends the request | `ReservationPaymentFailureTest` | `aFailedPaymentEndsTheRequest` |
+| 238 | A payment that fails at request | The provider cannot accept a request whose payment failed | `ReservationPaymentFailureTest` | `theProviderCannotAcceptARequestWhosePaymentFailed` |
+| 239 | A payment that fails at request | Only a request ends for a failed payment | `ReservationPaymentFailureTest` | `onlyARequestEndsForAFailedPayment` |
 
 ## 2. Product spec rules with no test
 
@@ -368,9 +378,9 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
 | account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
-| offering | 5.0 | 100% | 100% | 197 | `OfferingArchitectureTest` |
+| offering | 5.0 | 100% | 100% | 209 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 390 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 391 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 143 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
@@ -381,7 +391,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,420 of 1,420 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,433 of 1,433 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -441,4 +451,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     were added.
   - For a flagged provider, `ReservationRestoredIE`, `PayoutHeldIE`, `PayoutHoldReleasedIE` and
     `PayoutWithheldIE` were added.
-  - The contract test now covers 57 events.
+  - While reviewing the usecase plan, `ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`
+    and `SearchPerformedIE` were added, with a new event interface, `DiscoveryIE`.
+  - The contract test now covers 61 events.

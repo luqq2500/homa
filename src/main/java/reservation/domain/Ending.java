@@ -2,6 +2,8 @@ package reservation.domain;
 
 /** Why a reservation ended, which decides who gets how much. */
 public enum Ending {
+    /** The customer's payment failed when the request was made: nothing was charged and the request ended. */
+    PAYMENT_FAILED,
     /** The customer cancelled before the provider answered: free on every tier. */
     CUSTOMER_CANCELLED_REQUEST,
     /** The customer cancelled a reserved booking before the fee window, or on the Flexible tier. */

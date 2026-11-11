@@ -182,6 +182,17 @@ public final class Reservation {
         status = ReservationStatus.EXPIRED;
     }
 
+    /**
+     * The customer's payment failed when the request was made: the card was declined, or the FPX payment
+     * failed or was abandoned. The request ends at once, so the provider is never left to answer a request
+     * that is not paid for. Nothing was charged, so there is nothing to settle.
+     */
+    public void paymentFailed() {
+        requireStatus(ReservationStatus.REQUESTED, "ended for a failed payment");
+        status = ReservationStatus.CANCELLED;
+        ending = Ending.PAYMENT_FAILED;
+    }
+
     // ---- Cancelling ----
 
     /**

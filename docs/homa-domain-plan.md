@@ -1473,7 +1473,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `REVERIFIED`, with `verifiedUntil()` |
 | `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
 | `ReverificationRequiredIE` | account | reservation, discovery, (notifications) | `ProviderAccount.requireReverification`, `TeamMember.requireReverification` |
-| `ProviderFlaggedIE` | account | offering, reservation, (notifications) | `ProviderAccount.recordSeriousFlag` |
+| `ProviderFlaggedIE` | account | offering, reservation, payment, (notifications) | `ProviderAccount.recordSeriousFlag` |
 | `TeamMemberRemovedIE` | account | offering | `TeamMember.remove` |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
 | `ListingChangedIE` | offering | discovery | any `ProviderListing` setter on a live listing |
@@ -1488,7 +1488,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ReservationAcceptedIE` | reservation | payment, availability | `Reservation.accept` |
 | `ReservationDeclinedIE` | reservation | payment | `Reservation.decline` |
 | `ReservationExpiredIE` | reservation | payment | `Reservation.expire` |
-| `ReservationCancelledIE` | reservation | availability | any cancel or no-show |
+| `ReservationCancelledIE` | reservation | availability | any cancel or no-show after acceptance |
 | `TeamNamedIE` | reservation | (notifications) | `Reservation.nameTeam` |
 | `ProviderCheckedInIE` | reservation | (notifications) | `Reservation.checkIn`, the location check |
 | `FaceCheckRecordedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` |
@@ -1512,6 +1512,10 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `PayoutHoldReleasedIE` | payment | (notifications) | `Payout.releaseHold` |
 | `PayoutWithheldIE` | payment | (admin, notifications) | `Payout.withhold` |
 | `FineWaivedIE` | payment | (notifications) | `Fine.waive` |
+| `ServiceAreaPublishedIE` | catalogue | offering | `ServiceArea.launch` |
+| `RequestCancelledIE` | reservation | payment | `Reservation.cancelByCustomer` on a request |
+| `PaymentFailedIE` | payment | reservation | a failed authorisation or FPX payment; no `Payment` is created |
+| `SearchPerformedIE` | discovery | (admin tracking) | `MatchClassifier`'s results for one `SearchCriteria` |
 
 **Testing:** event records have no logic, so CRAP and mutation gates don't apply. One test per event checks it can only be built with all required fields and is immutable. The dependency-rule gate checks that `ie/` imports only `kernel/`.
 
@@ -1750,7 +1754,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events (61 since the usecase review) in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2821,6 +2825,99 @@ Feature: A seriously flagged provider's payouts
     payout held.
   - **What the app must do:** tell the team on site to stop and leave, and tell the customer at the
     same moment. The `ProviderFlaggedIE` handler runs promptly (usecase rule R10).
+
+## Change after the domain phase: getting ready for the usecase phase
+
+Decided while reviewing the usecase plan, and confirmed by the product owner (usecase plan questions U2
+to U5 and U8). Two rules were missing from the domain, and four events from `ie/`.
+
+**`offering`: a retired job or tool comes off the listings**
+
+- `ProviderListing.withdrawJob(JobCode)` takes a job Homa retired off the listing.
+  - A live listing left with no job is no longer live, and no longer paused. It is missing `JOBS`
+    until the provider offers a job again and goes live.
+  - A listing that still has a job stays as it was, live or paused.
+  - A request already made keeps the offering it was made with, so it keeps the job.
+- `ProviderListing.withdrawTool(ToolCode)` takes a retired tool off the listing. Bringing no tools is
+  allowed, so the listing stays live.
+- A job or tool the listing doesn't have changes nothing.
+
+**`reservation`: a payment that fails at request**
+
+- `Reservation.paymentFailed()` ends a request whose payment failed: the card was declined, or the FPX
+  payment failed or was abandoned.
+  - The reservation ends **Cancelled**, with the new ending `PAYMENT_FAILED`.
+  - Nothing was charged, so there is no settlement, no fee and no fine.
+  - Only a request can end this way (`InvalidStatusTransitionException`).
+
+**`ie/`: four events, which makes 61**
+
+- `ServiceAreaPublishedIE` (catalogue): the cities Homa serves, for offering.
+- `RequestCancelledIE` (reservation): the customer cancelled a request before the provider answered.
+  payment handles it like a decline, because nothing is owed.
+- `PaymentFailedIE` (payment): the payment failed at request; reservation ends the request.
+- `SearchPerformedIE` (discovery): what was searched for and how many providers matched, with nothing
+  about the customer. discovery gets its own event interface, `DiscoveryIE`.
+
+```gherkin
+Feature: Retired jobs and tools
+
+  Background:
+    Given Kemas's live listing offers Kitchen and Laundry fold, and brings a steam mop
+
+  Scenario: A retired job comes off the listing
+    When Homa retires Kitchen
+    Then the listing offers Laundry fold only
+    And it is still live
+
+  Scenario: A live listing left with no job goes offline
+    When Homa retires Kitchen and Laundry fold
+    Then the listing is no longer live
+    And it is missing "JOBS"
+
+  Scenario: The listing goes live again once the provider offers another job
+    Given Homa retired every job the listing offered
+    When Kemas offers Toilet care and goes live
+    Then the listing is live with Toilet care
+
+  Scenario: A request already made keeps the retired job
+    Given a request made while the listing offered Kitchen
+    When Homa retires Kitchen
+    Then the request still has Kitchen in its offering
+
+  Scenario: A retired tool comes off the listing and it stays live
+    When Homa retires the steam mop
+    Then the listing brings no tools
+    And it is still live
+
+Feature: A payment that fails at request
+
+  Scenario: A failed payment ends the request
+    Given a request waiting for the provider
+    When its payment fails
+    Then the reservation is Cancelled with the ending "PAYMENT_FAILED"
+
+  Scenario: The provider cannot accept a request whose payment failed
+    Given a request whose payment failed
+    When the provider accepts it
+    Then it is refused with "InvalidStatusTransitionException"
+
+  Scenario: Only a request ends for a failed payment
+    Given a reserved booking
+    When a failed payment is reported for it
+    Then it is refused with "InvalidStatusTransitionException"
+    And the booking stays Reserved
+```
+
+**Decided while building:**
+
+- **A retired tool** follows the same rule as a retired job: it comes off the listings. The usecase
+  question asked only about jobs.
+- **No event after a failed payment.** `PaymentFailedIE` already says what happened, so reservation ends
+  the request and publishes nothing more.
+- **`RequestCancelledIE` replaces `ReservationCancelledIE` and `SettlementDecidedIE`** for a request the
+  customer cancels. A request holds no slot and owes nothing, so one event is enough, as for a decline
+  or an expiry.
 
 ## Open questions
 

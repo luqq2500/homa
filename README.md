@@ -77,15 +77,18 @@ Build order from the domain plan:
 | 19 | Business providers only; verification, re-verification and face checks handled by a KYC provider, with Homa keeping the marketplace rules | Done |
 | 20 | Ongoing monitoring and annual re-verification: "re-verification needed by a date", serious flags, and a flagged provider's reservations disputed and cancelled with a full refund | Done |
 | 21 | A flagged provider: founders cancel or restore each disputed reservation, undecided ones cancel at the booked start, and payouts are held for review | Done |
+| 22 | Getting ready for the usecase phase: a retired job or tool comes off the listings, a request ends when its payment fails, and four events (`ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`, `SearchPerformedIE`) | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.
 
 ### Usecase phase
 
-Paused: the repository holds the domain modules only for now. The draft plan,
-`docs/homa-usecase-plan.md`, covers the conventions, each context's usecases, how one context gets
-another's data, the required rules R1 to R10, the admin console (with the founders' growth dashboard
-and rules A1 to A6), and open questions U1 to U11. It waits for review.
+Not started: the repository holds the domain modules only for now. The plan,
+`docs/homa-usecase-plan.md`, is ready for review. It covers the conventions, each context's usecases
+(including `feedback`, `privacy` and `tracking`), how one context gets another's data, the required
+rules R1 to R13, the admin console (with the founders' growth dashboard and rules A1 to A6), and the
+questions: U1 to U11 are decided, and U12 (a provider could accept a request before it is paid) is open
+and must be decided before the `reservation` context is built.
 
 ### Decisions taken while building
 

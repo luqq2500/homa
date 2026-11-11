@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** draft, paused. Nothing in the usecase layer is built. The domain phase comes first; this plan waits for review, with the open questions at the end.
+**Status:** ready for review. Nothing in the usecase layer is built yet. The domain phase is finished, and the questions that had to be decided before starting are decided (see the end). One question, U12, is open; it must be decided before the `reservation` and `payment` contexts are built, not before the first ones.
 
 ## Conventions
 
@@ -33,6 +33,12 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
   hold primitives, Strings, kernel and JDK value types, the same as events.
 - **Errors:** domain exceptions pass through unchanged. Usecase exceptions cover orchestration only,
   such as `ShelfNotFoundException`.
+- **Admin actions:** every usecase whose actor is `Homa` and that changes something takes the founder's
+  id (`decidedBy`) in its request and records it, with the action, the reason and the time, through an
+  `AdminAuditLog` out port (rule A1). The domain keeps the reason; the audit log keeps who.
+- **Contexts with no domain layer:** `tracking` (read-only views) and `privacy` (recording data
+  requests) have no business rules, so they have `usecase` and `infra` only. They are the only
+  exceptions to the three layers of the module discipline.
 - **Tests:** framework-free, against in-memory fakes of the out ports kept in test-support files. A
   usecase test proves the orchestration: what is loaded, saved and published, and what is passed to the
   domain. It does not test the domain's rules again. The mutation gate is **at least 80%** for
@@ -47,15 +53,24 @@ fed by event handlers and stored behind its own out port:
 |---|---|---|
 | offering | active catalogue jobs and tools | `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE` |
 | offering | Homa's hours and helpers limits | `HomaPolicyChangedIE` |
+| offering | the cities Homa serves | `ServiceAreaPublishedIE` |
 | offering | provider readiness, and the team roster by role | `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
-| offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
+| offering | whether the provider's re-verification has lapsed or the business is seriously flagged | `ProviderVerificationLapsedIE`, `ProviderFlaggedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
 | reservation, discovery | each business's verified-until date | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `ReverificationRequiredIE` |
+| reservation, payment | whether each business is seriously flagged now | `ProviderFlaggedIE`, `ProviderReverifiedIE` (a pass clears the flag) |
 | discovery | each live listing's search fields | the listing events |
+| feedback | each reservation's customer, provider, named team and completion time | `ReservationRequestedIE`, `TeamNamedIE`, `ReservationCompletedIE` |
+| feedback | the rating window and the minimum ratings to show | `HomaPolicyChangedIE` |
+| tracking | its own views of everything | every event (see Admin console) |
 | conversation | customer names | `CustomerRegisteredIE` |
 
 Availability is the exception: a request needs a live answer (see U1).
+
+Only a reservation that ends Completed can be rated, so feedback marks a reservation rateable on
+`ReservationCompletedIE` only. `ReservationCompletedIE` carries no customer or team, which is why
+feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 
 ## Usecases per context
 
@@ -65,6 +80,7 @@ Availability is the exception: a request needs a live answer (see U1).
 - `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob` → `JobAddedIE`, `JobRetiredIE`
 - `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRetiredIE`
 - `HomaCreateShelf`
+- `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2)
 - Queries: `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
 
 **policy**
@@ -79,12 +95,15 @@ Availability is the exception: a request needs a live answer (see U1).
 - The KYC provider reporting back (webhooks, R9): `KycRecordBusinessResult`, `KycRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7), `KycRecordTeamMemberResult` and `KycRecordLapse` publish one event per `VerificationOutcome`, and nothing for `UNCHANGED` (see required rule R1)
 - Ongoing monitoring (webhooks): `KycRecordReverificationRequired` → `ReverificationRequiredIE`; `KycRecordSeriousFlag` → `ProviderFlaggedIE` for a business, or `TeamMemberLapsedIE` for a team member
 - Early re-check: `HomaRequestEarlyRecheck` asks the KYC provider for one, with a reason; nothing changes in Homa until the KYC provider reports a pass or a lapse
-- Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
+- Payout account: `ProviderAddPayoutAccount` (opens Stripe's onboarding for the business bank account); Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
 **offering**
 - `ProviderDraftListing`, `ProviderSetProfile`, `ProviderOfferJobs`, `ProviderBringTools`, `ProviderSetPricing`, `ProviderSetHours`, `ProviderSetHelpers`, `ProviderSetSupervisorRule`, `ProviderClearSupervisorRule`, `ProviderCoverCities`, `ProviderChooseCancellationTier` → `ListingChangedIE` when live
 - `ProviderGoLive` → `ListingWentLiveIE`
-- Handlers: the catalogue, policy and account events above. A roster change can lead to `ListingWentOfflineIE`. `ProviderVerificationLapsedIE` pauses a live listing → `ListingPausedIE`; `ProviderReverifiedIE` resumes a paused one → `ListingResumedIE`.
+- Handlers: the catalogue, policy and account events above.
+  - A roster change can lead to `ListingWentOfflineIE`.
+  - `JobRetiredIE` takes the job off every listing that offers it (`withdrawJob`) → `ListingChangedIE`, or `ListingWentOfflineIE` when no job is left; `ToolRetiredIE` does the same for a tool (`withdrawTool`) → `ListingChangedIE` (R11).
+  - `ProviderVerificationLapsedIE` and `ProviderFlaggedIE` pause a live listing → `ListingPausedIE`; `ProviderReverifiedIE` resumes a paused one → `ListingResumedIE`.
 
 **availability**
 - `ProviderSetWindows`, `ProviderSetBuffer`, `CalendarSyncBusyBlocks` (scheduled)
@@ -92,18 +111,25 @@ Availability is the exception: a request needs a live answer (see U1).
 - Query port for U1: `AvailabilityCheck` (is a slot free, nearest free start)
 
 **reservation**
-- Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation`; `CustomerChallengeNoShow` → `NoShowChallengedIE`
+- Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation` (a request → `RequestCancelledIE` only; a reserved booking → `ReservationCancelledIE` and `SettlementDecidedIE`; R12); `CustomerChallengeNoShow` → `NoShowChallengedIE`
 - Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `KycRecordFaceCheck` (the KYC provider's final result for each person) → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
-- Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
+- Each ending after acceptance publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them. A request ends with one event: `ReservationDeclinedIE`, `ReservationExpiredIE` or `RequestCancelledIE`.
 - Flagged providers: the `ProviderFlaggedIE` handler disputes each accepted reservation whose job isn't completed → `ReservationFlaggedIE`; `HomaCancelFlaggedReservation` (from the case queue) → `ReservationCancelledIE` and `SettlementDecidedIE`; `HomaRestoreFlaggedReservation` → `ReservationRestoredIE`; `HomaCancelUndecidedFlaggedReservations` (scheduled, at each booked start) → `ReservationCancelledIE` and `SettlementDecidedIE` (R10)
-- Handlers: `CaseDecidedIE` (resolve), `HomaPolicyChangedIE`, the listing events
+- Handlers: `CaseDecidedIE` (resolve), `PaymentFailedIE` (ends the request with `Reservation.paymentFailed`, and publishes nothing more; R12), `HomaPolicyChangedIE`, the listing events, the verification events (R6, R10)
 
 **payment**
-- Handlers: `ReservationRequestedIE` (authorise card or take FPX), `ReservationEditedIE`, `ReservationAcceptedIE` (capture), `ReservationDeclinedIE` and `ReservationExpiredIE` (end before acceptance), `SettlementDecidedIE` (settle, then a payout with fine deductions), `FineChargedIE`
-- `HomaWaiveFine` → `FineWaivedIE`
-- Publishes `PaymentCapturedIE`, `PaymentRefundedIE`, `PayoutCreatedIE`
+- Handlers:
+  - `ReservationRequestedIE` (authorise the card or take the FPX payment; a failure → `PaymentFailedIE`, R12)
+  - `ReservationEditedIE`, `ReservationAcceptedIE` (capture → `PaymentCapturedIE`)
+  - `ReservationDeclinedIE`, `ReservationExpiredIE` and `RequestCancelledIE` (end before acceptance with `cancelBeforeAcceptance`)
+  - `SettlementDecidedIE` (settle, then a payout with fine deductions → `PayoutCreatedIE`; held at once for a flagged business → `PayoutHeldIE`)
+  - `FineChargedIE`
+  - `ProviderFlaggedIE` (hold every payable payout of the business → `PayoutHeldIE`) and `ProviderReverifiedIE` (new payouts are no longer held; payouts already held wait for the founders) (R10)
+- Homa: `HomaWaiveFine` → `FineWaivedIE`; `HomaReleasePayout` → `PayoutHoldReleasedIE`; `HomaWithholdPayout` → `PayoutWithheldIE`
+- Stripe reporting back (webhooks, with the same signature and repeat checks as R9): `StripeRecordFpxPaid`; `StripeRecordPaymentFailed` → `PaymentFailedIE`; `StripeRecordRefund` → `PaymentRefundedIE`; `StripeRecordPayoutFailed` (shown in admin tracking and retried in Stripe)
+- Queries: `CustomerViewPayments` (payments and refunds with their status), `ProviderViewIncome` (earnings, payouts, fines being deducted)
 
 **resolution**
 - Handlers: `ReportFiledIE`, `NoShowChallengedIE`, `CompletionDeadlineMissedIE`. Each opens a case, or adds evidence when a case is already open for that reservation.
@@ -115,8 +141,20 @@ Availability is the exception: a request needs a live answer (see U1).
 - Handlers: `EnquiryRequestedIE` (link), `EnquiryClosedIE` (archive), `CustomerRegisteredIE`
 
 **discovery**
-- `CustomerSearchProviders`: the listing projection, the policy projection, and U1 for availability
-- Handlers: the listing events, `HomaPolicyChangedIE`
+- `CustomerSearchProviders`: the listing projection, the policy projection, and U1 for availability → `SearchPerformedIE` (R13)
+- Handlers: the listing events, `HomaPolicyChangedIE`, the verification events (R6)
+
+**feedback**
+- `CustomerRateReservation` → `RatingSubmittedIE` (`Rating.submit`, then `RatingSummary` for the provider and each rated team member)
+- `HomaHideRating` → `RatingHiddenIE` (`Rating.hide`, then `RatingSummary.withdraw`)
+- Queries: `CustomerViewProviderRatings` (the averages, each category once it has the minimum ratings to show, and written feedback, newest first), `CustomerViewTeamRatings` (each named person's overall average)
+- Handlers: `ReservationRequestedIE`, `TeamNamedIE`, `ReservationCompletedIE`, `HomaPolicyChangedIE`
+
+**privacy** (no domain layer)
+- `HomaRecordDataRequest`, `HomaCloseDataRequest`; query: `HomaViewDataRequests`
+
+**tracking** (no domain layer)
+- The admin console's views: see Admin console below.
 
 ## Required rules
 
@@ -201,6 +239,24 @@ These rules come from decisions made after the domain phase. Each one needs a us
     - reservation and discovery also update the verified-until date on `ReverificationRequiredIE`, as on
       the other verification events (R6).
 
+11. **R11. A retired job or tool comes off the listings.** On `JobRetiredIE`, offering calls
+    `withdrawJob` on every listing that offers the job, and on `ToolRetiredIE`, `withdrawTool`.
+    - A listing that was live and still is publishes `ListingChangedIE`; one left with no job
+      publishes `ListingWentOfflineIE`. A listing that didn't have the job or tool publishes nothing.
+    - Requests and reservations already made are untouched: they keep the offering they were made with
+      (R3).
+12. **R12. A request ends with one event, and never waits unpaid.**
+    - A customer cancelling a request publishes `RequestCancelledIE` only. payment handles it like a
+      decline: the card authorisation is released, or the FPX payment is refunded in full.
+    - When the card is declined, or the FPX payment fails or is abandoned, payment creates no `Payment`
+      and publishes `PaymentFailedIE`. reservation ends the request with `Reservation.paymentFailed`
+      and publishes nothing more. The customer is told from `PaymentFailedIE`.
+    - A `PaymentFailedIE` for a reservation that is no longer a request is refused by the domain; the
+      handler records it and changes nothing.
+13. **R13. Every search is recorded, without the customer.** `CustomerSearchProviders` publishes
+    `SearchPerformedIE` with the jobs, start, hours, helpers, city and the numbers of exact and close
+    matches. It never carries the customer's id, name or address.
+
 ## Admin console
 
 The founders' console. The rule: **the Homa console handles only what Homa alone can decide or see, and
@@ -253,7 +309,7 @@ sign-ups that never book:
 | `HomaCancelFlaggedReservation` | Cancel with a full refund, no fine | reservation | `cancelForProviderFlag` | `ReservationCancelledIE`, `SettlementDecidedIE` |
 | `HomaRestoreFlaggedReservation` | Restore before the booked start, only once the KYC provider cleared the flag | reservation | `restoreAfterFlagCleared` | `ReservationRestoredIE` |
 | `HomaReleasePayout`, `HomaWithholdPayout` | Release a held payout, or keep it back with a reason | payment | `Payout.releaseHold`, `Payout.withhold` | `PayoutHoldReleasedIE`, `PayoutWithheldIE` |
-| `HomaWaiveFine` | Waive what is left of a fine, once, with a **reason category** (customer-caused, emergency, Homa fault, other) and free text | payment | `Fine.waive` | `FineWaivedIE` |
+| `HomaWaiveFine` | Waive what is left of a fine, once, with a **reason category** (customer-caused, emergency, Homa fault, other) and free text. The usecase keeps the category in the audit log and passes the text to the domain | payment | `Fine.waive` | `FineWaivedIE` |
 | `HomaHideRating` | Hide a rating that breaks the rules, with a reason; the averages update | feedback | `Rating.hide`, `RatingSummary.withdraw` | `RatingHiddenIE` |
 | `HomaRemoveTeamMember` | Remove a team member who may not work | account | `TeamMember.remove` | `TeamMemberRemovedIE` |
 | `HomaRequestEarlyRecheck` | Ask the KYC provider for an early re-check, with a reason | account (KYC port) | (none until the KYC provider reports) | — |
@@ -269,7 +325,7 @@ sign-ups that never book:
 
 | Usecase | Moves | What it shows or does |
 |---|---|---|
-| `HomaViewSearchGaps` | Providers, customers | Searches with no match or only close matches, by city, job, day and time: where to recruit providers. Needs U8 |
+| `HomaViewSearchGaps` | Providers, customers | Searches with no match or only close matches, by city, job, day and time: where to recruit providers. Fed by `SearchPerformedIE` |
 | `HomaViewStuckOnboarding` | Providers | Businesses stuck at KYB, with no team member, or missing go-live requirements (`missingForGoLive`), to follow up |
 | `HomaViewSlowResponders` | Retention | Providers with low acceptance or many expired requests, the main cause of a customer's bad first experience |
 | `HomaViewOneTimeCustomers` | Retention | Customers who completed one job and didn't book again within 30 days, for a book-again prompt |
@@ -297,8 +353,9 @@ in and check the views; there are no domain rules to test.
 ### Rules for the console (required, each with a usecase test)
 
 1. **A1. Every decision records who and why.** Each admin action takes the founder's id from
-   authentication (`decidedBy`) and a reason, and both are kept (U9). This matters more because the
-   founders' incentives depend on outcomes they also decide.
+   authentication (`decidedBy`) and a reason. The domain keeps the reason, and the usecase writes who,
+   what, why and when to the `AdminAuditLog` out port. This matters more because the founders'
+   incentives depend on outcomes they also decide.
 2. **A2. Red-code rules can't be overridden.** A flagged reservation is cancelled with a full refund or
    restored only once the flag is cleared; the console has no "let it go ahead" action.
 3. **A3. No editing.** Ratings, chats, evidence, check-in and face check records are never edited. A
@@ -313,47 +370,57 @@ in and check the views; there are no domain rules to test.
 
 ## Build order
 
-Same as the domain: catalogue, policy, account, offering, availability, reservation, payment, resolution,
-conversation, discovery. Then `app/`, the composition root, with only the U1 adapters needed for usecase
-tests across contexts.
+1. The same order as the domain: catalogue, policy, account, offering, availability, reservation, payment,
+   resolution, conversation, discovery, feedback.
+2. privacy, then tracking, which listens to every context's events.
+3. `app/`, the composition root, with only the U1 adapters needed for usecase tests across contexts.
+
+Each context passes its gates before the next starts. U12 must be decided before step 1 reaches
+reservation.
 
 ## Open questions
 
+### Open
+
+12. **U12. A provider could accept a request before it is paid.** `Reservation.request` creates a
+    request the provider can accept at once, but payment answers `ReservationRequestedIE` afterwards,
+    and an FPX payment takes minutes at the bank. Until payment succeeds or fails, nothing stops an
+    acceptance. A card whose authorisation can't be raised after an edit has the same gap.
+    *Recommendation:* payment publishes a new `PaymentSecuredIE` when the card is authorised or the FPX
+    payment is paid. reservation records it with a new domain method, `Reservation.confirmPayment`, and
+    `accept` refuses a request whose payment isn't confirmed. The provider is told about a new request
+    from `PaymentSecuredIE`, not `ReservationRequestedIE`. A failed re-authorisation after an edit ends
+    the request like any failed payment (R12). This needs a domain change in `reservation`.
+
+### Decided
+
 1. **U1. Availability during a request, an acceptance and a search.** Reservation and discovery need a
-   live "is this provider free?", but a context can't call another.
-   *Recommendation:* reservation and discovery each declare an out port, such as
-   `ProviderAvailability`. `app/`, the composition root that depends on every context, implements it
-   by calling availability's `AvailabilityCheck`. Neither context imports the other. With in-process
-   events in one deployable, an acceptance's hold is in place before the next check.
-2. **U2. The service area for offering.** `offering` needs the launch cities, and no event carries them.
-   *Recommendation:* add `ServiceAreaPublishedIE(cities)`, published by catalogue when the service
-   area is set up.
-3. **U3. Retiring a job that providers offer.** *Recommendation:* the job is removed from those
-   listings. A live listing left with no jobs goes offline (`ListingWentOfflineIE`) until the provider
-   offers a job again. This needs a new domain method, `ProviderListing.withdrawJob`.
-4. **U4. Cancelling a request.** `cancelByCustomer` on a request returns a full-refund `Settlement`,
-   but `payment` must end a request with `cancelBeforeAcceptance`, not `settle`. *Recommendation:*
-   publish `RequestCancelledIE` for this ending, handled like a decline, instead of `SettlementDecidedIE`.
-5. **U5. A payment that fails at request.** A declined card, or an FPX payment the customer abandons,
-   should end the request. *Recommendation:* payment publishes `PaymentFailedIE`, and reservation ends
-   the request with a new domain method, `Reservation.paymentFailed`, so it is not left waiting for the
-   provider.
-6. **U6. `JobAddedIE` and `ToolAddedIE`.** These are already in `ie/` and in the domain plan's event table.
-   Offering can't know a job exists without them; the table had only the retired events.
-7. **U7. Loading aggregates from storage.** Domain constructors are private and generate new ids. The
-   infra phase will need a way to rebuild an aggregate as it was saved. *Recommendation:* decide in the
+   live "is this provider free?", but a context can't call another. *Decided:* reservation and
+   discovery each declare an out port, such as `ProviderAvailability`. `app/`, the composition root
+   that depends on every context, implements it by calling availability's `AvailabilityCheck`. Neither
+   context imports the other. With in-process events in one deployable, an acceptance's hold is in
+   place before the next check.
+2. **U2. The service area for offering.** *Decided:* catalogue publishes
+   `ServiceAreaPublishedIE(cities)` when the service area is set up, and offering keeps the cities.
+3. **U3. Retiring a job that providers offer.** *Decided:* the job comes off those listings, and a live
+   listing left with no job goes offline until the provider offers a job again
+   (`ProviderListing.withdrawJob`). A retired tool comes off the same way (`withdrawTool`). See R11.
+4. **U4. Cancelling a request.** *Decided:* reservation publishes `RequestCancelledIE` for this ending,
+   and payment handles it like a decline, with `cancelBeforeAcceptance`. See R12.
+5. **U5. A payment that fails at request.** *Decided:* payment publishes `PaymentFailedIE`, and
+   reservation ends the request with `Reservation.paymentFailed`. See R12.
+6. **U6. `JobAddedIE` and `ToolAddedIE`.** *Done:* both are in `ie/` and in the domain plan's event
+   table.
+7. **U7. Loading aggregates from storage.** Domain constructors are private and generate new ids, so
+   the infra phase will need a way to rebuild an aggregate as it was saved. *Decided:* settle it in the
    infra phase. Usecase tests keep the objects in memory.
-8. **U8. Searches aren't recorded.** The search gap report needs every search and its result.
-   *Recommendation:* discovery publishes `SearchPerformedIE` (jobs, start, hours, helpers, city, and the
-   numbers of exact and close matches), with no customer details. Alternatively, record searches as
-   analytics in infra.
-9. **U9. Who decided.** The domain records the reason for a decision, waiver, hide or withhold, but not
-   the founder. *Recommendation:* keep `decidedBy` in a usecase-level audit log for every admin action,
-   rather than on each domain object.
+8. **U8. Recording searches.** *Decided:* discovery publishes `SearchPerformedIE`, with no customer
+   details. See R13.
+9. **U9. Who decided.** *Decided:* a usecase-level audit log, `AdminAuditLog`, keeps `decidedBy` for
+   every admin action; the domain objects keep only the reason. See A1.
 10. **U10. Removing a provider.** *Decided:* dropped from the spec. When Homa learns a team member may
     not work, it removes the team member with `HomaRemoveTeamMember` and records what happened.
     Removing a provider is provider suspension, which is not in the MVP.
-11. **U11. Fine waiver reason categories.** *Recommendation:* the categories (customer-caused, emergency,
-    Homa fault, other) are kept by the usecase with the free text; the domain keeps the text it has
-    today. Promote them to the domain only if a rule ever depends on them.
-
+11. **U11. Fine waiver reason categories.** *Decided:* the categories (customer-caused, emergency, Homa
+    fault, other) are kept by the usecase with the free text; the domain keeps the text it has today.
+    Promote them to the domain only if a rule ever depends on them.

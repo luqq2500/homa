@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 /**
  * A provider's listing: what they sell, at what price, when and where. A listing starts as a draft and
@@ -85,6 +86,22 @@ public final class ProviderListing {
                     throw new ToolNotInCatalogueException(tool);
                 });
         tools = Set.copyOf(brought);
+    }
+
+    /**
+     * Homa retired {@code retired} from its job list: the listing no longer offers it. A live listing left
+     * with no job is no longer live until the provider offers one again. A request already made keeps the
+     * offering it was made with.
+     */
+    public void withdrawJob(JobCode retired) {
+        jobs = without(jobs, retired);
+        live = live && !jobs.isEmpty();
+        paused = paused && live;
+    }
+
+    /** Homa retired {@code retired} from its tool list: the listing no longer says the provider brings it. */
+    public void withdrawTool(ToolCode retired) {
+        tools = without(tools, retired);
     }
 
     public void setPricing(HourlyRate rate, TravelFee travel) {
@@ -306,6 +323,10 @@ public final class ProviderListing {
         requirements.put(GoLiveRequirement.CITIES, () -> !cities.isEmpty());
         requirements.put(GoLiveRequirement.CANCELLATION_TIER, () -> cancellationTier != null);
         return requirements;
+    }
+
+    private static <T> Set<T> without(Set<T> all, T gone) {
+        return all.stream().filter(one -> !one.equals(gone)).collect(Collectors.toUnmodifiableSet());
     }
 
     private static void addIfNot(boolean met, GoLiveRequirement requirement, Set<GoLiveRequirement> missing) {

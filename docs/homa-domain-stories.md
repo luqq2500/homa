@@ -145,7 +145,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Job list** | Homa's list of jobs that providers choose from | `JobList` | "services", "menu" |
 | **Job** | One kind of home care on the job list, such as kitchen care, in a **job group** | `Job`, `JobCode`, `JobGroup` | "task", "service" |
 | **Tool list**, **tool** | Homa's list of tools that providers say they bring | `ToolList`, `Tool`, `ToolCode` | "equipment" |
-| **Retire** | Take a job or tool off what providers can pick; it is never deleted, and its code is never reused | `JobList.retire`, `ToolList.retire` | "delete", "remove" |
+| **Retire** | Take a job or tool off what providers can pick, and off the listings that have it; it is never deleted, and its code is never reused | `JobList.retire`, `ToolList.retire`, `ProviderListing.withdrawJob`, `withdrawTool` | "delete", "remove" |
 | **Service area** | The launch cities: Salak Tinggi, Cyberjaya and Putrajaya | `ServiceArea`, `City` | "region", "zone" |
 | **Shelf** | A curated homepage row driven by a **preset search** | `Shelf`, `PresetSearch` | "banner", "collection" |
 
@@ -395,6 +395,8 @@ reservation runs on known values.
 **Variants**
 - 1a. **Homa founders** rename or retire a *job*. A retired job stays in the list, is never deleted,
   and its code is never reused. Providers can no longer pick it.
+- 1b. **Homa** takes a retired *job* or *tool* off every *listing* that has it. A live listing left
+  with no job goes offline until the provider offers another. Requests already made keep the job.
 - 5a. **Homa** refuses a change that breaks a rule across values: Flexible must stay free, no
   cancellation fee may be higher than the customer no-show fee, and the provider no-show fine must stay
   the highest fine.
@@ -411,8 +413,9 @@ reservation runs on known values.
 - Homa sets no limit on helpers.
 
 **In the code:** `catalogue` (`JobList.add`, `rename`, `retire`; `ToolList`; `Shelf.create`), `policy`
-(`HomaPolicy.initial`, `HomaPolicy.change`). Events: `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`,
-`ToolRetiredIE`, `HomaPolicyChangedIE`.
+(`HomaPolicy.initial`, `HomaPolicy.change`), `offering` (`ProviderListing.withdrawJob`,
+`withdrawTool`). Events: `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE`,
+`ServiceAreaPublishedIE`, `HomaPolicyChangedIE`.
 
 ### 2. A customer registers
 
@@ -594,6 +597,8 @@ flowchart LR
   their verified-until date.
 - 4c. A *paused* listing is left out of search.
 - 1a. **Sarah** starts from a homepage *shelf* instead, with its preset search.
+- 4d. **Homa** records each *search*: what was searched for and how many providers matched, with
+  nothing about Sarah, so the founders can see where more providers are needed.
 
 **In the code:** `discovery` (`SearchCriteria.of`, `MatchClassifier.classify`, `ProviderCandidate`),
 with `availability` answering free times. It keeps listings from the listing events,
@@ -640,6 +645,9 @@ the review page. Every chat reminds both sides that payments and messages outsid
 
 **Variants**
 - 2a. **Sarah** pays by **FPX**: **Stripe** takes RM230.00 upfront, and Homa holds it.
+- 3a. **Stripe** reports that the *payment* failed: the card was declined, or the FPX payment failed or
+  was abandoned. **Homa** ends the *request* straight away, as **Cancelled**, and tells **Sarah**.
+  Nothing is charged.
 - 4a. **Homa** refuses the request when: the start is not on a quarter hour, is under 2 hours away or
   beyond 30 days; the hours or helpers are outside Kemas's range; a job isn't offered; the city isn't
   covered; the listing is paused; or the job would end after Kemas's verified-until date.
@@ -650,9 +658,9 @@ the review page. Every chat reminds both sides that payments and messages outsid
   the FPX payment refunded in full.
 
 **In the code:** `reservation` (`Reservation.request`, `price`, `cancellationTerms`, `edit`,
-`cancelByCustomer`), `payment` (`Payment.authoriseCard`, `payUpfrontByFpx`, `adjustTotal`,
-`cancelBeforeAcceptance`). Events: `ReservationRequestedIE`, `ReservationEditedIE`,
-`ReservationCancelledIE`.
+`cancelByCustomer`, `paymentFailed`), `payment` (`Payment.authoriseCard`, `payUpfrontByFpx`,
+`adjustTotal`, `cancelBeforeAcceptance`). Events: `ReservationRequestedIE`, `ReservationEditedIE`,
+`RequestCancelledIE`, `PaymentFailedIE`.
 
 ### 10. The provider answers the request
 
@@ -984,9 +992,9 @@ feedback about an individual team member; Homa never edits a rating.
 | 4 | Adding a team member | account | `MemberVerificationStartedIE`, `TeamMemberAddedIE` |
 | 5 | Listing and go-live | offering | `ListingWentLiveIE`, `ListingChangedIE` |
 | 6 | Availability | availability | (listens to `ReservationAcceptedIE`) |
-| 7 | Search | discovery, availability | (listens to listing events) |
+| 7 | Search | discovery, availability | `SearchPerformedIE` (listens to listing events) |
 | 8 | Enquiry and chat | reservation, conversation | `EnquiryCreatedIE`, `EnquiryRequestedIE` |
-| 9 | Request | reservation, payment | `ReservationRequestedIE` |
+| 9 | Request | reservation, payment | `ReservationRequestedIE`, `RequestCancelledIE`, `PaymentFailedIE` |
 | 10 | Accept, decline, expire | reservation, payment, availability | `ReservationAcceptedIE`, `PaymentCapturedIE` |
 | 11 | Customer cancels | reservation, payment | `ReservationCancelledIE`, `SettlementDecidedIE` |
 | 12 | Provider cancels | reservation, payment | `FineChargedIE` |

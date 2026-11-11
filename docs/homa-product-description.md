@@ -59,7 +59,7 @@ start times are in 15-minute steps. A start time must be at least the **minimum 
 
 ### Jobs and tools
 
-Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool is never deleted, and its code is never used for anything else.
+Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool comes off every provider's listing; a provider left with no job is taken offline until they offer another one. Requests and reservations already made keep the job. A retired job or tool is never deleted, and its code is never used for anything else.
 
 ### Teams, helpers and supervisors
 
@@ -102,7 +102,7 @@ Percentages are rounded half up to the nearest sen. When a payment is split betw
 | **Reserved** | The provider accepted the request |
 | **Declined** | The provider declined |
 | **Expired** | The provider did not respond in time |
-| **Cancelled** | Cancelled by the customer or the provider, or ended as a no-show |
+| **Cancelled** | Cancelled by the customer or the provider, ended as a no-show, or a request whose payment failed |
 | **Disputed** | A report was filed, a customer challenged a no-show, the provider missed the completion deadline, or the provider's business was seriously flagged, and it is waiting for Homa's review |
 | **Completed** | The final status of a job: the dispute window ended with no report, or Homa resolved the review |
 
@@ -120,6 +120,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
   - **Card:** authorised when submitting the request and charged only when the provider accepts. A declined, expired or cancelled request releases the authorisation, so nothing is refunded because nothing was charged.
   - **Online banking (FPX):** paid in full when submitting the request, because FPX cannot be authorised first.
   - Card and FPX are the only payment methods, and each reservation is paid with one of them.
+  - **A payment that fails:** if the card is declined, or the FPX payment fails or is abandoned, the request ends straight away and nothing is charged. The customer is told and can request again.
 - Homa holds every charged payment until it is released or refunded.
 - The payment is released to the provider when the dispute window ends without a report. The window runs until after the provider submits job completion, so the customer always has time to review the finished work.
 - A report stops the release until Homa's review is done.
@@ -248,6 +249,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.
+  - Searches: what was searched for (jobs, date and time, duration, helpers and city) and how many providers matched, with nothing that identifies the customer, to see where more providers are needed.
 - **Consent:** asked at sign-up and on the KYC provider's screens. Location permission is asked only when checking in. Each team member gives their own consent on the KYC provider's screen, including to face checks at check-in and to being rated.
 - **Retention:** evidence is kept for the **evidence retention period**. Other personal data is kept while the account is active and deleted or anonymised after the account is closed, except records Homa must keep by law (such as payment records).
 - **User rights:** customers, providers and helpers can see their data, correct it, get a copy, and ask to close their account and delete their data.
