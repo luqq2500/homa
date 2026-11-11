@@ -2834,6 +2834,9 @@ Feature: A seriously flagged provider's payouts
 - **Availability at request and acceptance:** checked by the request and accept usecases, not by `Reservation`.
 - **Report evidence:** optional. A reason is required; evidence is encouraged, since some problems (a helper not turning up) have nothing to photograph, and Homa weighs missing evidence when deciding.
 - **Cancellation terms:** `Reservation.cancellationTerms()` gives what the review page shows, using the same base as the cancel rule.
+- **A waived fine and the cancellation count:** the waiver covers only the money. `Fine.waive` changes
+  nothing else, so the late cancellation or no-show still counts in the provider's cancellation count,
+  which the provider page and admin tracking work out from the reservation events.
 
 ### To check before launch
 

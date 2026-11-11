@@ -288,7 +288,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - The fines are the same for every provider. They do not depend on the cancellation tier the provider chose.
 - When the travel fee is included in the price, the percentage applies to the full provider price.
 - Homa deducts an unpaid fine from the payouts of the provider's next successful reservations until the fine is cleared. Each deduction is at most the **fine deduction cap** of that payout, so the provider always takes home part of every job. Fines come off payouts for completed jobs only, not off payouts of a cancellation fee or a customer no-show fee. When there are several fines, the oldest is deducted first. The cap is rounded in the provider's favour.
-- Homa can waive a fine after review, for example for a genuine emergency or when the customer caused the problem. A waiver covers what is left of the fine, is recorded with a reason, and is given once. A fine already fully deducted has nothing left to waive.
+- Homa can waive a fine after review, for example for a genuine emergency or when the customer caused the problem. A waiver covers what is left of the fine, is recorded with a reason, and is given once. A fine already fully deducted has nothing left to waive. A waiver covers only the money: the late cancellation or no-show still counts in the provider's cancellation count and stays on their record.
 - Homa shows each provider's cancellation count on their provider page.
 - There is no suspension in the MVP. Homa tracks each provider's late cancellations and no-shows in the admin console only.
 

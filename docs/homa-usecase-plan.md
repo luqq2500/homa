@@ -306,7 +306,7 @@ in and check the views; there are no domain rules to test.
 4. **A4. Personal data only where needed.** Chats and evidence open only for a case. Identity data
    stays in the KYC provider's console.
 5. **A5. Fine waivers stay exceptional.** A waiver needs a reason category and text, is given once and
-   only for what is left, and leaves the cancellation count unchanged. The waiver rate is on the growth
+   only for what is left. It covers only the money: the cancellation still counts. The waiver rate is on the growth
    dashboard's guardrails.
 6. **A6. Money moves only through Homa's rules.** The founders never refund or pay out directly in
    Stripe for a reservation; they decide in the Homa console, and payment instructs Stripe.
