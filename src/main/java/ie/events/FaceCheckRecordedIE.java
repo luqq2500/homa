@@ -4,7 +4,7 @@ import ie.port.ReservationIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A named person took a face check at check-in; {@code result} is PASSED or FAILED. Homa keeps only the result and time, never the selfie. */
+/** The KYC provider reported a named person's face check at check-in; {@code result} is PASSED, or FAILED after the attempts it allows, when the person cannot work. Homa keeps only the result and time, never the selfie. */
 public record FaceCheckRecordedIE(
         String reservationId,
         String memberId,

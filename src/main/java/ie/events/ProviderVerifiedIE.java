@@ -4,15 +4,17 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A provider passed verification: eKYC for an independent provider, eKYB for a business. A job must end by {@code reverificationDueAt}. */
+/** The KYC provider verified a business through KYB, with its owner's or director's KYC. A job must end by {@code verifiedUntil}. */
 public record ProviderVerifiedIE(
         String providerId,
-        Instant reverificationDueAt,
+        String ssmNumber,
+        Instant verifiedUntil,
         Instant occurredAt) implements AccountIE {
 
     public ProviderVerifiedIE {
         Objects.requireNonNull(providerId, "providerId");
-        Objects.requireNonNull(reverificationDueAt, "reverificationDueAt");
+        Objects.requireNonNull(ssmNumber, "ssmNumber");
+        Objects.requireNonNull(verifiedUntil, "verifiedUntil");
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

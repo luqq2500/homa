@@ -1,14 +1,11 @@
 package account.domain;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
 
 /** Test-data builders for accounts, read as domain sentences. */
 final class AccountBuilders {
@@ -17,18 +14,7 @@ final class AccountBuilders {
     static final LocalDate SATURDAY = LocalDate.of(2026, 11, 14);
     static final PhoneNumber PHONE = PhoneNumber.of("+60123456789");
     static final String CODE = "482913";
-    static final VerificationLimits LIMITS =
-            new VerificationLimits(3, Duration.ofDays(14), Duration.ofDays(14));
-    static final Country INDONESIA = Country.of("ID");
-
-    /** The launch list: Malaysian documents for providers and independent members, any country for business members. */
-    static final AcceptedDocuments ACCEPTED = new AcceptedDocuments(Set.of(
-            accepted(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, Optional.of(Country.MALAYSIA)),
-            accepted(DocumentHolder.PROVIDER, DocumentType.PASSPORT, Optional.of(Country.MALAYSIA)),
-            accepted(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.IDENTITY_CARD, Optional.of(Country.MALAYSIA)),
-            accepted(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.PASSPORT, Optional.of(Country.MALAYSIA)),
-            accepted(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.IDENTITY_CARD, Optional.empty()),
-            accepted(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.PASSPORT, Optional.empty())));
+    static final BusinessRegistration KEMAS = new BusinessRegistration("202601012345", "Kemas Home Care Sdn Bhd");
 
     private AccountBuilders() {
     }
@@ -64,57 +50,41 @@ final class AccountBuilders {
         return Address.of("12 Jalan Teknokrat 3", City.of(city), Coordinates.of(2.9213, 101.6559));
     }
 
-    private static AcceptedDocument accepted(DocumentHolder holder, DocumentType type, Optional<Country> country) {
-        return new AcceptedDocument(holder, type, country);
+    /** A business provider, registered and not yet verified. */
+    static ProviderAccount aProvider() {
+        return ProviderAccount.register(aConfirmedPhoneVerification());
     }
 
-    static IdentityDocument aMyKad(String registeredName) {
-        return new IdentityDocument(Country.MALAYSIA, DocumentType.IDENTITY_CARD, registeredName);
+    /** Kemas's KYB passed, verified until {@code day}. */
+    static KybResult kemasVerifiedUntil(String day) {
+        return KybResult.verified(KEMAS, on(day));
     }
 
-    static EkycResult verifiedWith(IdentityDocument document) {
-        return EkycResult.verified(document);
-    }
-
-    /** Verified with a MyKad in the name "Aina binti Ahmad". */
-    static EkycResult verifiedAsAina() {
-        return verifiedWith(aMyKad("Aina binti Ahmad"));
+    /** A business verified on 1 January, until 1 April. */
+    static ProviderAccount aVerifiedProvider() {
+        ProviderAccount provider = aProvider();
+        provider.recordKybResult(kemasVerifiedUntil("1 April"), on("1 January"));
+        return provider;
     }
 
     static EmploymentConfirmation confirmedOn(String day) {
         return EmploymentConfirmation.given("2026-11", on(day));
     }
 
-    static ProviderAccount aProvider() {
-        return ProviderAccount.register(aConfirmedPhoneVerification(), ProviderType.INDEPENDENT);
+    /** Aina's KYC passed, verified until {@code day}. */
+    static KycResult ainaVerifiedUntil(String day) {
+        return KycResult.verified("Aina binti Ahmad", on(day));
     }
 
-    static ProviderAccount aBusinessProvider() {
-        return ProviderAccount.register(aConfirmedPhoneVerification(), ProviderType.BUSINESS);
-    }
-
-    /** An independent provider first verified on {@code day} with a MyKad. */
-    static ProviderAccount aProviderVerifiedOn(String day) {
-        ProviderAccount provider = aProvider();
-        provider.recordEkycResult(verifiedWith(aMyKad("Nur Aina binti Ahmad")), ACCEPTED, LIMITS, on(day));
-        return provider;
-    }
-
-    /** A provider of {@code type} starts adding a person on {@code day}, confirming lawful employment. */
-    static MemberVerification startAdding(ProviderType type, TeamRole role, DocumentType document, Country country, String day) {
-        return MemberVerification.start(
-                "provider-1", type, role, document, country, Photo.of("photos/aina.jpg"), confirmedOn(day), ACCEPTED, LIMITS, on(day));
-    }
-
-    /** An independent provider starts adding a helper with a MyKad on {@code day}. */
+    /** The provider starts adding a helper on {@code day}, confirming lawful employment. */
     static MemberVerification aHelperWaitingSince(String day) {
-        return startAdding(ProviderType.INDEPENDENT, TeamRole.HELPER, DocumentType.IDENTITY_CARD, Country.MALAYSIA, day);
+        return MemberVerification.start("provider-1", TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn(day), on(day));
     }
 
-    /** A helper with a MyKad, verified and added on {@code day}. */
-    static TeamMember aTeamMemberSince(String day) {
-        MemberVerification verification = aHelperWaitingSince(day);
-        verification.recordEkycResult(verifiedAsAina(), ACCEPTED, on(day));
-        return TeamMember.add(verification, on(day));
+    /** Aina, a helper added and verified on 1 January, until 1 April. */
+    static TeamMember aina() {
+        MemberVerification verification = aHelperWaitingSince("1 January");
+        verification.recordKycResult(ainaVerifiedUntil("1 April"), on("1 January"));
+        return TeamMember.add(verification, on("1 January"));
     }
 }

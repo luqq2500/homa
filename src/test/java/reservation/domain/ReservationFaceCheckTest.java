@@ -12,8 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import reservation.domain.exception.CheckInPeriodOverException;
-import reservation.domain.exception.FaceCheckAlreadyPassedException;
-import reservation.domain.exception.FaceCheckAttemptsUsedException;
+import reservation.domain.exception.FaceCheckAlreadyRecordedException;
 import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.LocationNotCheckedException;
 import reservation.domain.exception.MemberNotNamedException;
@@ -58,16 +57,17 @@ class ReservationFaceCheckTest {
         }
 
         @Test
-        void aFailedAttemptDoesNotCheckIn() {
+        void aFailedFaceCheckDoesNotCheckIn() {
             reservation.recordFaceCheck("aina", FaceCheckResult.FAILED, saturday("09:59"));
 
             assertThat(reservation.isCheckedIn()).isFalse();
             assertThat(reservation.canWork("aina")).isFalse();
 
-            reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("10:01"));
+            reservation.recordFaceCheck("ben", FaceCheckResult.PASSED, saturday("10:01"));
 
             assertThat(reservation.checkedInAt()).contains(saturday("10:01"));
-            assertThat(reservation.canWork("aina")).isTrue();
+            assertThat(reservation.canWork("ben")).isTrue();
+            assertThat(reservation.canWork("aina")).isFalse();
         }
 
         @Test
@@ -95,41 +95,30 @@ class ReservationFaceCheckTest {
     }
 
     @Nested
-    class Attempts {
+    class Results {
 
         @Test
-        void aPersonWhoFailsEveryAttemptCannotWork() {
+        void aPersonWhoseFaceCheckFailedCannotWork() {
             reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("09:59"));
-            reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:00"));
-            reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:01"));
-            assertThat(reservation.canWork("ben")).isFalse();
+
             reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:02"));
 
             assertThat(reservation.canWork("ben")).isFalse();
-            assertThatThrownBy(() -> reservation.recordFaceCheck("ben", FaceCheckResult.PASSED, saturday("10:03")))
-                    .isInstanceOf(FaceCheckAttemptsUsedException.class)
-                    .hasMessageContaining("ben")
-                    .hasMessageContaining("3");
-            assertThat(reservation.faceChecks()).hasSize(4);
+            assertThat(reservation.faceChecks()).hasSize(2);
         }
 
         @Test
-        void aPassOnTheLastAttemptLetsThemWork() {
-            reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("09:59"));
+        void eachPersonHasOneFaceCheckResult() {
+            reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("09:59"));
             reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:00"));
 
-            reservation.recordFaceCheck("ben", FaceCheckResult.PASSED, saturday("10:01"));
-
-            assertThat(reservation.canWork("ben")).isTrue();
-        }
-
-        @Test
-        void aPersonWhoPassedIsNotCheckedAgain() {
-            reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("09:59"));
-
-            assertThatThrownBy(() -> reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("10:00")))
-                    .isInstanceOf(FaceCheckAlreadyPassedException.class)
+            assertThatThrownBy(() -> reservation.recordFaceCheck("aina", FaceCheckResult.PASSED, saturday("10:01")))
+                    .isInstanceOf(FaceCheckAlreadyRecordedException.class)
                     .hasMessageContaining("aina");
+            assertThatThrownBy(() -> reservation.recordFaceCheck("ben", FaceCheckResult.PASSED, saturday("10:01")))
+                    .isInstanceOf(FaceCheckAlreadyRecordedException.class)
+                    .hasMessageContaining("ben");
+            assertThat(reservation.canWork("ben")).isFalse();
         }
 
         @Test
@@ -157,10 +146,8 @@ class ReservationFaceCheckTest {
         }
 
         @Test
-        void anOutageDoesNotLetSomeoneWhoFailedEveryAttemptWork() {
+        void anOutageDoesNotLetSomeoneWhoseFaceCheckFailedWork() {
             reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("09:59"));
-            reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:00"));
-            reservation.recordFaceCheck("ben", FaceCheckResult.FAILED, saturday("10:01"));
 
             reservation.recordFaceCheckUnavailable(saturday("10:05"));
 

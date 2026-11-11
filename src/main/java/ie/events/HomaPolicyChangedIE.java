@@ -4,10 +4,9 @@ import ie.port.PolicyIE;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Set;
 import kernel.Percentage;
 
-/** A new version of the Homa-set values took effect. It carries every value, so listeners keep a full copy. Each of {@code acceptedDocuments} reads holder:type:country, such as PROVIDER:PASSPORT:MY, with * for any country. */
+/** A new version of the Homa-set values took effect. It carries every value, so listeners keep a full copy. */
 public record HomaPolicyChangedIE(
         int version,
         Instant effectiveFrom,
@@ -28,7 +27,6 @@ public record HomaPolicyChangedIE(
         Duration earliestCheckIn,
         Duration checkInPeriod,
         int checkInRadiusMetres,
-        int faceCheckAttempts,
         Duration customerNoShowWait,
         Percentage customerNoShowFee,
         Duration noShowReportWindow,
@@ -38,10 +36,6 @@ public record HomaPolicyChangedIE(
         Duration evidenceRetention,
         Duration ratingWindow,
         int minimumRatingsToShow,
-        int reverificationPeriodMonths,
-        Duration reverificationReminder,
-        Duration earlyRecheckDeadline,
-        Set<String> acceptedDocuments,
         Instant occurredAt) implements PolicyIE {
 
     public HomaPolicyChangedIE {
@@ -68,9 +62,6 @@ public record HomaPolicyChangedIE(
         Objects.requireNonNull(disputeWindowExtension, "disputeWindowExtension");
         Objects.requireNonNull(evidenceRetention, "evidenceRetention");
         Objects.requireNonNull(ratingWindow, "ratingWindow");
-        Objects.requireNonNull(reverificationReminder, "reverificationReminder");
-        Objects.requireNonNull(earlyRecheckDeadline, "earlyRecheckDeadline");
-        acceptedDocuments = Set.copyOf(acceptedDocuments);
         Objects.requireNonNull(occurredAt, "occurredAt");
     }
 }

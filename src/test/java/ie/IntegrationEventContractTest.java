@@ -30,7 +30,6 @@ import ie.events.PaymentRefundedIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
 import ie.events.ProviderCheckedInIE;
-import ie.events.ProviderRegisteredIE;
 import ie.events.ProviderReverifiedIE;
 import ie.events.ProviderVerificationLapsedIE;
 import ie.events.ProviderVerificationRejectedIE;
@@ -38,7 +37,6 @@ import ie.events.ProviderVerifiedIE;
 import ie.events.RatingHiddenIE;
 import ie.events.RatingSubmittedIE;
 import ie.events.RecheckFailedIE;
-import ie.events.RecheckOpenedIE;
 import ie.events.ReportFiledIE;
 import ie.events.ReservationAcceptedIE;
 import ie.events.ReservationCancelledIE;
@@ -104,12 +102,10 @@ class IntegrationEventContractTest {
                 Arguments.of(ProviderVerifiedIE.class, AccountIE.class),
                 Arguments.of(ProviderVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(PayoutAccountReadyIE.class, AccountIE.class),
-                Arguments.of(ProviderRegisteredIE.class, AccountIE.class),
                 Arguments.of(MemberVerificationStartedIE.class, AccountIE.class),
                 Arguments.of(MemberVerificationRejectedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberAddedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberRemovedIE.class, AccountIE.class),
-                Arguments.of(RecheckOpenedIE.class, AccountIE.class),
                 Arguments.of(RecheckFailedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberReverifiedIE.class, AccountIE.class),
                 Arguments.of(TeamMemberLapsedIE.class, AccountIE.class),
@@ -217,7 +213,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(52);
+        assertThat(events().count()).isEqualTo(50);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

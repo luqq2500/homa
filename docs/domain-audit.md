@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-All **205 of 205** scenarios in the plan have a test. That is the original 122, plus:
+The plan has **216** scenarios: **204 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -15,7 +15,17 @@ All **205 of 205** scenarios in the plan have a test. That is the original 122, 
 - 23 in the four features for provider types, supervisors, face check-in and adding a team member
   (the expiry scenario was removed with the time limit)
 - seven in "Business verification through eKYB"; the older "A business cannot go live before its
-  registration is checked" now maps to the eKYB test
+  registration is checked" now maps to the go-live test
+- eleven in the features for business providers only and verification by a KYC provider
+
+**Retired (12):**
+- Due-date maths and re-check timing (rows 157, 158, 180).
+- Early re-checks (rows 165 to 167).
+- Document and nationality rules (rows 176, 177, 195, 202).
+
+These are now the KYC provider's rules, listed as Homa's requirements for it in the product
+description. Rows 200 and 203 are about independent providers and eKYC for a business, which no longer
+exist. The other verification scenarios now map to the tests of the KYC-result rules.
 
 The plan's older scenarios on invites, the lead and the 1 to 10 helper limit describe rules these
 changes replaced. Their rows point to the tests of the rule that replaced them:
@@ -57,13 +67,13 @@ Two scenarios map to more than one test:
 | 8 | Customer registration | A customer can only register with a confirmed phone number | `CustomerAccountRegistrationTest` | `aCustomerCanOnlyRegisterWithAConfirmedPhoneNumber` |
 | 9 | Customer registration | A wrong code does not confirm the phone | `PhoneVerificationConfirmationTest` | `aWrongCodeDoesNotConfirmThePhone` |
 | 10 | Customer registration | An expired code is rejected | `PhoneVerificationConfirmationTest` | `anExpiredCodeIsRejected` |
-| 11 | Provider readiness | A provider is ready for go-live only when verified and payout-ready (outline) | `ProviderAccountReadinessTest` | `anIndependentProviderIsReadyWhenVerifiedAndPayoutReady` |
+| 11 | Provider readiness | A provider is ready for go-live only when verified and payout-ready (outline) | `ProviderAccountReadinessTest` | `aBusinessIsReadyWhenVerifiedAndPayoutReady` |
 | 12 | Team membership | An invited helper is not yet a team member | `TeamMemberAddingTest` | `aWaitingVerificationIsNotOnTheTeam` |
 | 13 | Team membership | A verified invite joins the team | `TeamMemberAddingTest` | `aConfirmedAndVerifiedPersonIsAdded` |
-| 14 | Team membership | A rejected invite stays off the team and can retry | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
+| 14 | Team membership | A rejected invite stays off the team and can retry | `TeamMemberAddingTest` | `aRejectedVerificationAddsNothing` |
 | 15 | Team membership | The provider can withdraw an invite or remove a member (outline) | `TeamMemberAddingTest` | `theProviderCanRemoveATeamMember` |
-| 16 | Team membership | A removed helper cannot be verified back onto the team | `TeamMemberReverificationTest` | `aRemovedMemberTakesNoEkycResult` |
-| 17 | Team membership | An invite needs a name and a photo | `TeamMemberAddingTest` | `theAddFormNeedsAProviderARoleAndAPhoto` |
+| 16 | Team membership | A removed helper cannot be verified back onto the team | `TeamMemberReverificationTest` | `aRemovedMemberIsNotReverifiedOrLapsed` |
+| 17 | Team membership | An invite needs a name and a photo | `TeamMemberAddingTest` | `theAddFormNeedsAProviderARolePhotoAndTime` |
 | 18 | Offering setup | A provider can only offer jobs from Homa's job list | `ProviderListingSetupTest` | `aProviderCanOnlyOfferJobsFromHomasJobList` |
 | 19 | Offering setup | Hours must sit within Homa's range (outline) | `ProviderListingSetupTest` | `hoursWithinHomasRangeAreAccepted`, `hoursMustSitWithinHomasRange`, `theMinimumHoursCannotBeAboveTheMaximum` |
 | 20 | Offering setup | Max helpers cannot exceed the verified team size | `ProviderListingSetupTest` | `maxHelpersCannotExceedTheVerifiedTeamSize` |
@@ -203,18 +213,18 @@ Two scenarios map to more than one test:
 | 154 | Rating summaries | Category averages count only the ratings that rated that category | `RatingSummaryAveragingTest` | `categoryAveragesCountOnlyTheRatingsThatRatedThatCategory` |
 | 155 | Rating summaries | A category average is shown once that category has the minimum ratings | `RatingSummaryAveragingTest` | `aCategoryAverageIsShownOnceThatCategoryHasTheMinimumRatings` |
 | 156 | Rating summaries | A summary cannot withdraw more ratings than it has | `RatingSummaryAveragingTest` | `aSummaryCannotWithdrawMoreRatingsThanItHas` |
-| 157 | Periodic re-verification | Re-verification is due 3 months after the last verification | `TeamMemberReverificationTest` | `reverificationIsDueThreeMonthsAfterTheLastVerification` |
-| 158 | Periodic re-verification | The re-check opens 14 days before the due date (outline) | `TeamMemberReverificationTest` | `theRecheckOpensFourteenDaysBeforeTheDueDate`, `theRecheckDoesNotOpenBeforeTheReminder` |
-| 159 | Periodic re-verification | Passing the re-check resets the due date | `TeamMemberReverificationTest` | `passingTheRecheckResetsTheDueDate` |
-| 160 | Periodic re-verification | A failed re-check can be retried before the due date | `TeamMemberReverificationTest` | `aFailedRecheckCanBeRetriedBeforeTheDueDate` |
-| 161 | Periodic re-verification | A repeated VERIFIED result with no re-check open changes nothing | `TeamMemberReverificationTest` | `aRepeatedVerifiedResultWithNoRecheckOpenChangesNothing` |
-| 162 | Periodic re-verification | A REJECTED result with no re-check open is refused | `TeamMemberReverificationTest` | `aRejectedResultWithNoRecheckOpenIsRefused` |
-| 163 | Periodic re-verification | Missing the due date lapses the member (outline) | `TeamMemberReverificationTest` | `missingTheDueDateLapsesTheMember`, `aMemberDoesNotLapseBeforeTheDueDate` |
+| 157 | Periodic re-verification | Re-verification is due 3 months after the last verification | — | retired: the KYC provider's rule |
+| 158 | Periodic re-verification | The re-check opens 14 days before the due date (outline) | — | retired: the KYC provider's rule |
+| 159 | Periodic re-verification | Passing the re-check resets the due date | `TeamMemberReverificationTest` | `aPassedReverificationKeepsTheMemberVerifiedUntilTheNewDate` |
+| 160 | Periodic re-verification | A failed re-check can be retried before the due date | `TeamMemberReverificationTest` | `aFailedReverificationChangesNothing` |
+| 161 | Periodic re-verification | A repeated VERIFIED result with no re-check open changes nothing | `TeamMemberReverificationTest` | `aRepeatedPassChangesNothing` |
+| 162 | Periodic re-verification | A REJECTED result with no re-check open is refused | `TeamMemberReverificationTest` | `aFailedReverificationChangesNothing` |
+| 163 | Periodic re-verification | Missing the due date lapses the member (outline) | `TeamMemberReverificationTest` | `aLapsedMemberLeavesTheTeam` |
 | 164 | Periodic re-verification | A lapsed member who passes rejoins the team | `TeamMemberReverificationTest` | `aLapsedMemberWhoPassesRejoinsTheTeam` |
-| 165 | Periodic re-verification | An early re-check moves the due date sooner | `TeamMemberReverificationTest` | `anEarlyRecheckMovesTheDueDateSooner` |
-| 166 | Periodic re-verification | An early re-check never moves the due date later | `TeamMemberReverificationTest` | `anEarlyRecheckNeverMovesTheDueDateLater` |
-| 167 | Periodic re-verification | An early re-check needs a reason | `TeamMemberReverificationTest` | `anEarlyRecheckNeedsAReason` |
-| 168 | Provider re-verification | A lapsed provider is not ready and takes no new requests | `ProviderReverificationTest` | `aLapsedProviderIsNotReadyAndTakesNoNewRequests` |
+| 165 | Periodic re-verification | An early re-check moves the due date sooner | — | retired: the KYC provider's rule |
+| 166 | Periodic re-verification | An early re-check never moves the due date later | — | retired: the KYC provider's rule |
+| 167 | Periodic re-verification | An early re-check needs a reason | — | retired: the KYC provider's rule |
+| 168 | Provider re-verification | A lapsed provider is not ready and takes no new requests | `ProviderReverificationTest` | `aLapsedBusinessIsNotReadyAndTakesNoNewRequests` |
 | 169 | Provider re-verification | A paused listing refuses new requests but keeps accepted ones | `ReservationRequestTest` | `aPausedListingRefusesNewRequestsButKeepsAcceptedOnes` |
 | 170 | Provider re-verification | A paused listing resumes when the provider passes | `ProviderListingPauseTest` | `aPausedListingResumesWhenTheProviderPasses` |
 | 171 | Verified for the whole job | A job must end by the provider's due date (outline) | `ReservationProviderVerificationTest` | `aJobEndingExactlyAtTheDueDateCanBeRequested`, `aJobEndingAfterTheProvidersDueDateCannotBeRequested` |
@@ -222,13 +232,13 @@ Two scenarios map to more than one test:
 | 173 | Verified for the whole job | The provider cannot accept a job ending after their due date as it is now | `ReservationProviderVerificationTest` | `theProviderCannotAcceptAJobEndingAfterTheirDueDateAsItIsNow` |
 | 174 | Verified for the whole job | The provider can accept once a passed re-check moves the due date later | `ReservationProviderVerificationTest` | `theProviderCanAcceptOnceAPassedRecheckMovesTheDueDateLater` |
 | 175 | Verified for the whole job | Search leaves out a provider whose due date comes before the job ends | `MatchClassifierMatchingTest` | `aJobEndingAfterTheProvidersDueDateIsNoMatch` |
-| 176 | Provider types and documents | The provider must be Malaysian (outline) | `ProviderAccountReadinessTest` | `theProviderVerifiesWithAMyKadOrAMalaysianPassport`, `theProviderMustBeMalaysian` |
-| 177 | Provider types and documents | Only a business provider can have foreign team members (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry`, `aBusinessCanAddAForeignTeamMember` |
+| 176 | Provider types and documents | The provider must be Malaysian (outline) | — | retired: the KYC provider's rule |
+| 177 | Provider types and documents | Only a business provider can have foreign team members (outline) | — | retired: the KYC provider's rule |
 | 178 | Provider types and documents | Team members can only be invited after the lawful-employment confirmation | `TeamMemberAddingTest` | `theAddFormNeedsTheConfirmation` |
 | 179 | Provider types and documents | The confirmation is recorded with its time and terms version | `TeamMemberAddingTest` | `theConfirmationRecordsItsTimeAndTermsVersion` |
-| 180 | Provider types and documents | The due date follows the cycle only | `TeamMemberAddingTest` | `theDueDateFollowsTheCycleOnly` |
-| 181 | Provider types and documents | The registered name comes from the eKYC result | `TeamMemberAddingTest` | `aBusinessCanAddAForeignTeamMember` |
-| 182 | Provider types and documents | A business cannot go live before its registration is checked | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsEkybPasses` |
+| 180 | Provider types and documents | The due date follows the cycle only | — | retired: the KYC provider's rule |
+| 181 | Provider types and documents | The registered name comes from the eKYC result | `TeamMemberAddingTest` | `aConfirmedAndVerifiedPersonIsAdded` |
+| 182 | Provider types and documents | A business cannot go live before its registration is checked | `ProviderAccountReadinessTest` | `aBusinessIsReadyWhenVerifiedAndPayoutReady` |
 | 183 | Supervisors | A supervisor is required from either threshold (outline) | `ProviderListingSupervisorTest` | `aSupervisorIsRequiredFromEitherThreshold` |
 | 184 | Supervisors | Naming the team without a required supervisor is refused | `ReservationTeamNamingTest` | `namingTheTeamWithoutARequiredSupervisorIsRefused` |
 | 185 | Supervisors | Supervisors do not count towards the helpers range | `ProviderListingSetupTest` | `supervisorsDoNotCountTowardsTheHelpersRange` |
@@ -236,22 +246,33 @@ Two scenarios map to more than one test:
 | 187 | Supervisors | A supervisor rule needs a supervisor on the team | `ProviderListingSupervisorTest` | `aSupervisorRuleNeedsASupervisorOnTheTeam` |
 | 188 | Face check at check-in | Check-in completes when the first person passes | `ReservationFaceCheckTest` | `checkInCompletesWhenTheFirstPersonPasses` |
 | 189 | Face check at check-in | Location alone is not a check-in | `ReservationFaceCheckTest` | `locationAloneIsNotACheckIn` |
-| 190 | Face check at check-in | A person who fails every attempt cannot work | `ReservationFaceCheckTest` | `aPersonWhoFailsEveryAttemptCannotWork` |
+| 190 | Face check at check-in | A person who fails every attempt cannot work | `ReservationFaceCheckTest` | `aPersonWhoseFaceCheckFailedCannotWork` |
 | 191 | Face check at check-in | A face check outage never makes a no-show | `ReservationFaceCheckTest` | `aFaceCheckOutageNeverMakesANoShow` |
 | 192 | Face check at check-in | No face pass by the end of the check-in period is a provider no-show | `ReservationFaceCheckTest` | `noFacePassByTheEndOfTheCheckInPeriodIsAProviderNoShow` |
 | 193 | Adding a team member | A confirmed and verified person is added | `TeamMemberAddingTest` | `aConfirmedAndVerifiedPersonIsAdded` |
 | 194 | Adding a team member | The add form needs the confirmation | `TeamMemberAddingTest` | `theAddFormNeedsTheConfirmation` |
-| 195 | Adding a team member | Only a business chooses the issuing country (outline) | `TeamMemberAddingTest` | `onlyABusinessChoosesTheIssuingCountry` |
+| 195 | Adding a team member | Only a business chooses the issuing country (outline) | — | retired: the KYC provider's rule |
 | 196 | Adding a team member | A person cannot be added before verification | `TeamMemberAddingTest` | `aPersonCannotBeAddedBeforeVerification` |
-| 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedEkycAddsNothing` |
+| 197 | Adding a team member | A rejected eKYC adds nothing | `TeamMemberAddingTest` | `aRejectedVerificationAddsNothing` |
 | 198 | Adding a team member | A verification is used once | `TeamMemberAddingTest` | `aVerificationIsUsedOnce` |
-| 199 | Business verification through eKYB | A business is verified through eKYB | `ProviderAccountReadinessTest` | `aBusinessIsVerifiedThroughEkyb` |
-| 200 | Business verification through eKYB | A business has no team members after eKYB | `ProviderAccountReadinessTest` | `aBusinessHasNoTeamMembersAfterEkyb` |
-| 201 | Business verification through eKYB | A rejected eKYB can be redone | `ProviderAccountReadinessTest` | `aRejectedEkybCanBeRedone` |
-| 202 | Business verification through eKYB | The owner or director must be Malaysian | `ProviderAccountReadinessTest` | `theOwnerOrDirectorMustBeMalaysian` |
-| 203 | Business verification through eKYB | A business does not take a separate eKYC | `ProviderAccountReadinessTest` | `aBusinessDoesNotTakeASeparateEkyc` |
-| 204 | Business verification through eKYB | A business cannot go live before its eKYB passes | `ProviderAccountReadinessTest` | `aBusinessCannotGoLiveBeforeItsEkybPasses` |
-| 205 | Business verification through eKYB | A business is re-verified through eKYB | `ProviderReverificationTest` | `aBusinessIsReverifiedThroughEkyb` |
+| 199 | Business verification through eKYB | A business is verified through eKYB | `ProviderAccountReadinessTest` | `aBusinessIsVerifiedThroughKyb` |
+| 200 | Business verification through eKYB | A business has no team members after eKYB | — | retired: every provider is a business, verified only through KYB |
+| 201 | Business verification through eKYB | A rejected eKYB can be redone | `ProviderAccountReadinessTest` | `aRejectedKybCanBeRedone` |
+| 202 | Business verification through eKYB | The owner or director must be Malaysian | — | retired: the KYC provider's rule |
+| 203 | Business verification through eKYB | A business does not take a separate eKYC | — | retired: every provider is a business, verified only through KYB |
+| 204 | Business verification through eKYB | A business cannot go live before its eKYB passes | `ProviderAccountReadinessTest` | `aBusinessIsReadyWhenVerifiedAndPayoutReady` |
+| 205 | Business verification through eKYB | A business is re-verified through eKYB | `ProviderReverificationTest` | `aPassedReverificationKeepsTheBusinessVerifiedUntilTheNewDate` |
+| 206 | A business provider is verified by the KYC provider | A business is verified through KYB | `ProviderAccountReadinessTest` | `aBusinessIsVerifiedThroughKyb` |
+| 207 | A business provider is verified by the KYC provider | A rejected KYB can be redone | `ProviderAccountReadinessTest` | `aRejectedKybCanBeRedone` |
+| 208 | A business provider is verified by the KYC provider | A business is ready for go-live only when verified and payout-ready | `ProviderAccountReadinessTest` | `aBusinessIsReadyWhenVerifiedAndPayoutReady` |
+| 209 | The KYC provider re-verifies a business | A passed re-verification keeps the business verified until the new date | `ProviderReverificationTest` | `aPassedReverificationKeepsTheBusinessVerifiedUntilTheNewDate` |
+| 210 | The KYC provider re-verifies a business | A repeated pass changes nothing | `ProviderReverificationTest` | `aRepeatedPassChangesNothing` |
+| 211 | The KYC provider re-verifies a business | A failed re-verification changes nothing | `ProviderReverificationTest` | `aFailedReverificationChangesNothing` |
+| 212 | The KYC provider re-verifies a business | A lapsed business takes no new requests until it passes | `ProviderReverificationTest` | `aLapsedBusinessIsNotReadyAndTakesNoNewRequests`, `aLapsedBusinessThatPassesIsVerifiedAgain` |
+| 213 | The KYC provider re-verifies a team member | A passed re-verification keeps the member verified until the new date | `TeamMemberReverificationTest` | `aPassedReverificationKeepsTheMemberVerifiedUntilTheNewDate` |
+| 214 | The KYC provider re-verifies a team member | A lapsed member leaves the team until they pass | `TeamMemberReverificationTest` | `aLapsedMemberLeavesTheTeam`, `aLapsedMemberWhoPassesRejoinsTheTeam` |
+| 215 | Face check at check-in by the KYC provider | A person whose face check failed cannot work | `ReservationFaceCheckTest` | `aPersonWhoseFaceCheckFailedCannotWork` |
+| 216 | Face check at check-in by the KYC provider | Each person has one face check result | `ReservationFaceCheckTest` | `eachPersonHasOneFaceCheckResult` |
 
 ## 2. Product spec rules with no test
 
@@ -329,11 +350,11 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 80 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 79 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 264 | `AccountArchitectureTest` |
-| offering | 5.0 | 100% | 100% | 198 | `OfferingArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
+| account | 5.0 | 100% | 100% | 177 | `AccountArchitectureTest` |
+| offering | 5.0 | 100% | 100% | 197 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 379 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 370 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 127 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
@@ -344,7 +365,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,487 of 1,487 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,370 of 1,370 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -397,4 +418,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
       values and the accepted documents.
   - With business verification through eKYB, `BusinessRegistrationCheckedIE` was removed;
     `ProviderVerifiedIE` and `ProviderVerificationRejectedIE` cover eKYB too.
-  - The contract test now covers 52 events.
+  - With verification by a KYC provider, `ProviderRegisteredIE` and `RecheckOpenedIE` were removed;
+    `ProviderVerifiedIE` carries the SSM number and `verifiedUntil`, and the policy and listing events
+    drop the verification values and the provider type.
+  - The contract test now covers 50 events.

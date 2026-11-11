@@ -99,31 +99,8 @@ class HomaPolicyVersioningTest {
         }
 
         @Test
-        void everyoneIsReverifiedEveryThreeMonthsWithAFourteenDayReminder() {
-            assertThat(launch.reverificationPeriodMonths()).isEqualTo(3);
-            assertThat(launch.reverificationReminder()).isEqualTo(Duration.ofDays(14));
-            assertThat(launch.earlyRecheckDeadline()).isEqualTo(Duration.ofDays(14));
-        }
-
-        @Test
-        void eachPersonGetsThreeFaceCheckAttempts() {
-            assertThat(launch.faceCheckAttempts()).isEqualTo(3);
-        }
-
-        @Test
-        void providersAndIndependentMembersUseMalaysianDocumentsAndBusinessMembersAnyCountry() {
-            assertThat(launch.acceptedDocuments()).containsExactlyInAnyOrder(
-                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, "MY"),
-                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.PASSPORT, "MY"),
-                    AcceptedDocument.issuedBy(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.IDENTITY_CARD, "MY"),
-                    AcceptedDocument.issuedBy(DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.PASSPORT, "MY"),
-                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.IDENTITY_CARD),
-                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.PASSPORT));
-        }
-
-        @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(30);
+            assertThat(launch.values()).hasSize(25);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -159,7 +136,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(30);
+            assertThat(version2.snapshot().values()).hasSize(25);
         }
 
         @Test

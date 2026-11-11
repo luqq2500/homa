@@ -28,8 +28,7 @@ public record PolicySnapshot(
         Duration completionReminder,
         Duration completionDeadline,
         Duration disputeWindowExtension,
-        Duration teamReminder,
-        int faceCheckAttempts) {
+        Duration teamReminder) {
 
     public PolicySnapshot {
         cancellationFees = Map.copyOf(cancellationFees);

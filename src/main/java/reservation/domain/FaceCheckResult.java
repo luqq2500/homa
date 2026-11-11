@@ -1,7 +1,11 @@
 package reservation.domain;
 
-/** The result of one face check: a live selfie matched against the person's eKYC. */
+/**
+ * A named person's face check result from the KYC provider, which matches a live selfie against their
+ * verification and allows its own number of attempts.
+ */
 public enum FaceCheckResult {
     PASSED,
+    /** Failed every attempt the KYC provider allows: the person cannot work on this job. */
     FAILED
 }

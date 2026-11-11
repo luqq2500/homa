@@ -135,18 +135,15 @@ class ProviderListingSupervisorTest {
         }
 
         @Test
-        void theSnapshotCarriesTheRuleAndTheProviderType() {
+        void theSnapshotCarriesTheRule() {
             OfferingSnapshot snapshot = aLiveListingWithASupervisor().snapshot();
 
             assertThat(snapshot.supervisorRule()).contains(FROM_3_HELPERS_OR_4_HOURS);
-            assertThat(snapshot.providerType()).isEqualTo(ProviderType.INDEPENDENT);
             assertThat(snapshot.roster()).isEqualTo(aRosterOf(4, 1));
         }
 
         @Test
-        void aListingKeepsItsProviderType() {
-            assertThat(ProviderListing.draft("provider-1", ProviderType.BUSINESS).providerType()).isEqualTo(ProviderType.BUSINESS);
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1", null)).isInstanceOf(NullPointerException.class);
+        void aRuleIsRequired() {
             assertThatThrownBy(() -> aCompleteListing().setSupervisorRule(null)).isInstanceOf(NullPointerException.class);
         }
     }

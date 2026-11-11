@@ -99,7 +99,7 @@ class ProviderListingGoLiveTest {
 
         @Test
         void aDraftIsMissingEverything() {
-            assertThat(ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).missingForGoLive()).containsExactlyInAnyOrder(
+            assertThat(ProviderListing.draft("provider-1").missingForGoLive()).containsExactlyInAnyOrder(
                     GoLiveRequirement.PROFILE,
                     GoLiveRequirement.PROFILE_PICTURE,
                     GoLiveRequirement.JOBS,
@@ -112,7 +112,7 @@ class ProviderListingGoLiveTest {
 
         @Test
         void aDraftWithAnUnverifiedProviderListsEverythingMissingButASupervisorItNeverAskedFor() {
-            assertThatThrownBy(() -> ProviderListing.draft("provider-1", ProviderType.INDEPENDENT).goLive(false))
+            assertThatThrownBy(() -> ProviderListing.draft("provider-1").goLive(false))
                     .isInstanceOf(ListingNotReadyException.class)
                     .extracting(e -> ((ListingNotReadyException) e).missing(), collection(Object.class))
                     .hasSize(9)

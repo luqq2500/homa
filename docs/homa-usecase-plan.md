@@ -11,7 +11,7 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
   ```text
   <context>/usecase/
   ├── port/in/        one interface per usecase, and one per integration event handler
-  ├── port/out/       repositories, the context's IE publisher, outbound clients (SMS, Kenal, Stripe, geoservice)
+  ├── port/out/       repositories, the context's IE publisher, outbound clients (SMS, the KYC provider, Stripe, geoservice)
   ├── dto/            a request and a response record per usecase, never shared
   ├── exception/      orchestration failures, such as a record not found
   └── <Impl>.java     usecase and handler implementations
@@ -20,7 +20,7 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
 - **Naming** (Discipline §6): the implementation is named for the action and the interface for the actor
   of the action, as in `UserRegisterAccount implements UserAccountRegistrator`. Homa's actors are
   `Homa` (the founders, in the admin console), `Customer`, `Provider`, and the external services that
-  report back (`Kenal`, `Stripe`). For example: `HomaAddJob implements HomaJobAdder`, with
+  report back (`Kyc` for the KYC provider, `Stripe`). For example: `HomaAddJob implements HomaJobAdder`, with
   `HomaJobAdder.add(AddJobRequest)`.
 - **Event handlers** (Discipline §7): `HandleJobRetiredIE implements JobRetiredIEHandler`, one per event.
 - **Dependencies:** a usecase uses only its own context's domain, `kernel/` and `ie/`. It never uses
@@ -47,11 +47,11 @@ fed by event handlers and stored behind its own out port:
 |---|---|---|
 | offering | active catalogue jobs and tools | `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE` |
 | offering | Homa's hours and helpers limits | `HomaPolicyChangedIE` |
-| offering | provider type and readiness, and the team roster by role | `ProviderRegisteredIE`, `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
+| offering | provider readiness, and the team roster by role | `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `PayoutAccountReadyIE`, `TeamMemberAddedIE`, `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `TeamMemberRemovedIE` |
 | offering | whether the provider's re-verification has lapsed | `ProviderVerificationLapsedIE`, `ProviderReverifiedIE` |
 | reservation | each live listing's `OfferingSnapshot`, and whether it is paused now | `ListingWentLiveIE`, `ListingChangedIE`, `ListingWentOfflineIE`, `ListingPausedIE`, `ListingResumedIE` |
 | reservation, discovery | the policy in force | `HomaPolicyChangedIE` |
-| reservation, discovery | each provider's re-verification due date | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `RecheckOpenedIE` |
+| reservation, discovery | each business's verified-until date | `ProviderVerifiedIE`, `ProviderReverifiedIE` |
 | discovery | each live listing's search fields | the listing events |
 | conversation | customer names | `CustomerRegisteredIE` |
 
@@ -74,10 +74,10 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
-- Provider: `ProviderRegisterAccount` → `ProviderRegisteredIE`, `ProviderStartEkyc` (an independent provider; eKYC out port) or `ProviderStartEkyb` (a business; eKYB out port, which includes the owner's or director's eKYC), `ProviderIncludeSelfAsHelper` (independent providers only)
-- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens a Kenal on-the-spot session on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens an on-the-spot session for a provider or team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`; `KenalRecordPhotoMatch`
-- Verification providers reporting back: `KenalRecordProviderResult` (eKYC), `EkybRecordBusinessResult` (eKYB), `KenalRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7) and `KenalRecordTeamMemberResult` publish one event per `EkycOutcome`, and nothing for `UNCHANGED` (see required rule R1)
-- Re-verification: `HomaOpenRechecks` (scheduled, at the reminder) and `HomaRequestEarlyRecheck` → `RecheckOpenedIE`; `HomaLapseOverdueVerifications` (scheduled, at the due date) → `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`
+- Provider: `ProviderRegisterAccount`; `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC)
+- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens the KYC provider's re-verification for the business or a team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`
+- The KYC provider reporting back (webhooks, R9): `KycRecordBusinessResult`, `KycRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7), `KycRecordTeamMemberResult` and `KycRecordLapse` publish one event per `VerificationOutcome`, and nothing for `UNCHANGED` (see required rule R1)
+- Early re-check: `HomaRequestEarlyRecheck` asks the KYC provider for one, with a reason; nothing changes in Homa until the KYC provider reports a pass or a lapse
 - Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
 
 **offering**
@@ -92,7 +92,7 @@ Availability is the exception: a request needs a live answer (see U1).
 
 **reservation**
 - Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation`; `CustomerChallengeNoShow` → `NoShowChallengedIE`
-- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `ProviderRecordFaceCheck` → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
+- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `KycRecordFaceCheck` (the KYC provider's final result for each person) → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
@@ -120,10 +120,11 @@ Availability is the exception: a request needs a live answer (see U1).
 
 These rules come from decisions made after the domain phase. Each one needs a usecase test.
 
-1. **R1. One event per eKYC outcome.** The Kenal usecases publish the event for the `EkycOutcome`
-   the domain returns, and nothing for `UNCHANGED`:
+1. **R1. One event per verification outcome.** The KYC usecases publish the event for the
+   `VerificationOutcome` the domain returns, and nothing for `UNCHANGED`. A reported lapse publishes
+   `TeamMemberLapsedIE` or `ProviderVerificationLapsedIE`:
 
-   | Outcome | Team member | Provider |
+   | Outcome | Team member | Business |
    |---|---|---|
    | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` (R7) | `ProviderVerifiedIE` |
    | `REJECTED` | `MemberVerificationRejectedIE` | `ProviderVerificationRejectedIE` |
@@ -144,34 +145,38 @@ These rules come from decisions made after the domain phase. Each one needs a us
    `ListingPausedIE` update projections only. No handler cancels or changes a reservation because of
    them.
 4. **R4. The roster holds team members only, by role.** offering builds a provider's `TeamRoster` from
-   members where `isTeamMember()` is true, as helpers or supervisors, plus the provider as a helper if
-   they include themselves. It rebuilds the roster on `TeamMemberAddedIE`, `TeamMemberReverifiedIE`,
+   members where `isTeamMember()` is true, as helpers or supervisors. A business is never a helper
+   itself. It rebuilds the roster on `TeamMemberAddedIE`, `TeamMemberReverifiedIE`,
    `TeamMemberLapsedIE` and `TeamMemberRemovedIE`.
 5. **R5. A lapsed team member named on an upcoming reservation.** The provider must name someone else before
    the start, and the reservation's existing "team must be on the roster" rule then applies.
 6. **R6. Verified for the whole job.**
-   - reservation and discovery keep each provider's re-verification due date, from
-     `ProviderVerifiedIE`, `ProviderReverifiedIE` and `RecheckOpenedIE`.
+   - reservation and discovery keep each business's verified-until date, from `ProviderVerifiedIE`
+     and `ProviderReverifiedIE`.
    - `CustomerRequestReservation`, `CustomerEditRequest` and `ProviderAcceptRequest` pass the due date
      as it is now to the domain, which refuses a job ending after it.
    - `CustomerSearchProviders` puts it on each `ProviderCandidate`.
 
-7. **R7. A verified person is added straight away.** When `MemberVerification.recordEkycResult`
+7. **R7. A verified person is added straight away.** When `MemberVerification.recordKycResult`
    returns `VERIFIED`, the same usecase calls `TeamMember.add` and publishes `TeamMemberAddedIE`; there
    is no separate step for the provider.
-8. **R8. Only verified people work.** The provider app asks every named person for a face check after
-   the location check. The customer sees each person's result and time. Someone who cannot work
+8. **R8. Only verified people work.** After the location check, the provider app opens the KYC
+   provider's face check for every named person, and the KYC provider reports one final result each. The customer sees each person's result and time. Someone who cannot work
    (`Reservation.canWork` is false) is shown to the customer as not working on the job, and the
    customer can report a missing helper.
 
-9. **R9. Verification on the spot.** eKYC for adding or re-verifying a team member runs as a Kenal
-   session on the provider's phone, with the person scanning their own document and taking their own
-   selfie. Homa sets no time limit: Kenal times out a session that is not finished and reports a final
-   result.
-   - The Kenal adapter turns a timed-out or abandoned session into `EkycResult.rejected()`. When adding,
-     the verification ends and the provider starts again. When re-verifying, nothing changes and the
-     re-check stays open.
-   - If a result never arrives, the adapter or a scheduled job asks Kenal for the session's status.
+9. **R9. The KYC provider is an integration behind one port.**
+   - **The port:** `IdentityVerificationService` (out port in account and reservation) starts KYB,
+     member checks, re-verifications, early re-checks and face checks. Homa sets no time limits and
+     works out no due dates; the KYC provider does both.
+   - **The adapter** (infra) translates the KYC provider's statuses into `KybResult`, `KycResult`, a
+     lapse, or a face check result. A timed-out or abandoned session is `rejected()`. It checks webhook
+     signatures and skips a repeated webhook by its event id. Swapping the KYC provider changes only
+     this adapter.
+   - **A guard:** Homa never marks anyone verified without the KYC provider's result. A result with no
+     registered name, SSM registration or verified-until date is refused by the domain.
+   - **A safety net:** if a result never arrives, a scheduled job asks the KYC provider for the status of
+     checks that have been waiting too long.
 
 ## Build order
 

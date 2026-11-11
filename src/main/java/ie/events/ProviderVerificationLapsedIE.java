@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A provider missed their re-verification due date; their listing takes no new requests until they pass. */
+/** The KYC provider reports that a business missed its re-verification; its listing takes no new requests until it passes. */
 public record ProviderVerificationLapsedIE(
         String providerId,
         Instant occurredAt) implements AccountIE {

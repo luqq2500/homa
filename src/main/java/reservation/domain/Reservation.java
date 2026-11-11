@@ -21,8 +21,7 @@ import reservation.domain.exception.CompletionDeadlineNotReachedException;
 import reservation.domain.exception.CompletionNotSubmittedException;
 import reservation.domain.exception.DisputeWindowStillOpenException;
 import reservation.domain.exception.EvidenceRequiredException;
-import reservation.domain.exception.FaceCheckAlreadyPassedException;
-import reservation.domain.exception.FaceCheckAttemptsUsedException;
+import reservation.domain.exception.FaceCheckAlreadyRecordedException;
 import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
@@ -267,20 +266,17 @@ public final class Reservation {
     }
 
     /**
-     * Records one face check of a named person, after the location check. The first pass completes check-in,
-     * which must happen by the end of the check-in period. Each person gets the face check attempts; one who
-     * fails them all cannot work on the job.
+     * Records a named person's face check result from the KYC provider, after the location check. The
+     * first pass completes check-in, which must happen by the end of the check-in period. A person whose
+     * face check failed cannot work on the job; the KYC provider decides how many attempts they get.
      */
     public void recordFaceCheck(String memberId, FaceCheckResult result, Instant now) {
         requireLocationChecked();
         if (!team.names(memberId)) {
             throw new MemberNotNamedException(memberId);
         }
-        if (hasPassedFaceCheck(memberId)) {
-            throw new FaceCheckAlreadyPassedException(memberId);
-        }
-        if (faceCheckAttempts(memberId) >= policy.faceCheckAttempts()) {
-            throw new FaceCheckAttemptsUsedException(memberId, policy.faceCheckAttempts());
+        if (faceCheckOf(memberId).isPresent()) {
+            throw new FaceCheckAlreadyRecordedException(memberId);
         }
         requireCheckInStillOpen(now);
         faceChecks.add(new FaceCheck(memberId, result, now));
@@ -307,7 +303,7 @@ public final class Reservation {
 
     /**
      * Whether a named person can work on the job: they passed their face check, or the service was
-     * unavailable and they had not failed every attempt.
+     * unavailable and their face check had not already failed.
      */
     public boolean canWork(String memberId) {
         return isNamed(memberId) && (hasPassedFaceCheck(memberId) || coveredByOutage(memberId));
@@ -640,22 +636,21 @@ public final class Reservation {
         }
     }
 
-    private boolean hasPassedFaceCheck(String memberId) {
-        return faceChecks.stream().anyMatch(check -> check.memberId().equals(memberId) && check.passed());
+    private Optional<FaceCheck> faceCheckOf(String memberId) {
+        return faceChecks.stream().filter(check -> check.memberId().equals(memberId)).findFirst();
     }
 
-    /** Every attempt counts; once someone passes they take no more, so these are their failed attempts and at most one pass. */
-    private long faceCheckAttempts(String memberId) {
-        return faceChecks.stream().filter(check -> check.memberId().equals(memberId)).count();
+    private boolean hasPassedFaceCheck(String memberId) {
+        return faceCheckOf(memberId).filter(FaceCheck::passed).isPresent();
     }
 
     private boolean isNamed(String memberId) {
         return team != null && team.names(memberId);
     }
 
-    /** During an outage, everyone named works except someone who already failed every attempt. */
+    /** During an outage, everyone named works except someone whose face check already failed. */
     private boolean coveredByOutage(String memberId) {
-        return faceCheckUnavailable && faceCheckAttempts(memberId) < policy.faceCheckAttempts();
+        return faceCheckUnavailable && faceCheckOf(memberId).isEmpty();
     }
 
     private void requireOnRoster(TeamAssignment newTeam, TeamRoster roster) {

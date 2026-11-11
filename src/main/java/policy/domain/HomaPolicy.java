@@ -15,8 +15,6 @@ import policy.domain.PolicyValue.EarliestCheckIn;
 import policy.domain.PolicyValue.EvidenceRetention;
 import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
-import policy.domain.PolicyValue.AcceptedDocuments;
-import policy.domain.PolicyValue.FaceCheckAttempts;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -24,9 +22,6 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
-import policy.domain.PolicyValue.EarlyRecheckDeadline;
-import policy.domain.PolicyValue.ReverificationPeriod;
-import policy.domain.PolicyValue.ReverificationReminder;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CancellationFeeAboveNoShowCeilingException;
@@ -37,7 +32,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * The Homa-set values in force. Homa changes one value at a time; each change makes a new version and
@@ -63,7 +57,6 @@ public final class HomaPolicy {
             new EarliestCheckIn(Duration.ofMinutes(15)),
             new CheckInPeriod(Duration.ofMinutes(15)),
             new CheckInRadius(300),
-            new FaceCheckAttempts(3),
             new CustomerNoShowWait(Duration.ofMinutes(15)),
             new CustomerNoShowFee(Percentage.of(30)),
             new NoShowReportWindow(Duration.ofHours(1)),
@@ -72,19 +65,7 @@ public final class HomaPolicy {
             new DisputeWindowExtension(Duration.ofHours(1)),
             new EvidenceRetention(Duration.ofDays(7)),
             new RatingWindow(Duration.ofDays(14)),
-            new MinimumRatingsToShow(3),
-            new ReverificationPeriod(3),
-            new ReverificationReminder(Duration.ofDays(14)),
-            new EarlyRecheckDeadline(Duration.ofDays(14)),
-            new AcceptedDocuments(Set.of(
-                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.IDENTITY_CARD, AcceptedDocument.MALAYSIA),
-                    AcceptedDocument.issuedBy(DocumentHolder.PROVIDER, DocumentType.PASSPORT, AcceptedDocument.MALAYSIA),
-                    AcceptedDocument.issuedBy(
-                            DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.IDENTITY_CARD, AcceptedDocument.MALAYSIA),
-                    AcceptedDocument.issuedBy(
-                            DocumentHolder.INDEPENDENT_TEAM_MEMBER, DocumentType.PASSPORT, AcceptedDocument.MALAYSIA),
-                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.IDENTITY_CARD),
-                    AcceptedDocument.fromAnyCountry(DocumentHolder.BUSINESS_TEAM_MEMBER, DocumentType.PASSPORT))));
+            new MinimumRatingsToShow(3));
 
     private final PolicySnapshot current;
 

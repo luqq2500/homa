@@ -1,6 +1,6 @@
 package account.domain.exception;
 
-/** Re-verification is for current team members only; a lapsed one is already off the team. */
+/** Only a member on the team can lapse; a lapsed one is already off it. */
 public class NotATeamMemberException extends AccountRuleViolationException {
 
     public NotATeamMemberException(String memberId, Object status) {

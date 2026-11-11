@@ -15,8 +15,6 @@ import policy.domain.PolicyValue.EarliestCheckIn;
 import policy.domain.PolicyValue.EvidenceRetention;
 import policy.domain.PolicyValue.FeeWindow;
 import policy.domain.PolicyValue.FineDeductionCap;
-import policy.domain.PolicyValue.AcceptedDocuments;
-import policy.domain.PolicyValue.FaceCheckAttempts;
 import policy.domain.PolicyValue.MinimumNotice;
 import policy.domain.PolicyValue.MinimumRatingsToShow;
 import policy.domain.PolicyValue.NoShowReportWindow;
@@ -24,9 +22,6 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
-import policy.domain.PolicyValue.EarlyRecheckDeadline;
-import policy.domain.PolicyValue.ReverificationPeriod;
-import policy.domain.PolicyValue.ReverificationReminder;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import java.time.Duration;
@@ -35,7 +30,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * An immutable copy of one version of the Homa-set values. A reservation keeps the snapshot that was
@@ -131,14 +125,6 @@ public final class PolicySnapshot {
         return value(CheckInRadius.class).metres();
     }
 
-    public int faceCheckAttempts() {
-        return value(FaceCheckAttempts.class).attempts();
-    }
-
-    public Set<AcceptedDocument> acceptedDocuments() {
-        return value(AcceptedDocuments.class).documents();
-    }
-
     public Duration customerNoShowWait() {
         return value(CustomerNoShowWait.class).period();
     }
@@ -170,19 +156,6 @@ public final class PolicySnapshot {
 
     public int minimumRatingsToShow() {
         return value(MinimumRatingsToShow.class).ratings();
-    }
-
-    /** Re-verification is due this many months after each person's last successful verification. */
-    public int reverificationPeriodMonths() {
-        return value(ReverificationPeriod.class).months();
-    }
-
-    public Duration reverificationReminder() {
-        return value(ReverificationReminder.class).beforeDue();
-    }
-
-    public Duration earlyRecheckDeadline() {
-        return value(EarlyRecheckDeadline.class).afterRequest();
     }
 
     public Duration evidenceRetention() {

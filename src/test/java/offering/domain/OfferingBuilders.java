@@ -45,7 +45,7 @@ final class OfferingBuilders {
     }
 
     static ProviderListing aDraftWithATeamOf(int size) {
-        ProviderListing listing = ProviderListing.draft("provider-1", ProviderType.INDEPENDENT);
+        ProviderListing listing = ProviderListing.draft("provider-1");
         listing.updateRoster(aRosterOf(size));
         return listing;
     }

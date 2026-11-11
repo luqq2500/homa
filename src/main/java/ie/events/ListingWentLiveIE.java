@@ -21,7 +21,6 @@ public record ListingWentLiveIE(
         int maxHelpers,
         Set<String> cities,
         String cancellationTier,
-        String providerType,
         Set<String> helperIds,
         Set<String> supervisorIds,
         int supervisorFromHelpers,
@@ -37,7 +36,6 @@ public record ListingWentLiveIE(
         Objects.requireNonNull(travelFee, "travelFee");
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier, "cancellationTier");
-        Objects.requireNonNull(providerType, "providerType");
         helperIds = Set.copyOf(helperIds);
         supervisorIds = Set.copyOf(supervisorIds);
         Objects.requireNonNull(occurredAt, "occurredAt");

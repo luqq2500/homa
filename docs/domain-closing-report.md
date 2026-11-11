@@ -418,3 +418,32 @@ its own, just as with eKYC.
   different ones, affects only the infra adapters.
 - **Scenarios:** seven new ones, and the audit maps 205 of 205.
 - **Gates:** whole build 1,141 tests, 1,487 mutants, all killed, worst CRAP 5.0.
+
+## 17. Addendum: business providers only, verification by a KYC provider
+
+Changed after the phase closed. Homa's development focuses on value for homeowners and homecare
+providers:
+- **Business providers only:** every provider is a business registered with SSM.
+- **Verification by a KYC provider:** identity verification is done entirely by a KYC provider (to be
+  chosen; Persona is one candidate). That covers the onboarding pages, KYB with the owner's or
+  director's KYC, team members' KYC, document rules, re-verification schedules, early re-checks and
+  face checks at check-in.
+
+- **`policy`:** the accepted documents, re-verification values and face check attempts are removed,
+  leaving 25 Homa-set values.
+- **`account`:**
+  - `ProviderAccount` records `KybResult`s, and `MemberVerification` and `TeamMember` record
+    `KycResult`s. Each carries a verified-until date.
+  - A lapse is reported by the KYC provider.
+  - The document rules, due-date maths, re-checks, photo match, provider types and self-helper are
+    removed.
+- **`offering`:** no provider type.
+- **`reservation`:** the face check takes the KYC provider's final result for each person. `FAILED`
+  means they cannot work, and the attempt limit is the KYC provider's.
+- **What stays in Homa:** only verified businesses and team members are on Homa; the lawful-employment
+  confirmation; the pause on lapse; verified for the whole job; and the check-in rules.
+- **`ie/`:** `ProviderRegisteredIE` and `RecheckOpenedIE` are removed, which makes 50 events.
+- **Scenarios:** 216 in the plan; 204 have a test and 12 are retired.
+- **Gates:** whole build 1,039 tests, 1,370 mutants, all killed, worst CRAP 5.0.
+- **To check before launch:** choose the KYC provider and confirm it meets Homa's requirements, and
+  set up a data processing agreement covering transfers outside Malaysia.

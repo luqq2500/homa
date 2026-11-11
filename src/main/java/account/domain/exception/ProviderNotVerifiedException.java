@@ -1,6 +1,6 @@
 package account.domain.exception;
 
-/** Re-verification is for verified providers only. */
+/** Only a verified provider can lapse. */
 public class ProviderNotVerifiedException extends AccountRuleViolationException {
 
     public ProviderNotVerifiedException(String providerId, Object status) {

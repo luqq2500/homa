@@ -88,8 +88,7 @@ final class ReservationBuilders {
                 Duration.ofMinutes(30),
                 Duration.ofHours(24),
                 Duration.ofHours(1),
-                Duration.ofHours(6),
-                3);
+                Duration.ofHours(6));
     }
 
     static final EvidenceRef A_PHOTO = EvidenceRef.of("evidence/kitchen-after.jpg");

@@ -3,45 +3,38 @@ package account.domain;
 import account.domain.exception.MemberAlreadyAddedException;
 import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.NotATeamMemberException;
-import account.domain.exception.PhotoMatchAlreadyRecordedException;
-import account.domain.exception.ReverificationNotYetDueException;
-import account.domain.exception.TeamMemberAlreadyVerifiedException;
 import account.domain.exception.TeamMemberRemovedException;
 import java.time.Instant;
-import java.util.Optional;
 
 /**
- * A person verified to work for a provider, as a helper or a supervisor. Team members have no accounts of
+ * A person verified to work for a business, as a helper or a supervisor. Team members have no accounts of
  * their own. A team member exists only from a verified {@link MemberVerification}, with the registered name
- * from their eKYC; nobody types or changes it.
- *
- * <p>A team member is re-verified every re-verification period. One who misses their due date lapses and
- * leaves the team until they pass.
+ * from the KYC result; nobody types or changes it. The KYC provider re-verifies them on its own schedule
+ * and reports a missed re-verification, which takes them off the team until they pass.
  */
 public final class TeamMember {
 
     private final String id;
     private final String providerId;
-    private final ProviderType providerType;
     private final TeamRole role;
     private final Photo photo;
     private final EmploymentConfirmation confirmation;
     private final Instant addedAt;
-    private IdentityDocument document;
-    private Verification verification;
+    private String registeredName;
+    private Instant verifiedUntil;
+    private Instant lastVerifiedAt;
     private TeamStatus status = TeamStatus.MEMBER;
-    private Boolean photoMatches;
 
     private TeamMember(MemberVerification verified, Instant now) {
         this.id = new TeamMemberId().generate();
         this.providerId = verified.providerId();
-        this.providerType = verified.providerType();
         this.role = verified.role();
         this.photo = verified.photo();
         this.confirmation = verified.confirmation();
         this.addedAt = now;
-        this.document = verified.document().orElseThrow();
-        this.verification = verified.verification().orElseThrow();
+        this.registeredName = verified.registeredName().orElseThrow();
+        this.verifiedUntil = verified.verifiedUntil().orElseThrow();
+        this.lastVerifiedAt = verified.verifiedAt().orElseThrow();
     }
 
     /** Adds the person from a verified verification. It is the only way a team member exists, and it is used once. */
@@ -58,53 +51,31 @@ public final class TeamMember {
     }
 
     /**
-     * Records Kenal's result for a re-verification.
-     *
-     * <ul>
-     *   <li>A member with a re-check open: verified starts a new period, with the document read this time;
-     *       rejected changes nothing yet, and the member can retry until the due date.
-     *   <li>A member with no re-check open: a repeated verified result changes nothing; a rejection is
-     *       refused, so a late result cannot drop a member off the team.
-     *   <li>A lapsed member: verified makes them a {@code MEMBER} again with a new period; rejected keeps
-     *       them lapsed.
-     * </ul>
-     *
-     * A verified document must be on the accepted list for the provider's type.
+     * Records the KYC provider's re-verification result. A pass keeps the member verified until the new
+     * date, and brings a lapsed member back onto the team; a repeated pass changes nothing. A failed
+     * re-verification changes nothing: the KYC provider decides when the member lapses.
      */
-    public EkycOutcome recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) {
+    public VerificationOutcome recordKycResult(KycResult result, Instant now) {
         requireNotRemoved();
-        if (status == TeamStatus.MEMBER && !verification.recheckOpen()) {
-            return repeatedResult(result);
-        }
         if (!result.isVerified()) {
-            return EkycOutcome.RECHECK_FAILED;
+            return VerificationOutcome.RECHECK_FAILED;
         }
-        IdentityDocument read = result.verifiedDocument();
-        DocumentRules.requireForTeamMember(providerType, read.type(), read.issuingCountry(), accepted);
-        document = read;
-        verification = Verification.passedAt(now, limits);
+        Instant until = result.verifiedUntil().orElseThrow();
+        if (status == TeamStatus.MEMBER && until.equals(verifiedUntil)) {
+            return VerificationOutcome.UNCHANGED;
+        }
+        registeredName = result.registeredName().orElseThrow();
+        verifiedUntil = until;
+        lastVerifiedAt = now;
         status = TeamStatus.MEMBER;
-        return EkycOutcome.REVERIFIED;
+        return VerificationOutcome.REVERIFIED;
     }
 
-    /** Opens the regular re-check, from the re-verification reminder before the due date. */
-    public void openRecheck(VerificationLimits limits, Instant now) {
-        verification = memberVerification().withRecheckOpened(id, limits, now);
-    }
-
-    /**
-     * Homa asks for an early re-check, with a reason. The re-check opens now, and the due date moves to
-     * the early re-check deadline if that is sooner; it never moves later.
-     */
-    public void requestEarlyRecheck(String reason, VerificationLimits limits, Instant now) {
-        verification = memberVerification().withEarlyRecheck(reason, limits, now);
-    }
-
-    /** A member whose due date has come without passing re-verification lapses and leaves the team. */
-    public void lapse(Instant now) {
-        Verification current = memberVerification();
-        if (!current.isDue(now)) {
-            throw new ReverificationNotYetDueException(current.dueAt());
+    /** The KYC provider reports a missed re-verification: the member leaves the team until they pass. */
+    public void lapse() {
+        requireNotRemoved();
+        if (status != TeamStatus.MEMBER) {
+            throw new NotATeamMemberException(id, status);
         }
         status = TeamStatus.LAPSED;
     }
@@ -113,14 +84,6 @@ public final class TeamMember {
     public void remove() {
         requireNotRemoved();
         status = TeamStatus.REMOVED;
-    }
-
-    /** Records whether the profile photo matched the eKYC face, once, so the photo shows the verified person. */
-    public void recordPhotoMatch(boolean matches) {
-        if (photoMatches != null) {
-            throw new PhotoMatchAlreadyRecordedException(id);
-        }
-        photoMatches = matches;
     }
 
     /** Whether the person is on the team: true only for a {@code MEMBER}. */
@@ -132,27 +95,23 @@ public final class TeamMember {
         return status;
     }
 
-    /** The name on their identity document, from the eKYC result. */
+    /** The name on their identity document, from the KYC result. */
     public String registeredName() {
-        return document.registeredName();
-    }
-
-    public IdentityDocument document() {
-        return document;
+        return registeredName;
     }
 
     public TeamRole role() {
         return role;
     }
 
-    /** When the member was last verified and when re-verification is due. */
-    public Verification verification() {
-        return verification;
+    /** Until when the member is verified. */
+    public Instant verifiedUntil() {
+        return verifiedUntil;
     }
 
-    /** Whether the profile photo matched the eKYC face; empty until recorded. */
-    public Optional<Boolean> photoMatch() {
-        return Optional.ofNullable(photoMatches);
+    /** When the member last passed, as the Verified ID badge shows it. */
+    public Instant lastVerifiedAt() {
+        return lastVerifiedAt;
     }
 
     public String id() {
@@ -161,10 +120,6 @@ public final class TeamMember {
 
     public String providerId() {
         return providerId;
-    }
-
-    public ProviderType providerType() {
-        return providerType;
     }
 
     public Photo photo() {
@@ -178,21 +133,6 @@ public final class TeamMember {
 
     public Instant addedAt() {
         return addedAt;
-    }
-
-    private EkycOutcome repeatedResult(EkycResult result) {
-        if (!result.isVerified()) {
-            throw new TeamMemberAlreadyVerifiedException(id);
-        }
-        return EkycOutcome.UNCHANGED;
-    }
-
-    private Verification memberVerification() {
-        requireNotRemoved();
-        if (status != TeamStatus.MEMBER) {
-            throw new NotATeamMemberException(id, status);
-        }
-        return verification;
     }
 
     private void requireNotRemoved() {

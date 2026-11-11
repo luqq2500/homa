@@ -1,13 +1,14 @@
 package account.domain;
 
 /**
- * Where a provider's eKYC, or a business's eKYB, stands. Everyone starts {@code PENDING} until the
- * verification provider returns a result, and a result is {@code VERIFIED} or {@code REJECTED}.
+ * Where a business's verification stands, as the KYC provider reports it. A business starts
+ * {@code PENDING}; a result is {@code VERIFIED} or {@code REJECTED}; the KYC provider reports
+ * {@code LAPSED} when a re-verification is missed.
  */
 public enum VerificationStatus {
     PENDING,
     VERIFIED,
     REJECTED,
-    /** Re-verification was missed: the provider takes no new requests until they pass. Never a result from Kenal. */
+    /** Re-verification was missed: the business takes no new requests until it passes. Never a result. */
     LAPSED
 }

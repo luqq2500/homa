@@ -23,7 +23,6 @@ public record OfferingSnapshot(
         CancellationTier cancellationTier,
         TeamRoster roster,
         Optional<SupervisorRule> supervisorRule,
-        ProviderType providerType,
         boolean takesRequests) {
 
     public OfferingSnapshot {
@@ -38,6 +37,5 @@ public record OfferingSnapshot(
         Objects.requireNonNull(cancellationTier);
         Objects.requireNonNull(roster);
         Objects.requireNonNull(supervisorRule);
-        Objects.requireNonNull(providerType);
     }
 }

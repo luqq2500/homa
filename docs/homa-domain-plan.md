@@ -172,19 +172,19 @@ Feature: Homa-set values
 
 ## account
 
-**Purpose:** who someone is and whether they are verified. Customers verify by phone; providers and helpers by eKYC (Kenal); providers also need a ready Stripe payout account.
+**Purpose:** who someone is and whether they are verified. Customers verify by phone. Businesses and their team members are verified by a KYC provider, and account records the results (see "business providers only, verification by a KYC provider"). Businesses also need a ready Stripe payout account.
 
 | Object | Kind | Responsibility |
 |---|---|---|
 | `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
-| `ProviderAccount` | Aggregate | Independent provider (eKYC) or business (eKYB): verification status, the owner's or director's document, the business registration, payout account status, whether they are a helper on their own team (never for a business) |
-| `MemberVerification` | Aggregate | Adding a team member before they exist: the add form and the eKYC outcome (see "adding a team member") |
-| `TeamMember` | Aggregate | Replaces `Helper`. Belongs to one provider: role, registered name and document, photo, team status and verification. Only a `MEMBER` is on the team |
-| `TeamStatus` | Enum | `MEMBER` (eKYC verified), `LAPSED` (re-verification missed, off the team until it passes), `REMOVED` |
-| `Verification` | Value object | When a provider or team member was last verified, when re-verification is due, and whether a re-check is open |
-| `VerificationLimits` | Value object | account's view of the Homa-set values: re-verification period, reminder, early re-check deadline |
-| `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED`, `LAPSED` (a provider's state only; never a result) |
+| `ProviderAccount` | Aggregate | A business: its verification status, the SSM registration from KYB, the verified-until and last verification dates, and payout account status |
+| `MemberVerification` | Aggregate | Adding a team member before they exist: the add form, with the lawful-employment confirmation, and the KYC outcome |
+| `TeamMember` | Aggregate | Belongs to one business: role, registered name, photo, team status, and the verified-until and last verification dates. Only a `MEMBER` is on the team |
+| `TeamStatus` | Enum | `MEMBER` (verified), `LAPSED` (the KYC provider reports a missed re-verification), `REMOVED` |
+| `KycResult`, `KybResult` | Value object | A result from the KYC provider: verified, with the registered name or SSM registration and the verified-until date, or rejected |
+| `VerificationOutcome` | Enum | What a result did: `VERIFIED`, `REJECTED`, `REVERIFIED`, `RECHECK_FAILED` or `UNCHANGED` |
+| `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED`, `LAPSED` (a business's state; never a result) |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
 
 ```java
@@ -193,14 +193,17 @@ PhoneVerification.confirm(String code, Instant now) : boolean
 CustomerAccount.register(PhoneVerification verified, String name, Address address)
 CustomerAccount.changeAddress(Address address)
 
-ProviderAccount.register(PhoneVerification verified, ProviderType type)
-ProviderAccount.recordEkycResult(EkycResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome
-ProviderAccount.recordEkybResult(EkybResult result, AcceptedDocuments accepted, VerificationLimits limits, Instant now) : EkycOutcome   // a business
+ProviderAccount.register(PhoneVerification verified)
+ProviderAccount.recordKybResult(KybResult result, Instant now) : VerificationOutcome
+ProviderAccount.lapse()                          // the KYC provider reports a missed re-verification
 ProviderAccount.recordPayoutAccountReady()
-ProviderAccount.includeSelfAsHelper(boolean include)
-ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready, and a business's registration checked
+ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready
 
-// Adding a team member: MemberVerification.start and recordEkycResult, then TeamMember.add (see "adding a team member")
+MemberVerification.start(String providerId, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now)
+MemberVerification.recordKycResult(KycResult result, Instant now) : VerificationOutcome
+TeamMember.add(MemberVerification verified, Instant now)
+TeamMember.recordKycResult(KycResult result, Instant now) : VerificationOutcome   // re-verification
+TeamMember.lapse()                                           // the KYC provider reports a missed re-verification
 TeamMember.remove()                                          // removes a member -> REMOVED
 TeamMember.isTeamMember() : boolean                          // true only for MEMBER
 ```
@@ -289,10 +292,10 @@ Feature: Team membership
 | `TravelFee` | Value object | `separate(amount)` or `included()` |
 | `TeamRoster` | Value object | Helper ids (plus the provider if they are a helper) and supervisor ids. Helpers cap the helper range; both are who can be named. Only team members are on it |
 | `SupervisorRule` | Value object | When a supervisor is sent: from a minimum number of helpers, of hours, or both |
-| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster, supervisor rule, provider type, whether it takes requests |
+| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster, supervisor rule, whether it takes requests |
 
 ```java
-ProviderListing.draft(String providerId, ProviderType providerType)
+ProviderListing.draft(String providerId)
 ProviderListing.setProfile(Profile profile)
 ProviderListing.offerJobs(Set<JobCode> jobs, Set<JobCode> activeCatalogueJobs)
 ProviderListing.bringTools(Set<ToolCode> tools, Set<ToolCode> activeCatalogueTools)
@@ -1427,6 +1430,7 @@ These have no business rules of their own, or they belong to usecase or infra la
 - **Privacy data requests:** a workflow for the usecase layer, no domain rules beyond recording each request.
 - **Evidence storage and retention:** the 7-day retention is a scheduled infra job driven by `ReservationCompletedIE` and `CaseDecidedIE`.
 - **Distance calculation:** the geoservice computes the distance; the domain only checks it against the radius.
+- **Identity verification:** the KYC provider runs KYB, KYC, re-verification and face matching; the domain only records the results it reports.
 
 ## Integration events
 
@@ -1450,18 +1454,16 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
 | `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
-| `ProviderRegisteredIE` | account | offering | `ProviderAccount.register`, with the provider type |
-| `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` or `recordEkybResult` returning `VERIFIED`, with `verification().dueAt()` |
-| `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordEkycResult` or `recordEkybResult` returning `REJECTED` |
+| `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `VERIFIED`, with `verifiedUntil()` |
+| `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordKybResult` returning `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
 | `MemberVerificationStartedIE` | account | (provider app, notifications) | `MemberVerification.start` |
-| `MemberVerificationRejectedIE` | account | (provider app, notifications) | `MemberVerification.recordEkycResult` returning `REJECTED` |
+| `MemberVerificationRejectedIE` | account | (provider app, notifications) | `MemberVerification.recordKycResult` returning `REJECTED` |
 | `TeamMemberAddedIE` | account | offering | `TeamMember.add`, with the role, registered name and lawful-employment confirmation |
-| `RecheckOpenedIE` | account | reservation, discovery, (notifications) | `TeamMember.openRecheck`, `ProviderAccount.openRecheck`, `requestEarlyRecheck` |
-| `RecheckFailedIE` | account | (notifications) | `TeamMember.recordEkycResult`, `ProviderAccount.recordEkycResult` returning `RECHECK_FAILED` |
-| `TeamMemberReverifiedIE` | account | offering | `TeamMember.recordEkycResult` returning `REVERIFIED` |
+| `RecheckFailedIE` | account | (notifications) | `TeamMember.recordKycResult`, `ProviderAccount.recordKybResult` returning `RECHECK_FAILED` |
+| `TeamMemberReverifiedIE` | account | offering | `TeamMember.recordKycResult` returning `REVERIFIED`, with `verifiedUntil()` |
 | `TeamMemberLapsedIE` | account | offering | `TeamMember.lapse` |
-| `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordEkycResult` with `VERIFIED` while a re-check is open or lapsed, with `verification().dueAt()` |
+| `ProviderReverifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `REVERIFIED`, with `verifiedUntil()` |
 | `ProviderVerificationLapsedIE` | account | offering | `ProviderAccount.lapse` |
 | `TeamMemberRemovedIE` | account | offering | `TeamMember.remove` |
 | `ListingWentLiveIE` | offering | discovery | `ProviderListing.goLive` |
@@ -1734,7 +1736,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 52 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 50 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -1804,6 +1806,10 @@ Decided after the domain phase closed. A helper is **invited** first and becomes
     `memberIds`. The listing events' field is renamed to `teamMemberIds`.
 
 ## Change after the domain phase: periodic re-verification
+
+> **Superseded in part** by "business providers only, verification by a KYC provider": the verification
+> mechanics described here (documents, due-date maths, re-checks, face match attempts, the provider
+> types) now belong to the KYC provider. The marketplace rules stay.
 
 Decided after the domain phase closed, for customer safety. Every provider and team member is re-verified every **3 months**.
 
@@ -2057,6 +2063,10 @@ Feature: Verified for the whole job
 
 ## Change after the domain phase: provider types, team roles, documents and face check-in
 
+> **Superseded in part** by "business providers only, verification by a KYC provider": the verification
+> mechanics described here (documents, due-date maths, re-checks, face match attempts, the provider
+> types) now belong to the KYC provider. The marketplace rules stay.
+
 Decided after the domain phase closed. Safety principle: only verified people enter a customer's home, and the customer knows who they are before they arrive.
 
 **`policy`**
@@ -2231,6 +2241,10 @@ Feature: Face check at check-in
 
 ## Change after the domain phase: adding a team member
 
+> **Superseded in part** by "business providers only, verification by a KYC provider": the verification
+> mechanics described here (documents, due-date maths, re-checks, face match attempts, the provider
+> types) now belong to the KYC provider. The marketplace rules stay.
+
 Supersedes the invite model in "team membership" and "provider types". There are no invited members. The provider confirms lawful employment **on the add form**, together with the role, document type and (business only) issuing country; the person is added automatically once their eKYC is verified. Before that, nothing is on the team.
 
 **`account`**
@@ -2388,6 +2402,10 @@ left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
 
 ## Decided while building: verification on the spot
 
+> **Superseded in part** by "business providers only, verification by a KYC provider": the verification
+> mechanics described here (documents, due-date maths, re-checks, face match attempts, the provider
+> types) now belong to the KYC provider. The marketplace rules stay.
+
 Adding a team member has no Homa time limit, as the product owner decided: the person verifies there
 and then, on the provider's phone. All of these are confirmed by the product owner.
 
@@ -2414,6 +2432,10 @@ and then, on the provider's phone. All of these are confirmed by the product own
 
 
 ## Change after the domain phase: business verification through eKYB
+
+> **Superseded in part** by "business providers only, verification by a KYC provider": the verification
+> mechanics described here (documents, due-date maths, re-checks, face match attempts, the provider
+> types) now belong to the KYC provider. The marketplace rules stay.
 
 Decided after the domain phase closed. A business provider is verified through **eKYB**. The eKYB
 provider checks the business's SSM registration, and the owner's or director's eKYC is part of the same
@@ -2493,6 +2515,145 @@ Feature: Business verification through eKYB
     Then its re-verification is due on 20 June
 ```
 
+
+## Change after the domain phase: business providers only, verification by a KYC provider
+
+Decided after the domain phase closed. Homa's development focuses on value for homeowners and homecare
+providers, so identity verification is handled entirely by a KYC provider (to be chosen; Persona is one
+candidate). Homa has only business providers. Confirmed by the product owner.
+
+**What moves to the KYC provider:** the verification onboarding pages, KYB with the owner's or director's
+KYC, team members' KYC on the spot, the accepted documents, face matching (at onboarding and at
+check-in, with its own attempt limit), re-verification schedules and reminders, early re-checks, and
+session timeouts. Homa's requirements for it are in the product description, under External Services.
+
+**What Homa keeps:** the marketplace rules that use the results. Only verified businesses and team
+members are on Homa; the lawful-employment confirmation on the add form; a lapsed business is paused; a
+job must end by the business's verified-until date; only team members can be named; and check-in
+completes on the first face pass.
+
+**`policy`:** the accepted documents list, the re-verification period, reminder and early re-check
+deadline, and the face check attempts are removed. That makes 25 Homa-set values.
+
+**`account`**
+
+- `ProviderAccount` is a business only: no `ProviderType`, no eKYC, and no "helper on its own team".
+  `recordKybResult(KybResult, now)` records the KYC provider's result, and `lapse()` records a missed
+  re-verification it reports.
+- `MemberVerification.start(providerId, role, photo, confirmation, now)` has no document type or country.
+  `recordKycResult(KycResult, now)` records the result.
+- `TeamMember.recordKycResult(KycResult, now)` records a re-verification, and `lapse()` a missed one.
+- **The result rules,** the same for a business and a team member:
+  - The first pass is `VERIFIED`, and a first failure is `REJECTED`, which can be redone. For a team
+    member, a rejection ends the verification and nothing is added.
+  - Once verified, a pass with a new verified-until date is `REVERIFIED`. A pass with the same date is
+    `UNCHANGED`. A failure is `RECHECK_FAILED` and changes nothing: the KYC provider decides when to
+    report a lapse.
+  - A lapsed business or member who passes is `REVERIFIED` and back.
+  - A verified result must carry the registered name (or the SSM registration) and the verified-until
+    date (`VerificationDetailsRequiredException`).
+- **Removed:**
+  - `Country`, `IdentityDocument`, `AcceptedDocument(s)`, `DocumentHolder`, `DocumentType` and
+    `DocumentRules`.
+  - `EkycResult`, `EkybResult` and `EkycOutcome`, replaced by `KycResult`, `KybResult` and
+    `VerificationOutcome`.
+  - `Verification` and `VerificationLimits`.
+  - `openRecheck`, `requestEarlyRecheck`, `recordPhotoMatch`, `includeSelfAsHelper` and `ProviderType`,
+    with their exceptions.
+
+**`offering`:** `ProviderType` is removed: `ProviderListing.draft(providerId)`, and the snapshot no
+longer carries a provider type.
+
+**`reservation`**
+
+- `recordFaceCheck` takes the KYC provider's final result for each named person. `PASSED` lets them
+  work, and the first pass completes check-in. `FAILED`, after the attempts the KYC provider allows,
+  means they cannot work.
+- Each person has one result (`FaceCheckAlreadyRecordedException`). `FaceCheckAttemptsUsedException`
+  is removed.
+- During an outage, everyone named works, except someone whose face check already failed.
+- `PolicySnapshot` no longer carries face check attempts.
+
+**`ie/`**
+
+- `ProviderRegisteredIE` and `RecheckOpenedIE` are removed.
+- `ProviderVerifiedIE` carries the SSM number and `verifiedUntil`, and `ProviderReverifiedIE` and
+  `TeamMemberReverifiedIE` carry `verifiedUntil`.
+- `RecheckFailedIE` carries no due date.
+- `MemberVerificationStartedIE` carries only the role.
+- `HomaPolicyChangedIE` and the listing events drop the removed values and the provider type.
+- That makes 50 events.
+
+```gherkin
+Feature: A business provider is verified by the KYC provider
+  Scenario: A business is verified through KYB
+    Given a business provider
+    When the KYC provider's KYB is VERIFIED until 1 April
+    Then the business is verified until 1 April, with its SSM registration
+
+  Scenario: A rejected KYB can be redone
+    Given a business whose KYB was REJECTED
+    When its KYB is VERIFIED on a later attempt
+    Then the business is verified
+
+  Scenario: A business is ready for go-live only when verified and payout-ready
+    Given a business that is verified, with a ready payout account
+    Then it is ready for go-live
+    And a lapsed business is not
+
+Feature: The KYC provider re-verifies a business
+  Background:
+    Given Kemas is verified until 1 April
+
+  Scenario: A passed re-verification keeps the business verified until the new date
+    When the KYC provider reports a pass until 20 June
+    Then Kemas is verified until 20 June
+
+  Scenario: A repeated pass changes nothing
+    When the KYC provider reports a pass until 1 April again
+    Then nothing changes
+
+  Scenario: A failed re-verification changes nothing
+    When the KYC provider reports a failed re-verification
+    Then Kemas is still verified until 1 April
+
+  Scenario: A lapsed business takes no new requests until it passes
+    When the KYC provider reports a missed re-verification
+    Then Kemas is lapsed and not ready for go-live
+    And when it passes, Kemas is verified again
+
+Feature: The KYC provider re-verifies a team member
+  Background:
+    Given Aina is a team member verified until 1 April
+
+  Scenario: A passed re-verification keeps the member verified until the new date
+    When the KYC provider reports a pass until 20 June
+    Then Aina is verified until 20 June
+
+  Scenario: A lapsed member leaves the team until they pass
+    When the KYC provider reports a missed re-verification
+    Then Aina is not on the team
+    And when she passes, Aina rejoins the team
+
+Feature: Face check at check-in by the KYC provider
+  Scenario: A person whose face check failed cannot work
+    Given Aina passed her face check
+    When the KYC provider reports that Ben's face check FAILED
+    Then Ben cannot work
+
+  Scenario: Each person has one face check result
+    Given Aina passed her face check
+    When another result is reported for Aina
+    Then it is rejected with FaceCheckAlreadyRecordedException
+```
+
+**Decided while building** (confirmed by the product owner with this change):
+
+- **The lapse comes from the KYC provider.** Homa no longer works out due dates. It keeps the
+  verified-until date it is given: a job must end by it, and search uses it.
+- **The registered name** follows the latest pass.
+- **The lawful-employment confirmation** stays in Homa: it is Homa's terms, not an identity check.
+
 ## Open questions
 
 ### Decided
@@ -2509,9 +2670,13 @@ Feature: Business verification through eKYB
 
 ### To check before launch
 
-- **Kenal's sessions:** confirm with Kenal that an on-the-spot session times out when it is not
-  finished, and that Kenal then reports a final result. Homa relies on this instead of setting its own
-  time limit (see "Decided while building: verification on the spot").
+- **The KYC provider:** choose it (Persona is one candidate), and confirm that it meets Homa's
+  requirements: KYB with the owner's or director's KYC; a Malaysian owner or director; team members
+  from any country; on-the-spot checks on the provider's phone; re-verification every 3 months with a
+  reminder; early re-checks on request; face checks at check-in with a limit on attempts; and a final
+  result for every check, including a timed-out session.
+- **Data protection:** a data processing agreement with the KYC provider, and the PDPA's rules on
+  transfers if it processes data outside Malaysia.
 
 ### Answered while building
 

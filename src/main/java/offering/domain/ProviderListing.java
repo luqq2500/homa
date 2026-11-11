@@ -35,7 +35,6 @@ public final class ProviderListing {
 
     private final String id;
     private final String providerId;
-    private final ProviderType providerType;
     private Profile profile;
     private Set<JobCode> jobs = Set.of();
     private Set<ToolCode> tools = Set.of();
@@ -50,15 +49,13 @@ public final class ProviderListing {
     private boolean live;
     private boolean paused;
 
-    private ProviderListing(String id, String providerId, ProviderType providerType) {
+    private ProviderListing(String id, String providerId) {
         this.id = id;
         this.providerId = providerId;
-        this.providerType = providerType;
     }
 
-    public static ProviderListing draft(String providerId, ProviderType providerType) {
-        return new ProviderListing(
-                new ProviderListingId().generate(), OfferingText.require(providerId, "A provider id"), Objects.requireNonNull(providerType));
+    public static ProviderListing draft(String providerId) {
+        return new ProviderListing(new ProviderListingId().generate(), OfferingText.require(providerId, "A provider id"));
     }
 
     public void setProfile(Profile newProfile) {
@@ -229,7 +226,7 @@ public final class ProviderListing {
         }
         return new OfferingSnapshot(
                 providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster,
-                Optional.ofNullable(supervisorRule), providerType, !paused);
+                Optional.ofNullable(supervisorRule), !paused);
     }
 
     public boolean isLive() {
@@ -295,10 +292,6 @@ public final class ProviderListing {
 
     public Optional<SupervisorRule> supervisorRule() {
         return Optional.ofNullable(supervisorRule);
-    }
-
-    public ProviderType providerType() {
-        return providerType;
     }
 
     private Map<GoLiveRequirement, BooleanSupplier> requirements() {

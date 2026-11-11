@@ -14,7 +14,7 @@ src/main/java/
   kernel/                       shared kernel: Money, Percentage (Java standard library only)
   catalogue/domain/             job list, tool list, service area, homepage shelves
   policy/domain/                Homa-set values and their versions
-  account/domain/               customer and provider accounts, team members, documents, phone and eKYC verification, re-verification
+  account/domain/               customer and business provider accounts, team members, and the results reported by the KYC provider
   offering/domain/              a provider's listing and the rules for going live
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
@@ -74,6 +74,7 @@ Build order from the domain plan:
 | 16 | Provider types, team roles (helpers and supervisors), accepted documents, face check-in, and adding a team member through a lawful-employment confirmation and eKYC | Done |
 | 17 | Verification on the spot: eKYC on the provider's phone with the person present, with no time limit | Done |
 | 18 | Business verification through eKYB, including the owner's or director's eKYC; a business starts with no team members | Done |
+| 19 | Business providers only; verification, re-verification and face checks handled by a KYC provider, with Homa keeping the marketplace rules | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.
 

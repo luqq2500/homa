@@ -2,15 +2,9 @@ package policy.domain;
 
 import kernel.Percentage;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
-import policy.domain.exception.FaceCheckAttemptsNotPositiveException;
-import policy.domain.exception.ForeignDocumentNotAllowedException;
-import policy.domain.exception.NoAcceptedDocumentException;
 import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
-import policy.domain.exception.ReverificationPeriodNotPositiveException;
 import java.time.Duration;
-import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * One Homa-set value. Homa changes the policy one value at a time, and each change makes a new
@@ -139,15 +133,6 @@ public sealed interface PolicyValue {
         }
     }
 
-    /** How many face check attempts each named person gets at a check-in. */
-    record FaceCheckAttempts(int attempts) implements PolicyValue {
-        public FaceCheckAttempts {
-            if (attempts < 1) {
-                throw new FaceCheckAttemptsNotPositiveException(attempts);
-            }
-        }
-    }
-
     // ---- Customer no-show ----
 
     /** How long the provider waits after the booked start or check-in before reporting a customer no-show. */
@@ -168,55 +153,6 @@ public sealed interface PolicyValue {
     record NoShowReportWindow(Duration period) implements PolicyValue {
         public NoShowReportWindow {
             PolicyShape.requirePeriod("The no-show report window", period);
-        }
-    }
-
-    // ---- Verification ----
-
-    /**
-     * Which identity documents each kind of person can verify with. Every kind needs at least one, and a
-     * provider and an independent provider's team members can only use Malaysian documents.
-     */
-    record AcceptedDocuments(Set<AcceptedDocument> documents) implements PolicyValue {
-        public AcceptedDocuments {
-            documents = Set.copyOf(documents);
-            for (DocumentHolder holder : DocumentHolder.values()) {
-                if (documents.stream().noneMatch(document -> document.holder() == holder)) {
-                    throw new NoAcceptedDocumentException(holder);
-                }
-            }
-            documents.stream()
-                    .filter(document -> MALAYSIAN_ONLY.contains(document.holder()) && !document.isMalaysianOnly())
-                    .findFirst()
-                    .ifPresent(document -> {
-                        throw new ForeignDocumentNotAllowedException(document.holder());
-                    });
-        }
-
-        private static final Set<DocumentHolder> MALAYSIAN_ONLY =
-                EnumSet.of(DocumentHolder.PROVIDER, DocumentHolder.INDEPENDENT_TEAM_MEMBER);
-    }
-
-    /** How many months after each person's last successful verification their re-verification is due. */
-    record ReverificationPeriod(int months) implements PolicyValue {
-        public ReverificationPeriod {
-            if (months < 1) {
-                throw new ReverificationPeriodNotPositiveException(months);
-            }
-        }
-    }
-
-    /** How long before a person's re-verification is due Homa reminds the provider and opens the re-check. */
-    record ReverificationReminder(Duration beforeDue) implements PolicyValue {
-        public ReverificationReminder {
-            PolicyShape.requirePeriod("The re-verification reminder", beforeDue);
-        }
-    }
-
-    /** How long after Homa asks for an early re-check the person must pass it, if that is sooner than their due date. */
-    record EarlyRecheckDeadline(Duration afterRequest) implements PolicyValue {
-        public EarlyRecheckDeadline {
-            PolicyShape.requirePeriod("The early re-check deadline", afterRequest);
         }
     }
 
