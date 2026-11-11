@@ -350,9 +350,9 @@ tests across contexts.
 9. **U9. Who decided.** The domain records the reason for a decision, waiver, hide or withhold, but not
    the founder. *Recommendation:* keep `decidedBy` in a usecase-level audit log for every admin action,
    rather than on each domain object.
-10. **U10. Removing a provider.** The spec says Homa can remove a provider who learns a team member may
-    not work. It needs a domain rule first: what happens to the listing, waiting requests, accepted
-    reservations and outstanding fines.
+10. **U10. Removing a provider.** *Decided:* dropped from the spec. When Homa learns a team member may
+    not work, it removes the team member with `HomaRemoveTeamMember` and records what happened.
+    Removing a provider is provider suspension, which is not in the MVP.
 11. **U11. Fine waiver reason categories.** *Recommendation:* the categories (customer-caused, emergency,
     Homa fault, other) are kept by the usecase with the free text; the domain keeps the text it has
     today. Promote them to the domain only if a rule ever depends on them.

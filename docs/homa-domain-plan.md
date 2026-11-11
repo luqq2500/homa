@@ -2411,8 +2411,9 @@ These cover both sections above. All of them are confirmed by the product owner.
 - **53 events in all** at the time. `BusinessRegistrationCheckedIE` was removed later with business
   verification through eKYB, which makes 52.
 
-**Not built in the domain:** Homa removing a provider when it learns a team member may not work is
-left to Homa's admin usecase. Removing the team member is `TeamMember.remove`.
+**Decided:** when Homa learns a team member may not work, it removes the team member
+(`TeamMember.remove`) and records what happened. Removing the provider was dropped from the spec: it is
+provider suspension, which is not in the MVP.
 
 ## Decided while building: verification on the spot
 
