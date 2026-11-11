@@ -97,7 +97,7 @@ Availability is the exception: a request needs a live answer (see U1).
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them.
-- Flagged providers: the `ProviderFlaggedIE` handler disputes each accepted reservation whose job isn't completed → `ReservationFlaggedIE`; `HomaCancelFlaggedReservation` (from the case queue) → `ReservationCancelledIE` and `SettlementDecidedIE` (R10)
+- Flagged providers: the `ProviderFlaggedIE` handler disputes each accepted reservation whose job isn't completed → `ReservationFlaggedIE`; `HomaCancelFlaggedReservation` (from the case queue) → `ReservationCancelledIE` and `SettlementDecidedIE`; `HomaRestoreFlaggedReservation` → `ReservationRestoredIE`; `HomaCancelUndecidedFlaggedReservations` (scheduled, at each booked start) → `ReservationCancelledIE` and `SettlementDecidedIE` (R10)
 - Handlers: `CaseDecidedIE` (resolve), `HomaPolicyChangedIE`, the listing events
 
 **payment**
@@ -184,8 +184,16 @@ These rules come from decisions made after the domain phase. Each one needs a us
     - reservation disputes every accepted reservation of that provider whose job isn't completed
       (`disputeForProviderFlag`) and publishes `ReservationFlaggedIE`. The customer is told straight
       away.
-    - Each one appears in the founders' queue, and `HomaCancelFlaggedReservation` cancels it with a
-      full refund (`cancelForProviderFlag`), with no fine and no cancellation fee.
+    - Each one appears in the founders' queue. `HomaCancelFlaggedReservation` cancels it with a full
+      refund (`cancelForProviderFlag`), with no fine and no cancellation fee. Or, once the KYC provider
+      has cleared the flag (the business passed again), `HomaRestoreFlaggedReservation` restores it
+      before its booked start (`restoreAfterFlagCleared`). The usecase refuses to restore while the
+      business is still flagged.
+    - `HomaCancelUndecidedFlaggedReservations` runs at each booked start and cancels any still undecided
+      (`isFlagCancellationDue`), with a full refund.
+    - payment holds the business's payouts on `ProviderFlaggedIE` (`Payout.hold`), including payouts
+      created later, until the founders release or withhold each (`HomaReleasePayout`,
+      `HomaWithholdPayout`). Only payable payouts are sent to Stripe.
     - offering pauses the listing, as on a lapse.
     - reservation and discovery also update the verified-until date on `ReverificationRequiredIE`, as on
       the other verification events (R6).

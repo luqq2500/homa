@@ -726,10 +726,15 @@ feedback about an individual worker; Homa never edits a rating.
 - 1b. **Kemas** changes a director: the **KYC provider**'s monitoring asks for KYB again by a date. Kemas
   keeps working, and **Homa** moves its verified-until date sooner, so jobs ending after that date can't
   be requested or accepted until it passes.
-- 1c. Kemas is struck off the SSM register (a **serious flag**): **Homa** lapses Kemas at once and pauses
-  its *listing*. Every accepted reservation whose job isn't completed, such as Sarah's on Saturday, moves
-  to **Disputed**, and Sarah is told. **Homa founders** cancel each one with a full refund, RM230.00, with
-  no fine and no cancellation fee.
+- 1c. Kemas is struck off the SSM register (a **serious flag** the KYC provider has confirmed):
+  - **Homa** lapses Kemas at once and pauses its *listing*.
+  - Every accepted reservation whose job isn't completed, such as Sarah's on Saturday, moves to
+    **Disputed**, even a job under way, whose team stops. Sarah is told her job is on hold.
+  - **Homa founders** cancel each one with a full refund, RM230.00, with no fine and no cancellation
+    fee. If the KYC provider clears the flag before Saturday 10:00, they can restore it instead, and it
+    goes ahead.
+  - If nobody has decided by Saturday 10:00, **Homa** cancels it with a full refund.
+  - **Homa** holds Kemas's *payouts*, and the founders release them or keep them back, with a reason.
 - 1d. A team member matches a watchlist (a serious flag): **Homa** takes them off the team at once.
 - 2a. After a safety report, **Homa founders** ask the **KYC provider** for an *early re-check*, with a
   reason. If Aina doesn't pass it in time, the KYC provider reports the lapse.
@@ -748,8 +753,11 @@ feedback about an individual worker; Homa never edits a rating.
 - `account`: `TeamMember.recordKycResult`, `requireReverification`, `lapse`; and
   `ProviderAccount.recordKybResult`, `requireReverification`, `recordSeriousFlag`, `lapse`.
 - `offering`: `ProviderListing.pause`, `resume`.
-- `reservation`: `disputeForProviderFlag`, `cancelForProviderFlag`.
-- Events: `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE`, `RecheckFailedIE`,
+- `reservation`: `disputeForProviderFlag`, `cancelForProviderFlag`, `restoreAfterFlagCleared`,
+  `isFlagCancellationDue`.
+- `payment`: `Payout.hold`, `releaseHold`, `withhold`.
+- Events: `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE`, `ReservationRestoredIE`,
+  `PayoutHeldIE`, `PayoutHoldReleasedIE`, `PayoutWithheldIE`, `RecheckFailedIE`,
   `TeamMemberReverifiedIE`, `TeamMemberLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`,
   `ListingPausedIE`, `ListingResumedIE`.
 

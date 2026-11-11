@@ -11,6 +11,7 @@ import static reservation.domain.ReservationBuilders.saturday;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import reservation.domain.exception.CompletionAlreadySubmittedException;
+import reservation.domain.exception.FlaggedReservationStartedException;
 import reservation.domain.exception.InvalidStatusTransitionException;
 
 /**
@@ -74,6 +75,77 @@ class ReservationProviderFlagTest {
                 .isInstanceOf(InvalidStatusTransitionException.class)
                 .hasMessageContaining("full refund");
         assertThat(reservation.status()).isEqualTo(ReservationStatus.DISPUTED);
+    }
+
+    @Test
+    void aJobUnderWayStopsWhenTheProviderIsFlagged() {
+        Reservation reservation = aReservation().checkedInAt(saturday("10:00"));
+
+        reservation.disputeForProviderFlag(saturday("11:00"));
+
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.DISPUTED);
+        assertThatThrownBy(() -> reservation.submitCompletion(List.of(A_PHOTO), saturday("13:00")))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+    }
+
+    @Test
+    void aClearedFlagRestoresTheReservationBeforeItsStart() {
+        Reservation reservation = aReservation().reservedWithTeamNamed();
+        reservation.disputeForProviderFlag(friday("12:00"));
+
+        reservation.restoreAfterFlagCleared(saturday("09:59"));
+
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.RESERVED);
+        assertThat(reservation.ending()).isEmpty();
+        reservation.checkIn(50, saturday("10:00"));
+        assertThat(reservation.checkInRecord()).isPresent();
+    }
+
+    @Test
+    void aFlaggedReservationIsNotRestoredFromItsStart() {
+        Reservation reservation = aReservation().reservedWithTeamNamed();
+        reservation.disputeForProviderFlag(friday("12:00"));
+
+        assertThatThrownBy(() -> reservation.restoreAfterFlagCleared(saturday("10:00")))
+                .isInstanceOf(FlaggedReservationStartedException.class)
+                .hasMessageContaining(saturday("10:00").toString());
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.DISPUTED);
+    }
+
+    @Test
+    void onlyAFlaggedReservationIsRestored() {
+        Reservation reserved = aReservation().reservedWithTeamNamed();
+        Reservation cancelled = aReservation().reservedWithTeamNamed();
+        cancelled.disputeForProviderFlag(friday("12:00"));
+        cancelled.cancelForProviderFlag(friday("13:00"));
+
+        assertThatThrownBy(() -> reserved.restoreAfterFlagCleared(friday("12:00")))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+        assertThatThrownBy(() -> cancelled.restoreAfterFlagCleared(friday("14:00")))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+    }
+
+    @Test
+    void anUndecidedFlaggedReservationIsCancelledAtItsStart() {
+        Reservation reservation = aReservation().reservedWithTeamNamed();
+        reservation.disputeForProviderFlag(friday("12:00"));
+
+        assertThat(reservation.isFlagCancellationDue(saturday("09:59"))).isFalse();
+        assertThat(reservation.isFlagCancellationDue(saturday("10:00"))).isTrue();
+
+        reservation.cancelForProviderFlag(saturday("10:00"));
+
+        assertThat(reservation.isFlagCancellationDue(saturday("10:01"))).isFalse();
+        assertThat(aReservation().reservedWithTeamNamed().isFlagCancellationDue(saturday("10:00"))).isFalse();
+    }
+
+    @Test
+    void aReservationDisputedForAReportIsNotCancelledForAFlag() {
+        Reservation reported = aReservation().completedAt(saturday("13:00"));
+        reported.fileReport(Party.CUSTOMER, ReportType.FINISHED_WORK, "Stains left", List.of(A_PHOTO), saturday("13:30"));
+
+        assertThat(reported.status()).isEqualTo(ReservationStatus.DISPUTED);
+        assertThat(reported.isFlagCancellationDue(saturday("13:40"))).isFalse();
     }
 
     @Test

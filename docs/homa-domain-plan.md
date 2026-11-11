@@ -589,6 +589,8 @@ Reservation.recordFaceCheckUnavailable(Instant now)
 Reservation.markProviderNoShow(Instant now) : CancellationResult
 Reservation.disputeForProviderFlag(Instant now)                       // the provider's business was seriously flagged
 Reservation.cancelForProviderFlag(Instant now) : Settlement           // full refund, no fine
+Reservation.restoreAfterFlagCleared(Instant now)                      // before the booked start, once the flag is cleared
+Reservation.isFlagCancellationDue(Instant now) : boolean              // undecided at the booked start
 Reservation.reportCustomerNoShow(Instant now) : Settlement
 Reservation.challengeNoShow(Instant now)
 Reservation.submitCompletion(List<EvidenceRef> evidence, Instant now)
@@ -1493,6 +1495,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `CheckInCompletedIE` | reservation | (notifications) | `Reservation.recordFaceCheck` with the first pass, or `Reservation.recordFaceCheckUnavailable` |
 | `CompletionSubmittedIE` | reservation | (notifications) | `Reservation.submitCompletion` |
 | `ReservationFlaggedIE` | reservation | (notifications, admin) | `Reservation.disputeForProviderFlag` |
+| `ReservationRestoredIE` | reservation | (notifications) | `Reservation.restoreAfterFlagCleared` |
 | `ReportFiledIE` | reservation | resolution | `Reservation.fileReport` |
 | `NoShowChallengedIE` | reservation | resolution | `Reservation.challengeNoShow` |
 | `CompletionDeadlineMissedIE` | reservation | resolution | `Reservation.missCompletionDeadline` |
@@ -1505,6 +1508,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `PaymentCapturedIE` | payment | (notifications) | `Payment.capture` |
 | `PaymentRefundedIE` | payment | (notifications) | refund instructions from `Payment.settle`, `Payment.cancelBeforeAcceptance` |
 | `PayoutCreatedIE` | payment | (notifications) | `FineDeductionPolicy.apply` |
+| `PayoutHeldIE` | payment | (admin, notifications) | `Payout.hold` |
+| `PayoutHoldReleasedIE` | payment | (notifications) | `Payout.releaseHold` |
+| `PayoutWithheldIE` | payment | (admin, notifications) | `Payout.withhold` |
 | `FineWaivedIE` | payment | (notifications) | `Fine.waive` |
 
 **Testing:** event records have no logic, so CRAP and mutation gates don't apply. One test per event checks it can only be built with all required fields and is immutable. The dependency-rule gate checks that `ie/` imports only `kernel/`.
@@ -1744,7 +1750,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 53 events in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2698,13 +2704,29 @@ are new.
   reservation whose job is not completed moves to **Disputed**, with the ending `PROVIDER_FLAGGED`. The
   team cannot check in, and nobody files reports on it. A job whose completion was submitted is not
   disputed.
-- `cancelForProviderFlag(now)`: Homa cancels it, ending **Cancelled** with a full refund, no fine and no
-  cancellation fee.
-- Only a flagged reservation is cancelled this way, and only once. `resolve` refuses it, because a full
-  refund is the only outcome.
+- A job under way (checked in, not completed) is disputed too, and the team stops.
+- The founders decide each one:
+  - `cancelForProviderFlag(now)` cancels it, ending **Cancelled** with a full refund, no fine and no
+    cancellation fee.
+  - `restoreAfterFlagCleared(now)` returns it to **Reserved** when the KYC provider has cleared the
+    flag. It works only before the booked start (`FlaggedReservationStartedException`), and the job
+    goes ahead as booked.
+- **The safe default:** `isFlagCancellationDue(now)` is true for a flagged reservation still undecided at
+  its booked start, and Homa then cancels it with a full refund.
+- Only a flagged reservation is cancelled or restored this way. `resolve` refuses it.
 
-**`ie/`:** `ReverificationRequiredIE`, `ProviderFlaggedIE` and `ReservationFlaggedIE` are added, which
-makes 53 events. offering pauses the listing on `ProviderFlaggedIE`, as on a lapse. reservation disputes
+**`payment`**
+
+- A payout to a seriously flagged business is **held** (`Payout.hold(reason)`), including those for jobs
+  completed before the flag.
+- The founders either `releaseHold()`, so it is paid out as normal, or `withhold(reason)` to keep it
+  back.
+- Only a payable payout is held, and only a held one is released or withheld. A reason is required.
+  `isPayable()` says whether it can be paid out now.
+
+**`ie/`:**
+- `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE`, `ReservationRestoredIE`,
+  `PayoutHeldIE`, `PayoutHoldReleasedIE` and `PayoutWithheldIE` are added, which makes 57 events. offering pauses the listing on `ProviderFlaggedIE`, as on a lapse. reservation disputes
 the upcoming accepted reservations.
 
 ```gherkin
@@ -2748,7 +2770,48 @@ Feature: A seriously flagged provider
     Given Kemas submitted completion for a job
     When Kemas is seriously flagged
     Then it is rejected with CompletionAlreadySubmittedException
+
+  Scenario: A job under way stops when the provider is flagged
+    Given Aina checked in at 10:00
+    When Kemas is seriously flagged at 11:00
+    Then the reservation is Disputed
+
+  Scenario: A cleared flag restores the reservation before its start
+    Given a reservation disputed because Kemas was flagged
+    When the KYC provider clears the flag and Homa restores it on Saturday at 09:59
+    Then the reservation is Reserved again
+
+  Scenario: A flagged reservation is not restored from its start
+    Given a reservation disputed because Kemas was flagged
+    When Homa tries to restore it on Saturday at 10:00
+    Then it is rejected with FlaggedReservationStartedException
+
+  Scenario: An undecided flagged reservation is cancelled at its start
+    Given a reservation disputed because Kemas was flagged
+    Then its cancellation is due from Saturday at 10:00, not at 09:59
+
+Feature: A seriously flagged provider's payouts
+  Scenario: A flagged provider's payout is held
+    When Kemas is seriously flagged
+    Then its payout of RM200.00 is held and not paid out
+
+  Scenario: The founders release a held payout
+    Given Kemas's payout is held
+    When the founders release it
+    Then it is paid out as normal
+
+  Scenario: The founders withhold a held payout
+    Given Kemas's payout is held
+    When the founders withhold it with the reason "Confirmed sanctions match"
+    Then it is not paid out
 ```
+
+**Decided while building** (from the recommendation the product owner chose):
+
+- The founders restore a flagged reservation only after the KYC provider clears the flag. The usecase
+  checks the flag; the domain checks that the booked start hasn't come.
+- A withheld payout stays with Homa; what happens to it next, such as with the authorities, is outside
+  the domain.
 
 ## Open questions
 

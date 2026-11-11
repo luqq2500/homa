@@ -22,6 +22,7 @@ import reservation.domain.exception.CompletionNotSubmittedException;
 import reservation.domain.exception.DisputeWindowStillOpenException;
 import reservation.domain.exception.EvidenceRequiredException;
 import reservation.domain.exception.FaceCheckAlreadyRecordedException;
+import reservation.domain.exception.FlaggedReservationStartedException;
 import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
@@ -414,13 +415,38 @@ public final class Reservation {
         ending = Ending.PROVIDER_FLAGGED;
     }
 
-    /** Homa cancels a reservation disputed for a flagged provider, with a full refund and no fine. */
+    /**
+     * Homa's founders cancel a reservation disputed for a flagged provider, with a full refund and no fine.
+     * It is also what happens at the booked start when nobody decided in time.
+     */
     public Settlement cancelForProviderFlag(Instant now) {
-        if (status != ReservationStatus.DISPUTED || ending != Ending.PROVIDER_FLAGGED) {
-            throw new InvalidStatusTransitionException(status, "cancelled for a flagged provider");
-        }
+        requireFlagged("cancelled for a flagged provider");
         status = ReservationStatus.CANCELLED;
         return settle(Money.ZERO, now);
+    }
+
+    /**
+     * The KYC provider cleared the flag, and the founders restore the reservation before its booked start:
+     * it is reserved again and goes ahead as booked.
+     */
+    public void restoreAfterFlagCleared(Instant now) {
+        requireFlagged("restored");
+        if (!now.isBefore(start())) {
+            throw new FlaggedReservationStartedException(start());
+        }
+        status = ReservationStatus.RESERVED;
+        ending = null;
+    }
+
+    /** Whether a flagged reservation is still undecided at its booked start, so Homa cancels it with a full refund. */
+    public boolean isFlagCancellationDue(Instant now) {
+        return status == ReservationStatus.DISPUTED && ending == Ending.PROVIDER_FLAGGED && !now.isBefore(start());
+    }
+
+    private void requireFlagged(String action) {
+        if (status != ReservationStatus.DISPUTED || ending != Ending.PROVIDER_FLAGGED) {
+            throw new InvalidStatusTransitionException(status, action);
+        }
     }
 
     public Settlement closeDisputeWindow(Instant now) {

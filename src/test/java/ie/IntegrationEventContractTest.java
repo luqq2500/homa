@@ -29,6 +29,9 @@ import ie.events.PaymentCapturedIE;
 import ie.events.PaymentRefundedIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
+import ie.events.PayoutHeldIE;
+import ie.events.PayoutHoldReleasedIE;
+import ie.events.PayoutWithheldIE;
 import ie.events.ProviderCheckedInIE;
 import ie.events.ProviderFlaggedIE;
 import ie.events.ProviderReverifiedIE;
@@ -47,6 +50,7 @@ import ie.events.ReservationEditedIE;
 import ie.events.ReservationExpiredIE;
 import ie.events.ReservationFlaggedIE;
 import ie.events.ReservationRequestedIE;
+import ie.events.ReservationRestoredIE;
 import ie.events.ReverificationRequiredIE;
 import ie.events.SettlementDecidedIE;
 import ie.events.TeamMemberAddedIE;
@@ -136,6 +140,7 @@ class IntegrationEventContractTest {
                 Arguments.of(CheckInCompletedIE.class, ReservationIE.class),
                 Arguments.of(CompletionSubmittedIE.class, ReservationIE.class),
                 Arguments.of(ReservationFlaggedIE.class, ReservationIE.class),
+                Arguments.of(ReservationRestoredIE.class, ReservationIE.class),
                 Arguments.of(ReportFiledIE.class, ReservationIE.class),
                 Arguments.of(NoShowChallengedIE.class, ReservationIE.class),
                 Arguments.of(CompletionDeadlineMissedIE.class, ReservationIE.class),
@@ -146,6 +151,9 @@ class IntegrationEventContractTest {
                 Arguments.of(PaymentCapturedIE.class, PaymentIE.class),
                 Arguments.of(PaymentRefundedIE.class, PaymentIE.class),
                 Arguments.of(PayoutCreatedIE.class, PaymentIE.class),
+                Arguments.of(PayoutHeldIE.class, PaymentIE.class),
+                Arguments.of(PayoutHoldReleasedIE.class, PaymentIE.class),
+                Arguments.of(PayoutWithheldIE.class, PaymentIE.class),
                 Arguments.of(FineWaivedIE.class, PaymentIE.class),
                 Arguments.of(RatingSubmittedIE.class, FeedbackIE.class),
                 Arguments.of(RatingHiddenIE.class, FeedbackIE.class));
@@ -219,7 +227,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(53);
+        assertThat(events().count()).isEqualTo(57);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

@@ -477,3 +477,26 @@ provider (Persona and Innov8tif are candidates):
 - **Usecase plan:** required rule R10.
 - **Scenarios:** 224 in the plan; 212 have a test and 12 are retired.
 - **Gates:** whole build 1,075 tests, 1,393 mutants, all killed, worst CRAP 5.0.
+
+## 19. Addendum: a seriously flagged provider's bookings and payouts
+
+Changed after the phase closed, following the recommendation the product owner chose.
+
+- **`reservation`:**
+  - A serious flag disputes every accepted reservation whose job isn't completed, including a job under
+    way, whose team stops.
+  - The founders either cancel it with a full refund (`cancelForProviderFlag`), or restore it before its
+    booked start once the KYC provider clears the flag (`restoreAfterFlagCleared`).
+  - Undecided at the booked start (`isFlagCancellationDue`), it is cancelled with a full refund.
+- **`payment`:** a flagged provider's payouts are held (`Payout.hold`), and the founders release
+  (`releaseHold`) or withhold (`withhold`) each one, with a reason.
+- **Spec:**
+  - The KYC provider reports only confirmed flags.
+  - The serious flag rules now cover the hold, the founders' decision, restoring, the cancel-at-start
+    default and the payout hold.
+  - The case queue includes held payouts.
+- **`ie/`:** `ReservationRestoredIE`, `PayoutHeldIE`, `PayoutHoldReleasedIE` and `PayoutWithheldIE`, which
+  makes 57 events.
+- **Usecase plan:** R10 covers restoring, the scheduled cancel at the start, and the payout hold.
+- **Scenarios:** 231 in the plan; 219 have a test and 12 are retired.
+- **Gates:** whole build 1,106 tests, 1,420 mutants, all killed, worst CRAP 5.0.
