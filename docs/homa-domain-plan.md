@@ -2647,7 +2647,7 @@ Feature: Face check at check-in by the KYC provider
     Then it is rejected with FaceCheckAlreadyRecordedException
 ```
 
-**Decided while building** (confirmed by the product owner with this change):
+**Decided while building** (waiting for confirmation):
 
 - **The lapse comes from the KYC provider.** Homa no longer works out due dates. It keeps the
   verified-until date it is given: a job must end by it, and search uses it.
