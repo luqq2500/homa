@@ -445,5 +445,7 @@ providers:
 - **`ie/`:** `ProviderRegisteredIE` and `RecheckOpenedIE` are removed, which makes 50 events.
 - **Scenarios:** 216 in the plan; 204 have a test and 12 are retired.
 - **Gates:** whole build 1,039 tests, 1,370 mutants, all killed, worst CRAP 5.0.
+- **Decisions:** a failed re-verification changes nothing, the registered name follows the latest
+  pass, and Homa uses the verified-until date the KYC provider sends. All are confirmed.
 - **To check before launch:** choose the KYC provider and confirm it meets Homa's requirements, and
   set up a data processing agreement covering transfers outside Malaysia.
