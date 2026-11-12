@@ -57,6 +57,16 @@ public final class Conversation {
         messages.add(new Message(sender, text, now));
     }
 
+    /**
+     * A customer requested without chatting first, which opens the reservation's chat with no message. The
+     * customer's request started it, so either party can now write first, for example about access to the
+     * home or running late.
+     */
+    public static Conversation openForReservation(String reservationId, String customerId, String providerId, Instant now) {
+        Objects.requireNonNull(now);
+        return new Conversation(ChatSubject.reservation(reservationId), require(customerId, "A customer id"), require(providerId, "A provider id"));
+    }
+
     /** The enquiry was requested: the same chat, with its messages, now belongs to the reservation. */
     public void linkReservation(String reservationId) {
         if (subject.kind() == ChatSubject.Kind.RESERVATION) {
