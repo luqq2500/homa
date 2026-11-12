@@ -83,12 +83,11 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-In progress. `catalogue` is built: 14 usecases, 75 tests, every mutant killed. The other contexts
+In progress. `catalogue` is built: 16 usecases, 85 tests, every mutant killed. The other contexts
 follow in the plan's build order. The plan, `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases
 (including `feedback`, `privacy` and `tracking`), how one context gets another's data, the required
 rules R1 to R14, the admin console (with the founders' growth dashboard and rules A1 to A6), the
-progress per context, and the questions: U1 to U12 are decided, and U13 (a shelf's jobs aren't checked
-against the job list) is open.
+progress per context, and the questions U1 to U13, all decided.
 
 ### Decisions taken while building
 

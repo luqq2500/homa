@@ -10,10 +10,15 @@ import catalogue.domain.JobCode;
 import catalogue.domain.Shelf;
 import catalogue.domain.exception.EmptyPresetSearchException;
 import catalogue.domain.exception.InvalidShelfOrderException;
+import catalogue.domain.exception.ShelfJobNotOfferedException;
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
+import catalogue.usecase.CatalogueUsecaseFixtures.PublishedEvents;
+import catalogue.usecase.dto.AddJobRequest;
 import catalogue.usecase.dto.CreateShelfRequest;
 import catalogue.usecase.dto.CreateShelfResponse;
+import catalogue.usecase.dto.RetireJobRequest;
 import catalogue.usecase.exception.DecidedByRequiredException;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -23,7 +28,17 @@ class HomaShelfCreationTest {
 
     private final InMemoryShelves shelves = new InMemoryShelves();
     private final AuditLog auditLog = new AuditLog();
-    private final HomaCreateShelf createShelf = new HomaCreateShelf(shelves, auditLog, CLOCK);
+    private final InMemoryJobLists jobLists = new InMemoryJobLists();
+    private final HomaCreateShelf createShelf = new HomaCreateShelf(shelves, jobLists, auditLog, CLOCK);
+
+    HomaShelfCreationTest() {
+        HomaAddJob addJob = new HomaAddJob(jobLists, new PublishedEvents(), new AuditLog(), CLOCK);
+        addJob.add(new AddJobRequest(FOUNDER, "KITCHEN", "Kitchen care", "Kitchen"));
+        addJob.add(new AddJobRequest(FOUNDER, "LAUNDRY_FOLD", "Laundry folding", "Laundry"));
+        addJob.add(new AddJobRequest(FOUNDER, "GARDEN", "Garden tidy", "Outdoors"));
+        new HomaRetireJob(jobLists, shelves, new PublishedEvents(), new AuditLog(), CLOCK)
+                .retire(new RetireJobRequest(FOUNDER, "GARDEN", "No provider offers it"));
+    }
 
     private static CreateShelfRequest weekendQuickRefresh() {
         return new CreateShelfRequest(FOUNDER, " Weekend quick refresh ", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1, 1);
@@ -61,6 +76,34 @@ class HomaShelfCreationTest {
 
         assertThat(shelves.findAll()).isEmpty();
         assertThat(auditLog.all).isEmpty();
+    }
+
+    @Test
+    void aShelfCannotSearchForAJobThatIsNotOnTheList() {
+        CreateShelfRequest unknownJob = new CreateShelfRequest(FOUNDER, "Pool day", Set.of("KITCHEN", "POOL"), 2, 1, 1);
+
+        assertThatThrownBy(() -> createShelf.create(unknownJob))
+                .isInstanceOf(ShelfJobNotOfferedException.class)
+                .hasMessageContaining("POOL");
+
+        assertThat(shelves.findAll()).isEmpty();
+        assertThat(auditLog.all).isEmpty();
+    }
+
+    @Test
+    void aShelfCannotSearchForARetiredJob() {
+        CreateShelfRequest retiredJob = new CreateShelfRequest(FOUNDER, "Garden day", Set.of("GARDEN"), 2, 1, 1);
+
+        assertThatThrownBy(() -> createShelf.create(retiredJob)).isInstanceOf(ShelfJobNotOfferedException.class);
+
+        assertThat(shelves.findAll()).isEmpty();
+    }
+
+    @Test
+    void beforeAnyJobIsAddedNoShelfCanBeCreated() {
+        HomaCreateShelf withNoJobList = new HomaCreateShelf(shelves, new InMemoryJobLists(), auditLog, CLOCK);
+
+        assertThatThrownBy(() -> withNoJobList.create(weekendQuickRefresh())).isInstanceOf(ShelfJobNotOfferedException.class);
     }
 
     @Test

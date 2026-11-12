@@ -16,10 +16,14 @@ import ie.events.FineChargedIE;
 import ie.events.FineWaivedIE;
 import ie.events.HomaPolicyChangedIE;
 import ie.events.JobAddedIE;
+import ie.events.JobRegroupedIE;
+import ie.events.JobRenamedIE;
 import ie.events.JobRetiredIE;
+import ie.events.JobWithdrawnFromListingIE;
 import ie.events.ListingChangedIE;
 import ie.events.ListingPausedIE;
 import ie.events.ListingResumedIE;
+import ie.events.ListingWentOfflineForRetiredJobIE;
 import ie.events.ListingWentLiveIE;
 import ie.events.ListingWentOfflineIE;
 import ie.events.MemberVerificationRejectedIE;
@@ -64,7 +68,9 @@ import ie.events.TeamMemberRemovedIE;
 import ie.events.TeamMemberReverifiedIE;
 import ie.events.TeamNamedIE;
 import ie.events.ToolAddedIE;
+import ie.events.ToolRenamedIE;
 import ie.events.ToolRetiredIE;
+import ie.events.ToolWithdrawnFromListingIE;
 import ie.port.AccountIE;
 import ie.port.CatalogueIE;
 import ie.port.DiscoveryIE;
@@ -109,6 +115,12 @@ class IntegrationEventContractTest {
                 Arguments.of(JobAddedIE.class, CatalogueIE.class),
                 Arguments.of(JobRetiredIE.class, CatalogueIE.class),
                 Arguments.of(ToolAddedIE.class, CatalogueIE.class),
+                Arguments.of(JobRenamedIE.class, CatalogueIE.class),
+                Arguments.of(JobRegroupedIE.class, CatalogueIE.class),
+                Arguments.of(ToolRenamedIE.class, CatalogueIE.class),
+                Arguments.of(JobWithdrawnFromListingIE.class, OfferingIE.class),
+                Arguments.of(ListingWentOfflineForRetiredJobIE.class, OfferingIE.class),
+                Arguments.of(ToolWithdrawnFromListingIE.class, OfferingIE.class),
                 Arguments.of(ToolRetiredIE.class, CatalogueIE.class),
                 Arguments.of(HomaPolicyChangedIE.class, PolicyIE.class),
                 Arguments.of(CustomerRegisteredIE.class, AccountIE.class),
@@ -238,7 +250,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(62);
+        assertThat(events().count()).isEqualTo(68);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

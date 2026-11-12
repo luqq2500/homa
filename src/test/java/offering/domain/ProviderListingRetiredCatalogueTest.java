@@ -17,8 +17,9 @@ class ProviderListingRetiredCatalogueTest {
     void aRetiredJobComesOffTheListing() {
         ProviderListing listing = aLiveListing();
 
-        listing.withdrawJob(job("KITCHEN"));
+        JobWithdrawal withdrawal = listing.withdrawJob(job("KITCHEN"));
 
+        assertThat(withdrawal).isEqualTo(JobWithdrawal.WITHDRAWN);
         assertThat(listing.jobs()).containsExactly(job("LAUNDRY_FOLD"));
         assertThat(listing.isLive()).isTrue();
         assertThat(listing.isPaused()).isFalse();
@@ -31,8 +32,9 @@ class ProviderListingRetiredCatalogueTest {
         ProviderListing listing = aLiveListing();
 
         listing.withdrawJob(job("KITCHEN"));
-        listing.withdrawJob(job("LAUNDRY_FOLD"));
+        JobWithdrawal withdrawal = listing.withdrawJob(job("LAUNDRY_FOLD"));
 
+        assertThat(withdrawal).isEqualTo(JobWithdrawal.WITHDRAWN_AND_OFFLINE);
         assertThat(listing.jobs()).isEmpty();
         assertThat(listing.isLive()).isFalse();
         assertThat(listing.takesRequests()).isFalse();
@@ -45,8 +47,9 @@ class ProviderListingRetiredCatalogueTest {
         listing.pause();
 
         listing.withdrawJob(job("KITCHEN"));
-        listing.withdrawJob(job("LAUNDRY_FOLD"));
+        JobWithdrawal withdrawal = listing.withdrawJob(job("LAUNDRY_FOLD"));
 
+        assertThat(withdrawal).isEqualTo(JobWithdrawal.WITHDRAWN_AND_OFFLINE);
         assertThat(listing.isLive()).isFalse();
         assertThat(listing.isPaused()).isFalse();
     }
@@ -79,8 +82,9 @@ class ProviderListingRetiredCatalogueTest {
     void aRetiredJobTheListingDoesNotOfferChangesNothing() {
         ProviderListing listing = aLiveListing();
 
-        listing.withdrawJob(job("TOILET_CARE"));
+        JobWithdrawal withdrawal = listing.withdrawJob(job("TOILET_CARE"));
 
+        assertThat(withdrawal).isEqualTo(JobWithdrawal.NOT_OFFERED);
         assertThat(listing.jobs()).containsExactlyInAnyOrder(job("KITCHEN"), job("LAUNDRY_FOLD"));
         assertThat(listing.isLive()).isTrue();
     }
@@ -93,6 +97,17 @@ class ProviderListingRetiredCatalogueTest {
 
         assertThat(draft.jobs()).containsExactly(job("LAUNDRY_FOLD"));
         assertThat(draft.isLive()).isFalse();
+    }
+
+    @Test
+    void aDraftLosingItsLastJobWasNeverLiveSoDoesNotGoOffline() {
+        ProviderListing draft = aCompleteListing();
+        draft.withdrawJob(job("KITCHEN"));
+
+        JobWithdrawal withdrawal = draft.withdrawJob(job("LAUNDRY_FOLD"));
+
+        assertThat(withdrawal).isEqualTo(JobWithdrawal.WITHDRAWN);
+        assertThat(draft.jobs()).isEmpty();
     }
 
     @Test
@@ -109,8 +124,9 @@ class ProviderListingRetiredCatalogueTest {
     void aRetiredToolComesOffTheListingAndItStaysLive() {
         ProviderListing listing = aLiveListing();
 
-        listing.withdrawTool(tool("STEAM_MOP"));
+        boolean changed = listing.withdrawTool(tool("STEAM_MOP"));
 
+        assertThat(changed).isTrue();
         assertThat(listing.tools()).isEmpty();
         assertThat(listing.isLive()).isTrue();
         assertThat(listing.snapshot().tools()).isEmpty();
@@ -120,8 +136,9 @@ class ProviderListingRetiredCatalogueTest {
     void aRetiredToolTheProviderDoesNotBringChangesNothing() {
         ProviderListing listing = aLiveListing();
 
-        listing.withdrawTool(tool("VACUUM"));
+        boolean changed = listing.withdrawTool(tool("VACUUM"));
 
+        assertThat(changed).isFalse();
         assertThat(listing.tools()).containsExactly(tool("STEAM_MOP"));
     }
 }

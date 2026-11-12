@@ -14,6 +14,7 @@ import catalogue.usecase.dto.AddToolRequest;
 import catalogue.usecase.dto.CreateShelfRequest;
 import catalogue.usecase.dto.CustomerViewShelvesResponse;
 import catalogue.usecase.dto.HomaViewJobListResponse;
+import catalogue.usecase.dto.HomaViewShelvesResponse;
 import catalogue.usecase.dto.HomaViewToolListResponse;
 import catalogue.usecase.dto.ProviderViewJobListResponse;
 import catalogue.usecase.dto.ProviderViewToolListResponse;
@@ -38,7 +39,7 @@ class CatalogueViewsTest {
     }
 
     private void jobIsRetired(String code) {
-        new HomaRetireJob(jobLists, events, auditLog, CLOCK).retire(new RetireJobRequest(FOUNDER, code, "No longer offered"));
+        new HomaRetireJob(jobLists, shelves, events, auditLog, CLOCK).retire(new RetireJobRequest(FOUNDER, code, "No longer offered"));
     }
 
     private void toolIsOnTheList(String code, String name) {
@@ -50,7 +51,7 @@ class CatalogueViewsTest {
     }
 
     private String shelfIsCreated(String title, int order, String... jobCodes) {
-        return new HomaCreateShelf(shelves, auditLog, CLOCK)
+        return new HomaCreateShelf(shelves, jobLists, auditLog, CLOCK)
                 .create(new CreateShelfRequest(FOUNDER, title, Set.of(jobCodes), 2, 1, order))
                 .shelfId();
     }
@@ -169,6 +170,45 @@ class CatalogueViewsTest {
     class TheShelves {
 
         private final CustomerViewShelves customersView = new CustomerViewShelves(shelves);
+        private final HomaViewShelves foundersView = new HomaViewShelves(shelves);
+
+        TheShelves() {
+            jobIsOnTheList("KITCHEN", "Kitchen care", "Kitchen");
+            jobIsOnTheList("LAUNDRY_FOLD", "Laundry folding", "Laundry");
+        }
+
+        @Test
+        void aCustomerDoesNotSeeAShelfLeftWithNoJob() {
+            shelfIsCreated("Kitchen rescue", 1, "KITCHEN");
+            String laundry = shelfIsCreated("Laundry day", 2, "LAUNDRY_FOLD");
+
+            jobIsRetired("KITCHEN");
+
+            assertThat(customersView.view().shelves()).extracting(CustomerViewShelvesResponse.Shelf::shelfId)
+                    .containsExactly(laundry);
+        }
+
+        @Test
+        void theFoundersSeeEveryShelfInOrderAndWhichAreNoLongerShown() {
+            String laundry = shelfIsCreated("Laundry day", 2, "LAUNDRY_FOLD");
+            String kitchen = shelfIsCreated("Kitchen rescue", 1, "KITCHEN");
+            jobIsRetired("KITCHEN");
+
+            List<HomaViewShelvesResponse.Shelf> all = foundersView.view().shelves();
+
+            assertThat(all).containsExactly(
+                    new HomaViewShelvesResponse.Shelf(kitchen, "Kitchen rescue", 1, Set.of("KITCHEN"), 2, 1, false),
+                    new HomaViewShelvesResponse.Shelf(laundry, "Laundry day", 2, Set.of("LAUNDRY_FOLD"), 2, 1, true));
+            HomaViewShelvesResponse.Shelf shown = all.get(1);
+            assertThat(shown.shelfId()).isEqualTo(laundry);
+            assertThat(shown.title()).isEqualTo("Laundry day");
+            assertThat(shown.order()).isEqualTo(2);
+            assertThat(shown.jobCodes()).containsExactly("LAUNDRY_FOLD");
+            assertThat(shown.hours()).isEqualTo(2);
+            assertThat(shown.helpers()).isEqualTo(1);
+            assertThat(shown.shown()).isTrue();
+            assertThat(all.get(0).shown()).isFalse();
+        }
 
         @Test
         void beforeAnyShelfIsCreatedTheHomepageHasNone() {

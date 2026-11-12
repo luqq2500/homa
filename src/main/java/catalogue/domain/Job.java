@@ -3,15 +3,15 @@ package catalogue.domain;
 import java.util.Objects;
 
 /**
- * A job on Homa's job list. A job is identified by its code; its name can change, and it can be retired
- * so providers can no longer offer it. A job is never deleted.
+ * A job on Homa's job list. A job is identified by its code; its name and display group can change, and
+ * it can be retired so providers can no longer offer it. A job is never deleted.
  *
  * <p>Jobs change only through their {@link JobList}.
  */
 public final class Job {
 
     private final JobCode code;
-    private final JobGroup group;
+    private JobGroup group;
     private String name;
     private boolean active;
 
@@ -24,6 +24,10 @@ public final class Job {
 
     void rename(String newName) {
         name = CatalogueText.requireName(newName, "A job");
+    }
+
+    void regroup(JobGroup newGroup) {
+        group = Objects.requireNonNull(newGroup);
     }
 
     void retire() {

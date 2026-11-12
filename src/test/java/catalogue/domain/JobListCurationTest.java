@@ -75,6 +75,38 @@ class JobListCurationTest {
     }
 
     @Nested
+    class RegroupingJobs {
+
+        @Test
+        void aJobMovesToAnotherGroupAndKeepsItsCodeAndName() {
+            JobList list = aJobList().with("SOFA_VACUUM").build();
+
+            list.regroup(job("SOFA_VACUUM"), JobGroup.of("Living room"));
+
+            Job moved = list.job(job("SOFA_VACUUM")).orElseThrow();
+            assertThat(moved.group()).isEqualTo(JobGroup.of("Living room"));
+            assertThat(moved.name()).isEqualTo("Job SOFA_VACUUM");
+            assertThat(list.isOffered(job("SOFA_VACUUM"))).isTrue();
+        }
+
+        @Test
+        void aJobNeedsAGroupToMoveTo() {
+            JobList list = aJobList().with("SOFA_VACUUM").build();
+
+            assertThatThrownBy(() -> list.regroup(job("SOFA_VACUUM"), null)).isInstanceOf(NullPointerException.class);
+            assertThat(list.job(job("SOFA_VACUUM")).orElseThrow().group()).isEqualTo(CatalogueBuilders.KITCHEN);
+        }
+
+        @Test
+        void onlyAJobOnTheListCanBeRegrouped() {
+            JobList list = aJobList().build();
+
+            assertThatThrownBy(() -> list.regroup(job("SOFA_VACUUM"), JobGroup.of("Living room")))
+                    .isInstanceOf(JobNotFoundException.class);
+        }
+    }
+
+    @Nested
     class RenamingJobs {
 
         @Test

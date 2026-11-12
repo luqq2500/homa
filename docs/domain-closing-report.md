@@ -530,3 +530,22 @@ plan's recommendations for questions U2 to U5, U8, U9, U11 and U12.
   Every question, U1 to U12, is decided.
 - **Scenarios:** 244 in the plan; 232 have a test and 12 are retired.
 - **Gates:** whole build 1,152 tests, 1,439 mutants, all killed, worst CRAP 5.0.
+
+## 21. Addendum: changes to the job and tool lists
+
+Changed after the phase closed, while building the `catalogue` usecases, and confirmed by the product
+owner.
+
+- **`catalogue`:** a job can move to another display group (`JobList.regroup`). A shelf searches only
+  for jobs providers can offer (`Shelf.create` refuses any other), a retired job comes off every
+  shelf's search (`Shelf.withdrawJob`), and a shelf left with no job is no longer shown.
+- **`offering`:** `withdrawJob` says what it did (`JobWithdrawal`), and `withdrawTool` whether the
+  provider brought the tool, so the provider can be told.
+- **`ie/`:** `JobRenamedIE`, `JobRegroupedIE`, `ToolRenamedIE`, `JobWithdrawnFromListingIE`,
+  `ListingWentOfflineForRetiredJobIE` and `ToolWithdrawnFromListingIE`, which makes 68 events.
+- **Spec:** what renaming, regrouping, retiring and replacing do to a provider, that the provider is
+  told, and that shelves search only for jobs providers can offer.
+- **Usecase plan:** R11 tells the provider, the catalogue usecases cover regrouping and shelves, and
+  U13 is decided.
+- **Scenarios:** 252 in the plan; 240 have a test and 12 are retired.
+- **Gates:** whole build 1,271 tests, 1,532 mutants, all killed, worst CRAP 5.0.

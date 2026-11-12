@@ -93,15 +93,30 @@ public final class ProviderListing {
      * with no job is no longer live until the provider offers one again. A request already made keeps the
      * offering it was made with.
      */
-    public void withdrawJob(JobCode retired) {
+    public JobWithdrawal withdrawJob(JobCode retired) {
+        if (!jobs.contains(retired)) {
+            return JobWithdrawal.NOT_OFFERED;
+        }
         jobs = without(jobs, retired);
-        live = live && !jobs.isEmpty();
-        paused = paused && live;
+        return jobs.isEmpty() ? goOfflineWithNoJob() : JobWithdrawal.WITHDRAWN;
     }
 
-    /** Homa retired {@code retired} from its tool list: the listing no longer says the provider brings it. */
-    public void withdrawTool(ToolCode retired) {
+    private JobWithdrawal goOfflineWithNoJob() {
+        boolean wasLive = live;
+        live = false;
+        paused = false;
+        return wasLive ? JobWithdrawal.WITHDRAWN_AND_OFFLINE : JobWithdrawal.WITHDRAWN;
+    }
+
+    /**
+     * Homa retired {@code retired} from its tool list: the listing no longer says the provider brings it.
+     *
+     * @return whether the provider brought the tool, so the listing changed
+     */
+    public boolean withdrawTool(ToolCode retired) {
+        boolean brought = tools.contains(retired);
         tools = without(tools, retired);
+        return brought;
     }
 
     public void setPricing(HourlyRate rate, TravelFee travel) {

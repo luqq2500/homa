@@ -69,10 +69,17 @@ final class CatalogueUsecaseFixtures {
 
     static final class InMemoryShelves implements ShelfRepository {
         private final List<Shelf> saved = new ArrayList<>();
+        int saves;
 
         @Override
         public void save(Shelf shelf) {
+            saved.removeIf(kept -> kept.id().equals(shelf.id()));
             saved.add(shelf);
+            saves++;
+        }
+
+        Shelf find(String title) {
+            return saved.stream().filter(shelf -> shelf.title().equals(title)).findFirst().orElseThrow();
         }
 
         @Override

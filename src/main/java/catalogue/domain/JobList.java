@@ -40,6 +40,11 @@ public final class JobList {
         existing(code).rename(name);
     }
 
+    /** Moves a job to another display group, such as from Kitchen to Living room. Its code stays. */
+    public void regroup(JobCode code, JobGroup group) {
+        existing(code).regroup(group);
+    }
+
     public void retire(JobCode code) {
         Job job = existing(code);
         if (!job.isActive()) {

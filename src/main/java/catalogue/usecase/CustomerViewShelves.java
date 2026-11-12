@@ -9,7 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Shows a customer the homepage shelves, in the order Homa set. */
+/** Shows a customer the homepage shelves, in the order Homa set. A shelf left with no job is not shown. */
 public final class CustomerViewShelves implements CustomerShelvesViewer {
 
     private final ShelfRepository shelves;
@@ -21,6 +21,7 @@ public final class CustomerViewShelves implements CustomerShelvesViewer {
     @Override
     public CustomerViewShelvesResponse view() {
         List<CustomerViewShelvesResponse.Shelf> inOrder = shelves.findAll().stream()
+                .filter(Shelf::isShown)
                 .sorted(Comparator.comparingInt(Shelf::order))
                 .map(CustomerViewShelves::toView)
                 .toList();

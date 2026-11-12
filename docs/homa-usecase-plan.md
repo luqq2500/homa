@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** in progress. `catalogue` is built and passes its gates (see Progress); the other contexts follow in the build order. Questions U1 to U12 are decided; U13 is open (see the end).
+**Status:** in progress. `catalogue` is built and passes its gates (see Progress); the other contexts follow in the build order. Every question, U1 to U13, is decided (see the end).
 
 ## Conventions
 
@@ -68,6 +68,7 @@ fed by event handlers and stored behind its own out port:
 | reservation, discovery | each business's verified-until date | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `ReverificationRequiredIE` |
 | reservation, payment | whether each business is seriously flagged now | `ProviderFlaggedIE`, `ProviderReverifiedIE` (a pass clears the flag) |
 | discovery | each live listing's search fields | the listing events |
+| discovery, tracking | job and tool names and job groups, for results and the provider page | `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `ToolAddedIE`, `ToolRenamedIE` |
 | feedback | each reservation's customer, provider, named team and completion time | `ReservationRequestedIE`, `TeamNamedIE`, `ReservationCompletedIE` |
 | feedback | the rating window and the minimum ratings to show | `HomaPolicyChangedIE` |
 | tracking | its own views of everything | every event (see Admin console) |
@@ -84,12 +85,12 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 `→` shows the event published.
 
 **catalogue**
-- `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob` → `JobAddedIE`, `JobRetiredIE`
-- `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRetiredIE`
-- `HomaCreateShelf`
+- `HomaAddJob`, `HomaRenameJob`, `HomaRegroupJob`, `HomaRetireJob` → `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`
+- `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRenamedIE`, `ToolRetiredIE`
+- `HomaCreateShelf` (only for jobs providers can offer). `HomaRetireJob` also takes the job off every shelf's search; a shelf left with no job is no longer shown.
 - `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2). Publishing again sends the same cities again.
-- Retiring a job or tool needs a reason, because it changes providers' listings (R11). Renaming publishes nothing: the code stays.
-- Queries: `HomaViewJobList` and `HomaViewToolList` (everything, retired included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
+- Retiring a job or tool needs a reason, because it changes providers' listings (R11). Renaming and regrouping keep the code, so listings are untouched; the events update the names and groups other contexts show.
+- Queries: `HomaViewJobList`, `HomaViewToolList` and `HomaViewShelves` (everything, retired and hidden included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
 
 **policy**
 - `HomaLaunchPolicy` (version 1)
@@ -252,6 +253,10 @@ These rules come from decisions made after the domain phase. Each one needs a us
     `withdrawJob` on every listing that offers the job, and on `ToolRetiredIE`, `withdrawTool`.
     - A listing that was live and still is publishes `ListingChangedIE`; one left with no job
       publishes `ListingWentOfflineIE`. A listing that didn't have the job or tool publishes nothing.
+    - So the provider is told, it also publishes what the domain returned: `JobWithdrawnFromListingIE`
+      (`WITHDRAWN` on a live listing), `ListingWentOfflineForRetiredJobIE` (`WITHDRAWN_AND_OFFLINE`:
+      offer another job and go live again), or `ToolWithdrawnFromListingIE`. A draft that loses a job
+      publishes nothing; the provider sees it when they next edit the listing.
     - Requests and reservations already made are untouched: they keep the offering they were made with
       (R3).
 12. **R12. A request ends with one event, and never waits unpaid.**
@@ -405,7 +410,7 @@ Each context passes its gates before the next starts.
 
 | Context | Usecases | Tests | Mutants killed | Worst CRAP | Status |
 |---|---|---|---|---|---|
-| catalogue | 14: add, rename and retire a job or a tool; create a shelf; publish the service area; six views | 75 | 60 of 60 | 3.0 | Done |
+| catalogue | 16: add, rename and retire a job or a tool; regroup a job; create a shelf; publish the service area; seven views | 85 | 73 of 73 | 3.0 | Done |
 | policy and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
@@ -414,16 +419,6 @@ Each built context also has a `<Context>UsecaseArchitectureTest`, which checks t
 - every usecase implements its own in port, and usecase exceptions live in `usecase/exception`.
 
 ## Open questions
-
-### Open
-
-13. **U13. A shelf's jobs aren't checked against the job list.** Found while building `catalogue`.
-    `Shelf.create` accepts any job code, so a shelf can be made for a job that doesn't exist, and
-    retiring a job leaves it in the shelves' preset searches, where it matches no provider.
-    *Recommendation:* `Shelf.create` takes the jobs providers can offer and refuses any other, as
-    `ProviderListing.offerJobs` does; and when a job is retired, `HomaRetireJob` takes it off each
-    shelf's preset search, and a shelf left with no job is no longer shown. This needs a small domain
-    change in `catalogue`. It doesn't block the next contexts.
 
 ### Decided
 
@@ -462,3 +457,7 @@ Each built context also has a `<Context>UsecaseArchitectureTest`, which checks t
     *Decided:* payment publishes `PaymentSecuredIE`; reservation records the amount
     (`Reservation.confirmPayment`), and the domain refuses an acceptance until it covers the total. The
     provider is told about a request only once it is paid. See R14.
+13. **U13. A shelf's jobs aren't checked against the job list.** *Decided:* `Shelf.create` takes the
+    jobs providers can offer and refuses any other; a retired job comes off every shelf's search, and a
+    shelf left with no job is no longer shown. The founders see every shelf, hidden ones included
+    (`HomaViewShelves`).

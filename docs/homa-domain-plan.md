@@ -82,20 +82,23 @@ policy ─────(rating window, minimum ratings to show)──► feedback
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `Job` | Entity | Code, name, group (such as Kitchen), active flag |
+| `Job` | Entity | Code, name, group (such as Kitchen), active flag; the name and group can change, the code never |
 | `JobGroup` | Value object | Display group for scanning |
 | `JobList` | Aggregate | Holds jobs; codes are unique; jobs are retired, never deleted |
 | `Tool` / `ToolList` | Entity / Aggregate | Same pattern as jobs |
 | `ServiceArea` | Aggregate | Launch cities: Salak Tinggi, Cyberjaya, Putrajaya |
-| `Shelf` | Aggregate | A curated homepage shelf: title, order, preset search (jobs, duration, helpers) |
+| `Shelf` | Aggregate | A curated homepage shelf: title, order, preset search (jobs, duration, helpers), and whether it is shown |
 
 ```java
 JobList.add(JobCode code, String name, JobGroup group)
 JobList.rename(JobCode code, String name)
+JobList.regroup(JobCode code, JobGroup group)
 JobList.retire(JobCode code)
 JobList.isOffered(JobCode code) : boolean
 ServiceArea.covers(City city) : boolean
-Shelf.create(String title, PresetSearch preset, int order)
+Shelf.create(String title, PresetSearch preset, int order, Set<JobCode> offeredJobs)   // only jobs providers can offer
+Shelf.withdrawJob(JobCode retired) : boolean   // a shelf left with no job is no longer shown
+Shelf.isShown() : boolean
 ```
 
 ```gherkin
@@ -310,8 +313,8 @@ ProviderListing.clearSupervisorRule()
 ProviderListing.coverCities(Set<City> cities, ServiceAreaView area)
 ProviderListing.chooseCancellationTier(CancellationTier tier)
 ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the helpers; no helper, or no supervisor for a rule, takes a live listing offline
-ProviderListing.withdrawJob(JobCode retired)       // a job Homa retired comes off; a live listing left with no job goes offline
-ProviderListing.withdrawTool(ToolCode retired)     // a tool Homa retired comes off; the listing stays live
+ProviderListing.withdrawJob(JobCode retired) : JobWithdrawal   // NOT_OFFERED, WITHDRAWN, or WITHDRAWN_AND_OFFLINE for a live listing's last job
+ProviderListing.withdrawTool(ToolCode retired) : boolean       // whether the provider brought it; the listing stays live
 ProviderListing.goLive(boolean providerReady)                 // the roster must cover the minimum helpers
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
@@ -1518,6 +1521,12 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `PayoutWithheldIE` | payment | (admin, notifications) | `Payout.withhold` |
 | `FineWaivedIE` | payment | (notifications) | `Fine.waive` |
 | `ServiceAreaPublishedIE` | catalogue | offering | `ServiceArea.launch` |
+| `JobRenamedIE` | catalogue | discovery, (provider page) | `JobList.rename` |
+| `JobRegroupedIE` | catalogue | discovery, (provider page) | `JobList.regroup` |
+| `ToolRenamedIE` | catalogue | discovery, (provider page) | `ToolList.rename` |
+| `JobWithdrawnFromListingIE` | offering | (notifications) | `ProviderListing.withdrawJob` returning `WITHDRAWN` on a live listing |
+| `ListingWentOfflineForRetiredJobIE` | offering | (notifications) | `ProviderListing.withdrawJob` returning `WITHDRAWN_AND_OFFLINE` |
+| `ToolWithdrawnFromListingIE` | offering | (notifications) | `ProviderListing.withdrawTool` returning `true` on a live listing |
 | `RequestCancelledIE` | reservation | payment | `Reservation.cancelByCustomer` on a request |
 | `PaymentFailedIE` | payment | reservation | a failed authorisation or FPX payment; no `Payment` is created |
 | `PaymentSecuredIE` | payment | reservation, (notifications) | `Payment.authoriseCard`, `Payment.payUpfrontByFpx`, `Payment.adjustTotal` |
@@ -1760,7 +1769,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events (62 since the usecase review) in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events (68 since the usecase review) in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2974,6 +2983,102 @@ Feature: A request is paid before the provider answers
   edited request.
 - **A failed payment after an edit ends the request**, like any failed payment (`paymentFailed`). The
   customer can request again.
+
+## Change after the domain phase: changes to the job and tool lists
+
+Decided while building the `catalogue` usecases, and confirmed by the product owner. A listing keeps
+only job and tool **codes**, so what happens to a provider depends on whether Homa's change keeps the
+code.
+
+| Homa's change | The provider's listing | Requests and reservations already made |
+|---|---|---|
+| Add a job or tool | Nothing; the provider picks it if they want it | Unaffected |
+| Rename, or move a job to another group | Keeps it; only the name or group shown changes | Unaffected |
+| Retire a job | It comes off. A live listing left with no job goes offline until the provider offers another job and goes live again | Keep it |
+| Retire a tool | It comes off; the listing stays live | Unaffected |
+| Replace a job | A retire plus an add with a new code; the provider picks the new job themselves | Keep the old job |
+
+**`catalogue`**
+
+- `JobList.regroup(code, group)` moves a job to another display group. Its code and name stay.
+- `Shelf.create` takes the jobs providers can offer now and refuses any other
+  (`ShelfJobNotOfferedException`, naming the first one alphabetically). A shelf can't be made for a job
+  that doesn't exist or is retired.
+- `Shelf.withdrawJob(code)` takes a retired job off the shelf's search and says whether the shelf had
+  it. A shelf left with no job is no longer shown (`isShown()`), and keeps its last search so the
+  founders can see what it was.
+
+**`offering`**
+
+- `withdrawJob` now says what it did (`JobWithdrawal`): `NOT_OFFERED`, `WITHDRAWN`, or
+  `WITHDRAWN_AND_OFFLINE` when it took a live listing's last job. A draft losing its last job was
+  never live, so it is `WITHDRAWN`.
+- `withdrawTool` says whether the provider brought the tool.
+
+**`ie/`: six events, which makes 68**
+
+- `JobRenamedIE`, `JobRegroupedIE` and `ToolRenamedIE` (catalogue), so a context that shows names or
+  groups updates them.
+- `JobWithdrawnFromListingIE`, `ListingWentOfflineForRetiredJobIE` and `ToolWithdrawnFromListingIE`
+  (offering), so the provider is told what a retirement did to their listing and, when it went
+  offline, to offer another job and go live again.
+
+```gherkin
+Feature: Changes to the job list
+
+  Scenario: A job moves to another group and keeps its code and name
+    Given the job list has "SOFA_VACUUM" in Kitchen
+    When Homa moves it to Living room
+    Then it is in Living room with the same code and name
+    And providers can still offer it
+
+  Scenario: Only a job on the list can be regrouped
+    When Homa moves "SOFA_VACUUM", which is not on the list
+    Then it is refused with "JobNotFoundException"
+
+Feature: Shelves search only for jobs providers can offer
+
+  Scenario: A shelf searches only for jobs providers can offer
+    When Homa creates a shelf searching for Kitchen and Garden, and Garden is not on the job list
+    Then it is refused with "ShelfJobNotOfferedException"
+
+  Scenario: A retired job comes off the shelf's search
+    Given a shelf searching for Kitchen and Laundry fold
+    When Homa retires Kitchen
+    Then the shelf searches for Laundry fold only
+    And it is still shown
+
+  Scenario: A shelf left with no job is no longer shown
+    Given a shelf searching for Kitchen only
+    When Homa retires Kitchen
+    Then the shelf is no longer shown
+
+Feature: Telling the provider what a retirement did
+
+  Scenario: Withdrawing a job says the listing is still live
+    Given Kemas's live listing offers Kitchen and Laundry fold
+    When Kitchen comes off
+    Then the withdrawal is "WITHDRAWN"
+
+  Scenario: Withdrawing the last job says the listing went offline
+    Given Kemas's live listing offers only Laundry fold
+    When Laundry fold comes off
+    Then the withdrawal is "WITHDRAWN_AND_OFFLINE"
+
+  Scenario: A draft losing its last job was never live
+    Given a draft listing that offers only Laundry fold
+    When Laundry fold comes off
+    Then the withdrawal is "WITHDRAWN"
+```
+
+**Decided while building:**
+
+- **A separate event for a regroup.** One event per outcome: `JobRegroupedIE`, not a rename event that
+  also carries the group.
+- **The founders see hidden shelves.** `HomaViewShelves` lists every shelf with whether it is shown,
+  so a shelf emptied by a retirement can be replaced. Customers see only shown shelves.
+- **The listing events stay as they are.** reservation and discovery still get `ListingChangedIE` or
+  `ListingWentOfflineIE`; the three new offering events are for telling the provider why.
 
 ## Open questions
 

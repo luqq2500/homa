@@ -24,6 +24,7 @@ import catalogue.usecase.exception.AdminReasonRequiredException;
 import catalogue.usecase.exception.DecidedByRequiredException;
 import catalogue.usecase.port.out.AdminAction;
 import ie.events.ToolAddedIE;
+import ie.events.ToolRenamedIE;
 import ie.events.ToolRetiredIE;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class HomaToolCurationTest {
     private final PublishedEvents events = new PublishedEvents();
     private final AuditLog auditLog = new AuditLog();
     private final HomaAddTool addTool = new HomaAddTool(toolLists, events, auditLog, CLOCK);
-    private final HomaRenameTool renameTool = new HomaRenameTool(toolLists, auditLog, CLOCK);
+    private final HomaRenameTool renameTool = new HomaRenameTool(toolLists, events, auditLog, CLOCK);
     private final HomaRetireTool retireTool = new HomaRetireTool(toolLists, events, auditLog, CLOCK);
 
     private void theSteamMopIsOnTheList() {
@@ -146,12 +147,12 @@ class HomaToolCurationTest {
         }
 
         @Test
-        void aRenameIsRecordedButNotToldToTheOtherContexts() {
+        void aRenameIsToldToTheOtherContextsSoTheNameTheyShowIsUpdated() {
             theSteamMopIsOnTheList();
 
             renameTool.rename(new RenameToolRequest(FOUNDER, "STEAM_MOP", "Steam cleaner"));
 
-            assertThat(events.all).hasSize(1).hasOnlyElementsOfType(ToolAddedIE.class);
+            assertThat(events.all).hasSize(2).last().isEqualTo(new ToolRenamedIE("STEAM_MOP", "Steam cleaner", NOW));
             assertThat(auditLog.all).containsExactly(recorded("ADD_TOOL", "STEAM_MOP"), recorded("RENAME_TOOL", "STEAM_MOP"));
         }
 

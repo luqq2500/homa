@@ -395,8 +395,15 @@ reservation runs on known values.
 **Variants**
 - 1a. **Homa founders** rename or retire a *job*. A retired job stays in the list, is never deleted,
   and its code is never reused. Providers can no longer pick it.
-- 1b. **Homa** takes a retired *job* or *tool* off every *listing* that has it. A live listing left
-  with no job goes offline until the provider offers another. Requests already made keep the job.
+- 1b. **Homa** takes a retired *job* or *tool* off every *listing* that has it, and tells the
+  provider. A live listing left with no job goes offline until the provider offers another and goes
+  live again. Requests already made keep the job.
+- 1c. **Homa founders** move a *job* to another group, such as from Kitchen to Living room. Providers
+  keep it; only the group shown changes.
+- 1d. **Homa founders** replace a *job*: they retire it and add a new one. Providers pick the new job
+  themselves.
+- 3a. **Homa** refuses a *shelf* that searches for a job providers can't offer. A retired job comes
+  off every shelf's search, and a shelf left with no job is no longer shown.
 - 5a. **Homa** refuses a change that breaks a rule across values: Flexible must stay free, no
   cancellation fee may be higher than the customer no-show fee, and the provider no-show fine must stay
   the highest fine.
@@ -412,10 +419,11 @@ reservation runs on known values.
   re-checks, face check attempts) are the KYC provider's, set up to Homa's requirements.
 - Homa sets no limit on helpers.
 
-**In the code:** `catalogue` (`JobList.add`, `rename`, `retire`; `ToolList`; `Shelf.create`), `policy`
+**In the code:** `catalogue` (`JobList.add`, `rename`, `regroup`, `retire`; `ToolList`; `Shelf.create`, `withdrawJob`), `policy`
 (`HomaPolicy.initial`, `HomaPolicy.change`), `offering` (`ProviderListing.withdrawJob`,
-`withdrawTool`). Events: `JobAddedIE`, `JobRetiredIE`, `ToolAddedIE`, `ToolRetiredIE`,
-`ServiceAreaPublishedIE`, `HomaPolicyChangedIE`.
+`withdrawTool`). Events: `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`, `ToolAddedIE`,
+`ToolRenamedIE`, `ToolRetiredIE`, `JobWithdrawnFromListingIE`, `ListingWentOfflineForRetiredJobIE`,
+`ToolWithdrawnFromListingIE`, `ServiceAreaPublishedIE`, `HomaPolicyChangedIE`.
 
 ### 2. A customer registers
 
