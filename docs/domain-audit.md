@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5), after aligning the prod
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **306** scenarios: **294 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **313** scenarios: **301 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -27,6 +27,7 @@ The plan has **306** scenarios: **294 have a test**, and **12 are retired** beca
 - thirty in the fourteen features of "aligning the product spec, domain plan and code" (rows 261 to
   290)
 - sixteen in the five features of "the 7-star experience" (rows 291 to 306)
+- seven in "adding a team member, photo and confirmation" (rows 307 to 313)
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -373,6 +374,13 @@ Two scenarios map to more than one test:
 | 304 | The Insured badge | Insurance that has already expired can't be declared | `ProviderListingAcceptanceAndInsuranceTest` | `insuranceThatHasAlreadyExpiredCannotBeDeclared` |
 | 305 | Chargebacks | The provider covers what the decision doesn't give them | `CaseQueueTest` | `theProviderCoversNothingWhenHomaContestsTheChargeback`, `theProviderCoversAllOfAChargebackDecidedAsAFullRefund`, `theProviderCoversWhatAPartialRefundDoesNotGiveThem` |
 | 306 | Chargebacks | What the provider covers is recovered like a fine | `FineDeductionPolicyTest` | `whatTheProviderCoversForAChargebackIsRecoveredLikeAFine` |
+| 307 | Adding a team member, photo and confirmation | A verified person waits for the provider's confirmation | `TeamMemberAddingTest` | `aVerifiedPersonWaitsForTheProvidersConfirmation` |
+| 308 | Adding a team member, photo and confirmation | The provider confirms the named person and they join | `TeamMemberAddingTest` | `theProviderConfirmsTheNamedPersonAndTheyJoin` |
+| 309 | Adding a team member, photo and confirmation | Nobody joins without the confirmation | `TeamMemberAddingTest` | `aVerifiedPersonJoinsOnlyWithTheConfirmation` |
+| 310 | Adding a team member, photo and confirmation | The confirmation comes after the check | `TeamMemberAddingTest` | `theConfirmationComesAfterTheCheck` |
+| 311 | Adding a team member, photo and confirmation | The check fails for the person's age or photo (outline) | `TeamMemberAddingTest` | `aPersonUnder18IsNotAdded`, `aPersonWhoTurns18ThatDayIsAdded`, `aPhotoThatIsNotThePersonFailsTheCheck` |
+| 312 | Adding a team member, photo and confirmation | A verified result needs a date of birth | `TeamMemberAddingTest` | `aVerifiedResultNeedsADateOfBirth` |
+| 313 | Adding a team member, photo and confirmation | A team member's role changes without a new check | `TeamMemberAddingTest` | `aTeamMembersRoleChangesWithoutANewCheck` |
 
 ## 2. Product spec rules with no test
 
@@ -451,7 +459,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 146 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 64 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 209 | `AccountArchitectureTest` |
+| account | 5.0 | 100% | 100% | 223 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 237 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 71 | `AvailabilityArchitectureTest` |
 | reservation | 5.0 | 100% | 100% | 455 | `ReservationArchitectureTest` |
@@ -465,7 +473,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,640 of 1,640 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,654 of 1,654 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -537,4 +545,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     `ProviderInsuranceDeclaredIE`, `ProviderInsuranceClearedIE` and `ChargebackDecidedIE` were added;
     `HomaPolicyChangedIE` carries the response deadline, and `ListingWentLiveIE`, `ListingChangedIE` and
     `ReservationAcceptedIE` carry `instantBook`.
-  - The contract test now covers 80 events.
+  - For adding a team member with a photo match and a confirmation, `MemberVerifiedIE` and
+    `TeamMemberRoleChangedIE` were added, and `MemberVerificationRejectedIE` carries the reason.
+  - The contract test now covers 82 events.

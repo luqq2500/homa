@@ -1,5 +1,6 @@
 package account.domain;
 
+import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.MemberAlreadyAddedException;
 import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.NotATeamMemberException;
@@ -18,7 +19,7 @@ public final class TeamMember {
 
     private final String id;
     private final String providerId;
-    private final TeamRole role;
+    private TeamRole role;
     private final Photo photo;
     private final EmploymentConfirmation confirmation;
     private final Instant addedAt;
@@ -32,7 +33,7 @@ public final class TeamMember {
         this.providerId = verified.providerId();
         this.role = verified.role();
         this.photo = verified.photo();
-        this.confirmation = verified.confirmation();
+        this.confirmation = verified.confirmation().orElseThrow(EmploymentNotConfirmedException::new);
         this.addedAt = now;
         this.registeredName = verified.registeredName().orElseThrow();
         this.verifiedUntil = verified.verifiedUntil().orElseThrow();
@@ -98,6 +99,18 @@ public final class TeamMember {
             throw new NotATeamMemberException(id, status);
         }
         status = TeamStatus.LAPSED;
+    }
+
+    /**
+     * The provider changes the member between helper and supervisor. Their identity hasn't changed, so they
+     * aren't verified again. Returns whether the role changed.
+     */
+    public boolean changeRole(TeamRole newRole) {
+        Objects.requireNonNull(newRole);
+        requireNotRemoved();
+        boolean changed = newRole != role;
+        role = newRole;
+        return changed;
     }
 
     /** The provider removes the team member, or Homa does. A removed team member cannot come back. */

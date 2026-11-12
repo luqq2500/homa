@@ -130,10 +130,11 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 - Phone: `RegistrantStartPhoneVerification` (a code from the `VerificationCodes` out port, sent by the `SmsSender` out port only after the verification is saved) and `RegistrantConfirmPhone`. A *registrant* is anyone registering, as a customer or a business.
 - Customer: `CustomerRegisterAccount` → `CustomerRegisteredIE` (the `Geocoder` out port finds the city and coordinates), `CustomerChangeAddress`, `CustomerViewAccount`. The phone verification is used up on registering, so it registers one account; a phone number has at most one customer account and one provider account.
 - Provider: `ProviderRegisterAccount` (no event until KYB passes); `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC; the same pages re-verify it); `ProviderViewAccount` (verification, SSM registration, verified-until date, payout account, ready for go-live)
-- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; saves the verification, then opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartMemberReverification` (with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` (with a reason, recorded) → `TeamMemberRemovedIE`; `ProviderViewTeam` (members with their next due date, and anyone waiting for verification; removed members are not shown). A business acts only on its own team (`NotYourTeamMemberException`), and a removed member is treated as gone.
+- Team: `ProviderStartAddingTeamMember` (the role and the live profile photo; saves the verification, then opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartMemberReverification` (with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` (with a reason, recorded) → `TeamMemberRemovedIE`; `ProviderViewTeam` (members with their next due date, and anyone waiting for verification; removed members are not shown). A business acts only on its own team (`NotYourTeamMemberException`), and a removed member is treated as gone.
 - The KYC provider reporting back (webhooks, R9), one usecase per report, each publishing one event per `VerificationOutcome` and nothing for `UNCHANGED` (R1):
   - `KycRecordBusinessResult`: `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `ProviderReverifiedIE` or `RecheckFailedIE`.
-  - `KycRecordMemberVerificationResult`: a pass adds the member straight away (R7) → `TeamMemberAddedIE`; a rejection → `MemberVerificationRejectedIE`.
+  - `KycRecordMemberVerificationResult`: records the result with the date of birth and the photo match; a pass → `MemberVerifiedIE` and waits for the provider (R7); a rejection, an age under 18 or a photo that doesn't match → `MemberVerificationRejectedIE` with the reason.
+  - `ProviderConfirmTeamMember`: the provider's lawful-employment confirmation for the verified, named person adds them → `TeamMemberAddedIE`.
   - `KycRecordTeamMemberResult`: `TeamMemberReverifiedIE` or `RecheckFailedIE`.
   - `KycRecordBusinessLapse` → `ProviderVerificationLapsedIE`; `KycRecordMemberLapse` → `TeamMemberLapsedIE`.
 - Ongoing monitoring (webhooks): `KycRecordBusinessReverificationRequired` and `KycRecordMemberReverificationRequired` → `ReverificationRequiredIE`; `KycRecordBusinessFlag` → `ProviderFlaggedIE`; `KycRecordMemberFlag` → `TeamMemberLapsedIE`.
@@ -211,8 +212,8 @@ These rules come from decisions made after the domain phase. Each one needs a us
 
    | Outcome | Team member | Business |
    |---|---|---|
-   | `VERIFIED` | `TeamMemberAddedIE`, after `TeamMember.add` (R7) | `ProviderVerifiedIE` |
-   | `REJECTED` | `MemberVerificationRejectedIE` | `ProviderVerificationRejectedIE` |
+   | `VERIFIED` | `MemberVerifiedIE`; the provider then confirms, which adds the person with `TeamMemberAddedIE` (R7) | `ProviderVerifiedIE` |
+   | `REJECTED` | `MemberVerificationRejectedIE`, with the reason: check rejected, under 18, or photo doesn't match | `ProviderVerificationRejectedIE` |
    | `REVERIFIED` | `TeamMemberReverifiedIE` | `ProviderReverifiedIE` |
    | `RECHECK_FAILED` | `RecheckFailedIE` | `RecheckFailedIE` |
    | `UNCHANGED` | none | none |
@@ -242,9 +243,10 @@ These rules come from decisions made after the domain phase. Each one needs a us
      as it is now to the domain, which refuses a job ending after it.
    - `CustomerSearchProviders` puts it on each `ProviderCandidate`.
 
-7. **R7. A verified person is added straight away.** When `MemberVerification.recordKycResult`
-   returns `VERIFIED`, the same usecase calls `TeamMember.add` and publishes `TeamMemberAddedIE`; there
-   is no separate step for the provider.
+7. **R7. A verified person joins once the provider confirms.** When `MemberVerification.recordKycResult`
+   returns `VERIFIED`, the usecase publishes `MemberVerifiedIE`. `ProviderConfirmTeamMember` then records
+   the lawful-employment confirmation for the named person, calls `TeamMember.add` and publishes
+   `TeamMemberAddedIE` (changed in the domain plan's "adding a team member, photo and confirmation").
 8. **R8. Only verified people work.** After the location check, the provider app opens the KYC
    provider's face check for every named person, and the KYC provider reports one final result each. The customer sees each person's result and time. Someone who cannot work
    (`Reservation.canWork` is false) is shown to the customer as not working on the job, and the

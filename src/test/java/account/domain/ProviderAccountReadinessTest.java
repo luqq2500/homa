@@ -89,7 +89,7 @@ class ProviderAccountReadinessTest {
         void onlyVerifiedOrRejectedIsAResult(VerificationStatus status) {
             assertThatThrownBy(() -> new KybResult(status, Optional.empty(), Optional.empty()))
                     .isInstanceOf(VerificationResultNotFinalException.class);
-            assertThatThrownBy(() -> new KycResult(status, Optional.empty(), Optional.empty()))
+            assertThatThrownBy(() -> new KycResult(status, Optional.empty(), Optional.empty(), Optional.empty()))
                     .isInstanceOf(VerificationResultNotFinalException.class);
         }
 

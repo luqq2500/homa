@@ -1,74 +1,82 @@
 package account.domain;
 
 import account.domain.exception.EmploymentNotConfirmedException;
+import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.PhotoRequiredException;
 import account.domain.exception.ProviderNotVerifiedException;
+import account.domain.exception.VerificationDetailsRequiredException;
 import account.domain.exception.VerificationNotWaitingException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Adding a team member, before the person exists on the team. The provider fills in one form: the role, a
- * profile photo, and the lawful-employment confirmation for this person. The person then verifies with the
- * KYC provider, on the spot on the provider's phone; which documents are accepted, the face match and any
- * session timeout are the KYC provider's. Until it is verified this is shown to the provider as waiting for
- * verification: not on the team, never shown to customers, and it cannot be named for jobs.
+ * Adding a team member, before the person exists on the team. With the person beside them, the provider
+ * chooses the role and takes the profile photo with the phone's camera. The person then verifies with the
+ * KYC provider on the spot, which also checks the photo is the same person as their verified selfie, and
+ * gives their date of birth: a person under 18 isn't added. Once verified, the provider confirms that this
+ * named person is lawfully employed or engaged, and the person joins the team. Until then they are not on
+ * the team, never shown to customers, and cannot be named for jobs.
  */
 public final class MemberVerification {
+
+    /** Ages are counted on the day in Malaysia. */
+    static final ZoneId MALAYSIA = ZoneId.of("Asia/Kuala_Lumpur");
+    static final int MINIMUM_AGE = 18;
 
     private final String id;
     private final String providerId;
     private final TeamRole role;
     private final Photo photo;
-    private final EmploymentConfirmation confirmation;
     private final Instant startedAt;
     private MemberVerificationStatus status = MemberVerificationStatus.WAITING;
+    private MemberRejection rejection;
+    private EmploymentConfirmation confirmation;
     private String registeredName;
     private Instant verifiedUntil;
     private Instant verifiedAt;
 
-    private MemberVerification(String providerId, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now) {
+    private MemberVerification(String providerId, TeamRole role, Photo photo, Instant now) {
         this.id = new MemberVerificationId().generate();
         this.providerId = providerId;
         this.role = role;
         this.photo = photo;
-        this.confirmation = confirmation;
         this.startedAt = now;
     }
 
     /**
-     * Starts adding a team member for {@code business}. Only a business whose KYB has passed, and that has
-     * not lapsed, adds team members, so nobody's identity is checked for a business that may never be
-     * verified. Refused without a photo or without the lawful-employment confirmation.
+     * Starts adding a team member for {@code business}, with the role and the live profile photo. Only a
+     * business whose KYB has passed, and that has not lapsed, adds team members, so nobody's identity is
+     * checked for a business that may never be verified.
      */
-    public static MemberVerification start(
-            ProviderAccount business, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now) {
+    public static MemberVerification start(ProviderAccount business, TeamRole role, Photo photo, Instant now) {
         if (business.verificationStatus() != VerificationStatus.VERIFIED) {
             throw new ProviderNotVerifiedException(business.id(), business.verificationStatus());
         }
-        String provider = business.id();
         Objects.requireNonNull(role);
         if (photo == null) {
             throw new PhotoRequiredException();
         }
-        if (confirmation == null) {
-            throw new EmploymentNotConfirmedException();
-        }
-        return new MemberVerification(provider, role, photo, confirmation, Objects.requireNonNull(now));
+        return new MemberVerification(business.id(), role, photo, Objects.requireNonNull(now));
     }
 
     /**
-     * Records the KYC provider's result. Verified, the person is ready to add, with the registered name and
-     * verified-until date from the result. Rejected, or timed out at the KYC provider, the verification has
-     * ended and nothing is added. A repeated result changes nothing.
+     * Records the KYC provider's result and its comparison of the profile photo with the verified selfie.
+     * Verified, adult and matching, the person waits for the provider's confirmation. Otherwise the
+     * verification has ended, nothing is added, and the rejection says why. A repeated result changes
+     * nothing.
      */
-    public VerificationOutcome recordKycResult(KycResult result, Instant now) {
+    public VerificationOutcome recordKycResult(KycResult result, PhotoMatch photoMatch, Instant now) {
+        Objects.requireNonNull(photoMatch);
         if (status != MemberVerificationStatus.WAITING) {
             return repeatedResult(result);
         }
-        if (!result.isVerified()) {
+        Optional<MemberRejection> refused = rejectionFor(result, photoMatch, now);
+        if (refused.isPresent()) {
             status = MemberVerificationStatus.REJECTED;
+            rejection = refused.get();
             return VerificationOutcome.REJECTED;
         }
         registeredName = result.registeredName().orElseThrow();
@@ -78,7 +86,33 @@ public final class MemberVerification {
         return VerificationOutcome.VERIFIED;
     }
 
-    /** Whether it ended without adding anyone: the verification was rejected, and the provider can start again. */
+    private static Optional<MemberRejection> rejectionFor(KycResult result, PhotoMatch photoMatch, Instant now) {
+        if (!result.isVerified()) {
+            return Optional.of(MemberRejection.CHECK_REJECTED);
+        }
+        LocalDate born = result.dateOfBirth().orElseThrow(() -> new VerificationDetailsRequiredException("a date of birth"));
+        if (born.plusYears(MINIMUM_AGE).isAfter(LocalDate.ofInstant(now, MALAYSIA))) {
+            return Optional.of(MemberRejection.UNDER_18);
+        }
+        return photoMatch == PhotoMatch.MATCHED ? Optional.empty() : Optional.of(MemberRejection.PHOTO_DOES_NOT_MATCH);
+    }
+
+    /**
+     * The provider confirms that the verified, named person is lawfully employed by or engaged with them
+     * and allowed to work in Malaysia. Only a verified person can be confirmed; a {@code null} confirmation
+     * is no tick.
+     */
+    public void confirmEmployment(EmploymentConfirmation given) {
+        if (status != MemberVerificationStatus.VERIFIED) {
+            throw new MemberNotVerifiedException(id, status);
+        }
+        if (given == null) {
+            throw new EmploymentNotConfirmedException();
+        }
+        confirmation = given;
+    }
+
+    /** Whether it ended without adding anyone, so the provider can start again. */
     public boolean hasEnded() {
         return status == MemberVerificationStatus.REJECTED;
     }
@@ -103,11 +137,17 @@ public final class MemberVerification {
         return photo;
     }
 
-    public EmploymentConfirmation confirmation() {
-        return confirmation;
+    /** The provider's lawful-employment confirmation, given once the person is verified; empty until then. */
+    public Optional<EmploymentConfirmation> confirmation() {
+        return Optional.ofNullable(confirmation);
     }
 
-    /** When the provider sent the add form. */
+    /** Why the verification ended without adding anyone; empty unless rejected. */
+    public Optional<MemberRejection> rejection() {
+        return Optional.ofNullable(rejection);
+    }
+
+    /** When the provider started adding the person. */
     public Instant startedAt() {
         return startedAt;
     }
@@ -138,10 +178,12 @@ public final class MemberVerification {
         return VerificationOutcome.UNCHANGED;
     }
 
+    /**
+     * A pass repeats a verification, or an age or photo rejection; a failure repeats a rejected check. Only a
+     * rejected verification has a rejection, so the rejection alone tells them apart.
+     */
     private boolean isSameAsRecorded(KycResult result) {
-        if (result.isVerified()) {
-            return status == MemberVerificationStatus.VERIFIED || status == MemberVerificationStatus.ADDED;
-        }
-        return status == MemberVerificationStatus.REJECTED;
+        boolean rejectedCheck = rejection == MemberRejection.CHECK_REJECTED;
+        return result.isVerified() != rejectedCheck;
     }
 }

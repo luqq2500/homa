@@ -35,6 +35,7 @@ import ie.events.ListingWentOfflineForRetiredJobIE;
 import ie.events.ListingWentOfflineIE;
 import ie.events.MemberVerificationRejectedIE;
 import ie.events.MemberVerificationStartedIE;
+import ie.events.MemberVerifiedIE;
 import ie.events.NoShowChallengedIE;
 import ie.events.PaymentCapturedIE;
 import ie.events.PaymentFailedIE;
@@ -77,6 +78,7 @@ import ie.events.TeamMemberDroppedIE;
 import ie.events.TeamMemberLapsedIE;
 import ie.events.TeamMemberRemovedIE;
 import ie.events.TeamMemberReverifiedIE;
+import ie.events.TeamMemberRoleChangedIE;
 import ie.events.TeamMemberStoppedIE;
 import ie.events.TeamNamedIE;
 import ie.events.ToolAddedIE;
@@ -203,7 +205,9 @@ class IntegrationEventContractTest {
                 Arguments.of(AccessNotesChangedIE.class, ReservationIE.class),
                 Arguments.of(ProviderInsuranceDeclaredIE.class, OfferingIE.class),
                 Arguments.of(ProviderInsuranceClearedIE.class, OfferingIE.class),
-                Arguments.of(ChargebackDecidedIE.class, ResolutionIE.class));
+                Arguments.of(ChargebackDecidedIE.class, ResolutionIE.class),
+                Arguments.of(MemberVerifiedIE.class, AccountIE.class),
+                Arguments.of(TeamMemberRoleChangedIE.class, AccountIE.class));
     }
 
     @ParameterizedTest(name = "{0} is a {1}")
@@ -274,7 +278,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(80);
+        assertThat(events().count()).isEqualTo(82);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

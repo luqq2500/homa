@@ -1,15 +1,11 @@
 package account.usecase.dto;
 
 /**
- * The add form.
+ * The start of adding a team member, with the person beside the provider.
  *
  * @param providerId the business, from authentication
  * @param role {@code HELPER} or {@code SUPERVISOR}
- * @param photo the stored profile photo's reference
- * @param lawfullyEmployed whether the provider ticked that this person is lawfully employed by or engaged
- *     with them and allowed to work in Malaysia; the form cannot be sent without it
- * @param termsVersion the version of the terms shown with the tick
+ * @param photo the reference of the profile photo taken with the phone's camera
  */
-public record StartAddingTeamMemberRequest(
-        String providerId, String role, String photo, boolean lawfullyEmployed, String termsVersion) {
+public record StartAddingTeamMemberRequest(String providerId, String role, String photo) {
 }

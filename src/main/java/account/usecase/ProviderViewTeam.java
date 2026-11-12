@@ -43,6 +43,8 @@ public final class ProviderViewTeam implements ProviderTeamViewer {
     }
 
     private static ProviderViewTeamResponse.Waiting toView(MemberVerification verification) {
-        return new ProviderViewTeamResponse.Waiting(verification.id(), verification.role().name(), verification.startedAt());
+        return new ProviderViewTeamResponse.Waiting(
+                verification.id(), verification.role().name(), verification.status().name(), verification.registeredName().orElse(""),
+                verification.startedAt());
     }
 }

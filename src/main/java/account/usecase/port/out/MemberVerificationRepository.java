@@ -14,7 +14,10 @@ public interface MemberVerificationRepository {
 
     Optional<MemberVerification> find(String verificationId);
 
-    /** The business's verifications still waiting for the KYC provider's result, oldest first. */
+    /**
+     * The business's people not yet on the team: waiting for the KYC provider's result, or verified and
+     * waiting for the provider's confirmation. Oldest first.
+     */
     List<MemberVerification> findWaitingFor(String providerId);
 
     void save(MemberVerification verification);

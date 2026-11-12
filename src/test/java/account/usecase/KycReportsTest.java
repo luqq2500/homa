@@ -23,6 +23,7 @@ import account.usecase.AccountUsecaseFixtures.InMemoryProviders;
 import account.usecase.AccountUsecaseFixtures.InMemoryTeamMembers;
 import account.usecase.AccountUsecaseFixtures.KycProvider;
 import account.usecase.AccountUsecaseFixtures.PublishedEvents;
+import account.usecase.dto.ConfirmTeamMemberRequest;
 import account.usecase.dto.HomaRequestBusinessRecheckRequest;
 import account.usecase.dto.HomaRequestMemberRecheckRequest;
 import account.usecase.dto.RecordBusinessFlagRequest;
@@ -52,6 +53,7 @@ import ie.events.TeamMemberLapsedIE;
 import ie.events.TeamMemberReverifiedIE;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -96,11 +98,13 @@ class KycReportsTest {
             kemas().recordKybResult(KybResult.verified(new BusinessRegistration(SSM, KEMAS), A_YEAR_ON), NOW);
         }
         String verificationId = new ProviderStartAddingTeamMember(providers, verifications, kyc, events, clock)
-                .start(new StartAddingTeamMemberRequest(kemas, "HELPER", "photos/aina.jpg", true, "terms-1")).verificationId();
-        new KycRecordMemberVerificationResult(verifications, members, events, clock)
-                .record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON));
+                .start(new StartAddingTeamMemberRequest(kemas, "HELPER", "photos/aina.jpg")).verificationId();
+        new KycRecordMemberVerificationResult(verifications, events, clock).record(new RecordMemberVerificationResultRequest(
+                verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON, LocalDate.of(1998, 5, 1), true));
+        String memberId = new ProviderConfirmTeamMember(verifications, members, events, clock)
+                .confirm(new ConfirmTeamMemberRequest(kemas, verificationId, true, "terms-1")).memberId();
         events.all.clear();
-        return members.saved.values().iterator().next().id();
+        return memberId;
     }
 
     @Nested

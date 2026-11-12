@@ -72,24 +72,28 @@ final class AccountBuilders {
     }
 
     /** Aina's KYC passed, verified until {@code day}. */
+    /** Aina's date of birth on her document: an adult. */
+    static final LocalDate AINA_BORN = LocalDate.of(1998, 5, 1);
+
     static KycResult ainaVerifiedUntil(String day) {
-        return KycResult.verified("Aina binti Ahmad", on(day));
+        return KycResult.verified("Aina binti Ahmad", on(day), AINA_BORN);
     }
 
-    /** A verified business starts adding a helper on {@code day}, confirming lawful employment. */
+    /** A verified business starts adding a helper on {@code day}, with a live photo. */
     static MemberVerification aHelperWaitingSince(String day) {
         return aHelperWaitingSince(aVerifiedProvider(), day);
     }
 
-    /** {@code business} starts adding a helper on {@code day}, confirming lawful employment. */
+    /** {@code business} starts adding a helper on {@code day}, with a live photo. */
     static MemberVerification aHelperWaitingSince(ProviderAccount business, String day) {
-        return MemberVerification.start(business, TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn(day), on(day));
+        return MemberVerification.start(business, TeamRole.HELPER, Photo.of("photos/aina.jpg"), on(day));
     }
 
-    /** Aina, a helper added and verified on 1 January, until 1 April. */
+    /** Aina, a helper verified on 1 January until 1 April, confirmed by the provider and added that day. */
     static TeamMember aina() {
         MemberVerification verification = aHelperWaitingSince("1 January");
-        verification.recordKycResult(ainaVerifiedUntil("1 April"), on("1 January"));
+        verification.recordKycResult(ainaVerifiedUntil("1 April"), PhotoMatch.MATCHED, on("1 January"));
+        verification.confirmEmployment(confirmedOn("1 January"));
         return TeamMember.add(verification, on("1 January"));
     }
 }

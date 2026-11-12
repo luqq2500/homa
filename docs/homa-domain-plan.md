@@ -210,10 +210,13 @@ ProviderAccount.recordSeriousFlag(String reason)                         // moni
 ProviderAccount.recordPayoutAccountReady() : boolean   // whether it changed: a repeated report changes nothing
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready
 
-MemberVerification.start(ProviderAccount business, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now)
-    // only for a verified business that hasn't lapsed; see "aligning the product spec, domain plan and code"
-MemberVerification.recordKycResult(KycResult result, Instant now) : VerificationOutcome
-TeamMember.add(MemberVerification verified, Instant now)
+MemberVerification.start(ProviderAccount business, TeamRole role, Photo photo, Instant now)
+    // only for a verified business that hasn't lapsed; the photo is taken live; see "adding a team member, photo and confirmation"
+MemberVerification.recordKycResult(KycResult result, PhotoMatch photo, Instant now) : VerificationOutcome
+    // REJECTED for a rejected check, a person under 18, or a profile photo that isn't the verified person
+MemberVerification.confirmEmployment(EmploymentConfirmation confirmation)   // after VERIFIED, for the named person
+TeamMember.add(MemberVerification verified, Instant now)     // needs the confirmation
+TeamMember.changeRole(TeamRole role) : boolean               // no new verification
 TeamMember.recordKycResult(KycResult result, Instant now) : VerificationOutcome   // re-verification
 TeamMember.lapse()                                           // the KYC provider reports a missed re-verification or a serious flag
 TeamMember.requireReverification(String reason, Instant deadline)       // monitoring, such as an expiring document
@@ -3748,6 +3751,95 @@ Feature: Chargebacks
     When their next completed job pays RM200.00
     Then RM100.00 is deducted, the fine deduction cap
 ```
+
+## Change after the domain phase: adding a team member, photo and confirmation
+
+Decided by the product owner after a product critique of the add form. The form put a provider's
+uploaded photo in front of customers without tying it to the verified person, asked for the
+lawful-employment tick before Homa knew who the person was, allowed a minor, and fixed the role for good.
+
+| # | Decision | Domain change |
+|---|---|---|
+| T1 | The profile photo is taken live on the provider's phone, and the KYC provider checks it is the same person as the verified selfie. A photo that doesn't match fails the check | account |
+| T2 | The lawful-employment tick comes after the check passes, for the named person and their document country | account |
+| T3 | Team members are 18 or older, from the date of birth in the KYC result | account |
+| T4 | The provider changes a member's role without verifying them again | account |
+| T5 | For a document from another country, the confirmation says the person holds a valid work pass for this provider; a lawyer settles the wording | None (the terms version records it) |
+
+**`account`**
+
+- `MemberVerification.start(business, role, photo, now)` no longer takes the confirmation. The photo is
+  the live camera photo; whether it is live is the app's job.
+- `KycResult` gains an optional `dateOfBirth`. A member's verified result must carry it
+  (`VerificationDetailsRequiredException`); a re-verification needn't.
+- `MemberVerification.recordKycResult(result, photoMatch, now)` takes the KYC provider's face comparison
+  of the profile photo with the selfie (`PhotoMatch.MATCHED` or `NOT_MATCHED`). It ends as `REJECTED`,
+  with a `MemberRejection`, for:
+  - `CHECK_REJECTED`: the KYC provider rejected the check or the session timed out;
+  - `UNDER_18`: the person is under 18 on that day in Malaysia;
+  - `PHOTO_DOES_NOT_MATCH`: the profile photo isn't the verified person.
+  Otherwise it is `VERIFIED`, waiting for the provider's confirmation. A repeated result changes nothing.
+- `MemberVerification.confirmEmployment(confirmation)` records the tick, only once verified
+  (`MemberNotVerifiedException`).
+- `TeamMember.add` needs the confirmation (`EmploymentNotConfirmedException`), so a verified person joins
+  only when the provider confirms.
+- `TeamMember.changeRole(role)` changes helper and supervisor and returns whether it changed. A removed
+  member can't change (`TeamMemberRemovedException`).
+
+**Usecases already built (`account`):** `ProviderStartAddingTeamMember` takes the role and photo only;
+`KycRecordMemberVerificationResult` records the result with the date of birth and the photo match, and
+publishes `MemberVerifiedIE` or `MemberVerificationRejectedIE` with the reason; the new
+`ProviderConfirmTeamMember` records the tick and adds the person with `TeamMemberAddedIE`.
+
+**`ie/`:** `MemberVerifiedIE` and `TeamMemberRoleChangedIE` are added (82 events);
+`MemberVerificationRejectedIE` carries the reason.
+
+```gherkin
+Feature: Adding a team member, photo and confirmation
+
+  Background:
+    Given Kemas, a verified business, started adding Aina as a helper with a live photo
+
+  Scenario: A verified person waits for the provider's confirmation
+    When the KYC provider verifies Aina, born 1 May 1998, and her photo matches
+    Then the verification is VERIFIED
+    And Aina is not on the team until Kemas confirms
+
+  Scenario: The provider confirms the named person and they join
+    Given Aina was verified
+    When Kemas confirms she is lawfully employed
+    Then Aina is added to the team, with the confirmation
+
+  Scenario: Nobody joins without the confirmation
+    Given Aina was verified
+    When Kemas adds her without confirming
+    Then it is rejected with EmploymentNotConfirmedException
+
+  Scenario: The confirmation comes after the check
+    When Kemas confirms before the KYC provider verifies Aina
+    Then it is rejected with MemberNotVerifiedException
+
+  Scenario Outline: The check fails for the person's age or photo
+    When the KYC provider verifies Aina, born <born>, and her photo <photo>
+    Then the verification is <result>
+    Examples:
+      | born          | photo         | result                        |
+      | 2 March 2009  | matches       | REJECTED, UNDER_18            |
+      | 1 March 2009  | matches       | VERIFIED                      |
+      | 1 May 1998    | doesn't match | REJECTED, PHOTO_DOES_NOT_MATCH |
+
+  Scenario: A verified result needs a date of birth
+    When the KYC provider verifies Aina with no date of birth
+    Then it is rejected with VerificationDetailsRequiredException
+
+  Scenario: A team member's role changes without a new check
+    Given Aina is a helper on the team
+    When Kemas makes her a supervisor
+    Then Aina is a supervisor
+    And making her a supervisor again changes nothing
+```
+
+(The ages are checked on 1 March 2027 in Malaysia: born 1 March 2009 is 18 that day.)
 
 ## Open questions
 

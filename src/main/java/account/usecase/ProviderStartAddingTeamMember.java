@@ -1,6 +1,5 @@
 package account.usecase;
 
-import account.domain.EmploymentConfirmation;
 import account.domain.MemberVerification;
 import account.domain.Photo;
 import account.domain.ProviderAccount;
@@ -19,10 +18,10 @@ import java.time.Instant;
 import java.util.Arrays;
 
 /**
- * Starts adding a helper or a supervisor from the add form, with the lawful-employment confirmation, and
- * opens the KYC provider's on-the-spot check on the provider's phone. The person is waiting for
- * verification, not on the team, until the KYC provider reports a pass. The verification is saved before
- * the check opens, so the KYC provider's result always finds it.
+ * Starts adding a helper or a supervisor, with the role and the profile photo taken live, and opens the KYC
+ * provider's on-the-spot check on the provider's phone. The person is waiting for verification, not on the
+ * team, until the KYC provider reports a pass and the provider confirms them. The verification is saved
+ * before the check opens, so the KYC provider's result always finds it.
  */
 public final class ProviderStartAddingTeamMember implements ProviderTeamMemberAdder {
 
@@ -45,10 +44,8 @@ public final class ProviderStartAddingTeamMember implements ProviderTeamMemberAd
         ProviderAccount provider = Accounts.provider(providers, request.providerId());
         TeamRole role = role(request.role());
         Instant now = clock.instant();
-        EmploymentConfirmation confirmation =
-                request.lawfullyEmployed() ? EmploymentConfirmation.given(request.termsVersion(), now) : null;
 
-        MemberVerification verification = MemberVerification.start(provider, role, Photo.of(request.photo()), confirmation, now);
+        MemberVerification verification = MemberVerification.start(provider, role, Photo.of(request.photo()), now);
 
         verifications.save(verification);
         String checkUrl = kyc.startMemberCheck(verification.id());

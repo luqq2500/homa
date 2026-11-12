@@ -1,6 +1,6 @@
 package account.domain.exception;
 
-/** The add form cannot be sent without the provider confirming this person is lawfully employed or engaged. */
+/** A verified person joins the team only once the provider confirms they are lawfully employed or engaged. */
 public class EmploymentNotConfirmedException extends AccountRuleViolationException {
 
     public EmploymentNotConfirmedException() {

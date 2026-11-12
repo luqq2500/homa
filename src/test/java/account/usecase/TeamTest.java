@@ -18,6 +18,7 @@ import account.domain.TeamRole;
 import account.domain.TeamStatus;
 import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.AccountDetailRequiredException;
+import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.ProviderNotVerifiedException;
 import account.domain.exception.TeamMemberRemovedException;
 import account.usecase.AccountUsecaseFixtures.AuditLog;
@@ -26,6 +27,8 @@ import account.usecase.AccountUsecaseFixtures.InMemoryProviders;
 import account.usecase.AccountUsecaseFixtures.InMemoryTeamMembers;
 import account.usecase.AccountUsecaseFixtures.KycProvider;
 import account.usecase.AccountUsecaseFixtures.PublishedEvents;
+import account.usecase.dto.ConfirmTeamMemberRequest;
+import account.usecase.dto.ConfirmTeamMemberResponse;
 import account.usecase.dto.HomaRemoveTeamMemberRequest;
 import account.usecase.dto.ProviderRemoveTeamMemberRequest;
 import account.usecase.dto.ProviderViewTeamRequest;
@@ -45,11 +48,13 @@ import account.usecase.exception.UnknownTeamRoleException;
 import account.usecase.port.out.AdminAction;
 import ie.events.MemberVerificationRejectedIE;
 import ie.events.MemberVerificationStartedIE;
+import ie.events.MemberVerifiedIE;
 import ie.events.TeamMemberAddedIE;
 import ie.events.TeamMemberRemovedIE;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,7 +76,10 @@ class TeamTest {
     private final AuditLog auditLog = new AuditLog();
     private final Clock clock = at(NOW);
     private final ProviderStartAddingTeamMember add = new ProviderStartAddingTeamMember(providers, verifications, kyc, events, clock);
-    private final KycRecordMemberVerificationResult result = new KycRecordMemberVerificationResult(verifications, members, events, clock);
+    private final KycRecordMemberVerificationResult result = new KycRecordMemberVerificationResult(verifications, events, clock);
+    private final ProviderConfirmTeamMember confirm = new ProviderConfirmTeamMember(verifications, members, events, clock);
+    private static final String AINA = "NUR AINA BINTI AHMAD";
+    private static final LocalDate AN_ADULT = LocalDate.of(1998, 5, 1);
     private final String kemas = aBusiness();
     private final String other = aBusiness();
 
@@ -85,13 +93,25 @@ class TeamTest {
     }
 
     private StartAddingTeamMemberResponse addingAHelper(String providerId) {
-        return add.start(new StartAddingTeamMemberRequest(providerId, "HELPER", "photos/aina.jpg", true, TERMS));
+        return add.start(new StartAddingTeamMemberRequest(providerId, "HELPER", "photos/aina.jpg"));
+    }
+
+    private static RecordMemberVerificationResultRequest aPassFor(String verificationId) {
+        return new RecordMemberVerificationResultRequest(verificationId, true, AINA, A_YEAR_ON, AN_ADULT, true);
+    }
+
+    private static RecordMemberVerificationResultRequest aRejectionFor(String verificationId) {
+        return new RecordMemberVerificationResultRequest(verificationId, false, null, null, null, false);
+    }
+
+    private String ainaIsVerified() {
+        String verificationId = addingAHelper(kemas).verificationId();
+        result.record(aPassFor(verificationId));
+        return verificationId;
     }
 
     private String ainaIsOnTheTeam() {
-        String verificationId = addingAHelper(kemas).verificationId();
-        result.record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON));
-        return members.saved.values().stream().reduce((first, newest) -> newest).orElseThrow().id();
+        return confirm.confirm(new ConfirmTeamMemberRequest(kemas, ainaIsVerified(), true, TERMS)).memberId();
     }
 
     @Nested
@@ -105,8 +125,7 @@ class TeamTest {
             assertThat(saved.providerId()).isEqualTo(kemas);
             assertThat(saved.role()).isEqualTo(TeamRole.HELPER);
             assertThat(saved.photo().reference()).isEqualTo("photos/aina.jpg");
-            assertThat(saved.confirmation().termsVersion()).isEqualTo(TERMS);
-            assertThat(saved.confirmation().givenAt()).isEqualTo(NOW);
+            assertThat(saved.confirmation()).isEmpty();
             assertThat(saved.status()).isEqualTo(MemberVerificationStatus.WAITING);
             assertThat(members.saved).isEmpty();
         }
@@ -121,7 +140,7 @@ class TeamTest {
 
         @Test
         void theStartIsToldToTheOtherContexts() {
-            StartAddingTeamMemberResponse started = add.start(new StartAddingTeamMemberRequest(kemas, "SUPERVISOR", "photos/ben.jpg", true, TERMS));
+            StartAddingTeamMemberResponse started = add.start(new StartAddingTeamMemberRequest(kemas, "SUPERVISOR", "photos/ben.jpg"));
 
             assertThat(events.all).containsExactly(new MemberVerificationStartedIE(started.verificationId(), kemas, "SUPERVISOR", NOW));
         }
@@ -141,18 +160,8 @@ class TeamTest {
         }
 
         @Test
-        void theFormCannotBeSentWithoutTheLawfulEmploymentTick() {
-            assertThatThrownBy(() -> add.start(new StartAddingTeamMemberRequest(kemas, "HELPER", "photos/aina.jpg", false, TERMS)))
-                    .isInstanceOf(EmploymentNotConfirmedException.class);
-
-            assertThat(verifications.saved).isEmpty();
-            assertThat(kyc.opened).isEmpty();
-            assertThat(events.all).isEmpty();
-        }
-
-        @Test
         void theFormNeedsAPhoto() {
-            assertThatThrownBy(() -> add.start(new StartAddingTeamMemberRequest(kemas, "HELPER", null, true, TERMS)))
+            assertThatThrownBy(() -> add.start(new StartAddingTeamMemberRequest(kemas, "HELPER", null)))
                     .isInstanceOf(AccountDetailRequiredException.class)
                     .hasMessage("A photo is required");
             assertThat(verifications.saved).isEmpty();
@@ -162,7 +171,7 @@ class TeamTest {
         @NullSource
         @ValueSource(strings = {"", "LEAD", "helper"})
         void aTeamMemberIsAHelperOrASupervisor(String role) {
-            assertThatThrownBy(() -> add.start(new StartAddingTeamMemberRequest(kemas, role, "photos/aina.jpg", true, TERMS)))
+            assertThatThrownBy(() -> add.start(new StartAddingTeamMemberRequest(kemas, role, "photos/aina.jpg")))
                     .isInstanceOf(UnknownTeamRoleException.class)
                     .hasMessage("A team member is a HELPER or a SUPERVISOR, was " + role);
             assertThat(verifications.saved).isEmpty();
@@ -189,50 +198,58 @@ class TeamTest {
     class TheKycProvidersResult {
 
         @Test
-        void aPassAddsThePersonToTheTeamStraightAwayWithTheirRegisteredName() {
+        void aPassWaitsForTheProvidersConfirmationAndIsTold() {
             String verificationId = addingAHelper(kemas).verificationId();
             Instant later = NOW.plus(Duration.ofMinutes(4));
 
-            new KycRecordMemberVerificationResult(verifications, members, events, at(later))
-                    .record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON));
-
-            assertThat(members.saved).hasSize(1);
-            TeamMember aina = members.saved.values().iterator().next();
-            assertThat(aina.providerId()).isEqualTo(kemas);
-            assertThat(aina.registeredName()).isEqualTo("NUR AINA BINTI AHMAD");
-            assertThat(aina.role()).isEqualTo(TeamRole.HELPER);
-            assertThat(aina.verifiedUntil()).isEqualTo(A_YEAR_ON);
-            assertThat(aina.addedAt()).isEqualTo(later);
-            assertThat(aina.isTeamMember()).isTrue();
-            assertThat(verifications.saved.get(verificationId).status()).isEqualTo(MemberVerificationStatus.ADDED);
-            assertThat(verifications.saves).isEqualTo(2);
-            assertThat(members.saves).isEqualTo(1);
-            assertThat(events.all).last().isEqualTo(new TeamMemberAddedIE(
-                    aina.id(), kemas, verificationId, "HELPER", "NUR AINA BINTI AHMAD", TERMS, NOW, later));
-        }
-
-        @Test
-        void aRejectionAddsNobodyAndIsTold() {
-            String verificationId = addingAHelper(kemas).verificationId();
-
-            result.record(new RecordMemberVerificationResultRequest(verificationId, false, null, null));
+            new KycRecordMemberVerificationResult(verifications, events, at(later)).record(aPassFor(verificationId));
 
             assertThat(members.saved).isEmpty();
-            assertThat(verifications.saved.get(verificationId).hasEnded()).isTrue();
+            MemberVerification verified = verifications.saved.get(verificationId);
+            assertThat(verified.status()).isEqualTo(MemberVerificationStatus.VERIFIED);
+            assertThat(verified.registeredName()).contains(AINA);
             assertThat(verifications.saves).isEqualTo(2);
-            assertThat(events.all).last().isEqualTo(new MemberVerificationRejectedIE(verificationId, kemas, NOW));
+            assertThat(events.all).last().isEqualTo(new MemberVerifiedIE(verificationId, kemas, AINA, later));
         }
 
         @Test
-        void aRepeatedPassAddsNobodyAgainAndTellsNothing() {
+        void aRejectionAddsNobodyAndIsToldWithTheReason() {
             String verificationId = addingAHelper(kemas).verificationId();
-            result.record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON));
+
+            result.record(aRejectionFor(verificationId));
+
+            assertThat(verifications.saved.get(verificationId).hasEnded()).isTrue();
+            assertThat(verifications.saves).isEqualTo(2);
+            assertThat(events.all).last().isEqualTo(new MemberVerificationRejectedIE(verificationId, kemas, "CHECK_REJECTED", NOW));
+        }
+
+        @Test
+        void aPersonUnder18IsNotAddedAndTheReasonIsTold() {
+            String verificationId = addingAHelper(kemas).verificationId();
+
+            result.record(new RecordMemberVerificationResultRequest(verificationId, true, AINA, A_YEAR_ON, LocalDate.of(2012, 1, 1), true));
+
+            assertThat(verifications.saved.get(verificationId).hasEnded()).isTrue();
+            assertThat(events.all).last().isEqualTo(new MemberVerificationRejectedIE(verificationId, kemas, "UNDER_18", NOW));
+        }
+
+        @Test
+        void aPhotoThatIsNotThePersonIsRefusedAndTheReasonIsTold() {
+            String verificationId = addingAHelper(kemas).verificationId();
+
+            result.record(new RecordMemberVerificationResultRequest(verificationId, true, AINA, A_YEAR_ON, AN_ADULT, false));
+
+            assertThat(events.all).last().isEqualTo(new MemberVerificationRejectedIE(verificationId, kemas, "PHOTO_DOES_NOT_MATCH", NOW));
+        }
+
+        @Test
+        void aRepeatedPassTellsNothing() {
+            String verificationId = ainaIsVerified();
             int told = events.all.size();
             int saves = verifications.saves;
 
-            result.record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON));
+            result.record(aPassFor(verificationId));
 
-            assertThat(members.saved).hasSize(1);
             assertThat(events.all).hasSize(told);
             assertThat(verifications.saves).isEqualTo(saves);
         }
@@ -240,10 +257,10 @@ class TeamTest {
         @Test
         void aRepeatedRejectionTellsNothing() {
             String verificationId = addingAHelper(kemas).verificationId();
-            result.record(new RecordMemberVerificationResultRequest(verificationId, false, null, null));
+            result.record(aRejectionFor(verificationId));
             int told = events.all.size();
 
-            result.record(new RecordMemberVerificationResultRequest(verificationId, false, null, null));
+            result.record(aRejectionFor(verificationId));
 
             assertThat(events.all).hasSize(told);
             assertThat(verifications.saves).isEqualTo(2);
@@ -251,18 +268,87 @@ class TeamTest {
 
         @Test
         void aResultForAVerificationThatDoesNotExistIsRefused() {
-            assertThatThrownBy(() -> result.record(new RecordMemberVerificationResultRequest("no-such-verification", true, "A", A_YEAR_ON)))
+            assertThatThrownBy(() -> result.record(aPassFor("no-such-verification")))
                     .isInstanceOf(MemberVerificationNotFoundException.class)
                     .hasMessage("There is no team member verification no-such-verification");
         }
 
         @Test
-        void nobodyIsToldOfAMemberWhoCannotBeSaved() {
+        void nobodyIsToldOfAResultThatCannotBeSaved() {
             String verificationId = addingAHelper(kemas).verificationId();
+            verifications.somethingElseSavesFirst();
+            int told = events.all.size();
+
+            assertThatThrownBy(() -> result.record(aPassFor(verificationId))).isInstanceOf(ChangedMeanwhileException.class);
+            assertThat(events.all).hasSize(told);
+        }
+    }
+
+    @Nested
+    class Confirming {
+
+        @Test
+        void theProviderConfirmsTheNamedPersonAndTheyJoinWithTheirRegisteredName() {
+            String verificationId = ainaIsVerified();
+            Instant later = NOW.plus(Duration.ofMinutes(6));
+
+            ConfirmTeamMemberResponse joined = new ProviderConfirmTeamMember(verifications, members, events, at(later))
+                    .confirm(new ConfirmTeamMemberRequest(kemas, verificationId, true, TERMS));
+
+            TeamMember aina = members.saved.get(joined.memberId());
+            assertThat(aina.providerId()).isEqualTo(kemas);
+            assertThat(aina.registeredName()).isEqualTo(AINA);
+            assertThat(aina.role()).isEqualTo(TeamRole.HELPER);
+            assertThat(aina.verifiedUntil()).isEqualTo(A_YEAR_ON);
+            assertThat(aina.addedAt()).isEqualTo(later);
+            assertThat(aina.employmentConfirmation().termsVersion()).isEqualTo(TERMS);
+            assertThat(aina.employmentConfirmation().givenAt()).isEqualTo(later);
+            assertThat(verifications.saved.get(verificationId).status()).isEqualTo(MemberVerificationStatus.ADDED);
+            assertThat(members.saves).isEqualTo(1);
+            assertThat(verifications.saves).isEqualTo(3);
+            assertThat(events.all).last().isEqualTo(new TeamMemberAddedIE(
+                    aina.id(), kemas, verificationId, "HELPER", AINA, TERMS, later, later));
+        }
+
+        @Test
+        void nobodyJoinsWithoutTheTick() {
+            String verificationId = ainaIsVerified();
+            int told = events.all.size();
+
+            assertThatThrownBy(() -> confirm.confirm(new ConfirmTeamMemberRequest(kemas, verificationId, false, TERMS)))
+                    .isInstanceOf(EmploymentNotConfirmedException.class);
+
+            assertThat(members.saved).isEmpty();
+            assertThat(events.all).hasSize(told);
+        }
+
+        @Test
+        void thePersonIsConfirmedOnlyOnceVerified() {
+            String verificationId = addingAHelper(kemas).verificationId();
+
+            assertThatThrownBy(() -> confirm.confirm(new ConfirmTeamMemberRequest(kemas, verificationId, true, TERMS)))
+                    .isInstanceOf(MemberNotVerifiedException.class);
+            assertThat(members.saved).isEmpty();
+        }
+
+        @Test
+        void aBusinessConfirmsOnlyItsOwnPeople() {
+            String verificationId = ainaIsVerified();
+
+            assertThatThrownBy(() -> confirm.confirm(new ConfirmTeamMemberRequest(other, verificationId, true, TERMS)))
+                    .isInstanceOf(MemberVerificationNotFoundException.class);
+            assertThatThrownBy(() -> confirm.confirm(new ConfirmTeamMemberRequest(kemas, "no-such-verification", true, TERMS)))
+                    .isInstanceOf(MemberVerificationNotFoundException.class);
+            assertThat(members.saved).isEmpty();
+        }
+
+        @Test
+        void nobodyIsToldOfAMemberWhoCannotBeSaved() {
+            String verificationId = ainaIsVerified();
             members.somethingElseSavesFirst();
             int told = events.all.size();
 
-            assertThatThrownBy(() -> result.record(new RecordMemberVerificationResultRequest(verificationId, true, "NUR AINA BINTI AHMAD", A_YEAR_ON)))
+            assertThatThrownBy(() -> confirm.confirm(new ConfirmTeamMemberRequest(kemas, verificationId, true, TERMS)))
                     .isInstanceOf(ChangedMeanwhileException.class);
             assertThat(events.all).hasSize(told);
         }
@@ -272,12 +358,22 @@ class TeamTest {
     class TheTeamView {
 
         @Test
+        void aVerifiedPersonWaitsForTheProvidersConfirmationWithTheirName() {
+            String verificationId = ainaIsVerified();
+
+            ProviderViewTeamResponse team = new ProviderViewTeam(members, verifications).view(new ProviderViewTeamRequest(kemas));
+
+            assertThat(team.members()).isEmpty();
+            assertThat(team.waiting()).containsExactly(new ProviderViewTeamResponse.Waiting(verificationId, "HELPER", "VERIFIED", AINA, NOW));
+        }
+
+        @Test
         void aBusinessSeesItsTeamAndWhoIsWaitingButNotRemovedMembersOrOtherTeams() {
             String aina = ainaIsOnTheTeam();
             String ben = ainaIsOnTheTeam();
             new ProviderRemoveTeamMember(members, events, clock).remove(new ProviderRemoveTeamMemberRequest(kemas, ben));
             String waiting = new ProviderStartAddingTeamMember(providers, verifications, kyc, events, at(NOW.plusSeconds(60)))
-                    .start(new StartAddingTeamMemberRequest(kemas, "SUPERVISOR", "photos/chong.jpg", true, TERMS))
+                    .start(new StartAddingTeamMemberRequest(kemas, "SUPERVISOR", "photos/chong.jpg"))
                     .verificationId();
             addingAHelper(other);
 
@@ -292,7 +388,10 @@ class TeamTest {
             assertThat(member.status()).isEqualTo("MEMBER");
             assertThat(member.verifiedUntil()).isEqualTo(A_YEAR_ON);
             assertThat(member.lastVerifiedAt()).isEqualTo(NOW);
-            assertThat(team.waiting()).containsExactly(new ProviderViewTeamResponse.Waiting(waiting, "SUPERVISOR", NOW.plusSeconds(60)));
+            assertThat(team.waiting()).containsExactly(
+                    new ProviderViewTeamResponse.Waiting(waiting, "SUPERVISOR", "WAITING", "", NOW.plusSeconds(60)));
+            assertThat(team.waiting().get(0).stage()).isEqualTo("WAITING");
+            assertThat(team.waiting().get(0).registeredName()).isEmpty();
             assertThat(team.waiting().get(0).verificationId()).isEqualTo(waiting);
             assertThat(team.waiting().get(0).role()).isEqualTo("SUPERVISOR");
             assertThat(team.waiting().get(0).startedAt()).isEqualTo(NOW.plusSeconds(60));

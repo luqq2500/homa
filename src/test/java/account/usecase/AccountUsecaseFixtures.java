@@ -145,7 +145,8 @@ final class AccountUsecaseFixtures {
         public List<MemberVerification> findWaitingFor(String providerId) {
             return saved.values().stream()
                     .filter(verification -> verification.providerId().equals(providerId))
-                    .filter(verification -> verification.status() == MemberVerificationStatus.WAITING)
+                    .filter(verification -> verification.status() == MemberVerificationStatus.WAITING
+                            || verification.status() == MemberVerificationStatus.VERIFIED)
                     .sorted(Comparator.comparing(MemberVerification::startedAt))
                     .toList();
         }
