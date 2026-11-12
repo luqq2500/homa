@@ -17,6 +17,7 @@ src/main/java/
   policy/domain/                Homa-set values and their versions
   policy/usecase/               the policy's usecases, ports and DTOs
   account/domain/               customer and business provider accounts, team members, and the results reported by the KYC provider
+  account/usecase/              registration, the team, and the KYC provider's and Stripe's reports
   offering/domain/              a provider's listing and the rules for going live
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
@@ -85,8 +86,8 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-In progress. `catalogue` (19 usecases, 111 tests) and `policy` (3 usecases, 112 tests) and `account`
-(26 usecases) are built, with every mutant killed. The plan also sets rules I1 to I3 for the infra phase. The other contexts
+In progress. `catalogue` (19 usecases, 111 tests), `policy` (3 usecases, 112 tests) and `account`
+(26 usecases, 108 tests) are built, with every mutant killed. The plan also sets rules I1 to I3 for the infra phase. The other contexts
 follow in the plan's build order. The plan, `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases
 (including `feedback`, `privacy` and `tracking`), how one context gets another's data, the required
 rules R1 to R14, the admin console (with the founders' growth dashboard and rules A1 to A6), the
