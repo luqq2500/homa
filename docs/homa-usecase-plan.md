@@ -127,13 +127,14 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 - The console names each value, such as `SERVICE_FEE` or `STANDARD_CANCELLATION_FEE`, and writes its amount by kind: a percentage (`17.5%`), an ISO-8601 period (`PT2H`, `P30D`), a count (`300`) or a range of hours (`1-6`). `HomaViewPolicy` shows each value by the same name and in the same form, so the console can show a value and send it back changed. The usecase only translates; the domain checks every value's shape and the rules across values.
 
 **account**
-- Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
-- Provider: `ProviderRegisterAccount`; `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC)
+- Phone: `RegistrantStartPhoneVerification` (a code from the `VerificationCodes` out port, sent by the `SmsSender` out port only after the verification is saved) and `RegistrantConfirmPhone`. A *registrant* is anyone registering, as a customer or a business.
+- Customer: `CustomerRegisterAccount` → `CustomerRegisteredIE` (the `Geocoder` out port finds the city and coordinates), `CustomerChangeAddress`, `CustomerViewAccount`. The phone verification is used up on registering, so it registers one account; a phone number has at most one customer account and one provider account.
+- Provider: `ProviderRegisterAccount` (no event until KYB passes); `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC; the same pages re-verify it); `ProviderViewAccount` (verification, SSM registration, verified-until date, payout account, ready for go-live)
 - Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens the KYC provider's re-verification for the business or a team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`
 - The KYC provider reporting back (webhooks, R9): `KycRecordBusinessResult`, `KycRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7), `KycRecordTeamMemberResult` and `KycRecordLapse` publish one event per `VerificationOutcome`, and nothing for `UNCHANGED` (see required rule R1)
 - Ongoing monitoring (webhooks): `KycRecordReverificationRequired` → `ReverificationRequiredIE`; `KycRecordSeriousFlag` → `ProviderFlaggedIE` for a business, or `TeamMemberLapsedIE` for a team member
 - Early re-check: `HomaRequestEarlyRecheck` asks the KYC provider for one, with a reason; nothing changes in Homa until the KYC provider reports a pass or a lapse
-- Payout account: `ProviderAddPayoutAccount` (opens Stripe's onboarding for the business bank account); Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`
+- Payout account: `ProviderAddPayoutAccount` (opens Stripe's onboarding for the business bank account); Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`, once: a repeated report changes nothing
 
 **offering**
 - `ProviderDraftListing`, `ProviderSetProfile`, `ProviderOfferJobs`, `ProviderBringTools`, `ProviderSetPricing`, `ProviderSetHours`, `ProviderSetHelpers`, `ProviderSetSupervisorRule`, `ProviderClearSupervisorRule`, `ProviderCoverCities`, `ProviderChooseCancellationTier` → `ListingChangedIE` when live
@@ -441,7 +442,9 @@ Each context passes its gates before the next starts.
 |---|---|---|---|---|---|
 | catalogue | 19: add, rename and retire a job or a tool; regroup a job; feature, rename, move and remove a search in the showcase; publish the service area; seven views | 111 | 92 of 92 | 3.0 | Done |
 | policy | 3: launch the policy, change one value, view the values in force | 112 | 112 of 112 | 3.0 | Done |
-| account and the rest | — | — | — | — | Not started |
+| account, part 1 | 10: start and confirm a phone verification; register a customer, change their address, view their account; register a business, start KYB, add a payout account, record it ready, view the account | 44 | 36 of 36 | 2.0 | Done |
+| account, part 2 | The team and the KYC provider's results | — | — | — | In progress |
+| offering and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
 - the usecase layer depends only on its own domain, `kernel`, `ie` and Java;

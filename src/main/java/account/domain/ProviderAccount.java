@@ -82,9 +82,14 @@ public final class ProviderAccount {
         seriousFlag = why;
     }
 
-    /** Records that the payment provider reports the business bank account as ready for payouts. */
-    public void recordPayoutAccountReady() {
+    /**
+     * Records that the payment provider reports the business bank account as ready for payouts. Returns
+     * whether it changed anything: a repeated report changes nothing.
+     */
+    public boolean recordPayoutAccountReady() {
+        boolean changed = !payoutAccountReady;
         payoutAccountReady = true;
+        return changed;
     }
 
     /** The provider's own part of going live: verified, not lapsed, with a ready payout account. */

@@ -152,4 +152,13 @@ class ProviderAccountReadinessTest {
             assertThat(provider.isReadyForGoLive()).isEqualTo(ready);
         }
     }
+
+    @Test
+    void aRepeatedPayoutAccountReportChangesNothing() {
+        ProviderAccount provider = aProvider();
+
+        assertThat(provider.recordPayoutAccountReady()).isTrue();
+        assertThat(provider.recordPayoutAccountReady()).isFalse();
+        assertThat(provider.isPayoutAccountReady()).isTrue();
+    }
 }
