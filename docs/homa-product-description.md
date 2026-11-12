@@ -4,7 +4,13 @@
 
 ## Contents
 
+**Part 1: Product brief**
 - What Homa Is
+- The 7-Star Experience
+- Product Principles
+- Goals and Measures
+
+**Part 2: Product rules**
 - Where Homa Operates
 - How Homa Works
 - Pricing
@@ -16,6 +22,8 @@
 - Homa Admin
 - Not in the MVP
 - External Services Homa Will Use and Not Develop
+
+# Part 1: Product brief
 
 ## What Homa Is
 
@@ -35,21 +43,79 @@ Homa builds what brings value to homeowners and homecare providers: finding the 
 
 **Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider is a registered business, and every business and team member is verified by Homa's KYC provider to join (a business through KYB, which includes its owner's or director's KYC), is re-verified regularly, is shown to the customer before the job, and has their face checked at the door. Homa verifies who people are through its KYC provider; it does not inspect how they work, which is judged through ratings and disputes.
 
+## The 7-Star Experience
+
+The core moment is **"I booked help, and it turned up."** Homa aims for 7 stars: magical, but buildable now.
+
+| Stars | What it looks like |
+|---|---|
+| 1 | Nobody shows up, and you've paid. |
+| 3 | Strangers turn up late, and the price grows on the day. |
+| 5 | A verified team you've seen arrives on time and does what you booked. |
+| **7 (Homa's target)** | **You know you're booked at once, or by a set time. The team gets in without a phone call, you can leave once they've checked in, and booking the same provider again takes one tap.** |
+| 9 | The same trusted team comes every week and knows your home. |
+| 11 | Your home is simply cared for, without you thinking about it. |
+
+What makes it 7 stars in this spec:
+
+- **Certainty:** **Instant book**, or an answer from the provider by the **response deadline**.
+- **Getting in:** the address is pinned on a map, and **access notes** travel with every booking.
+- **Freedom:** be home for check-in, then leave. The dispute window gives time to check the work later.
+- **Trust:** a verified named team, a face check at the door, an **Insured** badge where declared, safety reports first in Homa's queue, and a decision date for every case.
+- **Coming back:** **Book again** copies a past booking in one tap. Recurring bookings and the same team every week (9 stars) come after launch.
+
+## Product Principles
+
+Each principle names the trade-off Homa accepts for it.
+
+1. **Only verified people work, even if a booking is lost.** Some jobs that might have gone fine are cancelled.
+2. **The system adjusts and tells people; it never asks Homa or the customer to sort it out.** There are more automatic rules.
+3. **Nobody waits on something that can't happen.** Requests end sooner, sometimes without a person deciding.
+4. **Honest records over flattering ones.** Providers' stats sometimes look worse.
+5. **One clear rule for each situation.** Edge cases get a firm answer instead of a choice.
+
+## Goals and Measures
+
+The founders review these monthly in the admin console. First targets are set from the first 8 weeks of data, because Homa has none yet.
+
+| Goal | Measure |
+|---|---|
+| Customers find help | Share of searches with at least one exact match, by city, job and time |
+| Newcomers book | Share of first-time searchers who make a first reservation within 7 days |
+| Customers know at once | Share of reservations confirmed by Instant book; for requests, the acceptance rate and the median time to an answer |
+| Jobs go as booked | Share of reservations completed with no report; provider no-show and late cancellation rates |
+| Customers come back | Share of customers who book again within 60 days of their first job |
+| Trust holds | Disputes and safety reports per 100 jobs; share of cases decided within 3 working days |
+| Providers earn | Active live providers (a completed job in the last 30 days) and their median monthly payout |
+
+**Assumptions to test.** No customer or provider research backs this spec yet, so each of these is an assumption until interviews and launch data confirm it:
+
+- Busy homeowners would rather buy a few hours of a team's time than pay per task.
+- Verification and the face check are enough for customers to let a team in and then leave.
+- Providers accept Homa's fixed policies and fines in return for the customers Homa brings.
+- Enough providers choose Instant book to make knowing at once the normal experience.
+- Three neighbouring cities have enough demand and supply to start.
+- Customers pay a 15% service fee for Homa's protection rather than booking providers directly.
+
+# Part 2: Product rules
+
 ## Where Homa Operates
 
 Homa launches in three neighbouring cities: **Salak Tinggi**, **Cyberjaya** and **Putrajaya**. All prices are in Malaysian ringgit (RM).
 
-Each provider chooses which cities they cover. Search only shows providers who cover the city of the customer's address.
+Each provider chooses which cities they cover. Search only shows providers who cover the city of the customer's address, or the city a guest picks.
+
+The customer app and the provider app are in Bahasa Melayu and English, and each person chooses their language.
 
 ## How Homa Works
 
 Homa sells **a provider's time**. The customer chooses what they want done and for how long, and the price is clear upfront.
 
-1. **Search:** pick the jobs you need, a date and time, a duration (1 to 6 hours) and the number of helpers (at least 1).
+1. **Search:** pick the jobs you need, a date and time, a duration (1 to 6 hours) and the number of helpers (at least 1). You don't need an account to search: a guest picks a city or drops a pin. Homa asks you to sign up when you tap **Reserve** or **Chat**.
 2. **Browse:** see providers who match exactly, plus close matches so you can explore alternatives. A close match differs from the search in one way only: either it offers some but not all of the chosen jobs, or it is free for the same duration at a start within 2 hours before or after the chosen time, never both. A close match is still in the customer's city and fits the helpers and duration, and a start it suggests is always one the customer can book: on a 15-minute step, at least the minimum notice from now and within the booking horizon.
 3. **Choose:** open a provider page to see their jobs, tools, price, availability, cancellation policy and team. You can tap **Chat** to ask the provider questions first; the chat keeps your chosen details and you can reserve from it.
 4. **Review:** check the details on the review page and edit them if needed. The same page is used whether you reserve directly or from a chat.
-5. **Reserve:** tap **Reserve** to submit a reservation request. You pay by card or online banking (FPX). A card is authorised and charged only when the provider accepts; FPX is paid upfront. You can edit the request until the provider accepts it. If the provider declines or doesn't respond, a card authorisation is released and an upfront payment is refunded in full.
+5. **Reserve:** tap **Reserve**. With a provider who uses **Instant book**, the reservation is confirmed as soon as your payment goes through. With a provider who uses **Request and accept**, it is a reservation request: the provider accepts or declines it by the **response deadline**, and you can edit it until then. You pay by card or online banking (FPX). A card is authorised and charged only when the reservation is accepted; FPX is paid upfront. If the provider declines or doesn't respond, a card authorisation is released and an upfront payment is refunded in full.
 6. **Job day:** you can see who is coming. At the door, every person who came verifies their face, the team does the job, and the provider marks it completed with photo or video evidence.
 7. **Payout:** after the dispute window ends without a report, Homa releases the payment to the provider.
 
@@ -83,6 +149,7 @@ Each provider sets:
 - minimum and maximum hours, within Homa's range of 1 to 6 hours
 - how the travel fee works: either a **separate flat travel fee**, or **already included in the price**
 - the cities they cover
+- how reservations are accepted: **Request and accept** (the default) or **Instant book** (see Acceptance Policy)
 
 A provider offers at least one job and covers at least one city. Bringing no tools is allowed. A separate travel fee is more than RM0; a provider who charges nothing for travel includes it in the price.
 
@@ -98,7 +165,7 @@ Percentages are rounded half up to the nearest sen. When a payment is split betw
 
 | Status | Meaning |
 |---|---|
-| **Requested** | The customer has requested; once the card is authorised or the upfront payment is paid, it waits for the provider to respond |
+| **Requested** | The customer has requested; once the card is authorised or the upfront payment is paid, it waits for the provider to respond, or is accepted at once with Instant book |
 | **Reserved** | The provider accepted the request |
 | **Declined** | The provider declined, or accepted another booking that takes the same time |
 | **Expired** | The provider did not respond in time |
@@ -117,7 +184,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 ### Payment Protection
 
 - How the customer pays depends on the method:
-  - **Card:** authorised when submitting the request and charged only when the provider accepts. A declined, expired or cancelled request releases the authorisation, so nothing is refunded because nothing was charged.
+  - **Card:** authorised when submitting the request and charged only when the reservation is accepted, by the provider or at once with Instant book. A declined, expired or cancelled request releases the authorisation, so nothing is refunded because nothing was charged.
   - **Online banking (FPX):** paid in full when submitting the request, because FPX cannot be authorised first.
   - Card and FPX are the only payment methods, and each reservation is paid with one of them.
   - **Paid before the provider answers:** the provider sees a request, and can accept it, only once the card is authorised or the FPX payment is paid.
@@ -130,21 +197,36 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - Released payments are paid out to the provider per reservation.
 - **Refunds** always go back to the original payment method. They take as long as the bank needs; for FPX this can be a week or more, so the app shows the customer the refund status and the expected timing.
 - The service fee follows what the customer finally pays the provider: it is 15% of that amount. A full refund refunds the whole service fee; a partial refund refunds the matching share.
+- **Chargebacks:** a customer who disputes a card payment with their bank after the job opens a case for Homa. Homa answers the bank with the reservation's evidence. If Homa decides the provider is responsible, the amount is recovered from the provider's next payouts the same way as a fine (see Provider Cancellation Fines); otherwise the provider keeps their payout and Homa contests the chargeback.
+- **Processing fees:** Homa pays the payment provider's fees out of its service fee, including on refunds. Customers and providers never pay them.
+- **Receipts:** the customer gets a receipt for each payment and refund, and the provider a statement for each payout, with any fine deducted. **Before launch, an accountant confirms the service tax and e-invoicing rules for Homa's service fee.**
 - All payments for a reservation must stay on Homa.
 
 ### Request Policy
 
-- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. The address can't be changed on a request: to use another address, the customer cancels the request for free and requests again. For a card, the authorisation is updated to the new total. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
-- A request expires if the provider does not respond within the **request expiry time**, always before the booked start. The provider can accept or decline up to that moment; at the expiry time the request has expired.
-- Editing a request does not restart its expiry. It still expires the request expiry time after it was first submitted, or at the booked start if the edit moves the start earlier than that.
+- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. The address can't be changed on a request: to use another address, the customer cancels the request for free and requests again. For a card, a new authorisation for the new total replaces the old one, which is released. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
+- A request expires if the provider does not respond within the **request expiry time**, and never later than the **response deadline** before the booked start, so the customer always knows in time. The provider can accept or decline up to that moment; at the expiry time the request has expired.
+- Editing a request does not restart its expiry. It still expires the request expiry time after it was first submitted, or at the response deadline if the edit moves the start earlier than that.
 - A declined or expired request costs the customer nothing: the card authorisation is released, or an upfront payment is refunded in full, including the service fee.
 - Requests don't hold the provider's time; only an accepted reservation does. When the provider accepts a request, any other open request of theirs that can no longer be accepted, because its time now clashes with the accepted booking or the buffer between jobs around it, is declined at once. The customer is told, and the request costs them nothing. These automatic declines don't count against the provider's response or acceptance rates.
 - The customer can cancel a request for free at any time before the provider responds.
 - If the provider cancels a reserved booking, the customer is refunded in full and the provider may pay a fine (see Provider Cancellation Fines).
 
+### Acceptance Policy (chosen by the provider)
+
+- Each provider chooses how reservations are accepted:
+  - **Request and accept** (the default): the provider accepts or declines each request by the response deadline.
+  - **Instant book:** a request is accepted automatically the moment its payment is secured. The card is authorised and charged at once, or the FPX payment is paid.
+- Instant book never accepts a time the provider isn't free: Homa checks the provider's availability when the request is made and again when it is accepted. If the time is no longer free, the request ends and costs the customer nothing.
+- The provider can't decline an instant-book request. Once accepted, it is a normal reservation: the same team, check-in, cancellation and fine rules apply, and a provider who can't make it cancels and pays any fine.
+- The provider page and search results show which providers use Instant book.
+- A change of acceptance policy applies to new requests only.
+
 ### Check-in Policy
 
 - **Who is coming:** before the booked start, the provider names the helpers for the reservation, matching the number of helpers booked, and at least one **supervisor** when the booking reaches the provider's supervisor threshold. The customer does not pick them but sees each person's name, role, photo and average stars. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change. Only people on the team can work: a named person who lapses or is removed comes off the job's team at once (see Verification Policy).
+- **Being home:** the customer, or someone they choose, is home to let the team in at check-in. After check-in they are free to leave; the provider marks completion with evidence, and the customer has the dispute window to check the finished work.
+- **Access notes:** each new request copies the access notes from the customer's account, such as the unit, guardhouse registration and parking. The customer can change a reservation's notes until the job is completed, and the provider sees them from acceptance.
 - The provider is responsible for check-in and job completion. Someone on site must have the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
 - Check-in is **location-based**. Homa enables the check-in action only when the device is within the **check-in radius** of the customer's location, and the provider then marks check-in.
 - Homa uses the device's location only at the moment of check-in, not continuously.
@@ -174,6 +256,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - While a reservation is Disputed after a report or a missed completion deadline, the other party can still file their one report. A challenged customer no-show is reviewed on the challenge alone, and takes no reports.
 - A report is one of three types: a problem during the job (for example a missing helper or missing tools), a problem with the finished work, or **safety, damage or loss** (for example harassment, an injury, something broken or something missing from the home).
 - A safety, damage or loss report goes to the top of Homa's queue. Homa still doesn't compensate damage (see Damage Policy): the report records what happened, lets Homa help, for example with a police report, and can lead Homa to ask the KYC provider for an early re-check. The money outcome is decided the same way as any report.
+- Homa aims to decide every case within **3 working days** of it opening. The customer and the provider see the expected date.
 - A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund. A partial refund gives the provider any amount from RM0 up to what was at stake: the provider price for a job, or the customer no-show fee for a challenged no-show. The service fee follows what the provider receives.
 
 ### Conduct Policy
@@ -249,7 +332,7 @@ While the check is waiting, the provider app shows it as **waiting for verificat
 Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 2024.
 
 - **What Homa collects and why:**
-  - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
+  - Customers: name, phone number, address with its map pin, and access notes, to sign in, show providers who the booking is for, match providers by city and locate check-in.
   - Businesses: the SSM registration number and registered business name from the KYC provider's KYB, for Homa's records; payout details, handled by Stripe.
   - Team members: the registered name, the verified-until and last verification dates, the profile photo, and face check results at check-in (result and time only, never the selfie), to show customers who is coming. Identity documents and face data are collected and held by the KYC provider, used only to verify a person against their own documents.
   - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and customers' written feedback about the provider. Team members agree to being rated as part of their consent on the KYC provider's screen.
@@ -274,6 +357,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 ### Damage Policy
 
 - Homa does not compensate damage.
+- A provider can declare their liability insurance, with the insurer and the date it's valid until. The provider page shows an **Insured** badge until that date. Homa doesn't check the policy; the provider is responsible for the declaration, as for lawful employment.
 - Damage, loss or a safety incident is reported with a safety, damage or loss report (see Dispute Policy).
 - Homa assists manually when a customer or provider wants to make a police report.
 
@@ -321,11 +405,12 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Customer no-show wait** | Check-in Policy | 15 minutes |
 | **Customer no-show fee** | Check-in Policy | Travel fee plus 30% of the hours fee |
 | **No-show report window** | Check-in Policy | 1 hour after the provider reports a customer no-show |
-| **Request expiry time** | Request Policy | 24 hours, or the booked start if that comes sooner |
+| **Request expiry time** | Request Policy | 24 hours, or the response deadline if that comes sooner |
+| **Response deadline** | Request Policy | 1 hour before the booked start: every request is answered by then. It is always shorter than the minimum notice |
 | **Completion reminder time** | Completion Policy | 30 minutes after the booked end |
 | **Completion deadline** | Completion Policy | 24 hours after the booked end, after which Homa reviews the reservation |
-| **Evidence retention period** | Completion Policy | 7 days after the reservation is resolved |
-| **Dispute window extension** | Dispute Policy | 1 hour after the later of the booked end and job completion |
+| **Evidence retention period** | Completion Policy | 120 days after the reservation is resolved, so evidence is there for card chargebacks and police reports |
+| **Dispute window extension** | Dispute Policy | 24 hours after the later of the booked end and job completion |
 | **Fee window** | Cancellation Policy | 24 hours before the booked start |
 | **Cancellation tiers** | Cancellation Policy | Flexible: free cancellation. Standard: 10% of the hours fee within the fee window. Firm: 20% of the hours fee within the fee window |
 | **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within the fee window before the booked start |
@@ -338,11 +423,11 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 ### Account
 
-Customers register with their phone number, their name and their address. They can change their name and address in their account at any time. A new address is used for new searches and requests; requests and reservations already made keep the address they were made with. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in, so an address the geoservice cannot find is not accepted. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
+Customers register with their phone number, their name and their address. They can change their name and address in their account at any time. A new address is used for new searches and requests; requests and reservations already made keep the address they were made with. Customers search and browse as guests, and sign up the first time they reserve or chat. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in. The customer confirms the address with a pin on the map, so an address the geoservice can't find is still placed correctly. The account also keeps **access notes** for the team, up to 500 characters. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
 
 ### Homepage
 
-A greeting and a search bar to start a search. Below it is the **showcase**: searches Homa features, such as "Weekend quick refresh", in the order Homa sets. Tapping one fills in the search with its jobs, duration and helpers; the customer picks the date and time, and the city comes from their address.
+A greeting and a search bar to start a search. Below it is the **showcase**: searches Homa features, such as "Weekend quick refresh", in the order Homa sets. Tapping one fills in the search with its jobs, duration and helpers; the customer picks the date and time, and the city comes from their address, or the one a guest picks.
 
 ### Provider page
 
@@ -350,6 +435,8 @@ A greeting and a search bar to start a search. Below it is the **showcase**: sea
 - Jobs grouped to be easy to scan, such as kitchen or living room
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
+- **Instant book**, when the provider uses it
+- **Insured**, when the provider has declared liability insurance that is still valid
 - **Business · SSM registered**, for every provider
 - The provider's team: every team member's registered name, role (helper or supervisor), photo and average stars, so you know who may come. Only added team members are shown. Nationality is never shown.
 - When a supervisor is included, if the provider sends one
@@ -404,7 +491,7 @@ A provider adds helpers and supervisors and manages the team in Homa. Only peopl
 
 - **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
-- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered and cancellation policy. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
 - **Verification:** see when the business and each team member are next due for re-verification, and run each re-verification on the spot with the person present.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
@@ -414,7 +501,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Reports
 
-- One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports and missed completion deadlines, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first.
+- One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports, missed completion deadlines and card chargebacks, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first. Each case shows its age against the 3-working-day decision target.
 - **Seriously flagged businesses** are listed in the same queue but are not cases: each of their disputed reservations is cancelled with a full refund or restored once the flag is cleared, and each held payout is released or kept back. A case already open for a reservation the flag takes over is closed without a decision.
 - For each case the founders see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
 - Each decision is recorded with a short reason and the founder who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
@@ -422,7 +509,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Tracking
 
-- **Overview:** reservations, total booking value, service fee earned, cancellation and no-show rates, and how quickly providers respond to requests.
+- **Overview:** the measures in Goals and Measures, with reservations, total booking value, service fee earned, cancellation and no-show rates, the share of bookings made by Instant book, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
 - **Providers:** KYB results (SSM number and registered business name), lawful-employment confirmations for each team member with their time and terms version, verification status of providers, their team members and anyone waiting for verification, face check failures, upcoming and lapsed re-verifications, and the option to ask the KYC provider for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
@@ -445,6 +532,7 @@ These are deliberately left out of the MVP:
 - Consequences of violations and provider suspension (late cancellations and no-shows are only tracked in the admin console)
 - Homa credit, account top-ups and e-wallet payments
 - Rescheduling a reserved booking
+- Recurring bookings, and asking for the same team again. They are the first step after launch, toward the 9-star experience; until then, **Book again** copies a past booking in one tap.
 - Accounts for helpers and supervisors
 - Showing nationality
 - Checking work permits (the provider confirms lawful employment and is responsible for it)

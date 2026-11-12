@@ -148,7 +148,7 @@ Feature: Featured searches
 | `PolicySnapshot` | Value object | Immutable copy of one version, handed to `reservation` |
 | `CancellationTier` | Enum | `FLEXIBLE`, `STANDARD`, `FIRM` with their percentages |
 
-Values held (25): service fee 15%; duration 1–6 h; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%; rating window 14 days; minimum ratings to show 3. Homa sets no limit on helpers; each provider's maximum is the helpers on its team. The verification rules (documents, re-verification, face check attempts) are the KYC provider's, not Homa-set values.
+Values held (26): service fee 15%; duration 1–6 h; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or the response deadline; response deadline 1 h before the booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 120 days; dispute window extension 24 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%; rating window 14 days; minimum ratings to show 3. Homa sets no limit on helpers; each provider's maximum is the helpers on its team. The verification rules (documents, re-verification, face check attempts) are the KYC provider's, not Homa-set values.
 
 ```java
 HomaPolicy.initial(Instant now) : HomaPolicy    // the values above, version 1, in force from now
@@ -3565,6 +3565,186 @@ Feature: Requesting opens the reservation's chat
     Given the reservation's chat was opened by the request
     When the provider posts "Running 10 minutes late"
     Then the chat has 1 message
+```
+
+## Change after the domain phase: the 7-star experience
+
+Decided by the product owner after a product critique of the spec. Homa targets **7 stars** for its core
+moment, "I booked help, and it turned up": customers know at once or by a set time that they are booked,
+the team gets in, customers can leave after check-in, and booking the same provider again takes one
+tap. The product description's new Part 1 (product brief) states the target, the principles, and the
+goals and measures; Part 2 states the rules below.
+
+| # | Decision | Domain change |
+|---|---|---|
+| S1 | Guests search by a city or a pin; the account is asked for at Reserve or Chat | None: search already takes a city |
+| S2 | Each provider chooses an **acceptance policy**: Request and accept (the default) or **Instant book**, which accepts a request the moment its payment is secured. The provider can't decline an instant-book request | offering, reservation |
+| S3 | A **response deadline** (1 hour before the booked start): a request expires by then at the latest. It must be shorter than the minimum notice | policy, reservation |
+| S4 | Evidence is kept 120 days; a card chargeback opens a case, and what the provider must cover is recovered like a fine | policy (value), resolution, payment |
+| S5 | Recurring bookings and same-team requests are listed as cut from the MVP | None |
+| S6 | The dispute window extension is 24 hours; the customer is home for check-in and free to leave after | policy (value) |
+| S7 | The address is confirmed with a map pin; the account keeps **access notes**, copied to each request and changeable until completion | account, reservation |
+| S8 | A card edit replaces the authorisation; Homa pays processing fees; receipts and statements; tax checked before launch | None |
+| S9 | Homa aims to decide each case within 3 working days, shown to both parties | None: the queue already has each case's age |
+| S10 | A provider can declare liability insurance, shown as an **Insured** badge until it expires | offering |
+| S11 | The apps are in Bahasa Melayu and English | None |
+| S12 | The spec is split into a product brief (Part 1) and product rules (Part 2) | None |
+
+**`policy`**
+
+- A new value, `ResponseDeadline(Duration beforeStart)`, 1 hour at launch, which makes 26 values.
+- Launch values change: the dispute window extension becomes 24 hours, and evidence retention 120 days.
+- A cross-value rule: the response deadline must be shorter than the minimum notice, so a request is
+  never made after its own deadline (`ResponseDeadlineNotBeforeMinimumNoticeException`).
+
+**`offering`**
+
+- `AcceptancePolicy`: `REQUEST_AND_ACCEPT` (the default for every listing) or `INSTANT_BOOK`.
+  `ProviderListing.chooseAcceptancePolicy(policy)` sets it, and the snapshot carries it.
+- `InsuranceDeclaration(insurer, validUntil)`. `ProviderListing.declareInsurance(declaration, now)`
+  refuses one already expired (`InsuranceExpiredException`); `clearInsurance()` removes it;
+  `isInsured(now)` is true until `validUntil`. Homa doesn't check the policy.
+
+**`account`**
+
+- `AccessNotes`: free text for the team, up to 500 characters; blank means none.
+  `CustomerAccount.changeAccessNotes(text)` returns whether it changed (`AccessNotesTooLongException`).
+
+**`reservation`**
+
+- **Response deadline (S3):** the `PolicySnapshot` gains `responseDeadline`. `requestExpiresAt()` is the
+  earlier of the request expiry time after the request and the booked start minus the response
+  deadline.
+- **Instant book (S2):** the `OfferingSnapshot` gains its `AcceptancePolicy`.
+  - `acceptInstantly(providerVerifiedUntil, now)` accepts an instant-book request with the same checks as
+    `accept`: payment secured, not expired, and the job ends by the provider's verified-until date. It
+    refuses a request-and-accept listing's request (`NotInstantBookException`).
+  - `decline` refuses an instant-book request (`InstantBookCannotBeDeclinedException`).
+    `declineForTakenTime` still ends one whose time is no longer free.
+- **Access notes (S7):** `changeAccessNotes(text, now)` sets the reservation's notes while it is
+  requested, or reserved or disputed over the job with no completion. The usecase copies the account's
+  notes right after the request. The provider sees them from acceptance.
+
+**`resolution`**
+
+- `CaseSource.CHARGEBACK`: the amount at stake is what the customer's bank took back.
+  `Case.providerCovers()` is what the provider must cover under the decision: the amount at stake less
+  what the provider receives (all of it for a full refund, none for a release).
+
+**`payment`**
+
+- `FineReason.CHARGEBACK`. What a provider covers is charged as a `Fine` and deducted from their next
+  completed-job payouts within the fine deduction cap, oldest first, like any fine.
+
+**`ie/`**
+
+- `HomaPolicyChangedIE` carries `responseDeadline`; `ListingWentLiveIE` and `ListingChangedIE` carry
+  `instantBook`; `ReservationAcceptedIE` carries `instantBook`.
+- Added: `CustomerAccessNotesChangedIE` (account, for reservation's projection),
+  `AccessNotesChangedIE` (reservation, for the provider), `ProviderInsuranceDeclaredIE` and
+  `ProviderInsuranceClearedIE` (offering, for the provider page) and `ChargebackDecidedIE`
+  (resolution, for payment). That makes 80 events.
+
+**Test values:** the reservation tests keep a dispute window extension of 1 hour and their worked times,
+as test values; the launch value is 24 hours. The policy tests check the launch values.
+
+```gherkin
+Feature: The response deadline
+
+  Scenario Outline: A request is answered by the response deadline at the latest
+    Given a request made at <requested> for a start at <start>
+    Then the request expires at <expires>
+    Examples:
+      | requested      | start          | expires        |
+      | Thursday 09:00 | Saturday 10:00 | Friday 09:00   |
+      | Saturday 06:00 | Saturday 10:00 | Saturday 09:00 |
+
+  Scenario: The response deadline is shorter than the minimum notice
+    Given the minimum notice is 2 hours
+    When Homa changes the response deadline to 2 hours
+    Then it is rejected with ResponseDeadlineNotBeforeMinimumNoticeException
+
+  Scenario: The launch values give time back
+    Then the dispute window extension is 24 hours
+    And evidence is kept for 120 days
+    And the response deadline is 1 hour
+
+Feature: Instant book
+
+  Scenario: A listing accepts by request unless the provider chooses Instant book
+    Given a new listing
+    Then its acceptance policy is REQUEST_AND_ACCEPT
+    When the provider chooses INSTANT_BOOK
+    Then the listing's snapshot says INSTANT_BOOK
+
+  Scenario: An instant-book request is accepted once it is paid
+    Given a request to an Instant book provider whose payment is secured
+    When it is accepted instantly
+    Then the reservation is RESERVED
+
+  Scenario: An instant-book request is not accepted before it is paid
+    Given a request to an Instant book provider whose payment is not secured
+    When it is accepted instantly
+    Then it is rejected with PaymentNotSecuredException
+
+  Scenario: Only an instant-book request is accepted instantly
+    Given a request to a Request and accept provider
+    When it is accepted instantly
+    Then it is rejected with NotInstantBookException
+
+  Scenario: The provider can't decline an instant-book request
+    Given a request to an Instant book provider
+    When the provider declines it
+    Then it is rejected with InstantBookCannotBeDeclinedException
+
+  Scenario: An instant-book request whose time is taken still ends
+    Given a request to an Instant book provider
+    When it is declined for taken time
+    Then the reservation is DECLINED with the ending TIME_TAKEN
+
+Feature: Access notes
+
+  Scenario: A customer keeps access notes on their account
+    When the customer saves "Unit 12-3, register at the guardhouse"
+    Then their access notes are "Unit 12-3, register at the guardhouse"
+
+  Scenario: Access notes are at most 500 characters
+    When the customer saves 501 characters of access notes
+    Then it is rejected with AccessNotesTooLongException
+
+  Scenario: A reservation's notes change until the job is completed
+    Given a RESERVED reservation
+    When the customer changes its access notes to "Park at B2"
+    Then its access notes are "Park at B2"
+    And after completion is submitted, a change is rejected with CompletionAlreadySubmittedException
+
+Feature: The Insured badge
+
+  Scenario: Declared insurance shows until it expires
+    Given the provider declared insurance with "Etiqa" valid until 1 March
+    Then the listing is insured on 28 February
+    And it is not insured on 1 March
+
+  Scenario: Insurance that has already expired can't be declared
+    When the provider declares insurance valid until yesterday
+    Then it is rejected with InsuranceExpiredException
+
+Feature: Chargebacks
+
+  Scenario Outline: The provider covers what the decision doesn't give them
+    Given a chargeback case with RM200.00 at stake
+    When the founders decide <decision>
+    Then the provider covers <covers>
+    Examples:
+      | decision                           | covers  |
+      | release                            | RM0.00  |
+      | full refund                        | RM200.00 |
+      | partial refund, provider gets RM50 | RM150.00 |
+
+  Scenario: What the provider covers is recovered like a fine
+    Given the provider covers RM150.00 for a chargeback
+    When their next completed job pays RM200.00
+    Then RM100.00 is deducted, the fine deduction cap
 ```
 
 ## Open questions
