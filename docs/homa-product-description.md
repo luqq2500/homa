@@ -46,7 +46,7 @@ Each provider chooses which cities they cover. Search only shows providers who c
 Homa sells **a provider's time**. The customer chooses what they want done and for how long, and the price is clear upfront.
 
 1. **Search:** pick the jobs you need, a date and time, a duration (1 to 6 hours) and the number of helpers (at least 1).
-2. **Browse:** see providers who match exactly, plus close matches so you can explore alternatives. A close match is a provider who offers some but not all of the chosen jobs, or who is free for the same duration at a start within 2 hours before or after the chosen time. A close match is still in the customer's city and fits the helpers and duration.
+2. **Browse:** see providers who match exactly, plus close matches so you can explore alternatives. A close match differs from the search in one way only: either it offers some but not all of the chosen jobs, or it is free for the same duration at a start within 2 hours before or after the chosen time, never both. A close match is still in the customer's city and fits the helpers and duration, and a start it suggests is always one the customer can book: on a 15-minute step, at least the minimum notice from now and within the booking horizon.
 3. **Choose:** open a provider page to see their jobs, tools, price, availability, cancellation policy and team. You can tap **Chat** to ask the provider questions first; the chat keeps your chosen details and you can reserve from it.
 4. **Review:** check the details on the review page and edit them if needed. The same page is used whether you reserve directly or from a chat.
 5. **Reserve:** tap **Reserve** to submit a reservation request. You pay by card or online banking (FPX). A card is authorised and charged only when the provider accepts; FPX is paid upfront. You can edit the request until the provider accepts it. If the provider declines or doesn't respond, a card authorisation is released and an upfront payment is refunded in full.
@@ -55,7 +55,7 @@ Homa sells **a provider's time**. The customer chooses what they want done and f
 
 ### Time
 
-start times are in 15-minute steps. A start time must be at least the **minimum notice** from now and no later than the **booking horizon**. Duration is in whole hours, from 1 to 6 hours, within the provider's own minimum and maximum. Bookable times come from each provider's own calendar.
+start times are in 15-minute steps. A start time must be at least the **minimum notice** from now and no later than the **booking horizon**. Duration is in whole hours, from 1 to 6 hours, within the provider's own minimum and maximum. A request must fit both Homa's duration range and the provider's own hours. Bookable times come from each provider's own calendar.
 
 ### Jobs and tools
 
@@ -70,7 +70,7 @@ A provider's **team** is everyone verified to work for them. Each team member ha
 
 Teams have no size limit. Each provider sets the minimum (at least 1) and maximum number of helpers per booking; Homa sets no upper limit. The maximum cannot be more than the number of helpers on the team, so the provider can always name everyone who is coming. The customer picks any number in that range.
 
-If the team's helpers drop below the maximum, the maximum shrinks to match, and the minimum with it if needed. A growing team does not widen the range on its own; the provider sets it again. A live provider with no helper left stops being live, and must have a helper, set their helpers and go live again.
+If the team's helpers drop below the maximum, the maximum shrinks to match, and the minimum with it if needed. A growing team does not widen the range on its own; the provider sets it again. A live provider with no helper left stops being live, and must have a helper, set their helpers and go live again. The same applies to a live provider with a supervisor rule and no supervisor left: they stop being live until they add a supervisor or clear the rule, and go live again. Upcoming reservations that need a supervisor still need one named before the booked start.
 
 **When a supervisor comes:** a provider with supervisors can set when one is sent: from a **minimum number of helpers**, from a **minimum number of hours**, or both. A booking that reaches either one includes at least one supervisor, at no extra cost to the customer. The provider page and the review page say when a supervisor is included. A provider who sets neither never has to send one, and can still choose to.
 
@@ -100,13 +100,13 @@ Percentages are rounded half up to the nearest sen. When a payment is split betw
 |---|---|
 | **Requested** | The customer has requested; once the card is authorised or the upfront payment is paid, it waits for the provider to respond |
 | **Reserved** | The provider accepted the request |
-| **Declined** | The provider declined |
+| **Declined** | The provider declined, or accepted another booking that takes the same time |
 | **Expired** | The provider did not respond in time |
 | **Cancelled** | Cancelled by the customer or the provider, ended as a no-show, or a request whose payment failed |
 | **Disputed** | A report was filed, a customer challenged a no-show, the provider missed the completion deadline, or the provider's business was seriously flagged, and it is waiting for Homa's review |
 | **Completed** | The final status of a job: the dispute window ended with no report, or Homa resolved the review |
 
-A reservation stays **Reserved** through the job and the dispute window. If a report is filed, or the provider misses the completion deadline, it becomes **Disputed**. **Completed** is the last status, reached when the dispute window ends with no report or when Homa resolves a review. A reservation disputed because the provider's business was seriously flagged ends **Cancelled** with a full refund. A challenged customer no-show is the other exception: after Homa's review it ends **Cancelled**, whether Homa upholds the no-show or refunds the customer in full. The provider marking the job completed with evidence is an action and does not change the status.
+A reservation stays **Reserved** through the job and the dispute window. If a report is filed, or the provider misses the completion deadline, it becomes **Disputed**. **Completed** is the last status, reached when the dispute window ends with no report or when Homa resolves a review. A reservation disputed because the provider's business was seriously flagged ends **Cancelled** with a full refund, unless the KYC provider clears the flag before the booked start and Homa restores it to **Reserved**, so it goes ahead as booked. A challenged customer no-show is the other exception: after Homa's review it ends **Cancelled**, whether Homa upholds the no-show, gives the provider part of the no-show fee, or refunds the customer in full. The provider marking the job completed with evidence is an action and does not change the status.
 
 Payment has its own states, separate from the reservation status: **authorised** (card only: checked and nothing charged yet), **authorisation released** (card only: the request was declined, expired or cancelled before acceptance, so the authorisation was let go and nothing was charged), **held** (paid and held by Homa), **released** and **refunded**.
 
@@ -125,7 +125,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - Homa holds every charged payment until it is released or refunded.
 - The payment is released to the provider when the dispute window ends without a report. The window runs until after the provider submits job completion, so the customer always has time to review the finished work.
 - A report stops the release until Homa's review is done.
-- A customer cancellation fee is released to the provider straight away.
+- A customer cancellation fee is released to the provider straight away, including the customer no-show fee a customer pays for cancelling after check-in.
 - A customer no-show fee is released when the **no-show report window** ends without the customer reporting it, and the customer's refund of the rest is paid at the same time. If the customer reports it, Homa investigates and decides whether to release the fee or refund the customer, and both parts are paid after the decision.
 - Released payments are paid out to the provider per reservation.
 - **Refunds** always go back to the original payment method. They take as long as the bank needs; for FPX this can be a week or more, so the app shows the customer the refund status and the expected timing.
@@ -134,16 +134,17 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Request Policy
 
-- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. For a card, the authorisation is updated to the new total. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
+- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. The address can't be changed on a request: to use another address, the customer cancels the request for free and requests again. For a card, the authorisation is updated to the new total. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
 - A request expires if the provider does not respond within the **request expiry time**, always before the booked start. The provider can accept or decline up to that moment; at the expiry time the request has expired.
 - Editing a request does not restart its expiry. It still expires the request expiry time after it was first submitted, or at the booked start if the edit moves the start earlier than that.
 - A declined or expired request costs the customer nothing: the card authorisation is released, or an upfront payment is refunded in full, including the service fee.
+- Requests don't hold the provider's time; only an accepted reservation does. When the provider accepts a request, any other open request of theirs that can no longer be accepted, because its time now clashes with the accepted booking or the buffer between jobs around it, is declined at once. The customer is told, and the request costs them nothing. These automatic declines don't count against the provider's response or acceptance rates.
 - The customer can cancel a request for free at any time before the provider responds.
 - If the provider cancels a reserved booking, the customer is refunded in full and the provider may pay a fine (see Provider Cancellation Fines).
 
 ### Check-in Policy
 
-- **Who is coming:** before the booked start, the provider names the helpers for the reservation, matching the number of helpers booked, and at least one **supervisor** when the booking reaches the provider's supervisor threshold. The customer does not pick them but sees each person's name, role, photo and average stars. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change.
+- **Who is coming:** before the booked start, the provider names the helpers for the reservation, matching the number of helpers booked, and at least one **supervisor** when the booking reaches the provider's supervisor threshold. The customer does not pick them but sees each person's name, role, photo and average stars. Homa reminds the provider at the **team reminder time**, and check-in is enabled only once the team is named. The provider can change the team until the booked start, and the customer is notified of any change. Only people on the team can work: a named person who lapses or is removed comes off the job's team at once (see Verification Policy).
 - The provider is responsible for check-in and job completion. Someone on site must have the provider app to check in. How a provider runs their team is their own operation; Homa holds the provider accountable either way.
 - Check-in is **location-based**. Homa enables the check-in action only when the device is within the **check-in radius** of the customer's location, and the provider then marks check-in.
 - Homa uses the device's location only at the moment of check-in, not continuously.
@@ -152,14 +153,15 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - The provider can check in from the **earliest check-in** time and must check in by the booked start plus the **check-in period**, including its last minute: for a 10:00 start, from 09:45 up to and including 10:15. Homa records the check-in time, and the customer can see it.
 - No check-in by then is a provider no-show. The reservation is cancelled automatically, the customer is refunded in full, and the provider pays a fine (see Provider Cancellation Fines).
 - During the check-in period, the customer cannot cancel until the provider checks in or the period ends. This way a customer is never charged for a provider who did not arrive. If the period ends with no check-in, the customer does not need to cancel: the reservation ends as a provider no-show, with a full refund.
-- If the provider has checked in and the customer is not there after the **customer no-show wait**, the provider can report a customer no-show. The wait runs from the booked start, or from the check-in if the provider checks in after the start. The provider receives the **customer no-show fee**: the travel fee plus 30% of the hours fee. The customer is refunded the rest. The customer is notified and can report a wrongful no-show within the **no-show report window**, which closes at the moment the fee is released; Homa then investigates and decides. Homa can uphold the no-show (the fee stands), refund the customer in full, or give the provider part of the no-show fee. This is a Homa policy that applies to every provider; providers do not choose it.
-- A customer who cancels after the provider has checked in is treated the same way, as a customer no-show, even if the provider checked in early and the booked start has not come yet.
+- If the provider has checked in and the customer is not there after the **customer no-show wait**, the provider can report a customer no-show, up to and including the booked end. The wait runs from the booked start, or from the check-in if the provider checks in after the start. The provider receives the **customer no-show fee**: the travel fee plus 30% of the hours fee. The customer is refunded the rest. The customer is notified and can report a wrongful no-show within the **no-show report window**, which closes at the moment the fee is released; Homa then investigates and decides. Homa can uphold the no-show (the fee stands), refund the customer in full, or give the provider part of the no-show fee. This is a Homa policy that applies to every provider; providers do not choose it.
+- A customer who cancels after the provider has checked in pays the customer no-show fee, even if the provider checked in early and the booked start has not come yet. The fee is released to the provider straight away and can't be challenged, because the customer chose to cancel. If something is wrong with the job, the customer files a report instead of cancelling (see Dispute Policy).
 - The job time stays as booked. A provider who arrives within the check-in period but late is tolerated unless the customer reports it.
 
 ### Completion Policy
 
 - The provider marks the job completed, and photo or video evidence is required. There is no automatic completion.
 - Once completion is submitted, neither the customer nor the provider can cancel, and the provider can no longer report a customer no-show. Any problem goes through a report.
+- The provider can still submit completion while the reservation is **Disputed** over the job, after a report or a missed completion deadline. The evidence goes to Homa's review and the status stays **Disputed**. The dispute window then ends the **dispute window extension** after the submission or the booked end, whichever is later, so the other party can still file their report until then.
 - If the provider has not submitted completion by the booked end plus the **completion reminder time**, Homa reminds them to submit it.
 - If the provider has still not submitted completion by the **completion deadline**, the reservation moves to **Disputed** and Homa reviews it. Homa decides on a release, a partial refund or a full refund.
 - Evidence is used only for disputes and kept for the **evidence retention period**.
@@ -170,7 +172,8 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - Homa acts only on reports. The customer and the provider are each expected to file a report if something goes wrong. If no report is filed before the dispute window ends, Homa is not responsible for the issue, and the payment is released as normal.
 - The customer and the provider can each file one report per reservation, with a reason, and evidence where available. Reports open at the booked start and close at the moment the dispute window ends.
 - While a reservation is Disputed after a report or a missed completion deadline, the other party can still file their one report. A challenged customer no-show is reviewed on the challenge alone, and takes no reports.
-- A report is one of two types: a problem during the job (for example a missing helper or missing tools), or a problem with the finished work.
+- A report is one of three types: a problem during the job (for example a missing helper or missing tools), a problem with the finished work, or **safety, damage or loss** (for example harassment, an injury, something broken or something missing from the home).
+- A safety, damage or loss report goes to the top of Homa's queue. Homa still doesn't compensate damage (see Damage Policy): the report records what happened, lets Homa help, for example with a police report, and can lead Homa to ask the KYC provider for an early re-check. The money outcome is decided the same way as any report.
 - A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund. A partial refund gives the provider any amount from RM0 up to what was at stake: the provider price for a job, or the customer no-show fee for a challenged no-show. The service fee follows what the provider receives.
 
 ### Conduct Policy
@@ -180,7 +183,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Rating Policy
 
-- **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count.
+- **Who rates:** only the customer, only for a **Completed** reservation, and only once per reservation. Cancelled reservations and no-shows cannot be rated; those are handled by reports and the cancellation count. A reservation Homa decided with a full refund is still Completed and can be rated, because the customer's experience counts; it doesn't count as a job done.
 - **When:** within the **rating window** after the reservation becomes Completed, including its last minute. A disputed reservation can be rated only after Homa's decision, because it becomes Completed only then.
 - **Rating the provider:** overall stars from 1 to 5 (required), stars for any number of **provider categories** (optional), and written feedback (optional, up to 1,000 characters).
 - **Rating helpers and supervisors:** rating them is optional. For each person the customer rates, overall stars from 1 to 5 are required, and stars for each **helper category** are optional. There is no written feedback for helpers or supervisors, so no one writes comments about an individual worker. Supervisors are rated with the helper categories.
@@ -214,7 +217,7 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 
 **Registered name.** Each person's name is the name on their identity document, from the KYC result. The provider cannot type or change it. Customers see the name as registered.
 
-**Adding a team member.** The provider fills in one form and the person verifies; nothing is on the team until the KYC provider has verified them.
+**Adding a team member.** The provider fills in one form and the person verifies; nothing is on the team until the KYC provider has verified them. A business can add team members only once its KYB has passed and while it hasn't lapsed, so nobody's identity is checked for a business that may never be verified.
 1. **Add:** the provider chooses the role (helper or supervisor) and adds a profile photo. On the same form, they tick that **this person** is lawfully employed by or engaged with them and allowed to work in Malaysia. The form cannot be sent without the tick.
 2. **Verify on the spot:** the person must be with the provider. On the provider's phone, the person completes the KYC provider's check, scanning their own identity document and taking their own live selfie; team members have no accounts and need no phone of their own. Once it is verified, the person is added to the team automatically, with their registered name from the KYC result.
 
@@ -223,19 +226,22 @@ While the check is waiting, the provider app shows it as **waiting for verificat
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members verify only their identity with the KYC provider. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Team members can be Malaysian or foreign. Homa removes a team member if it learns they are not allowed to work, and records what happened. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
 - Customers and businesses register with their phone number, verified by an SMS code; customers also give their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
-- A business whose KYB is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
+- A business whose KYB is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team, can no longer be named for jobs, and comes off every upcoming job they were named on.
 - **Re-verification:** the KYC provider re-verifies every business **every year**, and every team member **every year and when their identity document expires**, and reminds the provider before each is due. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present. A pass moves the verified-until date out; a failed attempt changes nothing.
-- **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A lapsed business has its listing **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
+- **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and they come off every upcoming job they were named on. A lapsed business has its listing **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
 - **Ongoing monitoring:** between re-verifications, the KYC provider monitors every business and team member, and tells Homa:
   - **Re-verification needed by a date:** for example after a change of director, owner, name or address in the business's registration, or before a team member's document expires. The business or person keeps working, and their verified-until date moves to that date if it is sooner. If they don't pass in time, they lapse.
   - **A serious flag:** for example the business is struck off, wound up or dissolved, or it or a team member matches a sanctions or watchlist check. The KYC provider reports only flags it has confirmed. The business or person lapses at once.
+- **A lapsed or removed person named on a job:** they come off that job's team at once, and the customer is told.
+  - Before the booked start, the team counts as not named until the provider names someone in their place: Homa reminds the provider again, and check-in stays locked. If nobody is named by the booked start, the provider can't check in, and it ends as a provider no-show. Homa can waive the fine when a serious flag came too close to the start to replace the person.
+  - During the job, the person stops working, the same as after a failed face check. The customer can report a missing helper.
 - **A seriously flagged business's bookings and money:**
-  - Every accepted reservation whose job isn't completed moves to **Disputed** at once, including a job under way, whose team stops. The customer is told the job is on hold while Homa checks, and the team can't check in.
+  - Every accepted reservation whose completion hasn't been submitted moves to **Disputed** for the flag at once. That includes a job under way, whose team stops, and a reservation already disputed over a report, whose report and evidence are kept with it. The customer is told the job is on hold while Homa checks, and the team can't check in. A reservation whose completion was submitted carries on as normal, and its payout is held (below).
   - Homa's founders decide each one: they **cancel it with a full refund**, with no fine and no cancellation fee, which is the normal outcome; or, if the KYC provider has cleared the flag and the booked start hasn't come, they **restore it**, and it goes ahead as booked.
   - If nobody has decided by the booked start, Homa cancels it with a full refund. A customer is never left waiting at the door.
-  - The business's payouts are **held**, including those for jobs completed before the flag. The founders review them and either release them or keep them back, with a reason.
+  - The business's payouts are **held**, including those for jobs completed before the flag. The founders review them and either release them or keep them back, with a reason. A payout kept back stays with Homa, recorded as owed to the business and never counted as Homa's revenue. The customer isn't refunded, because the job was done. What happens to it later is decided on legal advice, outside the MVP. **Before launch, a lawyer confirms this.**
 - **Verified for the whole job:** a business can be requested, and can accept, only for a job that ends by its verified-until date. Search leaves a business out for any job that would end later. Once it passes its re-verification, the date moves out and those dates open up.
-- **Early re-check:** Homa can ask the KYC provider for an early re-verification of a business or team member, for example after a safety-related report. If it isn't passed in time, the KYC provider reports the lapse.
+- **Early re-check:** Homa can ask the KYC provider for an early re-verification of a business or team member, for example after a safety, damage or loss report. If it isn't passed in time, the KYC provider reports the lapse.
 - The **Verified ID** badge shows when each business and person was last verified.
 
 ### Privacy Policy
@@ -268,6 +274,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 ### Damage Policy
 
 - Homa does not compensate damage.
+- Damage, loss or a safety incident is reported with a safety, damage or loss report (see Dispute Policy).
 - Homa assists manually when a customer or provider wants to make a police report.
 
 ### Cancellation Policy (chosen by the provider)
@@ -276,7 +283,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - **Flexible** is free cancellation: the customer is refunded in full when cancelling before the booked start. Homa can change the Standard and Firm percentages, but Flexible always stays free.
 - **Standard** and **Firm** have a **fee window**. If the customer cancels within the fee window before the booked start, the provider receives 10% (Standard) or 20% (Firm) of the **hours fee**. The travel fee is refunded. Cancelling before the fee window opens is a full refund.
 - The customer can cancel for free at any time before the provider responds to the request.
-- The tiers apply only until the booked start. During the check-in period the customer cannot cancel until the provider checks in or the period ends; after check-in, a customer cancellation is treated as a customer no-show (see Check-in Policy).
+- The tiers apply only until the booked start. During the check-in period the customer cannot cancel until the provider checks in or the period ends; after check-in, a customer cancellation costs the customer no-show fee (see Check-in Policy).
 - When the travel fee is included in the price, the percentage applies to the full provider price.
 - No cancellation fee is higher than the customer no-show fee, which is the ceiling. This holds whenever Homa changes a tier's percentage or the customer no-show fee.
 - The chosen policy is shown on the provider page, before the customer reserves.
@@ -292,14 +299,14 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - When the travel fee is included in the price, the percentage applies to the full provider price.
 - Homa deducts an unpaid fine from the payouts of the provider's next successful reservations until the fine is cleared. Each deduction is at most the **fine deduction cap** of that payout, so the provider always takes home part of every job. Fines come off payouts for completed jobs only, not off payouts of a cancellation fee or a customer no-show fee. When there are several fines, the oldest is deducted first. The cap is rounded in the provider's favour.
 - Homa can waive a fine after review, for example for a genuine emergency or when the customer caused the problem. A waiver covers what is left of the fine, is recorded with a reason, and is given once. A fine already fully deducted has nothing left to waive. A waiver covers only the money: the late cancellation or no-show still counts in the provider's cancellation count and stays on their record.
-- Homa shows each provider's cancellation count on their provider page.
+- Homa shows each provider's cancellation count on their provider page (see Provider page).
 - There is no suspension in the MVP. Homa tracks each provider's late cancellations and no-shows in the admin console only.
 
 ## Homa-Set Values
 
 These are the values Homa sets for the policies above. They are the same for every reservation and provider. Providers only choose which cancellation tier applies to them, and their own hours and helpers within Homa's ranges.
 
-When Homa changes a value, the change applies to new reservations only. Each reservation keeps the values that were in force when it was requested, and each provider's offering keeps to Homa's ranges.
+When Homa changes a value, the change applies to new reservations only. Each reservation keeps the values that were in force when it was requested. Each provider's offering keeps to Homa's ranges: when Homa narrows the duration range, each provider's minimum and maximum hours shrink to fit inside it, and a provider left with no hours inside it goes offline until they set their hours and go live again. The provider is told either way. Widening the range doesn't widen any provider's hours; they set them again.
 
 | Value | Used by | Setting |
 |---|---|---|
@@ -331,7 +338,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 ### Account
 
-Customers register with their phone number, their name and their address. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in, so an address the geoservice cannot find is not accepted. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
+Customers register with their phone number, their name and their address. They can change their name and address in their account at any time. A new address is used for new searches and requests; requests and reservations already made keep the address they were made with. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in, so an address the geoservice cannot find is not accepted. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
 
 ### Homepage
 
@@ -339,7 +346,7 @@ A greeting and a search bar to start a search. Below it is the **showcase**: sea
 
 ### Provider page
 
-- Stats under the provider's name: jobs done, cancellations, average stars with the rating count, and price and minimum hours
+- Stats under the provider's name: jobs done, cancellations, average stars with the rating count, and price and minimum hours. **Jobs done** counts Completed reservations where the provider was paid more than RM0. **Cancellations** counts the provider's late cancellations and no-shows, the ones that carry a fine, waived or not, and is shown next to jobs done, for example "2 cancellations in 40 jobs".
 - Jobs grouped to be easy to scan, such as kitchen or living room
 - Tools the provider brings, and tools they don't, so you know what's missing
 - The provider's cancellation policy
@@ -366,12 +373,12 @@ Every chat belongs to one reservation.
 - **Enquiry:** a customer who wants to talk before requesting picks the jobs, date and time, duration and number of helpers on the provider page and taps **Chat**. This creates an **enquiry** with its own chat. An enquiry has no payment and is not a reservation status.
 - **Reserve from the chat:** when they have agreed, the customer taps **Reserve** in the chat. This opens the same review page as a direct reservation, filled in with the enquiry details. The customer can edit the details there, then submits. Homa checks the provider's availability again, takes payment as in Payment Protection, and the enquiry becomes a reservation in **Requested**. The same chat carries on.
 - Enquiry details are only edited on that review page, never in the chat itself.
-- A customer can also request directly without chatting first; the reservation then has its own chat.
+- A customer can also request directly without chatting first. Requesting opens the reservation's chat, with no message yet, so both the customer and the provider can write in it from then, for example about access to the home or running late.
 - An enquiry that is never requested closes when its date passes. Its chat is archived and stays readable.
 - The chat stays open for the life of the reservation, including after the job, for follow-ups.
-- **Book again:** from any past chat, the customer can start a new enquiry with the same details.
+- **Book again:** from any past enquiry or reservation, the customer can start a new enquiry with the same provider, jobs, duration and helpers, at their current address and a date and time they pick.
 - In the inbox, chats are grouped by provider, so a regular customer sees all their chats with one provider together.
-- Only the customer can start a chat; the provider can reply.
+- Only the customer starts a chat, by tapping **Chat** or by requesting. Once a chat is open, both can write.
 - Every chat shows a reminder that payments and messages outside Homa are not covered by Homa Protection, which includes refunds, disputes and cancellation rules.
 
 ## Provider App
@@ -382,12 +389,12 @@ Homa has a separate app that helps providers manage their reservations, calendar
 
 1. **Register the business** with a phone number.
 2. **Verify:** complete KYB on the KYC provider's pages: the business's SSM registration and the owner's or director's KYC, in one flow.
-3. **Set up your team:** a business starts with no team members. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify on the spot with the KYC provider on your phone, scanning their own document and taking their own selfie, and they join your team once verified.
+3. **Set up your team:** a business starts with no team members, and can add them once its KYB has passed. Add helpers and supervisors: on the add form you confirm each person is lawfully employed by or engaged with you, they verify on the spot with the KYC provider on your phone, scanning their own document and taking their own selfie, and they join your team once verified.
 4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
 5. **Add a payout account:** a business bank account.
 6. **Go live** once everything is set up.
 
-Providers cannot go live until the business is verified through KYB, its profile is complete, its payout account is added, and its team has at least as many helpers as its minimum helpers per booking, plus a supervisor if it set a supervisor threshold. People still waiting for verification do not block going live. When a provider tries to go live too early, Homa lists everything still missing.
+Steps 4 and 5 can be done while KYB is being checked. Providers cannot go live until the business is verified through KYB, its profile is complete, its payout account is added, and its team has at least as many helpers as its minimum helpers per booking, plus a supervisor if it set a supervisor threshold. People still waiting for verification do not block going live. When a provider tries to go live too early, Homa lists everything still missing.
 
 ### Teams
 
@@ -407,7 +414,8 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Reports
 
-- One queue for every case that needs Homa's decision: customer and provider reports, wrongful no-show reports, missed completion deadlines, and seriously flagged businesses: their disputed reservations, to cancel with a full refund or restore once the flag is cleared, and their held payouts, to release or keep back. If the other party also reports while a case is open, their report and evidence join the same case.
+- One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports and missed completion deadlines, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first.
+- **Seriously flagged businesses** are listed in the same queue but are not cases: each of their disputed reservations is cancelled with a full refund or restored once the flag is cleared, and each held payout is released or kept back. A case already open for a reservation the flag takes over is closed without a decision.
 - For each case the founders see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
 - Each decision is recorded with a short reason and the founder who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
 - Fine waivers are decided here too.

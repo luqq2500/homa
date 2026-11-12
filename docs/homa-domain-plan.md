@@ -200,6 +200,7 @@ PhoneVerification.start(PhoneNumber phone, String code, Instant now)
 PhoneVerification.confirm(String code, Instant now) : boolean
 CustomerAccount.register(PhoneVerification verified, String name, Address address)
 CustomerAccount.changeAddress(Address address)
+CustomerAccount.rename(String name) : boolean     // whether it changed; see "aligning the product spec, domain plan and code"
 
 ProviderAccount.register(PhoneVerification verified)
 ProviderAccount.recordKybResult(KybResult result, Instant now) : VerificationOutcome
@@ -209,7 +210,8 @@ ProviderAccount.recordSeriousFlag(String reason)                         // moni
 ProviderAccount.recordPayoutAccountReady() : boolean   // whether it changed: a repeated report changes nothing
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready
 
-MemberVerification.start(String providerId, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now)
+MemberVerification.start(ProviderAccount business, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now)
+    // only for a verified business that hasn't lapsed; see "aligning the product spec, domain plan and code"
 MemberVerification.recordKycResult(KycResult result, Instant now) : VerificationOutcome
 TeamMember.add(MemberVerification verified, Instant now)
 TeamMember.recordKycResult(KycResult result, Instant now) : VerificationOutcome   // re-verification
@@ -327,6 +329,7 @@ ProviderListing.withdrawTool(ToolCode retired) : boolean       // whether the pr
 ProviderListing.goLive(boolean providerReady)                 // the roster must cover the minimum helpers
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
+ProviderListing.fitHours(HomaLimits limits) : HoursFit   // Homa narrowed its duration range; see "aligning the product spec, domain plan and code"
 ```
 
 ```gherkin
@@ -411,7 +414,8 @@ ProviderCalendar.setBufferBetweenJobs(Duration buffer)        // kept free befor
 ProviderCalendar.hold(String reservationId, TimeSlot slot)
 ProviderCalendar.release(String reservationId)
 ProviderCalendar.isAvailable(TimeSlot slot) : boolean
-ProviderCalendar.nearestAvailableStart(TimeSlot wanted, Duration within) : Optional<Instant>
+ProviderCalendar.nearestAvailableStart(TimeSlot wanted, Duration within, Instant earliest, Instant latest) : Optional<Instant>
+    // only starts the customer can book; see "aligning the product spec, domain plan and code"
 ```
 
 ```gherkin
@@ -485,7 +489,7 @@ Feature: Buffer between jobs
 | `MatchClassifier` | Domain service | Returns `EXACT`, `CLOSE` or `NONE` with the reason |
 
 **Exact match:** covers the city, offers every chosen job, the helpers and duration are within its ranges, and it's free at the chosen time.
-**Close match:** covers the city and fits helpers and duration, but offers only some of the jobs, or is free near the chosen time (see Open questions #7).
+**Close match:** covers the city and fits helpers and duration, but differs in one way only: it offers only some of the jobs, or it is free near the chosen time, never both. A start it suggests is one the customer can book (see "aligning the product spec, domain plan and code").
 **No match:** doesn't cover the city, helpers or duration outside its ranges, offers none of the jobs, or not free near the time.
 
 ```java
@@ -584,7 +588,8 @@ RESERVED ─┬─dispute window closes, no report──────────
 ```java
 // Enquiry
 Enquiry.create(String customerId, String providerId, ReservationDetails details, Instant now)
-Enquiry.bookAgainFrom(Enquiry past, Instant newStart, Instant now)
+Enquiry.bookAgain(String customerId, String providerId, ReservationDetails past, Address currentAddress, Instant newStart, Instant now)
+    // from a past enquiry or reservation; replaces bookAgainFrom; see "aligning the product spec, domain plan and code"
 Enquiry.isClosed(Instant now) : boolean
 Enquiry.markRequested(String reservationId)   // behind EnquiryRequestedIE
 
@@ -593,12 +598,13 @@ Reservation.request(String customerId, ReservationDetails d, OfferingSnapshot o,
                     Optional<String> enquiryId, PaymentMethod method, Instant providerVerifiedUntil, Instant now)
 Reservation.price() : PriceBreakdown
 Reservation.requestExpiresAt() : Instant
-Reservation.edit(ReservationDetails d, Instant providerVerifiedUntil, Instant now) : PriceChange
+Reservation.edit(ReservationDetails d, Instant providerVerifiedUntil, Instant now) : PriceChange   // the address can't change
 Reservation.confirmPayment(Money secured)                             // the amount authorised or paid so far
 Reservation.isPaymentSecured() : boolean                              // it covers the total
 Reservation.paymentFailed()                                           // ends the request: Cancelled, PAYMENT_FAILED
 Reservation.accept(Instant providerVerifiedUntil, Instant now)        // only once the payment is secured
 Reservation.decline(Instant now)
+Reservation.declineForTakenTime(Instant now)                          // another accepted booking took the time
 Reservation.expire(Instant now)
 
 // Cancelling
@@ -608,17 +614,19 @@ Reservation.cancelByProvider(Instant now) : CancellationResult   // Settlement +
 
 // Job day
 Reservation.nameTeam(TeamAssignment team, TeamRoster roster, Instant now)
+Reservation.dropFromTeam(String memberId, Instant now) : TeamDrop     // a named person lapsed or was removed
+Reservation.isTeamComplete() : boolean
 Reservation.checkIn(int distanceMetres, Instant now)                 // the location check; then face checks (see "face check-in")
 Reservation.recordFaceCheck(String memberId, FaceCheckResult result, Instant now)
 Reservation.recordFaceCheckUnavailable(Instant now)
 Reservation.markProviderNoShow(Instant now) : CancellationResult
-Reservation.disputeForProviderFlag(Instant now)                       // the provider's business was seriously flagged
+Reservation.disputeForProviderFlag(Instant now)                       // the provider's business was seriously flagged; also takes over a job dispute without completion
 Reservation.cancelForProviderFlag(Instant now) : Settlement           // full refund, no fine
 Reservation.restoreAfterFlagCleared(Instant now)                      // before the booked start, once the flag is cleared
 Reservation.isFlagCancellationDue(Instant now) : boolean              // undecided at the booked start
-Reservation.reportCustomerNoShow(Instant now) : Settlement
+Reservation.reportCustomerNoShow(Instant now) : Settlement           // up to and including the booked end
 Reservation.challengeNoShow(Instant now)
-Reservation.submitCompletion(List<EvidenceRef> evidence, Instant now)
+Reservation.submitCompletion(List<EvidenceRef> evidence, Instant now)  // also while disputed over the job
 
 // After the job
 Reservation.disputeWindowEndsAt() : Optional<Instant>
@@ -628,7 +636,7 @@ Reservation.closeDisputeWindow(Instant now) : Settlement
 Reservation.resolve(CaseDecision decision, Instant now) : Settlement   // ends COMPLETED, or CANCELLED for a challenged no-show
 
 // Reminders (queries for the scheduler)
-Reservation.isTeamReminderDue(Instant now) : boolean
+Reservation.isTeamReminderDue(Instant now) : boolean                 // also while the team is incomplete
 Reservation.isCompletionReminderDue(Instant now) : boolean
 ```
 
@@ -1180,7 +1188,7 @@ Feature: Fines and payouts
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `Case` | Aggregate | Source, reservation, evidence, status `OPEN` or `DECIDED`, decision |
+| `Case` | Aggregate | Source, reservation, evidence, whether it is about safety, status `OPEN`, `DECIDED` or `CLOSED` (taken over by a flag), decision |
 | `CaseSource` | Enum | `CUSTOMER_REPORT`, `PROVIDER_REPORT`, `NO_SHOW_CHALLENGE`, `MISSED_COMPLETION` |
 | `Decision` | Value object | `release()`, `partialRefund(providerReceives)`, `fullRefund()`, plus a required reason |
 
@@ -1191,6 +1199,9 @@ Case.addEvidence(List<EvidenceRef> more)          // while open, for example whe
 Case.decide(Decision decision, String reason, Instant now)
 Case.providerReceives() : Optional<Money>         // behind CaseDecidedIE
 Case.isOpen() : boolean
+Case.markSafety()                                 // a safety, damage or loss report opened it or joined it
+Case.closeForProviderFlag(Instant now)            // a flag took the reservation over; no decision
+Case.QUEUE_ORDER                                  // safety cases first, then oldest first
 ```
 
 ```gherkin
@@ -1241,6 +1252,8 @@ Conversation.startByCustomer(ChatSubject subject, String customerId, String prov
 Conversation.post(Party sender, String text, Instant now)
 Conversation.linkReservation(String reservationId)   // when the enquiry is requested; same chat carries on; once
 Conversation.archive(Instant now)               // enquiry closed without a request
+Conversation.openForReservation(String reservationId, String customerId, String providerId, Instant now)
+    // a direct request opens the chat with no message; both can write
 ```
 
 ```gherkin
@@ -1488,8 +1501,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `JobRetiredIE` | catalogue | offering | `JobList.retire` |
 | `ToolAddedIE` | catalogue | offering | `ToolList.add` |
 | `ToolRetiredIE` | catalogue | offering | `ToolList.retire` |
-| `HomaPolicyChangedIE` | policy | reservation, discovery | `HomaPolicy.change` |
+| `HomaPolicyChangedIE` | policy | offering, reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
+| `CustomerRenamedIE` | account | conversation | `CustomerAccount.rename` returning `true` |
 | `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `VERIFIED`, with `verifiedUntil()` |
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordKybResult` returning `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
@@ -1509,7 +1523,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ListingWentOfflineIE` | offering | discovery | `ProviderListing.updateRoster` leaving a live listing with no helper, or with a supervisor rule and no supervisor |
 | `ListingPausedIE` | offering | discovery, reservation | `ProviderListing.pause` |
 | `ListingResumedIE` | offering | discovery, reservation | `ProviderListing.resume` |
-| `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgainFrom` |
+| `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgain` |
+| `RequestDeclinedForTakenTimeIE` | reservation | payment, (notifications) | `Reservation.declineForTakenTime` |
+| `TeamMemberDroppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `TEAM_INCOMPLETE` or `CANNOT_WORK` |
 | `EnquiryRequestedIE` | reservation | conversation | `Enquiry.markRequested` |
 | `EnquiryClosedIE` | reservation | conversation | `Enquiry.isClosed` turning true |
 | `ReservationRequestedIE` | reservation | payment | `Reservation.request` |
@@ -1525,7 +1541,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `CompletionSubmittedIE` | reservation | (notifications) | `Reservation.submitCompletion` |
 | `ReservationFlaggedIE` | reservation | (notifications, admin) | `Reservation.disputeForProviderFlag` |
 | `ReservationRestoredIE` | reservation | (notifications) | `Reservation.restoreAfterFlagCleared` |
-| `ReportFiledIE` | reservation | resolution | `Reservation.fileReport` |
+| `ReportFiledIE` | reservation | resolution | `Reservation.fileReport`, with the report type |
+| `CaseClosedForProviderFlagIE` | resolution | (admin tracking) | `Case.closeForProviderFlag` |
 | `NoShowChallengedIE` | reservation | resolution | `Reservation.challengeNoShow` |
 | `CompletionDeadlineMissedIE` | reservation | resolution | `Reservation.missCompletionDeadline` |
 | `ReservationCompletedIE` | reservation | availability | `Reservation.closeDisputeWindow`, `Reservation.resolve` |
@@ -1552,6 +1569,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `PaymentFailedIE` | payment | reservation | a failed authorisation or FPX payment; no `Payment` is created |
 | `PaymentSecuredIE` | payment | reservation, (notifications) | `Payment.authoriseCard`, `Payment.payUpfrontByFpx`, `Payment.adjustTotal` |
 | `SearchPerformedIE` | discovery | (admin tracking) | `MatchClassifier`'s results for one `SearchCriteria` |
+| `ListingHoursNarrowedIE` | offering | discovery, (notifications) | `ProviderListing.fitHours` returning `NARROWED` on a live listing |
+| `ListingWentOfflineForHoursIE` | offering | discovery, (notifications) | `ProviderListing.fitHours` returning `CLEARED_AND_OFFLINE` |
 
 **Testing:** event records have no logic, so CRAP and mutation gates don't apply. One test per event checks it can only be built with all required fields and is immutable. The dependency-rule gate checks that `ie/` imports only `kernel/`.
 
@@ -1906,7 +1925,7 @@ Helper.verification() : Verification
 
 **`ie/`:** `RecheckOpenedIE` (provider and team member, for the reminder), `HelperReverifiedIE`, `HelperLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`. `offering` listens to `HelperLapsedIE` and `HelperJoinedTeamIE`/`HelperReverifiedIE` to rebuild the roster, and to `ProviderVerificationLapsedIE`/`ProviderReverifiedIE` to pause and resume.
 
-**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies. This rule and the other rules from this change are listed as required rules R1 to R5 in `docs/homa-usecase-plan.md`.
+**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies. *Changed in "aligning the product spec, domain plan and code": the person comes off the team with `Reservation.dropFromTeam`, so the team is incomplete until it is named again.* This rule and the other rules from this change are listed as required rules R1 to R5 in `docs/homa-usecase-plan.md`.
 
 **Decided while building** (all confirmed by the product owner):
 
@@ -2757,7 +2776,8 @@ are new.
 - `disputeForProviderFlag(now)`: when the provider's business is seriously flagged, every accepted
   reservation whose job is not completed moves to **Disputed**, with the ending `PROVIDER_FLAGGED`. The
   team cannot check in, and nobody files reports on it. A job whose completion was submitted is not
-  disputed.
+  disputed. *Changed in "aligning the product spec, domain plan and code": a reservation already disputed over the job, with no completion,
+  is taken over by the flag too, and its open case is closed.*
 - A job under way (checked in, not completed) is disputed too, and the team stops.
 - The founders decide each one:
   - `cancelForProviderFlag(now)` cancels it, ending **Cancelled** with a full refund, no fine and no
@@ -3189,12 +3209,357 @@ Feature: Changes that change nothing
     Then nothing changed
 ```
 
+## Change after the domain phase: aligning the product spec, domain plan and code
+
+Found by comparing the product spec, this plan and the domain code rule by rule, and confirmed by the
+product owner. Each decision says which source it follows: the **spec**, this **plan**, the **code**, or
+a **new** rule. The product description states every one of them.
+
+| # | Decision | Follows | Domain change |
+|---|---|---|---|
+| 1 | A challenged customer no-show ends with the no-show upheld, part of the fee to the provider, or a full refund | Code | None |
+| 2 | A flagged reservation is restored to Reserved if the flag is cleared before the booked start | Code | None |
+| 3 | A customer who cancels after check-in pays the customer no-show fee, released straight away and not challengeable | Code | None |
+| 4 | When Homa narrows its duration range, listings' hours shrink to fit; a listing with none left goes offline. A request also checks Homa's range | New | offering, reservation |
+| 5 | A business adds team members only once its KYB has passed and while it hasn't lapsed | Spec | account |
+| 6 | Book again from any past enquiry or reservation, at the customer's current address | New | reservation |
+| 7 | The address can't be changed on a request | Spec | reservation |
+| 8 | Flagged businesses are listed in the founders' queue but are not cases | Code | None |
+| 9 | A flag disputes a reservation whose completion hasn't been submitted | Plan, code | None |
+| 10 | A third report type: safety, damage or loss, first in the queue | New | reservation, resolution |
+| 11 | A lapsed or removed person comes off every upcoming job's team; during a job they stop working | New | reservation |
+| 12 | Completion can be submitted while the reservation is disputed over the job | New | reservation |
+| 13 | A flag takes over a job dispute that has no completion; its open case is closed | New | reservation, resolution |
+| 14 | A withheld payout stays with Homa as owed, never revenue; the customer isn't refunded | New (spec only) | None |
+| 15 | A live listing with a supervisor rule and no supervisor left goes offline | Code | None |
+| 16 | A close match differs in one way only, and a suggested start is bookable | New | discovery, availability |
+| 17 | Accepting a request declines the provider's other open requests that can no longer be accepted | New | reservation |
+| 18 | A customer no-show can be reported up to and including the booked end | New | reservation |
+| 19 | Customers can change their own name | New | account |
+| 20 | Requesting opens the reservation's chat with no message; both can write | New | conversation |
+| 21 | "Jobs done" and "cancellations" on the provider page are defined | New (read model) | None |
+| 22 | A reservation decided with a full refund can still be rated | Spec, plan, code | None |
+
+**`account`**
+
+- `CustomerAccount.rename(name)` changes the customer's name and returns whether it changed. A blank
+  name is refused (`CustomerNameRequiredException`, as at registration).
+- `MemberVerification.start(business, role, photo, confirmation, now)` takes the `ProviderAccount` and
+  refuses a business that is not `VERIFIED` (pending, rejected or lapsed) with
+  `BusinessNotVerifiedException`. The provider id comes from the business.
+
+**`offering`**
+
+- `ProviderListing.fitHours(HomaLimits limits) : HoursFit` keeps the listing's hours inside Homa's
+  duration range after Homa changes it. Like the helper range, it only ever shrinks:
+  - `NOT_AFFECTED`: no hours set, or the hours are already inside.
+  - `NARROWED`: the hours shrink to the overlap, for example 2 to 6 becomes 2 to 4 under 1 to 4.
+  - `CLEARED`: no overlap is left, so the hours are cleared and the listing needs them again (a draft).
+  - `CLEARED_AND_OFFLINE`: the same for a live listing, which stops being live, as with no helper left.
+- A wider range changes nothing: the provider sets their hours again to use it.
+
+**`availability`**
+
+- `nearestAvailableStart(wanted, within, earliest, latest)` returns only starts from `earliest` to
+  `latest`: the minimum notice and the booking horizon from now. A start outside them is never
+  suggested.
+
+**`discovery`**
+
+- `SearchCriteria` keeps its earliest and latest bookable starts, worked out in `SearchCriteria.of`.
+- `MatchClassifier` gives `CLOSE` for exactly one difference, `MISSING_JOBS` or `NEARBY_TIME`. Both
+  together are `NONE`, with both reasons. A nearest free start outside the bookable starts counts as
+  `NOT_FREE`.
+
+**`reservation`**
+
+- **Homa's range at request (4):** `request` and `edit` refuse hours outside the `PolicySnapshot`'s
+  duration range (`HoursOutsideHomaRangeException`), as well as outside the provider's.
+- **Book again (6):** `Enquiry.bookAgain(customerId, providerId, pastDetails, currentAddress, newStart,
+  now)` creates an enquiry with the past jobs, hours and helpers, the current address and the new start.
+  The usecase passes the details of a past enquiry or reservation. `bookAgainFrom(Enquiry, ...)` is
+  removed.
+- **Address (7):** `edit` refuses details with a different address (`AddressNotEditableException`).
+- **Safety reports (10):** `ReportType` gains `SAFETY_DAMAGE_OR_LOSS`. It follows every other report
+  rule: one per party, from the booked start until the dispute window ends, and it moves the
+  reservation to Disputed.
+- **A person comes off the team (11):** `dropFromTeam(memberId, now) : TeamDrop`.
+  - `NOT_NAMED`: they weren't named, so nothing changes.
+  - `TEAM_INCOMPLETE`: before the booked start, they come off the named team. The team stays named
+    with the others, but `isTeamComplete()` is false until the provider names it again with
+    `nameTeam`. While it is incomplete, `checkIn` refuses (`TeamNotNamedException`) and
+    `isTeamReminderDue` is true from the team reminder time. A team still incomplete at the end of the
+    check-in period gives a provider no-show, as today.
+  - `CANNOT_WORK`: from the booked start the team is locked, so they stay named but `canWork` is false
+    for them, the same as after a failed face check.
+- **Completion during a job dispute (12):** `submitCompletion` also works while the reservation is
+  Disputed over the job (a report or a missed completion deadline). The status stays Disputed. It still
+  needs a check-in and evidence, and still happens once. A challenged no-show or a flagged reservation
+  refuses it.
+- **A flag takes over a job dispute (13):** `disputeForProviderFlag` also works on a reservation
+  Disputed over the job with no completion submitted. The ending becomes `PROVIDER_FLAGGED` and its
+  reports are kept. A reservation whose completion was submitted, or a challenged no-show, is refused
+  as today.
+- **Taken time (17):** `declineForTakenTime(now)` ends an open request as **Declined**, with the ending
+  `TIME_TAKEN`, so tracking can leave it out of the provider's decline rate. The usecase calls it for
+  each of the provider's open requests that availability says is no longer free once another is
+  accepted. It doesn't wait for the request expiry.
+- **No-show deadline (18):** `reportCustomerNoShow` refuses after the booked end
+  (`NoShowReportTooLateException`). The end itself is still in time.
+
+**`resolution`**
+
+- **Safety first (10):** `Case.markSafety()` marks a case about safety, damage or loss, when a safety
+  report opens it or joins it. `Case.QUEUE_ORDER` puts safety cases first, then the oldest first.
+- **Closed by a flag (13):** `Case.closeForProviderFlag(now)` closes an open case with no decision
+  (`CLOSED`). A closed case can't be decided or take evidence (`CaseNotOpenException`).
+
+**`conversation`**
+
+- **Requesting opens the chat (20):** `Conversation.openForReservation(reservationId, customerId,
+  providerId, now)` opens a reservation's chat with no message. The customer's request opened it, so
+  "only the customer starts a chat" still holds; once it is open, either party can post. A chat
+  started from an enquiry is linked as today, so a reservation never has two chats.
+
+**`ie/`**
+
+- `CustomerRenamedIE`, `RequestDeclinedForTakenTimeIE`, `TeamMemberDroppedIE`,
+  `CaseClosedForProviderFlagIE`, `ListingHoursNarrowedIE` and `ListingWentOfflineForHoursIE` are added.
+- `ReportFiledIE` carries the report type, so resolution can mark a safety case.
+- `EnquiryCreatedIE` comes from `Enquiry.bookAgain` instead of `bookAgainFrom`.
+- offering listens to `HomaPolicyChangedIE` to fit the hours.
+
+**Spec and plan only:** decisions 1, 2, 3, 8, 9, 14, 15, 21 and 22 match the code already. #21 is worked
+out by the provider page's read model from the reservation and fine events. #14 needs no method:
+`Payout.withhold` is final in Homa.
+
+```gherkin
+Feature: Homa narrows its duration range
+
+  Scenario Outline: A listing's hours shrink to fit
+    Given a live listing with hours <hours>
+    When Homa's duration range becomes <range>
+    Then the result is <result>
+    And the listing's hours are <after>
+    Examples:
+      | hours  | range  | result              | after  |
+      | 2 to 6 | 1 to 4 | NARROWED            | 2 to 4 |
+      | 2 to 4 | 1 to 4 | NOT_AFFECTED        | 2 to 4 |
+      | 2 to 4 | 1 to 6 | NOT_AFFECTED        | 2 to 4 |
+      | 5 to 6 | 1 to 4 | CLEARED_AND_OFFLINE | none   |
+
+  Scenario: A draft left with no hours needs them again
+    Given a draft listing with hours 5 to 6
+    When Homa's duration range becomes 1 to 4
+    Then the result is CLEARED
+    And the listing is missing HOURS for go-live
+
+  Scenario: A request must fit Homa's range too
+    Given a provider with hours 1 to 6 and Homa's duration range 1 to 4
+    When the customer requests 5 hours
+    Then it is rejected with HoursOutsideHomaRangeException
+
+Feature: Adding team members needs a verified business
+
+  Scenario Outline: Only a verified business adds team members
+    Given a business whose verification is <status>
+    When the provider starts adding a helper
+    Then the result is <result>
+    Examples:
+      | status   | result                       |
+      | VERIFIED | waiting for verification     |
+      | PENDING  | BusinessNotVerifiedException |
+      | REJECTED | BusinessNotVerifiedException |
+      | LAPSED   | BusinessNotVerifiedException |
+
+Feature: Customers change their name
+
+  Scenario: A customer changes their name
+    Given a customer named "Siti"
+    When they change their name to "Siti Aminah"
+    Then their name is "Siti Aminah"
+
+  Scenario: Changing to the same name changes nothing
+    Given a customer named "Siti"
+    When they change their name to "Siti"
+    Then nothing changed
+
+Feature: Book again
+
+  Scenario: Booking again keeps the job and uses the current address
+    Given a past reservation with provider Kemas for KITCHEN, 3 hours, 2 helpers at "1 Jalan Ara"
+    And the customer now lives at "8 Jalan Bunga"
+    When the customer books again for next Saturday 10:00
+    Then a new enquiry with Kemas has KITCHEN, 3 hours, 2 helpers, next Saturday 10:00 at "8 Jalan Bunga"
+
+Feature: The address can't be edited on a request
+
+  Scenario: Editing a request to another address is refused
+    Given a REQUESTED reservation at "1 Jalan Ara"
+    When the customer edits it to "8 Jalan Bunga"
+    Then it is rejected with AddressNotEditableException
+
+Feature: A person who lapses or is removed comes off the team
+
+  Background:
+    Given a RESERVED reservation for Saturday 10:00 to 13:00 for 2 helpers
+    And the provider named Aina and Ben
+
+  Scenario: Before the start, the team is incomplete until named again
+    When Ben comes off the team on Friday 18:00
+    Then the team is not complete
+    And the team reminder is due at Saturday 04:00
+    And check-in at Saturday 09:50 is rejected with TeamNotNamedException
+
+  Scenario: Naming someone in their place completes the team
+    Given Ben came off the team on Friday 18:00
+    When the provider names Aina and Chan on Friday 19:00
+    Then the team is complete
+
+  Scenario: A team still incomplete at the end of the check-in period is a provider no-show
+    Given Ben came off the team on Friday 18:00
+    When Homa marks a provider no-show at Saturday 10:16
+    Then the reservation is CANCELLED
+    And the provider is fined RM54.00
+
+  Scenario: During the job, they stop working
+    Given the provider checked in at 10:00 and Aina and Ben passed their face checks
+    When Ben comes off the team at Saturday 11:00
+    Then Ben cannot work
+    And the check-in still stands
+
+  Scenario: Someone not named changes nothing
+    When Dina comes off the team
+    Then the result is NOT_NAMED
+
+Feature: Completion while disputed over the job
+
+  Background:
+    Given a RESERVED reservation for Saturday 10:00 to 13:00 and the provider checked in at 10:00
+
+  Scenario: The provider submits completion after the customer reports
+    Given the customer filed a DURING_JOB report at Saturday 11:00
+    When the provider submits completion at Saturday 12:45 with a photo
+    Then the completion is recorded
+    And the reservation is still DISPUTED
+    And the provider can file their report until Saturday 14:00
+
+  Scenario: The provider submits completion after missing the deadline
+    Given the completion deadline was missed at Sunday 13:00
+    When the provider submits completion at Sunday 14:00 with a photo
+    Then the completion is recorded
+    And the reservation is still DISPUTED
+
+Feature: A flag takes over a job dispute
+
+  Scenario: A disputed job with no completion is taken over
+    Given a reservation DISPUTED over a customer report filed at Saturday 10:30, with no completion
+    When the provider's business is seriously flagged at Saturday 11:00
+    Then the reservation is disputed for the flag
+    And the customer's report is kept
+    And cancelling it for the flag refunds the customer RM230.00
+
+  Scenario: A disputed job with completion is not taken over
+    Given a reservation DISPUTED over a report, with completion submitted
+    When the provider's business is seriously flagged
+    Then it is rejected with CompletionAlreadySubmittedException
+
+  Scenario: A case taken over by a flag is closed
+    Given an OPEN case for that reservation
+    When the case is closed for the provider flag
+    Then the case is CLOSED with no decision
+    And deciding it is rejected with CaseNotOpenException
+
+Feature: Safety, damage or loss reports
+
+  Scenario: The customer reports a safety problem
+    Given a RESERVED reservation for Saturday 10:00 to 13:00
+    When the customer files a SAFETY_DAMAGE_OR_LOSS report at Saturday 11:00
+    Then the reservation is DISPUTED
+
+  Scenario: Safety cases come first in the queue
+    Given a case opened Friday and a safety case opened Saturday
+    Then the queue lists the safety case first
+
+  Scenario: A safety report joining a case marks it
+    Given an OPEN case from a FINISHED_WORK report
+    When the provider's SAFETY_DAMAGE_OR_LOSS report joins it
+    Then the case is about safety
+
+Feature: A challenged no-show can end with part of the fee
+
+  Scenario: Homa gives the provider part of the no-show fee
+    Given a customer no-show challenged by the customer, with a no-show fee of RM74.00 and a total of RM230.00
+    When Homa decides the provider receives RM40.00
+    Then the reservation is CANCELLED
+    And the provider earns RM40.00
+    And Homa's service fee is RM6.00
+    And the customer is refunded RM184.00
+
+Feature: The customer no-show deadline
+
+  Background:
+    Given a RESERVED reservation for Saturday 10:00 to 13:00 and the provider checked in at 10:00
+
+  Scenario Outline: A customer no-show is reported by the booked end
+    When the provider reports a customer no-show at <time>
+    Then the result is <result>
+    Examples:
+      | time           | result                       |
+      | Saturday 13:00 | CANCELLED                    |
+      | Saturday 13:01 | NoShowReportTooLateException |
+
+Feature: Requests declined when the time is taken
+
+  Scenario: An open request is declined when another booking takes its time
+    Given a REQUESTED reservation that expires Friday 09:00
+    When it is declined for taken time at Thursday 15:00
+    Then the reservation is DECLINED with the ending TIME_TAKEN
+
+  Scenario: Only a request can be declined for taken time
+    Given a RESERVED reservation
+    When it is declined for taken time
+    Then it is rejected with InvalidStatusTransitionException
+
+Feature: Close matches differ in one way only
+
+  Background:
+    Given it is Thursday 09:00, the minimum notice is 2 hours
+    And the customer searches for KITCHEN and LAUNDRY_FOLD on Saturday 10:00
+
+  Scenario Outline: One difference is close, two are no match
+    Given a provider offering <jobs> who is free from <free>
+    Then the provider is <match> with reasons <reasons>
+    Examples:
+      | jobs                  | free           | match | reasons                   |
+      | KITCHEN, LAUNDRY_FOLD | Saturday 10:00 | EXACT | none                      |
+      | KITCHEN               | Saturday 10:00 | CLOSE | MISSING_JOBS              |
+      | KITCHEN, LAUNDRY_FOLD | Saturday 11:00 | CLOSE | NEARBY_TIME               |
+      | KITCHEN               | Saturday 11:00 | NONE  | MISSING_JOBS, NEARBY_TIME |
+
+  Scenario: A suggested start must be bookable
+    Given the customer searches for Thursday 12:00
+    And the only start near it when the provider is free is Thursday 10:30, before the minimum notice
+    Then the provider is NONE with reason NOT_FREE
+
+Feature: Requesting opens the reservation's chat
+
+  Scenario: A direct request opens the chat with no message
+    When the customer's request opens the reservation's chat
+    Then the chat belongs to the reservation and has no messages
+
+  Scenario: The provider can write first in a reservation's chat
+    Given the reservation's chat was opened by the request
+    When the provider posts "Running 10 minutes late"
+    Then the chat has 1 message
+```
+
 ## Open questions
 
 ### Decided
 
 - **Provider cancels after the booked start but before checking in:** 30% of the hours fee, the same as a no-show.
-- **Challenged customer no-show:** the reservation moves to Disputed. After Homa reviews it, it ends **Cancelled**: either Homa proceeds with the cancellation (the no-show fee stands) or finds it wrongful (full refund).
+- **Challenged customer no-show:** the reservation moves to Disputed. After Homa reviews it, it ends **Cancelled**: Homa upholds the no-show (the no-show fee stands), gives the provider part of the no-show fee, or finds it wrongful (full refund). *The partial outcome was confirmed in "aligning the product spec, domain plan and code"; the code always allowed it.*
 - **Earliest check-in:** 15 minutes before the booked start.
 - **Shared kernel:** domains may depend on `kernel/` (`Money`, `Percentage`). The backend module discipline is updated.
 - **SMS code rules:** 6 digits, valid 5 minutes, a new code after 5 wrong attempts.
@@ -3225,7 +3590,7 @@ These came up while turning the spec into rules. All are now decided by the prod
 1. **Where the customer no-show wait starts** (slice 6). *Decided:* from the later of the booked start and the check-in time.
 2. **Rounding** (slice 1). Percentages of RM amounts can produce half sen. *Decided:* round half-up to the sen, and compute the customer refund last so the parts always add up to the total.
 3. **Does editing a request reset its expiry?** (slice 2). *Decided:* no, the expiry stays from the original request.
-4. **What "near the chosen time" means for close matches** (discovery). *Decided:* the provider is free for the same duration starting within 2 hours before or after.
+4. **What "near the chosen time" means for close matches** (discovery). *Decided:* the provider is free for the same duration starting within 2 hours before or after. *Since "aligning the product spec, domain plan and code": a close match differs in one way only, and a suggested start must be bookable.*
 5. **SMS code rules** (account). *Decided:* 6 digits, valid 5 minutes, 5 wrong attempts then a new code is needed.
 6. **Is the lead one of the helpers?** (slice 5). *Decided:* yes, the lead is one of the named helpers, and a provider who is their own helper can be the lead. *Superseded: there is no lead. The provider names the helpers, and a supervisor when the booking reaches the supervisor rule; check-in is done on the provider app.*
 7. **Fine deductions: which payouts count?** The spec says "next successful reservations". *Decided:* only payouts from Completed reservations, not cancellation or no-show fee payouts.
