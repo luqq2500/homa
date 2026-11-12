@@ -85,7 +85,7 @@ The founders review these monthly in the admin console. First targets are set fr
 | Customers know at once | Share of reservations confirmed by Instant book; for requests, the acceptance rate and the median time to an answer |
 | Jobs go as booked | Share of reservations completed with no report; provider no-show and late cancellation rates |
 | Customers come back | Share of customers who book again within 60 days of their first job |
-| Trust holds | Disputes and safety reports per 100 jobs; share of cases decided within 3 working days |
+| Trust holds | Disputes and safety reports per 100 jobs; share of cases decided within 72 hours |
 | Providers earn | Active live providers (a completed job in the last 30 days) and their median monthly payout |
 
 **Assumptions to test.** No customer or provider research backs this spec yet, so each of these is an assumption until interviews and launch data confirm it:
@@ -256,7 +256,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - While a reservation is Disputed after a report or a missed completion deadline, the other party can still file their one report. A challenged customer no-show is reviewed on the challenge alone, and takes no reports.
 - A report is one of three types: a problem during the job (for example a missing helper or missing tools), a problem with the finished work, or **safety, damage or loss** (for example harassment, an injury, something broken or something missing from the home).
 - A safety, damage or loss report goes to the top of Homa's queue. Homa still doesn't compensate damage (see Damage Policy): the report records what happened, lets Homa help, for example with a police report, and can lead Homa to ask the KYC provider for an early re-check. The money outcome is decided the same way as any report.
-- Homa aims to decide every case within **3 working days** of it opening. The customer and the provider see the expected date.
+- Homa aims to decide every case within **3 days (72 hours)** of it opening; every day counts, weekends and public holidays included. The customer and the provider see the exact date and time it is due.
 - A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund. A partial refund gives the provider any amount from RM0 up to what was at stake: the provider price for a job, or the customer no-show fee for a challenged no-show. The service fee follows what the provider receives.
 
 ### Conduct Policy
@@ -307,7 +307,7 @@ Every category is rated from 1 to 5 stars, and every category is optional. A cus
 
 Until the person joins, the provider app shows them as **waiting for verification**, or **waiting for your confirmation** once verified: they are not on the team, not shown to customers and cannot be named for jobs. Homa sets no time limit; the KYC provider ends a session that is not finished. If the check is rejected, the photo doesn't match, the person is under 18, or the session times out, nothing is added, the provider is told which, and can start again.
 
-**Changing a role.** The provider can change a team member between helper and supervisor at any time, without verifying them again; their identity hasn't changed. The usual rules still apply: helpers count towards the helper range, and the supervisor rule needs a supervisor on the team. A business starts with no team members, so an owner or director who works on site is added the same way.
+**Changing a role.** The provider can change a team member between helper and supervisor at any time, without verifying them again; their identity hasn't changed. The usual rules still apply: helpers count towards the helper range, and the supervisor rule needs a supervisor on the team. Moving a helper to supervisor lowers the helpers on the team, so the maximum helpers per booking shrinks to match. A job already named keeps the person in the role they were named in, until the provider names that job's team again; the new role applies to jobs named from then on. A business starts with no team members, so an owner or director who works on site is added the same way.
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members verify only their identity with the KYC provider. Each time the provider adds a team member, they confirm, after the person is verified and named, that this person is lawfully employed by or engaged with them and allowed to work in Malaysia (for a document from another country, that they hold a valid work pass to work for this provider), and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Team members can be Malaysian or foreign, and are 18 or older. **Before launch, a lawyer confirms the minimum age.** Homa removes a team member if it learns they are not allowed to work, and records what happened. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
@@ -504,7 +504,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Reports
 
-- One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports, missed completion deadlines and card chargebacks, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first. Each case shows its age against the 3-working-day decision target.
+- One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports, missed completion deadlines and card chargebacks, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first. Each case shows how long is left of its 72-hour decision target.
 - **Seriously flagged businesses** are listed in the same queue but are not cases: each of their disputed reservations is cancelled with a full refund or restored once the flag is cleared, and each held payout is released or kept back. A case already open for a reservation the flag takes over is closed without a decision.
 - For each case the founders see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
 - Each decision is recorded with a short reason and the founder who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
