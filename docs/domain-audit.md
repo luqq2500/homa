@@ -89,7 +89,7 @@ Two scenarios map to more than one test:
 | 23 | Offering setup | Cities must be launch cities | `ProviderListingSetupTest` | `citiesMustBeLaunchCities` |
 | 24 | Going live | A complete, verified provider goes live | `ProviderListingGoLiveTest` | `aCompleteVerifiedProviderGoesLive` |
 | 25 | Going live | Missing requirements block go-live and are listed | `ProviderListingGoLiveTest` | `missingRequirementsBlockGoLiveAndAreListed` |
-| 26 | Going live | A pending invite does not block go-live | `ProviderListingGoLiveTest` | `aPendingInviteDoesNotBlockGoLive` |
+| 26 | Going live | A person waiting for verification does not block go-live | `ProviderListingGoLiveTest` | `aPersonWaitingForVerificationDoesNotBlockGoLive` |
 | 27 | Provider availability | A slot inside a window with nothing else is available | `ProviderCalendarAvailabilityTest` | `aSlotInsideAWindowWithNothingElseIsAvailable` |
 | 28 | Provider availability | A synced busy block makes the slot unavailable | `ProviderCalendarAvailabilityTest` | `aSyncedBusyBlockMakesTheSlotUnavailable` |
 | 29 | Provider availability | An accepted reservation holds the slot | `ProviderCalendarAvailabilityTest` | `anAcceptedReservationHoldsTheSlot` |

@@ -44,7 +44,7 @@ class ProviderListingGoLiveTest {
         }
 
         @Test
-        void aPendingInviteDoesNotBlockGoLive() {
+        void aPersonWaitingForVerificationDoesNotBlockGoLive() {
             ProviderListing listing = aDraftWithATeamOf(2);
             listing.setProfile(OfferingBuilders.A_PROFILE);
             listing.offerJobs(Set.of(job("KITCHEN")), CATALOGUE_JOBS);

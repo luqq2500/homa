@@ -246,7 +246,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
   - Customers: name, phone number and address, to sign in, show providers who the booking is for, match providers by city and locate check-in.
   - Businesses: the SSM registration number and registered business name from the KYC provider's KYB, for Homa's records; payout details, handled by Stripe.
   - Team members: the registered name, the verified-until and last verification dates, the profile photo, and face check results at check-in (result and time only, never the selfie), to show customers who is coming. Identity documents and face data are collected and held by the KYC provider, used only to verify a person against their own documents.
-  - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and the provider's written feedback. Team members agree to being rated as part of their consent on the KYC provider's screen.
+  - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and customers' written feedback about the provider. Team members agree to being rated as part of their consent on the KYC provider's screen.
   - Location: only the device's location at the moment of check-in, never continuously.
   - Job evidence (photos and videos) and chat, to support disputes and Homa's reviews.
   - Payment details are handled by Stripe; Homa does not store card or bank details.

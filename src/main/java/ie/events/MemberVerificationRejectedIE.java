@@ -4,7 +4,7 @@ import ie.port.AccountIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** The eKYC of a person being added was rejected; nothing is added, and the provider can start again. */
+/** The KYC provider rejected the check of a person being added; nothing is added, and the provider can start again. */
 public record MemberVerificationRejectedIE(
         String verificationId,
         String providerId,

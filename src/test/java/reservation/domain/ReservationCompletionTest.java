@@ -22,7 +22,7 @@ import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.NotCheckedInException;
 import reservation.domain.exception.ReservationDetailRequiredException;
 
-/** Feature: Completion. Background: reserved for Saturday 10:00 to 13:00 and the lead checked in at 10:00. */
+/** Feature: Completion. Background: reserved for Saturday 10:00 to 13:00 and the provider checked in at 10:00. */
 class ReservationCompletionTest {
 
     @Nested

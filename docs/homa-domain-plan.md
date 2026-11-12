@@ -44,7 +44,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 |---|---|---|
 | `catalogue` | Homa's job list, tool list, launch cities and the homepage showcase | `JobList`, `ToolList`, `ServiceArea`, `Showcase` |
 | `policy` | Homa-set values and their versions | `HomaPolicy` |
-| `account` | Customer and provider accounts, helpers, phone and eKYC verification status, payout account status | `CustomerAccount`, `ProviderAccount`, `Helper`, `PhoneVerification` |
+| `account` | Customer and business accounts, phone verification, team members (helpers and supervisors) and adding them, the KYC provider's results (KYB, KYC, re-verification, monitoring), payout account status | `CustomerAccount`, `ProviderAccount`, `MemberVerification`, `TeamMember`, `PhoneVerification` |
 | `offering` | What a provider sells: profile, jobs, tools, pricing, hours, helpers range, cities, cancellation tier, going live | `ProviderListing` |
 | `availability` | When a provider can work: availability windows, synced busy blocks, accepted reservations, buffer between jobs | `ProviderCalendar` |
 | `discovery` | Matching a search to providers: exact and close matches | `SearchCriteria`, `MatchClassifier` |
@@ -566,13 +566,17 @@ Feature: Matching
 ### Lifecycle
 
 ```text
-REQUESTED ──accept──► RESERVED ──dispute window closes, no report──► COMPLETED
-    │                    │  │
-    ├─decline─► DECLINED │  ├─report filed / completion deadline missed──► DISPUTED ──decision──► COMPLETED
-    ├─expire──► EXPIRED  │  │
-    └─cancel──► CANCELLED◄─┘ (customer or provider cancel, provider no-show, customer no-show)
-                   │
-                   └─customer challenges a no-show──► DISPUTED ──decision──► CANCELLED
+REQUESTED ─┬─accept──────────────────► RESERVED
+           ├─decline─────────────────► DECLINED
+           ├─expire──────────────────► EXPIRED
+           └─cancel / payment failed─► CANCELLED
+
+RESERVED ─┬─dispute window closes, no report──────────────────────────────► COMPLETED
+          ├─report filed / completion deadline missed──► DISPUTED ──decision──► COMPLETED
+          ├─customer or provider cancels, provider no-show──────────────────► CANCELLED
+          ├─customer no-show──► CANCELLED ──customer challenges──► DISPUTED ──decision──► CANCELLED
+          └─business seriously flagged──► DISPUTED ─┬─cancelled, or undecided at the start──► CANCELLED
+                                                    └─flag cleared, before the start──────► RESERVED (restored)
 ```
 
 ### Methods
@@ -1655,6 +1659,10 @@ These are folded in from the build. The method blocks and object tables above al
 this section records the reasoning and the edge cases. The product-level decisions are also stated in
 `docs/homa-product-description.md`.
 
+> **Read with the changes below.** This log is kept as it was decided during the domain phase. The
+> "Change after the domain phase" sections that follow it take precedence; entries they replaced are
+> marked *Superseded* here.
+
 All decisions below are confirmed by the product owner, including: customers have a name; `HomaLimits` for hours and helpers; a live
 listing whose verified team becomes empty is no longer live; every decision listed under the
 reservation and payment details below; touching
@@ -1664,7 +1672,8 @@ windows, touching blocks and the later-start tie-break in availability, plus a b
 Open questions answered: #1 the customer no-show wait starts from the later of the booked start and
 check-in; #2 percentages round half-up and the refund is computed last; #3 editing a request does not
 reset its expiry; #6 the lead is one of the named helpers, and a provider who is their own helper can
-be the lead; #5 SMS codes are 6 digits, valid 5 minutes, with a new code after 5 wrong attempts; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
+be the lead (*Superseded: there is no lead; see "provider types, team roles, documents and face
+check-in"*); #5 SMS codes are 6 digits, valid 5 minutes, with a new code after 5 wrong attempts; #8 a request keeps the offering snapshot it was made with; #4 near the chosen time means within 2
 hours either side.
 
 - **`HomaPolicy.initial(Instant now)`** takes the time version 1 takes effect, following the "time is
@@ -1692,19 +1701,26 @@ hours either side.
   - The SMS code (open question 5) is 6 digits and expires 5 minutes after it is sent, exactly at the
     5-minute mark. After 5 wrong codes, a new code is needed.
   - An eKYC result is `VERIFIED` or `REJECTED`; a rejected provider can be verified on a later attempt.
-  - A provider is their own helper by default.
-  - `Helper.remove()` is added, so `HelperRemovedIE` has a domain method behind it.
+    *Superseded: the business is verified through the KYC provider's KYB (`KybResult`), and a
+    rejected KYB can be redone; see "business providers only, verification by a KYC provider".*
+  - A provider is their own helper by default. *Superseded: a business starts with no team members,
+    and an owner or director who works on site is added like anyone else.*
+  - `Helper.remove()` is added, so `HelperRemovedIE` has a domain method behind it. *Superseded:
+    `TeamMember.remove()` and `TeamMemberRemovedIE`.*
 - **Offering details:**
   - `setHours` and `setHelpers` both take `HomaLimits`, offering's own view of Homa's duration range and
-    helpers per search, since the 10-helper cap is a Homa-set value.
+    helpers per search, since the 10-helper cap is a Homa-set value. *Superseded: Homa sets no limit
+    on helpers, so only `setHours` takes `HomaLimits`; `setHelpers` caps the maximum at the helpers on
+    the team.*
   - A listing offers at least one job and covers at least one city. Bringing no tools is allowed.
   - A separate travel fee is above zero; charging none means travel is included.
   - When the team shrinks, max helpers shrinks to the team size, and min helpers with it if needed. A
     growing team doesn't widen the range. A live listing whose verified team becomes empty is no
     longer live.
   - Go-live lists every missing requirement, including the provider's own verification. Helpers'
-    verification is no longer a go-live requirement: only team members are on the roster, and pending
-    invites never block going live (see "Change after the domain phase: team membership"). Only a live
+    verification is no longer a go-live requirement: only team members are on the roster, and people
+    still waiting for verification never block going live (see "Change after the domain phase: adding
+    a team member", which replaced invites). Only a live
     listing gives an `OfferingSnapshot`, and a live listing doesn't go live twice.
 - **Availability details:**
   - Windows that touch or overlap count as one stretch.
@@ -1808,8 +1824,9 @@ hours either side.
   - One event per outcome (confirmed): `ProviderVerifiedIE` and `HelperVerifiedIE` mean verified,
     nothing else. A rejection has its own event, `ProviderVerificationRejectedIE` or
     `HelperVerificationRejectedIE`, so the provider is told to redo eKYC.
-    *Superseded for helpers by team membership (below): `HelperVerifiedIE` is now `HelperJoinedTeamIE`
-    and `HelperVerificationRejectedIE` is now `HelperInviteRejectedIE`, and `HelperInvitedIE` is added.*
+    *Superseded for helpers: today a verified person is added with `TeamMemberAddedIE`, and a rejected
+    one gives `MemberVerificationRejectedIE`; the provider's own result comes from KYB, not eKYC (see
+    "adding a team member" and "business providers only").*
   - The tests check that each event can't be built with a required field missing, can't be changed
     after it is built, and belongs to its context's interface. ArchUnit checks that `ie` imports only
     `kernel` and Java and that no domain imports `ie`. The mutation gate doesn't apply to `ie`.
@@ -3210,6 +3227,6 @@ These came up while turning the spec into rules. All are now decided by the prod
 3. **Does editing a request reset its expiry?** (slice 2). *Decided:* no, the expiry stays from the original request.
 4. **What "near the chosen time" means for close matches** (discovery). *Decided:* the provider is free for the same duration starting within 2 hours before or after.
 5. **SMS code rules** (account). *Decided:* 6 digits, valid 5 minutes, 5 wrong attempts then a new code is needed.
-6. **Is the lead one of the helpers?** (slice 5). *Decided:* yes, the lead is one of the named helpers, and a provider who is their own helper can be the lead.
+6. **Is the lead one of the helpers?** (slice 5). *Decided:* yes, the lead is one of the named helpers, and a provider who is their own helper can be the lead. *Superseded: there is no lead. The provider names the helpers, and a supervisor when the booking reaches the supervisor rule; check-in is done on the provider app.*
 7. **Fine deductions: which payouts count?** The spec says "next successful reservations". *Decided:* only payouts from Completed reservations, not cancellation or no-show fee payouts.
 8. **Changes to an offering while a request is open.** *Decided:* the request keeps the offering snapshot it was made with; the provider's change affects new requests only.

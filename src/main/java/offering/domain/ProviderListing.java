@@ -201,10 +201,12 @@ public final class ProviderListing {
     }
 
     /**
-     * Takes the listing live. Only team members are on the roster, so invites still waiting for eKYC never
-     * block going live; the helper range set from the roster already covers the minimum helpers.
+     * Takes the listing live. Only team members are on the roster, so people still waiting for
+     * verification never block going live; the helper range set from the roster already covers the
+     * minimum helpers.
      *
-     * @param providerReady whether the provider's own eKYC is verified and their payout account is ready
+     * @param providerReady whether the business's KYB is verified and not lapsed, and its payout account
+     *     is ready
      */
     public void goLive(boolean providerReady) {
         if (live) {

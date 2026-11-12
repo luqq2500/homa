@@ -1,6 +1,6 @@
 package account.domain.exception;
 
-/** A person becomes a team member only from a verified eKYC. */
+/** A person becomes a team member only once the KYC provider has verified them. */
 public class MemberNotVerifiedException extends AccountRuleViolationException {
 
     public MemberNotVerifiedException(String verificationId, Object status) {
