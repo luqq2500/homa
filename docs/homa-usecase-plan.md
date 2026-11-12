@@ -2,7 +2,7 @@
 
 This plan covers the **usecase module of each bounded context** (the orchestrators, their ports, DTOs and exceptions) and the **`ie/` module** (the integration events the usecases publish and handle). It follows Backend Module Discipline §2, §3, §6, §7 and §8, step 2.
 
-**Status:** draft for review. Nothing is built.
+**Status:** draft for review. Nothing is built. No question is open.
 
 **Sources:**
 - `homa-product-description.md` (the spec) says **what** each usecase must do. Every usecase below names the spec section it comes from.
@@ -189,7 +189,7 @@ Spec: *Account*, *Verification Policy*, *Onboarding*, *Teams*, *Providers* (admi
 | `ProviderStartAddingTeamMember` | Start: the role and a profile photo taken with the camera; only once KYB has passed | `MemberVerification` | `MemberVerificationStartedIE` |
 | `KycRecordMemberVerificationResult` | Verify on the spot; the check fails if the photo doesn't match or the person is under 18 | `MemberVerification` | `MemberVerifiedIE`, or `MemberVerificationRejectedIE` with the reason |
 | `ProviderConfirmTeamMember` | Confirm: the lawful-employment tick for this named person; they join only then | `MemberVerification`, `TeamMember` | `TeamMemberAddedIE` |
-| `ProviderChangeTeamMemberRole` | Change a member between helper and supervisor at any time | `TeamMember` | `TeamMemberRoleChangedIE` |
+| `ProviderChangeTeamMemberRole` | Change a member between helper and supervisor at any time; jobs already named keep the role they were named in (rule R17) | `TeamMember` | `TeamMemberRoleChangedIE` |
 | `ProviderRemoveTeamMember`, `HomaRemoveTeamMember` | The provider can remove a member at any time; Homa removes one not allowed to work, and records it | `TeamMember` | `TeamMemberRemovedIE` |
 | `ProviderStartMemberReverification` | Run each re-verification on the spot with the person present | (opens the KYC provider's check) | — |
 | `KycRecordTeamMemberResult` | A pass moves the verified-until date out; a failed attempt changes nothing | `TeamMember` | By outcome (rule R1) |
@@ -353,10 +353,10 @@ Spec: *Dispute Policy*, *Payment Protection* (chargebacks), *Homa Admin: Reports
 
 | Usecase | Spec | Orchestrates | Publishes |
 |---|---|---|---|
-| `HomaViewCaseQueue` | One queue: safety, damage or loss first, the rest oldest first, each with its age against the 3-working-day target | (query) | — |
+| `HomaViewCaseQueue` | One queue: safety, damage or loss first, the rest oldest first, each showing how long is left of its 72-hour decision target | (query; rule R18) | — |
 | `HomaViewCase` | The founders see the case and its evidence | (query) | — |
 | `HomaDecideCase` | A release, a partial refund or a full refund, with a short reason and the founder who made it | `Case` | `CaseDecidedIE`; for a chargeback, `ChargebackDecidedIE` instead |
-| `PartyViewCaseStatus` | The customer and the provider see the expected date, and the outcome | (query) | — |
+| `PartyViewCaseStatus` | The customer and the provider see the exact date and time it is due, and the outcome | (query; rule R18) | — |
 
 | Handler | Spec | Orchestrates | Publishes |
 |---|---|---|---|
@@ -466,6 +466,11 @@ These are the spec's rules that no single domain object can keep, because they s
 14. **R14. A reservation keeps the address it was made with** (*Account*, *Check-in Policy*). A request, an enquiry and book again take the customer's current address from reservation's projection. reservation keeps the pin of that address for each reservation, behind `CheckInLocations`, and `ProviderCheckIn` measures from it. A later change of address touches no request or reservation already made.
 15. **R15. A reservation keeps the Homa-set values it was requested under** (*Homa-Set Values*). payment deducts fines within the fine deduction cap that was in force when the payout's reservation was requested, and feedback applies that reservation's rating window. The minimum ratings to show is about showing, not about a reservation, so the current value applies.
 16. **R16. The provider page is three queries** (*Provider page*). The app puts it together from `CustomerViewProviderPage` (discovery), `CustomerViewProviderTeam` (account) and `CustomerViewProviderRatings` (feedback), because no context imports another. "Who is coming" works the same way, from reservation, account and feedback.
+17. **R17. A role change touches no job already named** (*Verification Policy: changing a role*). On `TeamMemberRoleChangedIE`:
+    - offering rebuilds the team, so moving a helper to supervisor shrinks the maximum helpers per booking to match.
+    - reservation updates only its copy of the team. No reservation is changed, and nobody comes off a job: a job already named keeps the person in the role they were named in.
+    - The new role applies the next time the provider names a team, because `ProviderNameTeam` checks against the team as it is now.
+18. **R18. A case is due 72 hours after it opens** (*Dispute Policy*). `HomaViewCaseQueue` and `PartyViewCaseStatus` show the exact date and time: when the case opened plus 72 hours, every day counted, weekends and public holidays included. The queue also shows how long is left.
 
 **Founders' actions** (*Homa Admin*):
 
@@ -522,7 +527,7 @@ Listed so nothing is lost. None of it is planned here.
 
 - **Infra:** repositories and storage, controllers, the webhooks of the KYC provider and Stripe, the scheduler that calls the `Homa…` timed usecases, security, event delivery and transactions, the adapters behind `SmsSender`, `Geocoder`, `Geoservice`, `IdentityVerificationService`, `PaymentGateway`, `PayoutGateway`, `CalendarService` and `EvidenceStore`, evidence retention, and `app/`, which also joins `ProviderAvailability` to `AvailabilityChecker`.
 - **Modules without a bounded context:** sending push notifications, the admin console's tracking views, and recording data requests.
-- **The domain:** not changed by this plan. Where a usecase needs something it doesn't offer today, it is raised as an open question below, for a separate decision.
+- **The domain:** not changed by this plan. No usecase here needs a domain change.
 
 ## Questions answered from the spec
 
@@ -537,12 +542,9 @@ These were open in the first draft. The spec answers each one; the answer is wri
 | 5 | Where does a request's address come from? | "A new address is used for new searches and requests; requests and reservations already made keep the address they were made with"; "Homa uses the address ... to locate check-in" (*Account*) | The address and its pin travel on `CustomerRegisteredIE` and the new `CustomerAddressChangedIE`; each reservation keeps its pin (rule R14) |
 | 6 | Who learns of a chargeback? | "A customer who disputes a card payment with their bank after the job opens a case for Homa" (*Payment Protection*) | Stripe reports it to payment, which knows the reservation's payment; the new `ChargebackReceivedIE` opens the case in resolution |
 | 8 | Which Homa-set values apply later? | "Each reservation keeps the values that were in force when it was requested"; "each deduction is at most the fine deduction cap of that payout" (*Homa-Set Values*, *Provider Cancellation Fines*) | The values of the reservation's request (rule R15) |
+| 7 | What happens to a job that already names a person whose role changes? | "A job already named keeps the person in the role they were named in, until the provider names that job's team again; the new role applies to jobs named from then on" (*Verification Policy*) | Nothing changes on the job (rule R17) |
+| 9 | When is a case's decision due? | "Within 3 days (72 hours) of it opening; every day counts, weekends and public holidays included. The customer and the provider see the exact date and time it is due" (*Dispute Policy*) | The opening time plus 72 hours (rule R18) |
 
 ## Open questions
 
-The spec does not answer these two. Each needs the product owner's decision before the context it touches is built.
-
-1. **Q7. A named person whose role changes** (reservation). The spec lets a provider change a member between helper and supervisor "at any time", and says "the usual rules still apply". It doesn't say what happens to a job that already names the person in their old role.
-   *Recommended:* before the booked start, they come off that job's team, as a lapsed or removed person does, so the team is not complete until the provider names it again. From the booked start, nothing changes. This follows the spec's own rule that the named helpers match the number booked, but it needs a line in the spec, and the domain decides whether it is a new rule there.
-2. **Q9. What a working day is** (resolution). "Homa aims to decide every case within 3 working days of it opening. The customer and the provider see the expected date." The spec doesn't say whether public holidays count, and they differ between Selangor and Putrajaya.
-   *Recommended:* Monday to Friday, with no public holidays in the MVP. Working out the date is a rule, so it belongs in the domain; until that is decided, `HomaViewCaseQueue` and `PartyViewCaseStatus` show when the case opened.
+None. The spec, as of `main` at `5005651`, answers all nine.
