@@ -5,6 +5,7 @@
 **Closed:** 8 November 2026, at commit `24a771e` on `main`
 **Sources:** `docs/homa-product-description.md`, `docs/homa-domain-plan.md`, `docs/backend_module_discipline.md`
 **Evidence:** `docs/domain-audit.md`
+**Last updated:** 12 November 2026, with addenda 25 to 27, on `claude/bold-wright-b1q5ui`
 
 ## 1. Summary
 
@@ -23,6 +24,20 @@ paused at the product owner's request, so the repository holds the domain module
 | Dependency rule | Passing in every context, and proven by planted violations |
 | Integration events | 38, all with contract tests |
 | Open product questions for the domain | 0 |
+
+**Where it stands now** (after addendum 27; the table above is the state at closing):
+
+| Measure | Now |
+|---|---|
+| Gherkin scenarios | 313 in the plan: 301 have a test, 12 are retired |
+| Tests (domain, `ie`, and the `catalogue`, `policy` and `account` usecases) | 1,726, all passing |
+| Mutants, domain and `kernel` | 1,654, all killed |
+| Mutants, whole build | 2,000, all killed; 100% score and test strength in every layer |
+| Worst CRAP score | 5.0 |
+| Integration events | 82, all with contract tests |
+| Homa-set values | 26 |
+| Spec, domain plan and domain code | Aligned rule by rule (addendum 25) |
+| Open product questions for the domain | 0. Three items wait for a lawyer and one for an accountant (section 7) |
 
 ## 2. What was built
 
@@ -151,7 +166,7 @@ README under "Decisions taken while building". All of them are confirmed.
 
 ## 7. Carried forward
 
-**Usecase phase** (paused; draft plan in `docs/homa-usecase-plan.md`)
+**Usecase phase** (`catalogue`, `policy` and `account` built; plan in `docs/homa-usecase-plan.md`)
 - **Open questions U1 to U7** need review before it starts. U1 is how reservation and discovery check
   availability. U4 is cancelling a request, and U5 is a payment that fails at request.
 - **Obligations the domain leaves to the usecases:**
@@ -165,8 +180,23 @@ README under "Decisions taken while building". All of them are confirmed.
 - **U7:** rebuilding aggregates from storage. The domain constructors are private and generate new
   ids.
 - **Services and jobs:** evidence retention, refunds to the original payment method, geoservice
-  distance, Kenal and Stripe callbacks, notifications, and read models such as provider page stats and
+  distance, the KYC provider's and Stripe's callbacks, notifications, and read models such as provider page stats and
   admin tracking.
+
+**Before launch** (from addenda 25 to 27)
+- **Lawyer:** what happens to a withheld payout; the minimum age for team members; the work-pass
+  wording of the lawful-employment confirmation for foreign documents; and the terms of that
+  confirmation before foreign team members are enabled.
+- **Accountant:** service tax and e-invoicing for Homa's service fee.
+- **KYC provider choice:** it must also return the date of birth and compare the profile photo with the
+  live selfie.
+
+**Usecase phase, from addenda 25 to 27:** nothing calls the new domain methods yet: `Enquiry.bookAgain`,
+`Reservation.acceptInstantly`, `declineForTakenTime`, `dropFromTeam`, `changeAccessNotes`,
+`ProviderListing.fitHours`, `chooseAcceptancePolicy`, `declareInsurance`, `Case.markSafety`,
+`closeForProviderFlag`, `providerCovers`, `Conversation.openForReservation`, `CustomerAccount.rename`,
+`changeAccessNotes` and `TeamMember.changeRole`. For example, Instant book needs a usecase that captures
+the payment and calls `acceptInstantly` once it is secured.
 
 **Housekeeping**
 - **Fold the decisions into the plan:** most of the README's decisions are reflected in the plan, but
@@ -191,11 +221,16 @@ README under "Decisions taken while building". All of them are confirmed.
 | `5ca1962`, `17015a2`, `219d592` | Step 11: `ie/`; no `Optional` fields; verification rejected events |
 | `1a3bf33`, `96a0377` | Domain audit; `cancellationTerms`; decisions recorded |
 | `1fd646f`, `24a771e` | Usecase phase started, then paused and removed |
+| `bdf05d1` | Stale wording cleared from the plan, code comments and spec |
+| `2853d9c` | Spec and plan aligned on 22 decisions (addendum 25) |
+| `ed7b274`, `95e8477`, `3c3359e`, `2de87aa`, `681ea60`, `e518aa8`, `610c1c2` | The aligned rules, by context, and their events and audit rows |
+| `6c27b47`, `6f6347b` | The 7-star experience: spec and plan, then the code (addendum 26) |
+| `e91f9b7` | Adding a team member with a photo match, an adult check and a confirmation (addendum 27) |
 
 ## 9. How to verify
 
 ```bash
-mvn clean verify                 # 827 tests, ArchUnit dependency rules, PIT mutation
+mvn clean verify                 # 1,726 tests now (827 at closing), ArchUnit dependency rules, PIT mutation
 python3 tools/quality_gates.py   # CRAP < 6, mutation >= 90% per context, ratchet
 ```
 
@@ -595,4 +630,83 @@ Changed while building the `account` usecases.
 - **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
 - **Gates:** whole build 1,543 tests (including the `catalogue`, `policy` and `account` usecases),
   1,849 mutants, all killed, worst CRAP 5.0.
+
+## 25. Addendum: aligning the product spec, domain plan and code
+
+The product spec, the domain plan and the domain code were compared rule by rule. They disagreed, or
+said nothing, in 22 places. Each was decided by the product owner and written into all three (domain
+plan, "aligning the product spec, domain plan and code").
+
+- **Stale wording cleared first:** the plan's bounded-contexts table, its decision log (the lead, a
+  provider as its own helper, the 10-helper cap, invites) and its lifecycle diagram; "eKYC" and
+  "invites" in code comments; one spec line about ratings.
+- **`account`:** a business adds team members only once its KYB has passed and while it hasn't lapsed;
+  customers change their own name.
+- **`offering`:** when Homa narrows its duration range, listings' hours shrink to fit, and a live
+  listing with none left goes offline (`fitHours`).
+- **`availability`, `discovery`:** a close match differs in one way only, and a suggested start is
+  always bookable.
+- **`reservation`:** requests also check Homa's duration range; book again from any past enquiry or
+  reservation, at the current address; a request's address can't change; a third report type, safety,
+  damage or loss; a lapsed or removed person comes off every upcoming job's team (`dropFromTeam`);
+  completion can be submitted while disputed over the job; a flag takes over a job dispute with no
+  completion; accepting a request declines other requests whose time is taken; a customer no-show is
+  reported by the booked end.
+- **`resolution`:** safety cases first in the queue; a case closed with no decision when a flag takes
+  its reservation over.
+- **`conversation`:** requesting opens the reservation's chat with no message, so either side can
+  write first.
+- **Spec only** (the code already did it): the three outcomes of a challenged no-show, restoring a
+  flagged reservation, the no-show fee for cancelling after check-in, flagged businesses beside the
+  cases, what a flag disputes, a withheld payout, the last supervisor leaving, "jobs done" and
+  "cancellations", and rating a refunded job.
+- **`ie/`:** seven events, which makes 75.
+- **Scenarios:** 290 in the plan; 278 have a test and 12 are retired.
+- **Gates:** whole build 1,648 tests, 1,937 mutants, all killed, worst CRAP 5.0.
+
+## 26. Addendum: the 7-star experience
+
+After a product critique, the product owner set Homa's target at 7 stars for its core moment, "I booked
+help, and it turned up" (domain plan, "the 7-star experience").
+
+- **Spec:** Part 1 is a product brief (the 7-star target, five principles with their trade-offs,
+  goals and measures, and the assumptions to test); Part 2 holds the rules. It adds guest search,
+  receipts, processing fees, a 3-working-day decision target, Bahasa Melayu and English, being home
+  for check-in, and recurring bookings as cut from the MVP.
+- **`policy`:** a new value, the **response deadline** (1 hour before the start), shorter than the
+  minimum notice; the dispute window extension is now 24 hours and evidence is kept 120 days. 26
+  values.
+- **`offering`:** an **acceptance policy** per listing, Request and accept (the default) or **Instant
+  book**; declared insurance shown as **Insured** until it expires.
+- **`account`:** access notes on the customer's account.
+- **`reservation`:** requests expire by the response deadline; `acceptInstantly` for Instant book, which
+  the provider can't decline; access notes on a reservation until completion.
+- **`resolution`, `payment`:** card chargebacks open a case, and what the provider covers is recovered
+  like a fine.
+- **`ie/`:** five events, and `instantBook` on the listing and acceptance events, which makes 80.
+- **Test values:** the reservation tests keep a 1-hour dispute window as a test value, so the worked
+  times stay readable; the launch value is 24 hours.
+- **Scenarios:** 306 in the plan; 294 have a test and 12 are retired.
+- **Gates:** whole build 1,700 tests, 1,979 mutants, all killed, worst CRAP 5.0.
+
+## 27. Addendum: adding a team member, photo and confirmation
+
+After a product critique of the add form (domain plan, "adding a team member, photo and confirmation"):
+
+- **The photo customers see is the verified person:** the provider takes it live, and the KYC provider
+  compares it with the selfie; a photo that doesn't match fails the check.
+- **Team members are 18 or older,** from the date of birth in the KYC result.
+- **The lawful-employment tick comes after the check,** for the named person and their document
+  country; the person joins only then.
+- **A role changes without a new check.**
+- **`account`:** `MemberVerification.start` takes the role and photo; `recordKycResult` takes the
+  photo match and rejects with a reason (`CHECK_REJECTED`, `UNDER_18`, `PHOTO_DOES_NOT_MATCH`);
+  `confirmEmployment`; `TeamMember.add` needs the confirmation; `TeamMember.changeRole`.
+- **Account usecases, already built:** starting takes the role and photo; a pass publishes
+  `MemberVerifiedIE` and waits; the new `ProviderConfirmTeamMember` adds the person; the team view shows
+  who is waiting for the provider's confirmation. Usecase plan R7 and U14 are updated.
+- **`ie/`:** `MemberVerifiedIE` and `TeamMemberRoleChangedIE`, and the rejection event carries the
+  reason, which makes 82.
+- **Scenarios:** 313 in the plan; 301 have a test and 12 are retired.
+- **Gates:** whole build 1,726 tests, 2,000 mutants, all killed, worst CRAP 5.0.
 

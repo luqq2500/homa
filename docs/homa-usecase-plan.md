@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** in progress. `catalogue`, `policy` and `account` are built and pass their gates (see Progress); the other contexts follow in the build order. Questions U1 to U13 are decided; U14 is open (see the end).
+**Status:** in progress. `catalogue`, `policy` and `account` are built and pass their gates (see Progress); the other contexts follow in the build order. Questions U1 to U14 are decided (see the end).
 
 ## Conventions
 
@@ -450,7 +450,7 @@ Each context passes its gates before the next starts.
 | catalogue | 19: add, rename and retire a job or a tool; regroup a job; feature, rename, move and remove a search in the showcase; publish the service area; seven views | 111 | 92 of 92 | 3.0 | Done |
 | policy | 3: launch the policy, change one value, view the values in force | 112 | 112 of 112 | 3.0 | Done |
 | account, part 1 | 10: start and confirm a phone verification; register a customer, change their address, view their account; register a business, start KYB, add a payout account, record it ready, view the account | 44 | 36 of 36 | 2.0 | Done |
-| account, part 2 | 16: add a team member, re-verify one, remove one (business or Homa), view the team; record each KYC result, lapse, required re-verification and flag; Homa's early re-checks | 64 | 97 of 97 | 5.0 | Done |
+| account, part 2 | 17: start adding a team member, confirm them once verified, re-verify one, remove one (business or Homa), view the team; record each KYC result, lapse, required re-verification and flag; Homa's early re-checks | 72 | 104 of 104 | 5.0 | Done |
 | offering and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
@@ -462,13 +462,14 @@ Each built context also has a `<Context>UsecaseArchitectureTest`, which checks t
 
 ### Open
 
-14. **U14. Can a business add team members before its KYB passes?** Found while building `account`. The
-    spec's onboarding lists KYB before setting up the team, but no rule says so, and the code allows it
-    today: a waiting business can start adding helpers. *Recommendation:* refuse it until the business is
-    verified, so nobody's identity is checked for a business that may never pass. This needs a small
-    domain rule in `account` (`MemberVerification.start` takes the business's verification status).
+None.
 
 ### Decided
+
+14. **U14. Can a business add team members before its KYB passes?** *Decided:* no.
+    `MemberVerification.start` takes the business and refuses one that is pending, rejected or lapsed
+    (`ProviderNotVerifiedException`), so nobody's identity is checked for a business that may never pass
+    (domain plan, "aligning the product spec, domain plan and code", decision 5).
 
 1. **U1. Availability during a request, an acceptance and a search.** Reservation and discovery need a
    live "is this provider free?", but a context can't call another. *Decided:* reservation and

@@ -71,13 +71,13 @@ the whole journey; the big picture is coarse-grained, the rest are fine-grained.
 
 | Actor | Who they are |
 |---|---|
-| **Customer** | A homeowner who searches, reserves, pays, chats, reports and rates. Registers with a Malaysian phone number |
+| **Customer** | A homeowner who searches, reserves, pays, chats, reports and rates. Searches as a guest, and registers with a Malaysian phone number on first reserving or chatting |
 | **Provider** | A homecare business registered with SSM, acting through its owner or director. Every provider on Homa is a business |
 | **Helper** | A team member who does the booked jobs. The customer books and pays for helpers. Has no account |
 | **Supervisor** | A team member in charge on site. Not counted or charged as a helper. Has no account |
 | **Homa** | The platform: applies the rules, sends reminders, and runs scheduled steps such as expiring requests and closing dispute windows |
 | **Homa founders** | The people behind the admin console: they curate the lists and values, decide cases and waive fines |
-| **KYC provider** (to be chosen; Persona and Innov8tif are candidates) | Runs every identity check on its own pages: the business's KYB with its owner's or director's KYC, each team member's KYC, re-verification, early re-checks, and face checks at the door. Reports a final result for each |
+| **KYC provider** (to be chosen; Persona and Innov8tif are candidates) | Runs every identity check on its own pages: the business's KYB with its owner's or director's KYC, each team member's KYC (with the date of birth, and a comparison of the profile photo with the live selfie), re-verification, early re-checks, and face checks at the door. Reports a final result for each |
 
 | **Stripe** | Authorises and charges cards, takes FPX payments, holds payments, pays out and refunds |
 | **SMS provider** | Sends the customer's phone verification code |
@@ -95,13 +95,13 @@ Homa's rules never depend on which KYC provider or payment provider is used.
 | *featured search* | A search Homa features in the homepage showcase, which fills in the search | `catalogue` |
 | *Homa-set values* | The values the policies use, in versions | `policy` |
 | *phone verification* | A 6-digit SMS code, valid 5 minutes, 5 wrong attempts allowed | `account` |
-| *customer account* | Name, phone number and address with its city | `account` |
+| *customer account* | Name, phone number, address with its city and map pin, and access notes | `account` |
 | *provider account* | The business: verification status, SSM registration, verified-until date, payout account readiness | `account` |
-| *KYB result*, *KYC result* | From the KYC provider: verified (with the SSM registration or the registered name, and the verified-until date) or rejected | `account` |
-| *add form* | Role, profile photo and the lawful-employment confirmation for one person | `account` (`MemberVerification`) |
+| *KYB result*, *KYC result* | From the KYC provider: verified (with the SSM registration or the registered name, the verified-until date and, for a person being added, the date of birth) or rejected | `account` |
+| *adding a team member* | The role and a live profile photo, then the KYC check with a photo match and an age check, then the provider's lawful-employment confirmation for the named person | `account` (`MemberVerification`) |
 | *team member* | A verified helper or supervisor, with a registered name and a verified-until date | `account` |
 | *verified-until date* | The date the KYC provider says a business or person is verified until; a job must end by the business's | `account` |
-| *listing* | What a provider sells: jobs, tools, price, hours, helpers, cities, tier, team, supervisor rule | `offering` |
+| *listing* | What a provider sells: jobs, tools, price, hours, helpers, cities, tier, acceptance policy, team, supervisor rule, and any declared insurance | `offering` |
 | *supervisor rule* | When a supervisor is sent: from a number of helpers, of hours, or both | `offering` |
 | *calendar* | Availability windows, synced busy blocks, holds for accepted jobs, and a buffer | `availability` |
 | *search* | Jobs, start, hours, helpers and city | `discovery` |
@@ -109,12 +109,13 @@ Homa's rules never depend on which KYC provider or payment provider is used.
 | *enquiry* | Booking details to chat about before requesting; has no payment | `reservation` |
 | *chat* | One per enquiry or reservation | `conversation` |
 | *request*, *reservation* | The reservation, from the request to its ending; called a request while it is Requested | `reservation` |
+| *access notes* | Notes that help the team get in, copied from the account to each request | `account`, `reservation` |
 | *price* | Hours fee, travel fee, provider price, service fee and total | `reservation` |
 | *payment* | A card authorisation or an upfront FPX payment, then held, released or refunded | `payment` |
 | *team assignment* | The helpers and any supervisors named for a reservation | `reservation` |
 | *location check*, *face check* | The two steps of check-in | `reservation` |
 | *completion* | Photo or video evidence that the job is done | `reservation` |
-| *report*, *case*, *decision* | A problem, Homa's queue entry for it, and the outcome | `reservation`, `resolution` |
+| *report*, *case*, *decision* | A problem (during the job, with the finished work, or safety, damage or loss), Homa's queue entry for it, and the outcome. A card chargeback also opens a case | `reservation`, `resolution` |
 | *settlement* | Who gets what of the total: provider, Homa and customer | `reservation` |
 | *fine*, *payout* | A provider's fine, and a payout with fine deductions | `payment` |
 | *rating*, *rating summary* | A customer's stars and feedback, and the averages shown | `feedback` |
@@ -158,7 +159,8 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Service fee** | 15% of the provider price, paid by the customer; how Homa earns | `ServiceFee` | "commission", "platform fee" |
 | **Duration range** | 1 to 6 hours; each provider sets its own hours within it | `DurationRange` | "length" |
 | **Minimum notice**, **booking horizon** | A start must be at least 2 hours from now and at most 30 days ahead | `MinimumNotice`, `BookingHorizon` | "lead time" |
-| **Request expiry time** | 24 hours after the request, or the booked start if sooner | `RequestExpiry` | "timeout" |
+| **Request expiry time** | 24 hours after the request, or the response deadline if sooner | `RequestExpiry` | "timeout" |
+| **Response deadline** | 1 hour before the booked start: every request is answered by then. Shorter than the minimum notice | `ResponseDeadline` | "cut-off" |
 | **Cancellation tier** | The provider's cancellation policy: **Flexible**, **Standard** or **Firm** | `CancellationTier` | "plan", "cancellation level" |
 | **Fee window** | The 24 hours before the booked start, when Standard and Firm charge a fee | `FeeWindow` | "late period" |
 | **Late cancellation fine**, **no-show fine** | The provider's fines: 20% and 30% of the hours fee | `ProviderLateCancellationFine`, `ProviderNoShowFine` | "penalty" |
@@ -168,17 +170,20 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Check-in radius** | 300 metres from the customer's location | `CheckInRadius` | "geofence" |
 | **Customer no-show wait**, **customer no-show fee**, **no-show report window** | 15 minutes; travel fee + 30% of the hours fee; 1 hour to challenge | `CustomerNoShowWait`, `CustomerNoShowFee`, `NoShowReportWindow` | — |
 | **Completion reminder time**, **completion deadline** | 30 minutes and 24 hours after the booked end | `CompletionReminder`, `CompletionDeadline` | — |
-| **Dispute window extension**, **evidence retention period** | 1 hour after the later of the end and completion; evidence kept 7 days after resolution | `DisputeWindowExtension`, `EvidenceRetention` | — |
+| **Dispute window extension**, **evidence retention period** | 24 hours after the later of the end and completion; evidence kept 120 days after resolution | `DisputeWindowExtension`, `EvidenceRetention` | — |
 | **Rating window**, **minimum ratings to show** | 14 days to rate; 3 ratings before an average shows | `RatingWindow`, `MinimumRatingsToShow` | — |
 
 ### account
 
 | Term | Meaning | In the code | Don't say |
 |---|---|---|---|
-| **Customer account** | Name, Malaysian mobile number and address with its city | `CustomerAccount`, `Address` | "profile" |
+| **Customer account** | Name, Malaysian mobile number, address with its city and map pin, and access notes; the customer can change the name, address and notes | `CustomerAccount`, `Address`, `rename`, `changeAccessNotes` | "profile" |
+| **Access notes** | Up to 500 characters that help the team get in, such as the unit, guardhouse registration and parking | `AccessNotes` | "instructions" |
 | **Phone verification** | A 6-digit SMS code, valid 5 minutes, 5 wrong attempts allowed | `PhoneVerification` | "OTP check" in rules |
 | **KYB** | The KYC provider's verification of a business's SSM registration, with its owner's or director's KYC in the same flow | `KybResult`, `recordKybResult` | "eKYB", "business check by Homa" |
-| **KYC** | The KYC provider's verification of a person's identity: document and live selfie | `KycResult`, `recordKycResult` | "eKYC" |
+| **KYC** | The KYC provider's verification of a person's identity: document and live selfie; for a person being added, also the date of birth | `KycResult`, `recordKycResult` | "eKYC" |
+| **Photo match** | The KYC provider's comparison of the live profile photo with the verified selfie | `PhotoMatch` | "face check" (that is check-in) |
+| **Member rejection** | Why adding a person ended: the check was rejected, they are **under 18**, or the photo doesn't match | `MemberRejection` | — |
 | **Verified**, **rejected** | A result from the KYC provider; nothing else is a result | `VerificationStatus.VERIFIED`, `REJECTED` | "approved", "failed" |
 | **Verified-until date** | The date a business or person is verified until, from the KYC provider; a job must end by the business's | `verifiedUntil()` | "expiry date", "due date" |
 | **Re-verification** | Verifying again: businesses every year, team members every year and when their document expires | `recordKybResult`, `recordKycResult` returning `REVERIFIED` | "renewal", "re-check" for the regular one |
@@ -191,9 +196,10 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Team member** | A verified helper or supervisor on a provider's team; has no account | `TeamMember`, `TeamStatus.MEMBER` | "staff", "worker", or "helper" when it could be a supervisor |
 | **Helper** | A team member who does the booked jobs; the customer books and pays for helpers | `TeamRole.HELPER` | "cleaner", "maid" |
 | **Supervisor** | A team member in charge on site; not counted or charged as a helper | `TeamRole.SUPERVISOR` | "lead", "manager" |
-| **Add form** | What the provider fills in to add a team member: role, profile photo and the lawful-employment confirmation | `MemberVerification.start` | "invite" |
-| **Waiting for verification** | Added on the form, not yet verified: not on the team | `MemberVerificationStatus.WAITING` | "invited", "pending member" |
-| **Lawful-employment confirmation** | The provider's confirmation, for one person, that they are lawfully employed or engaged and allowed to work in Malaysia | `EmploymentConfirmation` | "work permit check" |
+| **Adding a team member** | The provider starts with the role and a live profile photo; the person verifies on the spot; the provider confirms the named person | `MemberVerification.start`, `recordKycResult`, `confirmEmployment`; `TeamMember.add` | "invite" |
+| **Waiting for verification**, **waiting for your confirmation** | Started, not yet verified; then verified, waiting for the provider's tick. Not on the team either way | `MemberVerificationStatus.WAITING`, `VERIFIED` | "invited", "pending member" |
+| **Lawful-employment confirmation** | The provider's tick, after the check and for the named person, that they are lawfully employed or engaged and allowed to work in Malaysia (for a foreign document, that they hold a valid work pass for this provider) | `EmploymentConfirmation`, `confirmEmployment` | "work permit check" |
+| **Change role** | Move a team member between helper and supervisor, without a new check | `TeamMember.changeRole` | "promote" |
 | **Registered name** | The name on a person's identity document, from the KYC result; nobody types it | `registeredName()` | "display name", "nickname" |
 | **Remove** | The provider or Homa takes a team member off; they cannot come back | `TeamMember.remove` | "fire", "delete" |
 | **Payout account** | The business bank account Stripe pays out to | `recordPayoutAccountReady` | "wallet" |
@@ -210,7 +216,9 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Paused** | Live, but taking no new requests, because the business lapsed or was flagged | `pause`, `isPaused`, `takesRequests` | "suspended", "hidden" |
 | **Hourly rate** | The flat rate per helper per hour | `HourlyRate` | "price" |
 | **Travel fee** | A **separate** flat fee, or **included** in the price | `TravelFee` | "transport fee", "call-out fee" |
-| **Hours range**, **helpers range** | The provider's own minimum and maximum hours and helpers per booking | `HoursRange`, `HelpersRange` | — |
+| **Hours range**, **helpers range** | The provider's own minimum and maximum hours and helpers per booking. The customer books any number of helpers in the range; the hours shrink to fit when Homa narrows its duration range | `HoursRange`, `HelpersRange`, `fitHours` | — |
+| **Acceptance policy** | How reservations are accepted: **Request and accept** (the default) or **Instant book**, accepted the moment the request is paid | `AcceptancePolicy`, `chooseAcceptancePolicy` | "auto-accept" |
+| **Insured** | The badge for liability insurance the provider declared, shown until it expires | `InsuranceDeclaration`, `declareInsurance`, `isInsured` | "verified insurance" (Homa doesn't check it) |
 | **Team roster** | The provider's team members by role, as the listing knows them: helpers and supervisors | `TeamRoster` | "team list" |
 | **Supervisor rule** | When a supervisor is sent: from a number of helpers, of hours, or both | `SupervisorRule` | "supervisor threshold" in code |
 | **Offering snapshot** | What a reservation copies from the listing at request time | `OfferingSnapshot` | — |
@@ -231,7 +239,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 |---|---|---|---|
 | **Search** | Jobs, start, hours, helpers and city | `SearchCriteria` | "query", "filter" |
 | **Exact match** | Covers the city, offers every job, fits the helpers and hours, and is free at the chosen time | `Match.EXACT` | "perfect match" |
-| **Close match** | Offers some of the jobs, or is free within 2 hours either side | `Match.CLOSE`, `NEAR_THE_CHOSEN_TIME` | "partial match", "similar" |
+| **Close match** | Differs in one way only: offers some of the jobs, or is free within 2 hours either side, never both. A start it suggests is always bookable | `Match.CLOSE`, `NEAR_THE_CHOSEN_TIME`, `isBookable` | "partial match", "similar" |
 | **No match** | Fails a rule, with its **match reason** | `Match.NONE`, `MatchReason` | — |
 
 ### reservation
@@ -240,24 +248,27 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 |---|---|---|---|
 | **Enquiry** | Booking details to chat about before requesting; no payment and not a status | `Enquiry` | "draft booking", "quote" |
 | **Reservation** | A booking from the customer's request to its ending | `Reservation` | "order", "appointment" |
-| **Request** | A reservation while it is **Requested**: paid, or waiting for its payment to be secured, and then waiting for the provider | `Reservation.request`, `ReservationStatus.REQUESTED` | "booking request" |
+| **Request** | A reservation while it is **Requested**: paid, or waiting for its payment to be secured, and then waiting for the provider, or accepted at once with Instant book | `Reservation.request`, `acceptInstantly`, `ReservationStatus.REQUESTED` | "booking request" |
+| **Declined for taken time** | A request ended at once because the provider accepted another booking that takes its time | `declineForTakenTime`, `Ending.TIME_TAKEN` | "auto-cancelled" |
 | **Booking**, **booked** | What the customer chose: jobs, start, hours, helpers and address; the *booked start* and *booked end* | `ReservationDetails` | — |
 | **Reservation status** | Requested, Reserved, Declined, Expired, Cancelled, Disputed or Completed | `ReservationStatus` | "state" for these |
 | **Hours fee** | Hourly rate per helper × helpers × hours; supervisors aren't charged | `PriceBreakdown.hoursFee` | "labour cost" |
 | **Provider price** | The hours fee plus a separate travel fee | `PriceBreakdown.providerPrice` | "subtotal" |
 | **Total** | Provider price plus service fee: what the customer pays | `PriceBreakdown.total` | "price" alone |
 | **Cancellation terms** | What cancelling costs, and from when, as the review page shows it | `cancellationTerms()` | — |
-| **Team assignment** | The helpers and any supervisors named for a reservation | `TeamAssignment`, `nameTeam` | "crew", "lead" |
+| **Team assignment** | The helpers and any supervisors named for a reservation; **complete** with the helpers booked and a required supervisor | `TeamAssignment`, `nameTeam`, `isTeamComplete` | "crew", "lead" |
+| **Comes off the team** | A named person who lapsed or was removed: before the start the team is incomplete until named again; from the start they can't work | `dropFromTeam`, `TeamDrop` | "replaced" |
 | **Location check** | The first step of check-in: the device within the check-in radius | `checkIn`, `CheckIn` | "check-in" alone |
 | **Face check** | A named person's live selfie matched by the KYC provider; one final result each, **passed** or **failed** | `recordFaceCheck`, `FaceCheck`, `FaceCheckResult` | "selfie check", "attempt" |
 | **Checked in** | Check-in complete: the location check and the first face pass, or a face check outage | `isCheckedIn`, `checkedInAt` | "arrived" |
 | **Can work** | A named person who passed their face check, or covered by an outage | `canWork` | — |
 | **Provider no-show** | No check-in by the end of the check-in period | `markProviderNoShow`, `Ending.PROVIDER_NO_SHOW` | — |
-| **Customer no-show** | The customer isn't there after the wait; the provider earns the customer no-show fee | `reportCustomerNoShow`, `Ending.CUSTOMER_NO_SHOW` | — |
+| **Customer no-show** | The customer isn't there after the wait; reported by the booked end; the provider earns the customer no-show fee | `reportCustomerNoShow`, `Ending.CUSTOMER_NO_SHOW` | — |
 | **Challenge** | The customer reports a wrongful customer no-show | `challengeNoShow` | "appeal" |
 | **Completion** | The provider's photo or video evidence that the job is done | `submitCompletion`, `Completion`, `EvidenceRef` | "done", "finished" as a status |
 | **Dispute window** | From the booked start to the extension after the later of the end and completion | `disputeWindowEndsAt`, `closeDisputeWindow` | "review period" |
-| **Report** | One party's problem: **during the job** or **with the finished work** | `fileReport`, `Report`, `ReportType` | "complaint", "ticket" |
+| **Report** | One party's problem: **during the job**, **with the finished work**, or **safety, damage or loss** | `fileReport`, `Report`, `ReportType` | "complaint", "ticket" |
+| **Access notes** | The reservation's notes for getting in, copied from the account and changeable until completion | `changeAccessNotes`, `AccessNotes` | — |
 | **Settlement** | Who gets what of the total: provider earning, service fee, customer refund | `Settlement` | "payout" |
 | **Ending** | Why a reservation ended, which decides the settlement | `Ending` | — |
 | **Fine charge** | A fine the reservation raises: late cancellation or no-show | `FineCharge`, `FineReason` | "penalty" |
@@ -273,15 +284,17 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Held**, **released**, **refunded** | Paid and held by Homa; paid to the provider; returned to the customer | `PaymentState.HELD`, `RELEASED`, `REFUNDED` | "escrow" |
 | **Capture** | Charging an authorised card when the provider accepts | `capture` | — |
 | **Payout** | What one reservation pays the provider, less fines deducted | `Payout`, `PayoutKind` | "settlement" |
-| **Fine** | A provider's fine, deducted from later payouts for completed jobs | `Fine`, `FineDeductionPolicy` | "penalty" |
+| **Fine** | A provider's fine, deducted from later payouts for completed jobs; a chargeback the provider covers is recovered the same way | `Fine`, `FineReason`, `FineDeductionPolicy` | "penalty" |
 | **Waive** | Homa clears what is left of a fine, with a reason, once | `Fine.waive` | "forgive", "cancel a fine" |
-| **Held payout**, **withheld** | A flagged business's payout waiting for the founders, and one they kept back | `PayoutStatus.HELD`, `WITHHELD`, `hold`, `releaseHold`, `withhold` | "frozen" |
+| **Held payout**, **withheld** | A flagged business's payout waiting for the founders, and one they kept back, which stays with Homa as owed and never counts as revenue | `PayoutStatus.HELD`, `WITHHELD`, `hold`, `releaseHold`, `withhold` | "frozen" |
 
 ### resolution
 
 | Term | Meaning | In the code | Don't say |
 |---|---|---|---|
-| **Case** | One entry in the founders' queue for a reservation, with its evidence | `Case`, `CaseSource` | "ticket" |
+| **Case** | One entry in the founders' queue for a reservation, with its evidence: a report, a challenged no-show, a missed completion deadline or a card chargeback. Safety cases come first, then the oldest | `Case`, `CaseSource`, `QUEUE_ORDER`, `markSafety` | "ticket" |
+| **Closed** | A case a flag took over, closed with no decision | `closeForProviderFlag`, `CaseStatus.CLOSED` | "cancelled case" |
+| **Provider covers** | For a chargeback, what the provider must cover: the amount at stake less what they receive | `providerCovers()` | — |
 | **Decision** | **Release**, **partial refund** or **full refund**, with a short reason | `Decision`, `Case.decide` | "verdict", "ruling" |
 | **At stake** | The most the provider can receive: the provider price, or the no-show fee for a challenge | `atStake()` | — |
 
@@ -289,7 +302,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 
 | Term | Meaning | In the code | Don't say |
 |---|---|---|---|
-| **Chat** | The messages for one enquiry or reservation; only the customer starts one | `Conversation`, `ChatSubject` | "thread", "inbox" for one chat |
+| **Chat** | The messages for one enquiry or reservation. Only the customer starts one, by tapping Chat or by requesting; once open, both can write | `Conversation`, `ChatSubject`, `openForReservation` | "thread", "inbox" for one chat |
 | **Archive** | A closed enquiry's chat, still readable | `archive` | "delete" |
 
 ### feedback
@@ -308,8 +321,8 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 - **"eKYC", "eKYB", "Kenal":** say **KYC**, **KYB** and **the KYC provider**. The provider is still to be
   chosen, and the rules don't depend on it.
 - **"Independent provider":** every provider is a business.
-- **"Invite", "invited helper":** a person is added on the **add form** and is **waiting for
-  verification** until the KYC provider verifies them.
+- **"Invite", "invited helper":** the provider **starts adding** a person, who is **waiting for
+  verification** until the KYC provider verifies them, and then **waiting for your confirmation**.
 - **"Lead":** the person in charge on site is a **supervisor**.
 - **"Helper" for anyone on the team:** say **team member** when it could be a supervisor.
 - **"Check-in" for the location step alone:** say **location check**; **checked in** means complete.
@@ -331,7 +344,7 @@ The stories follow one booking from start to end.
 
 The booking: **kitchen care and laundry folding, Saturday 10:00, 3 hours, 2 helpers, in Cyberjaya.**
 Kemas charges RM30 per helper per hour, with a separate RM20 travel fee, on the **Standard**
-cancellation tier.
+cancellation tier, and accepts by **Request and accept**.
 
 | Price part | Amount |
 |---|---|
@@ -348,12 +361,12 @@ The whole journey, coarse-grained. Each step is told in detail by the story in b
 1. **Homa founders** set up the *job list*, the *tool list* and the *Homa-set values*. (1)
 2. **Sarah** registers a *customer account* with her phone number. (2)
 3. **Nur Aina** registers *Kemas Home Care Sdn Bhd* and verifies it through KYB with the **KYC provider**. (3)
-4. **Nur Aina** adds *Aina*, *Ben* and *Siti* to the team; each verifies on the spot. (4)
+4. **Nur Aina** adds *Aina*, *Ben* and *Siti* to the team; each verifies on the spot, and Nur Aina confirms them. (4)
 5. **Nur Aina** sets up the *listing* and takes it live. (5)
 6. **Nur Aina** keeps the *calendar* up to date. (6)
-7. **Sarah** searches and finds *Kemas* in the *match list*. (7)
+7. **Sarah** searches, as a guest at first, and finds *Kemas* in the *match list*. (7)
 8. **Sarah** chats in an *enquiry*, or requests directly, and pays by card or FPX. (8, 9)
-9. **Nur Aina** accepts the *request*. (10)
+9. **Nur Aina** accepts the *request* by the response deadline, or it is accepted at once with Instant book. (10)
 10. **Nur Aina** names *Aina* and *Ben* for the job. (13)
 11. On Saturday, **the team** checks in: the *location check*, then each person's *face check*. (14)
 12. **The team** does the job, and **Nur Aina** submits the *completion* evidence. (16)
@@ -407,16 +420,19 @@ reservation runs on known values.
 - 3a. **Homa** refuses a *featured search* for a job providers can't offer. A retired job comes off
   every featured search, and one left with no job is no longer shown.
 - 5a. **Homa** refuses a change that breaks a rule across values: Flexible must stay free, no
-  cancellation fee may be higher than the customer no-show fee, and the provider no-show fine must stay
-  the highest fine.
+  cancellation fee may be higher than the customer no-show fee, the provider no-show fine must stay
+  the highest fine, and the response deadline must stay shorter than the minimum notice.
+- 5b. **Homa founders** narrow the *duration range*, say to 1 to 4 hours: **Homa** shrinks every
+  listing's hours to fit and tells the provider. A live listing left with no hours inside goes offline
+  until the provider sets them and goes live again. Widening the range widens no listing.
 
 **Rules**
 - The launch values include: service fee 15%; 1 to 6 hours; minimum notice 2 hours; booking horizon
-  30 days; request expiry 24 hours; fee window 24 hours; tiers 0%, 10% and 20%; provider fines 20% and
+  30 days; request expiry 24 hours; response deadline 1 hour before the start; fee window 24 hours; tiers 0%, 10% and 20%; provider fines 20% and
   30%; fine deduction cap 50%; team reminder 6 hours; earliest check-in and check-in period 15 minutes;
   check-in radius 300 metres; customer no-show wait 15 minutes; no-show fee travel + 30%; no-show
   report window 1 hour; completion reminder 30 minutes; completion deadline 24 hours; dispute window
-  extension 1 hour; evidence retention 7 days; rating window 14 days; and minimum ratings to show 3.
+  extension 24 hours; evidence retention 120 days; rating window 14 days; and minimum ratings to show 3.
 - The verification rules (accepted documents, yearly re-verification, ongoing monitoring, early
   re-checks, face check attempts) are the KYC provider's, set up to Homa's requirements.
 - Homa sets no limit on helpers.
@@ -425,29 +441,37 @@ reservation runs on known values.
 (`HomaPolicy.initial`, `HomaPolicy.change`), `offering` (`ProviderListing.withdrawJob`,
 `withdrawTool`). Events: `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`, `ToolAddedIE`,
 `ToolRenamedIE`, `ToolRetiredIE`, `JobWithdrawnFromListingIE`, `ListingWentOfflineForRetiredJobIE`,
-`ToolWithdrawnFromListingIE`, `ServiceAreaPublishedIE`, `HomaPolicyChangedIE`.
+`ToolWithdrawnFromListingIE`, `ServiceAreaPublishedIE`, `HomaPolicyChangedIE`, `ListingHoursNarrowedIE`,
+`ListingWentOfflineForHoursIE` (from `ProviderListing.fitHours`).
 
 ### 2. A customer registers
 
 **Goal:** Sarah can sign in, providers see who the booking is for, and Homa knows her city.
 
+0. **Sarah** searches and browses as a guest, picking a city (story 7). When she taps **Reserve** or
+   **Chat**, Homa asks her to sign up.
 1. **Sarah** enters her *phone number* in the Homa app.
 2. **Homa** asks the **SMS provider** to send a 6-digit *verification code* to Sarah.
 3. **Sarah** enters the *code*.
 4. **Homa** confirms the *phone verification*.
 5. **Sarah** enters her *name* and *address*.
-6. **Homa** asks the **geoservice** for the address's *location* and *city*.
+6. **Homa** asks the **geoservice** for the address's *location* and *city*, and **Sarah** confirms it
+   with a *pin* on the map.
 7. **Homa** registers Sarah's *customer account*.
+8. **Sarah** adds *access notes*: "Unit 12-3, register at the guardhouse, park at B2".
 
 **Variants**
 - 3a. The *code* is wrong: **Homa** refuses it. After 5 wrong codes, Sarah asks for a new one.
 - 3b. The *code* has expired after 5 minutes: **Homa** refuses it.
-- 7a. **Sarah** later changes her *address*.
+- 7a. **Sarah** later changes her *address*, *name* or *access notes*. A new address is used for new
+  searches and requests; requests already made keep theirs.
 
-**Rules:** a Malaysian mobile number; registration only with a confirmed phone.
+**Rules:** a Malaysian mobile number; registration only with a confirmed phone; access notes up to 500
+characters.
 
 **In the code:** `account` (`PhoneVerification.start`, `confirm`; `CustomerAccount.register`,
-`changeAddress`). Event: `CustomerRegisteredIE`.
+`changeAddress`, `rename`, `changeAccessNotes`). Events: `CustomerRegisteredIE`, `CustomerRenamedIE`,
+`CustomerAccessNotesChangedIE`.
 
 ### 3. A business provider onboards
 
@@ -474,6 +498,8 @@ reservation runs on known values.
 - The director must be Malaysian, with a MyKad or a Malaysian passport. That is the KYC provider's rule,
   set up to Homa's requirement.
 - A business is ready to go live once verified, not lapsed, and with a ready payout account.
+- A business adds team members only once its KYB has passed and while it hasn't lapsed. Its profile
+  and payout account can be set up while KYB is being checked.
 - The provider page shows the profile's display name and "Business · SSM registered". The registered
   business name is kept for Homa's records.
 
@@ -483,47 +509,62 @@ reservation runs on known values.
 
 ### 4. A provider adds a helper or a supervisor
 
-**Goal:** only verified people enter a customer's home. Aina joins the Kemas team as a helper.
+**Goal:** only verified people enter a customer's home, and the photo customers see is that person.
+Aina joins the Kemas team as a helper.
 
-1. **Nur Aina** fills in the *add form* in the provider app: the role **helper** and Aina's *profile
-   photo*.
-2. **Nur Aina** ticks the *lawful-employment confirmation*: Aina is lawfully employed by or engaged with
-   Kemas and allowed to work in Malaysia, and Kemas is responsible for it.
-3. **Homa** records the *confirmation* with its time and the version of the terms, and shows Aina as
-   *waiting for verification*.
-4. **Aina**, with Nur Aina, completes the **KYC provider**'s check on Nur Aina's phone: she scans her own
-   identity document and takes her own live *selfie*.
-5. The **KYC provider** reports a *verified result* with the *registered name* "Aina binti Ahmad" and
-   the *verified-until date*.
-6. **Homa** adds Aina to the *team* as a *helper*.
+1. **Nur Aina**, with Aina beside her, starts adding a team member in the provider app: she chooses the
+   role **helper** and takes Aina's *profile photo* with the phone's camera.
+2. **Homa** checks that Kemas's KYB has passed and hasn't lapsed, and shows Aina as *waiting for
+   verification*.
+3. **Aina** completes the **KYC provider**'s check on Nur Aina's phone: she scans her own identity
+   document and takes her own live *selfie*.
+4. The **KYC provider** reports a *verified result* with the *registered name* "Aina binti Ahmad", the
+   *verified-until date* and her *date of birth*, and that the *profile photo* matches her selfie.
+5. **Homa** records it and shows Aina as *waiting for your confirmation*, with her registered name and
+   the country of her document.
+6. **Nur Aina** ticks the *lawful-employment confirmation* for Aina by name: she is lawfully employed by
+   or engaged with Kemas and allowed to work in Malaysia, and Kemas is responsible for it.
+7. **Homa** records the *confirmation* with its time and the version of the terms, and adds Aina to the
+   *team* as a *helper*.
 
 **Variants**
-- 2a. **Nur Aina** does not tick the confirmation: the form cannot be sent.
-- 5a. The **KYC provider** reports a *rejected result*, or its session times out or is abandoned:
-  nothing is added, and **Nur Aina** starts again with a new form.
-- 6a. **Nur Aina** adds **Siti** the same way, with the role **supervisor**.
-- 6b. Later, **Nur Aina** removes a *team member*, or **Homa founders** remove one who is not allowed to
-  work. A removed person cannot come back.
+- 2a. Kemas's KYB hasn't passed, or it has lapsed: **Homa** refuses to start.
+- 4a. The **KYC provider** reports a *rejected result*, or its session times out or is abandoned:
+  nothing is added, **Nur Aina** is told why, and starts again.
+- 4b. Aina is under 18 on that day in Malaysia, or the profile photo isn't the same person as her
+  selfie: the check fails the same way, and **Nur Aina** is told which.
+- 6a. **Nur Aina** doesn't tick: Aina doesn't join the team.
+- 6b. Aina's document is from another country: the confirmation says she holds a valid work pass that
+  allows her to work for Kemas.
+- 7a. **Nur Aina** adds **Siti** the same way, with the role **supervisor**.
+- 7b. Later, **Nur Aina** changes a *team member*'s role between helper and supervisor, without a new
+  check.
+- 7c. Later, **Nur Aina** removes a *team member*, or **Homa founders** remove one who is not allowed to
+  work. A removed person cannot come back, and comes off every upcoming job they were named on
+  (story 13).
 
 ```mermaid
 flowchart LR
-    P([Nur Aina, provider]) -- "1 fills in, 2 confirms" --> F[add form]
-    F -- "3 waiting for verification" --> H[[Homa]]
-    A([Aina]) -- "4 scans her document, takes a selfie on Nur Aina's phone" --> K([KYC provider])
-    K -- "5 verified, registered name, verified-until date" --> H
-    H -- "6 adds as helper" --> T[team]
+    P([Nur Aina, provider]) -- "1 role and live photo" --> H[[Homa]]
+    A([Aina]) -- "3 scans her document, takes a selfie on Nur Aina's phone" --> K([KYC provider])
+    K -- "4 verified, name, date of birth, photo matches" --> H
+    H -- "5 waiting for your confirmation" --> P
+    P -- "6 confirms Aina by name" --> H
+    H -- "7 adds as helper" --> T[team]
 ```
 
 **Rules**
 - Which documents are accepted, and how the face is matched, are the KYC provider's rules. Team members
-  can be Malaysian or foreign.
+  can be Malaysian or foreign, and are 18 or older.
 - Homa sets no time limit; the KYC provider ends an unfinished session.
-- A waiting person is not on the team, not shown to customers, and cannot be named for jobs.
+- A person waiting for verification or for the confirmation is not on the team, not shown to
+  customers, and cannot be named for jobs.
 - Teams have no size limit.
 
-**In the code:** `account` (`MemberVerification.start`, `recordKycResult`; `TeamMember.add`,
-`remove`). Events: `MemberVerificationStartedIE`, `MemberVerificationRejectedIE`, `TeamMemberAddedIE`,
-`TeamMemberRemovedIE`.
+**In the code:** `account` (`MemberVerification.start`, `recordKycResult` with a `PhotoMatch`,
+`confirmEmployment`, `rejection`; `TeamMember.add`, `changeRole`, `remove`). Events:
+`MemberVerificationStartedIE`, `MemberVerifiedIE`, `MemberVerificationRejectedIE` (with the reason),
+`TeamMemberAddedIE`, `TeamMemberRoleChangedIE`, `TeamMemberRemovedIE`.
 
 ### 5. A provider sets up the listing and goes live
 
@@ -537,7 +578,8 @@ flowchart LR
 5. **Nur Aina** sets the *hours*, 2 to 4, within Homa's 1 to 6.
 6. **Nur Aina** sets the *helpers range*, 1 to 3, at most the helpers on her team.
 7. **Nur Aina** sets the *supervisor rule*: a supervisor comes from 3 helpers or from 4 hours.
-8. **Nur Aina** chooses the *cities* she covers (Cyberjaya) and the *Standard* cancellation tier.
+8. **Nur Aina** chooses the *cities* she covers (Cyberjaya), the *Standard* cancellation tier, and how
+   reservations are accepted: **Request and accept**, the default.
 9. **Nur Aina** takes the *listing* live.
 10. **Homa** checks the *listing* and Nur Aina's *provider account*, and makes the listing live.
 
@@ -548,6 +590,12 @@ flowchart LR
 - 6a. A helper leaves the team: **Homa** shrinks the *helpers range* to the helpers left. With no helper
   left, or with a supervisor rule and no supervisor left, **Homa** takes the listing offline.
 - 10b. **Nur Aina** changes the *listing* later: the change applies to new requests only.
+- 8a. **Nur Aina** chooses **Instant book**: requests are accepted the moment they are paid (story 10).
+- 8b. **Nur Aina** declares Kemas's liability *insurance*, with the insurer and the date it's valid
+  until; the provider page shows **Insured** until then. Homa doesn't check the policy.
+- 8c. **Nur Aina** declares insurance that has already expired: **Homa** refuses it.
+- 5a. **Homa founders** narrow Homa's duration range below Kemas's hours: **Homa** shrinks them, or
+  takes the listing offline if none are left (story 1).
 
 **Rules**
 - Go-live needs a complete listing; a verified, not lapsed business with a ready payout account; enough
@@ -557,8 +605,9 @@ flowchart LR
 
 **In the code:** `offering` (`ProviderListing.draft`, `setProfile`, `offerJobs`, `bringTools`,
 `setPricing`, `setHours`, `setHelpers`, `setSupervisorRule`, `coverCities`, `chooseCancellationTier`,
-`updateRoster`, `goLive`, `missingForGoLive`). Events: `ListingWentLiveIE`, `ListingChangedIE`,
-`ListingWentOfflineIE`.
+`chooseAcceptancePolicy`, `declareInsurance`, `clearInsurance`, `isInsured`, `fitHours`, `updateRoster`,
+`goLive`, `missingForGoLive`). Events: `ListingWentLiveIE`, `ListingChangedIE` (both say whether it uses
+Instant book), `ListingWentOfflineIE`, `ProviderInsuranceDeclaredIE`, `ProviderInsuranceClearedIE`.
 
 ### 6. A provider manages availability
 
@@ -573,6 +622,10 @@ flowchart LR
 
 **Variants**
 - 5a. A slot overlaps another hold, or falls inside the buffer around one: **Homa** refuses to hold it.
+- 5b. Another open *request* for Kemas can no longer be held once this one is: **Homa** declines it at
+  once (story 10).
+- 3a. For a close match, **Homa** suggests only starts the customer can book: at least the minimum
+  notice from now and within the booking horizon.
 
 **Rules**
 - A slot is free when it is inside a window, with no busy block or hold over it.
@@ -589,29 +642,34 @@ flowchart LR
 
 **Goal:** Sarah finds a provider for Saturday.
 
-1. **Sarah** picks the *jobs* (kitchen care, laundry folding), a *start* (Saturday 10:00), the *hours*
-   (3) and the *helpers* (2).
+1. **Sarah**, as a guest, picks a *city* or drops a pin, then the *jobs* (kitchen care, laundry
+   folding), a *start* (Saturday 10:00), the *hours* (3) and the *helpers* (2).
 2. **Homa** checks the *search*: at least 1 helper, 1 to 6 hours, a quarter-hour start between 2 hours
    and 30 days ahead.
 3. **Homa** asks each provider's *calendar* whether they are free, or free near the time.
 4. **Homa** sorts providers in Sarah's city into a *match list*: exact matches and close matches.
-5. **Sarah** opens the *provider page* for Kemas: jobs, tools it brings and doesn't, price, cancellation
-   policy in words, "Business · SSM registered", team (registered names, roles, photos, average stars), when a
-   supervisor is included, ratings, and the Verified ID badge.
+5. **Sarah** opens the *provider page* for Kemas: jobs done and cancellations, jobs, tools it brings
+   and doesn't, price, cancellation policy in words, Instant book if used, "Business · SSM registered",
+   Insured if declared, team (registered names, roles, photos, average stars), when a supervisor is
+   included, ratings, and the Verified ID badge.
 
 **Variants**
-- 4a. A **close match** offers only some of the jobs, or is free for the same duration at a start up to
-  2 hours before or after.
+- 4a. A **close match** differs in one way only: it offers only some of the jobs, or it is free for
+  the same duration at a start up to 2 hours before or after. A provider that differs in both ways is
+  no match, and a suggested start is always one Sarah can book.
 - 4b. A provider is **no match** when they don't cover the city, the helpers or hours are outside their
   range, they offer none of the jobs, they aren't free at or near the time, or the job would end after
   their verified-until date.
 - 4c. A *paused* listing is left out of search.
 - 1a. **Sarah** taps a *featured search* in the showcase instead. It fills in the jobs, hours and
-  helpers; she picks the date and time, and the city comes from her address.
+  helpers; she picks the date and time, and the city comes from her address, or the one she picked.
 - 4d. **Homa** records each *search*: what was searched for and how many providers matched, with
   nothing about Sarah, so the founders can see where more providers are needed.
 
-**In the code:** `discovery` (`SearchCriteria.of`, `MatchClassifier.classify`, `ProviderCandidate`),
+**Rules:** "jobs done" counts Completed reservations where the provider was paid more than RM0;
+"cancellations" counts fined late cancellations and no-shows, waived or not.
+
+**In the code:** `discovery` (`SearchCriteria.of`, `isBookable`, `MatchClassifier.classify`, `ProviderCandidate`),
 with `availability` answering free times. It keeps listings from the listing events,
 `HomaPolicyChangedIE`, and businesses' verified-until dates from `ProviderVerifiedIE` and
 `ProviderReverifiedIE`.
@@ -632,13 +690,14 @@ with `availability` answering free times. It keeps listings from the listing eve
 **Variants**
 - 7a. **Sarah** never requests: **Homa** closes the *enquiry* when its date passes, and archives the
   *chat*, which stays readable.
-- 1a. **Sarah** books again from a past *chat*: **Homa** creates a new *enquiry* with the same details at
-  a new start.
+- 1a. **Sarah** books again from a past *enquiry* or *reservation*: **Homa** creates a new *enquiry* with
+  the same provider, jobs, hours and helpers, at her current address and a new start.
 
-**Rules:** only the customer starts a chat; the provider replies. Enquiry details are edited only on
+**Rules:** only the customer starts a chat, by tapping **Chat** or by requesting; once open, both can
+write. Enquiry details are edited only on
 the review page. Every chat reminds both sides that payments and messages outside Homa are not covered.
 
-**In the code:** `reservation` (`Enquiry.create`, `bookAgainFrom`, `isClosed`, `markRequested`),
+**In the code:** `reservation` (`Enquiry.create`, `bookAgain`, `isClosed`, `markRequested`),
 `conversation` (`Conversation.startByCustomer`, `post`, `linkReservation`, `archive`). Events:
 `EnquiryCreatedIE`, `EnquiryRequestedIE`, `EnquiryClosedIE`.
 
@@ -652,7 +711,9 @@ the review page. Every chat reminds both sides that payments and messages outsid
 3. **Stripe** authorises RM230.00 on Sarah's card. Nothing is charged yet.
 4. **Homa** creates the *request*, in **Requested**, keeping the *offering* and the *Homa-set values*
    in force now, and records that its *payment* is secured.
-5. **Homa** notifies **Nur Aina** of the *request*. She sees a request, and can accept it, only once
+5. **Homa** copies Sarah's *access notes* to the request, and opens the reservation's *chat* with no
+   message, so either side can write.
+6. **Homa** notifies **Nur Aina** of the *request*. She sees a request, and can accept it, only once
    it is paid.
 
 **Variants**
@@ -661,19 +722,23 @@ the review page. Every chat reminds both sides that payments and messages outsid
   was abandoned. **Homa** ends the *request* straight away, as **Cancelled**, and tells **Sarah**.
   Nothing is charged.
 - 4a. **Homa** refuses the request when: the start is not on a quarter hour, is under 2 hours away or
-  beyond 30 days; the hours or helpers are outside Kemas's range; a job isn't offered; the city isn't
-  covered; the listing is paused; or the job would end after Kemas's verified-until date.
-- 6. **Sarah** edits the *request* before it is accepted: the card authorisation is updated to the new
-  total, or for FPX she pays the increase or is refunded the decrease. The expiry still runs from the
+  beyond 30 days; the hours are outside Homa's duration range or Kemas's hours; the helpers are outside
+  Kemas's range; a job isn't offered; the city isn't covered; the listing is paused; or the job would
+  end after Kemas's verified-until date.
+- 7a. **Sarah** edits the *request* before it is accepted: a new card authorisation for the new total
+  replaces the old one, or for FPX she pays the increase or is refunded the decrease. The address can't
+  change: to use another, she cancels for free and requests again. The expiry still runs from the
   first request. After an edit that raises the total, Kemas can accept only once the new total is
   secured.
-- 7. **Sarah** cancels the *request* before Kemas answers: it is free, the authorisation is released or
+- 7b. **Sarah** changes the reservation's *access notes*, until the job is completed.
+- 8. **Sarah** cancels the *request* before Kemas answers: it is free, the authorisation is released or
   the FPX payment refunded in full.
 
 **In the code:** `reservation` (`Reservation.request`, `price`, `cancellationTerms`, `edit`,
-`cancelByCustomer`, `confirmPayment`, `paymentFailed`), `payment` (`Payment.authoriseCard`,
+`cancelByCustomer`, `confirmPayment`, `paymentFailed`, `changeAccessNotes`), `conversation`
+(`Conversation.openForReservation`), `payment` (`Payment.authoriseCard`,
 `payUpfrontByFpx`, `adjustTotal`, `cancelBeforeAcceptance`). Events: `ReservationRequestedIE`, `ReservationEditedIE`,
-`RequestCancelledIE`, `PaymentSecuredIE`, `PaymentFailedIE`.
+`RequestCancelledIE`, `PaymentSecuredIE`, `PaymentFailedIE`, `AccessNotesChangedIE`.
 
 ### 10. The provider answers the request
 
@@ -691,16 +756,21 @@ the review page. Every chat reminds both sides that payments and messages outsid
 - 2a. **Nur Aina** declines: the reservation is **Declined**, and the authorisation is released or the
   FPX payment refunded in full.
 - 2b. **Nur Aina** doesn't answer: at the **request expiry time** (24 hours after the request, or the
-  booked start if sooner), **Homa** expires it with a full release or refund.
+  **response deadline**, 1 hour before the booked start, if sooner), **Homa** expires it with a full
+  release or refund.
+- 2c. Kemas uses **Instant book**: **Homa** accepts the request the moment its payment is secured,
+  with the same checks. Nur Aina can't decline it.
+- 6a. Another open request for Kemas now clashes with this booking or the buffer around it: **Homa**
+  declines it at once, as taken time, and it costs that customer nothing.
 - 3a. Kemas's listing is paused because its re-verification lapsed: Nur Aina cannot accept. The request
   stays Requested and expires normally, unless Kemas re-verifies in time.
 - 3b. Kemas's verified-until date is before the job ends: Nur Aina can accept only after the **KYC
   provider** re-verifies Kemas and the date moves out.
 
-**In the code:** `reservation` (`Reservation.accept`, `decline`, `expire`), `payment`
+**In the code:** `reservation` (`Reservation.accept`, `acceptInstantly`, `decline`, `declineForTakenTime`, `expire`), `payment`
 (`Payment.capture`, `cancelBeforeAcceptance`), `availability` (`hold`). Events:
-`ReservationAcceptedIE`, `ReservationDeclinedIE`, `ReservationExpiredIE`, `PaymentCapturedIE`,
-`PaymentRefundedIE`. The paused-listing check is required usecase rule R2.
+`ReservationAcceptedIE` (saying whether by Instant book), `ReservationDeclinedIE`,
+`RequestDeclinedForTakenTimeIE`, `ReservationExpiredIE`, `PaymentCapturedIE`, `PaymentRefundedIE`. The paused-listing check is required usecase rule R2.
 
 ### 11. The customer cancels a reserved booking
 
@@ -721,7 +791,8 @@ the review page. Every chat reminds both sides that payments and messages outsid
 - 1c. With the travel fee included in the price, the percentage applies to the full provider price.
 - 1d. **Sarah** tries to cancel during the check-in period before check-in: **Homa** refuses until the
   team checks in or the period ends.
-- 1e. **Sarah** cancels after the team checked in: it counts as a customer no-show (story 15).
+- 1e. **Sarah** cancels after the team checked in: she pays the customer no-show fee, released to
+  Kemas straight away, and she can't challenge it. If something is wrong, she reports instead (story 17).
 
 **In the code:** `reservation` (`Reservation.cancelByCustomer`, `cancellationTerms`), `payment`
 (`Payment.settle`). Events: `ReservationCancelledIE`, `SettlementDecidedIE`, `PaymentRefundedIE`.
@@ -764,10 +835,17 @@ charge), `payment` (`Fine.charge`). Events: `ReservationCancelledIE`, `Settlemen
 - 3d. The same person is named twice: **Homa** refuses.
 - 2a. **Nur Aina** changes the team before the start: **Homa** notifies Sarah. From the booked start,
   the team is locked.
-- 2b. A named team member lapses: **Nur Aina** must name someone else before the start.
+- 2b. A named team member lapses or is removed before the start: **Homa** takes them off the named
+  team and tells Sarah. The team is incomplete: **Homa** reminds Nur Aina again, and check-in stays
+  locked until she names someone in their place. If nobody is named by the start, Kemas can't check in,
+  and it ends as a provider no-show; the founders can waive the fine when a serious flag came too close
+  to the start.
+- 2c. An optional supervisor comes off: the team stays complete.
+- 2d. A named person lapses or is removed during the job: they stop working, and Sarah is told.
 
-**In the code:** `reservation` (`Reservation.nameTeam`, `isTeamReminderDue`; `TeamAssignment`,
-`TeamRoster`, `SupervisorRule`). Event: `TeamNamedIE`.
+**In the code:** `reservation` (`Reservation.nameTeam`, `isTeamComplete`, `dropFromTeam`,
+`isTeamReminderDue`; `TeamAssignment`, `TeamRoster`, `SupervisorRule`, `TeamDrop`). Events: `TeamNamedIE`,
+`TeamMemberDroppedIE`, `TeamMemberStoppedIE`.
 
 ### 14. Job day: check-in with location and face checks
 
@@ -808,8 +886,9 @@ flowchart LR
   10:16 **Homa** marks a **provider no-show**. Sarah is refunded in full, and Kemas pays a fine of 30% of
   the hours fee.
 
-**Rules:** Homa uses the device's location only at check-in, never continuously, and keeps only each
-face check's result and time, never the selfie.
+**Rules:** Sarah, or someone she chooses, is home to let the team in, using the reservation's access
+notes; after check-in she is free to leave. Homa uses the device's location only at check-in, never
+continuously, and keeps only each face check's result and time, never the selfie.
 
 **In the code:** `reservation` (`Reservation.checkIn`, `recordFaceCheck`, `recordFaceCheckUnavailable`,
 `isCheckedIn`, `canWork`, `markProviderNoShow`). Events: `ProviderCheckedInIE`, `FaceCheckRecordedIE`,
@@ -829,11 +908,12 @@ face check's result and time, never the selfie.
 6. **Homa** releases the fee to Kemas and the refund to Sarah.
 
 **Variants**
-- 2a. **Nur Aina** reports before the wait ends: **Homa** refuses.
+- 2a. **Nur Aina** reports before the wait ends, or after the booked end: **Homa** refuses.
 - 5a. **Sarah** challenges the no-show within the hour: the reservation becomes **Disputed**, and the
-  money waits for Homa's decision (story 17). After the decision, it ends **Cancelled**.
-- 1a. **Sarah** cancels after the team checked in: it counts as a customer no-show, even before the
-  start.
+  money waits for Homa's decision (story 17): the no-show upheld, part of the fee to Kemas, or a full
+  refund. After the decision, it ends **Cancelled**.
+- 1a. **Sarah** cancels after the team checked in: she pays the same customer no-show fee, even before
+  the start, released straight away and with no challenge (story 11).
 
 **In the code:** `reservation` (`Reservation.reportCustomerNoShow`, `challengeNoShow`), `payment`
 (`Payment.settle`). Events: `ReservationCancelledIE`, `SettlementDecidedIE`, `NoShowChallengedIE`.
@@ -845,7 +925,8 @@ face check's result and time, never the selfie.
 1. **Aina** and **Ben** finish at 13:00.
 2. **Nur Aina** submits the *completion* with *photo evidence*.
 3. **Homa** notifies **Sarah** that the job is completed.
-4. The *dispute window* runs until 1 hour after the later of the booked end and the completion: 14:00.
+4. The *dispute window* runs until 24 hours after the later of the booked end and the completion:
+   Sunday 13:00. Sarah doesn't need to stay home to check the work.
 5. No *report* is filed. **Homa** closes the *dispute window* and the reservation becomes **Completed**.
 6. **Homa** settles the *payment*: Kemas earns the provider price, RM200.00, and Homa keeps the service
    fee.
@@ -855,13 +936,15 @@ face check's result and time, never the selfie.
 **Variants**
 - 2a. **Nur Aina** hasn't submitted by 13:30 (the **completion reminder time**): **Homa** reminds her.
 - 2b. Still nothing by the **completion deadline** (24 hours after the end): **Homa** moves the
-  reservation to **Disputed** and reviews it (story 17).
+  reservation to **Disputed** and reviews it (story 17). Nur Aina can still submit the completion; it
+  goes to the review and the reservation stays Disputed.
 - 7a. Kemas has a RM54.00 fine outstanding: at most 50% of the payout, rounded in Kemas's favour, is
   deducted, oldest fine first, so Kemas always takes home part of every job. Fines come off payouts for
   completed jobs only, never off a cancellation fee or no-show fee payout.
 
 **Rules:** there is no automatic completion; after completion, nobody can cancel, and any problem goes
-through a report. Evidence is kept for 7 days after the reservation is resolved.
+through a report. Evidence is kept for 120 days after the reservation is resolved, for card chargebacks
+and police reports.
 
 **In the code:** `reservation` (`Reservation.submitCompletion`, `isCompletionReminderDue`,
 `missCompletionDeadline`, `closeDisputeWindow`), `payment` (`Payment.settle`, `Payout.create`,
@@ -885,18 +968,32 @@ through a report. Evidence is kept for 7 days after the reservation is resolved.
 
 **Variants**
 - 7a. **Homa founders** decide a *release* (Kemas receives the provider price) or a *full refund*.
-- 1a. A *report* about the finished work instead of during the job.
+- 1a. A *report* about the finished work instead of during the job, or a **safety, damage or loss**
+  report: harassment, an injury, something broken or missing. A safety case goes to the top of the
+  queue. Homa doesn't compensate damage, but helps, for example with a police report, and can ask the
+  KYC provider for an early re-check.
+- 1d. **Nur Aina** submits the completion while the case is open: it joins the review, and the
+  dispute window then runs from it, so she can still file her own report.
+- 1e. Kemas is seriously flagged while the case is open and no completion was submitted: the flag
+  takes the reservation over (story 19), the reports are kept, and **Homa** closes the case with no
+  decision.
+- 1f. Weeks later, Sarah's bank takes the payment back (a **chargeback**): **Homa** opens a case and
+  answers the bank with the evidence. If the founders decide Kemas is responsible, what Kemas must
+  cover is recovered from its next payouts like a fine; otherwise Homa contests it.
 - 1b. A missed completion deadline (story 16) or a no-show challenge (story 15) opens the case instead.
   A challenged no-show is reviewed on the challenge alone, takes no reports, and ends **Cancelled**; the
   provider can receive up to the no-show fee.
 - 1c. A report outside the dispute window, or a second report by the same party: **Homa** refuses.
 
 **Rules:** each party files one report per reservation, from the booked start to the end of the
-dispute window. A partial refund gives the provider any amount from RM0 up to what was at stake.
+dispute window. A partial refund gives the provider any amount from RM0 up to what was at stake. Homa
+aims to decide every case within 3 working days, and both parties see the expected date. Safety cases
+come first, then the oldest.
 
 **In the code:** `reservation` (`Reservation.fileReport`, `resolve`), `resolution` (`Case.open`,
-`addEvidence`, `decide`), `payment` (`Payment.settle`). Events: `ReportFiledIE`, `CaseDecidedIE`,
-`SettlementDecidedIE`.
+`addEvidence`, `markSafety`, `decide`, `closeForProviderFlag`, `providerCovers`, `QUEUE_ORDER`), `payment`
+(`Payment.settle`, `Fine.charge` with `FineReason.CHARGEBACK`). Events: `ReportFiledIE`, `CaseDecidedIE`,
+`SettlementDecidedIE`, `CaseClosedForProviderFlagIE`, `ChargebackDecidedIE`.
 
 ### 18. The customer rates the provider and the team
 
@@ -914,6 +1011,8 @@ dispute window. A partial refund gives the provider any amount from RM0 up to wh
 **Variants**
 - 2a. **Sarah** rates after the 14-day **rating window**: **Homa** refuses.
 - 2b. The reservation was cancelled or a no-show: it cannot be rated.
+- 2c. Homa decided the reservation with a full refund: it is still Completed and can be rated, because
+  Sarah's experience counts; it doesn't count as a job done.
 - 3a. A named *supervisor* is rated with the helper categories.
 - 6. **Homa founders** hide a *rating* that breaks the rules (abuse, personal details, paying outside
   Homa), with a reason. It no longer counts.
@@ -938,8 +1037,8 @@ feedback about an individual team member; Homa never edits a rating.
 **Variants**
 - 4a. The re-verification fails, or the session times out: nothing changes in Homa, and Aina can retry.
 - 5a. Aina isn't re-verified in time: the **KYC provider** reports the lapse. **Homa** takes her off the
-  team: she can't be named for new jobs, and Nur Aina must name someone else for her upcoming jobs.
-  When she passes, she rejoins.
+  team: she can't be named for new jobs, and she comes off every upcoming job she was named on, so Nur
+  Aina names someone in her place (story 13). When she passes, she rejoins.
 - 1a. Aina's passport expires on 10 March: the **KYC provider**'s monitoring asks for re-verification by
   10 March, and **Homa** moves her verified-until date to 10 March. She keeps working until then.
 - 1b. **Kemas** changes a director: the **KYC provider**'s monitoring asks for KYB again by a date. Kemas
@@ -947,15 +1046,18 @@ feedback about an individual team member; Homa never edits a rating.
   be requested or accepted until it passes.
 - 1c. Kemas is struck off the SSM register (a **serious flag** the KYC provider has confirmed):
   - **Homa** lapses Kemas at once and pauses its *listing*.
-  - Every accepted reservation whose job isn't completed, such as Sarah's on Saturday, moves to
-    **Disputed**, even a job under way, whose team stops. Sarah is told her job is on hold.
+  - Every accepted reservation whose completion hasn't been submitted, such as Sarah's on Saturday,
+    moves to **Disputed**, even a job under way, whose team stops, and one already disputed over a
+    report, whose report is kept. Sarah is told her job is on hold.
   - **Homa founders** cancel each one with a full refund, RM230.00, with no fine and no cancellation
     fee. If the KYC provider clears the flag before Saturday 10:00, they can restore it instead, and it
     goes ahead.
   - If nobody has decided by Saturday 10:00, **Homa** cancels it with a full refund.
   - **Homa** holds Kemas's *payouts*, and the founders release them or keep them back, with a reason.
+    A payout kept back stays with Homa as owed to Kemas, never as revenue, and Sarah isn't refunded for
+    a job that was done.
 - 1d. A team member matches a watchlist (a serious flag): **Homa** takes them off the team at once.
-- 2a. After a safety report, **Homa founders** ask the **KYC provider** for an *early re-check*, with a
+- 2a. After a safety, damage or loss report, **Homa founders** ask the **KYC provider** for an *early re-check*, with a
   reason. If Aina doesn't pass it in time, the KYC provider reports the lapse.
 - 1e. **Kemas** itself is re-verified every year, through KYB. If it lapses, **Homa** pauses its
   *listing*: it takes no new requests and leaves search, while accepted reservations go ahead. When
@@ -1000,22 +1102,22 @@ feedback about an individual team member; Homa never edits a rating.
 | # | Story | Contexts | Main events |
 |---|---|---|---|
 | 1 | Lists and values | catalogue, policy | `JobAddedIE`, `HomaPolicyChangedIE` |
-| 2 | Customer registers | account | `CustomerRegisteredIE` |
+| 2 | Customer registers | account | `CustomerRegisteredIE`, `CustomerAccessNotesChangedIE` |
 | 3 | Business provider onboards | account | `ProviderVerifiedIE`, `PayoutAccountReadyIE` |
-| 4 | Adding a team member | account | `MemberVerificationStartedIE`, `TeamMemberAddedIE` |
-| 5 | Listing and go-live | offering | `ListingWentLiveIE`, `ListingChangedIE` |
+| 4 | Adding a team member | account | `MemberVerificationStartedIE`, `MemberVerifiedIE`, `TeamMemberAddedIE` |
+| 5 | Listing and go-live | offering | `ListingWentLiveIE`, `ListingChangedIE`, `ProviderInsuranceDeclaredIE` |
 | 6 | Availability | availability | (listens to `ReservationAcceptedIE`) |
 | 7 | Search | discovery, availability | `SearchPerformedIE` (listens to listing events) |
 | 8 | Enquiry and chat | reservation, conversation | `EnquiryCreatedIE`, `EnquiryRequestedIE` |
-| 9 | Request | reservation, payment | `ReservationRequestedIE`, `PaymentSecuredIE`, `RequestCancelledIE`, `PaymentFailedIE` |
-| 10 | Accept, decline, expire | reservation, payment, availability | `ReservationAcceptedIE`, `PaymentCapturedIE` |
+| 9 | Request | reservation, payment, conversation | `ReservationRequestedIE`, `PaymentSecuredIE`, `RequestCancelledIE`, `PaymentFailedIE` |
+| 10 | Accept, Instant book, decline, expire | reservation, payment, availability | `ReservationAcceptedIE`, `RequestDeclinedForTakenTimeIE`, `PaymentCapturedIE` |
 | 11 | Customer cancels | reservation, payment | `ReservationCancelledIE`, `SettlementDecidedIE` |
 | 12 | Provider cancels | reservation, payment | `FineChargedIE` |
-| 13 | Naming the team | reservation | `TeamNamedIE` |
+| 13 | Naming the team | reservation | `TeamNamedIE`, `TeamMemberDroppedIE` |
 | 14 | Check-in and face checks | reservation | `CheckInCompletedIE`, `FaceCheckRecordedIE` |
 | 15 | Customer no-show | reservation, payment, resolution | `NoShowChallengedIE` |
 | 16 | Completion and payout | reservation, payment | `ReservationCompletedIE`, `PayoutCreatedIE` |
-| 17 | Report and decision | reservation, resolution, payment | `ReportFiledIE`, `CaseDecidedIE` |
+| 17 | Report, chargeback and decision | reservation, resolution, payment | `ReportFiledIE`, `CaseDecidedIE`, `ChargebackDecidedIE` |
 | 18 | Ratings | feedback | `RatingSubmittedIE`, `RatingHiddenIE` |
 | 19 | Re-verification and monitoring | account, offering, reservation | `ReverificationRequiredIE`, `ProviderFlaggedIE`, `ReservationFlaggedIE` |
 | 20 | Fine waiver | payment | `FineWaivedIE` |
@@ -1030,5 +1132,7 @@ feedback about an individual team member; Homa never edits a rating.
 - **Admin tracking:** the overview, reservation history, payments, providers, customers, fines and
   ratings views.
 - **Things outside the MVP:** two-way ratings, consequences of violations and suspension, Homa credit,
-  rescheduling, accounts for team members, showing nationality, checking work permits, re-verifying on
-  document expiry, and skilled trade jobs.
+  rescheduling, recurring bookings and asking for the same team again, accounts for team members,
+  showing nationality, checking work permits, and skilled trade jobs.
+- **The product brief:** the 7-star target, the principles, and the goals and measures are in Part 1
+  of the product description.
