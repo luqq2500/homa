@@ -239,7 +239,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 |---|---|---|---|
 | **Enquiry** | Booking details to chat about before requesting; no payment and not a status | `Enquiry` | "draft booking", "quote" |
 | **Reservation** | A booking from the customer's request to its ending | `Reservation` | "order", "appointment" |
-| **Request** | A reservation while it is **Requested**, waiting for the provider | `Reservation.request`, `ReservationStatus.REQUESTED` | "booking request" |
+| **Request** | A reservation while it is **Requested**: paid, or waiting for its payment to be secured, and then waiting for the provider | `Reservation.request`, `ReservationStatus.REQUESTED` | "booking request" |
 | **Booking**, **booked** | What the customer chose: jobs, start, hours, helpers and address; the *booked start* and *booked end* | `ReservationDetails` | — |
 | **Reservation status** | Requested, Reserved, Declined, Expired, Cancelled, Disputed or Completed | `ReservationStatus` | "state" for these |
 | **Hours fee** | Hourly rate per helper × helpers × hours; supervisors aren't charged | `PriceBreakdown.hoursFee` | "labour cost" |
@@ -640,8 +640,9 @@ the review page. Every chat reminds both sides that payments and messages outsid
 2. **Sarah** taps **Reserve** and pays by **card**.
 3. **Stripe** authorises RM230.00 on Sarah's card. Nothing is charged yet.
 4. **Homa** creates the *request*, in **Requested**, keeping the *offering* and the *Homa-set values*
-   in force now.
-5. **Homa** notifies **Nur Aina** of the *request*.
+   in force now, and records that its *payment* is secured.
+5. **Homa** notifies **Nur Aina** of the *request*. She sees a request, and can accept it, only once
+   it is paid.
 
 **Variants**
 - 2a. **Sarah** pays by **FPX**: **Stripe** takes RM230.00 upfront, and Homa holds it.
@@ -653,14 +654,15 @@ the review page. Every chat reminds both sides that payments and messages outsid
   covered; the listing is paused; or the job would end after Kemas's verified-until date.
 - 6. **Sarah** edits the *request* before it is accepted: the card authorisation is updated to the new
   total, or for FPX she pays the increase or is refunded the decrease. The expiry still runs from the
-  first request.
+  first request. After an edit that raises the total, Kemas can accept only once the new total is
+  secured.
 - 7. **Sarah** cancels the *request* before Kemas answers: it is free, the authorisation is released or
   the FPX payment refunded in full.
 
 **In the code:** `reservation` (`Reservation.request`, `price`, `cancellationTerms`, `edit`,
-`cancelByCustomer`, `paymentFailed`), `payment` (`Payment.authoriseCard`, `payUpfrontByFpx`,
-`adjustTotal`, `cancelBeforeAcceptance`). Events: `ReservationRequestedIE`, `ReservationEditedIE`,
-`RequestCancelledIE`, `PaymentFailedIE`.
+`cancelByCustomer`, `confirmPayment`, `paymentFailed`), `payment` (`Payment.authoriseCard`,
+`payUpfrontByFpx`, `adjustTotal`, `cancelBeforeAcceptance`). Events: `ReservationRequestedIE`, `ReservationEditedIE`,
+`RequestCancelledIE`, `PaymentSecuredIE`, `PaymentFailedIE`.
 
 ### 10. The provider answers the request
 
@@ -994,7 +996,7 @@ feedback about an individual team member; Homa never edits a rating.
 | 6 | Availability | availability | (listens to `ReservationAcceptedIE`) |
 | 7 | Search | discovery, availability | `SearchPerformedIE` (listens to listing events) |
 | 8 | Enquiry and chat | reservation, conversation | `EnquiryCreatedIE`, `EnquiryRequestedIE` |
-| 9 | Request | reservation, payment | `ReservationRequestedIE`, `RequestCancelledIE`, `PaymentFailedIE` |
+| 9 | Request | reservation, payment | `ReservationRequestedIE`, `PaymentSecuredIE`, `RequestCancelledIE`, `PaymentFailedIE` |
 | 10 | Accept, decline, expire | reservation, payment, availability | `ReservationAcceptedIE`, `PaymentCapturedIE` |
 | 11 | Customer cancels | reservation, payment | `ReservationCancelledIE`, `SettlementDecidedIE` |
 | 12 | Provider cancels | reservation, payment | `FineChargedIE` |

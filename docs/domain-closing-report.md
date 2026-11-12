@@ -504,24 +504,29 @@ Changed after the phase closed, following the recommendation the product owner c
 ## 20. Addendum: getting ready for the usecase phase
 
 Changed after the phase closed, while reviewing the usecase plan. The product owner agreed to the
-plan's recommendations for questions U2 to U5, U8, U9 and U11.
+plan's recommendations for questions U2 to U5, U8, U9, U11 and U12.
 
 - **`offering`:** a job or tool Homa retires comes off every listing that has it
   (`ProviderListing.withdrawJob`, `withdrawTool`). A live listing left with no job goes offline until
   the provider offers another. Requests already made keep the job.
-- **`reservation`:** a request whose payment fails ends at once (`Reservation.paymentFailed`), as
-  Cancelled with the new ending `PAYMENT_FAILED`, with nothing to settle.
-- **`ie/`:** `ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE` and `SearchPerformedIE`,
-  with a new event interface, `DiscoveryIE`, which makes 61 events.
+- **`reservation`:**
+  - A request whose payment fails ends at once (`Reservation.paymentFailed`), as Cancelled with the new
+    ending `PAYMENT_FAILED`, with nothing to settle.
+  - A request is paid before the provider answers: `confirmPayment` records the amount secured, and
+    `accept` refuses until it covers the total (`PaymentNotSecuredException`). An edit that raises the
+    total waits for payment again.
+- **`ie/`:** `ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`, `PaymentSecuredIE` and
+  `SearchPerformedIE`, with a new event interface, `DiscoveryIE`, which makes 62 events.
 - **Spec:**
   - A retired job or tool comes off the listings.
+  - The provider sees and can accept a request only once it is paid.
   - A request whose payment fails ends straight away, and the Cancelled status covers it.
   - Searches are recorded without anything that identifies the customer.
   - A fine waiver covers only the money; the cancellation still counts.
   - "Homa can remove the provider" was dropped: provider suspension is not in the MVP.
 - **Usecase plan:** now ready for review. It gained the `feedback`, `privacy` and `tracking` usecases,
-  the missing payment handlers and Stripe webhooks, the missing projections, rules R11 to R13, the
+  the missing payment handlers and Stripe webhooks, the missing projections, rules R11 to R14, the
   admin console with rules A1 to A6, and a build order that ends with feedback, privacy and tracking.
-  One question is open: U12, a provider could accept a request before it is paid.
-- **Scenarios:** 239 in the plan; 227 have a test and 12 are retired.
-- **Gates:** whole build 1,137 tests, 1,433 mutants, all killed, worst CRAP 5.0.
+  Every question, U1 to U12, is decided.
+- **Scenarios:** 244 in the plan; 232 have a test and 12 are retired.
+- **Gates:** whole build 1,152 tests, 1,439 mutants, all killed, worst CRAP 5.0.

@@ -233,7 +233,15 @@ final class ReservationBuilders {
             return this;
         }
 
+        /** Requested with its payment secured for the total, so the provider can answer it. */
         Reservation requested() {
+            Reservation reservation = requestedUnpaid();
+            reservation.confirmPayment(reservation.price().total());
+            return reservation;
+        }
+
+        /** Requested, with its payment not secured yet. */
+        Reservation requestedUnpaid() {
             return Reservation.request(
                     "customer-1", details.build(), offering.build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL,
                     requestedAt);

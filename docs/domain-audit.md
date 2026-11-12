@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **239** scenarios: **227 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **244** scenarios: **232 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -18,8 +18,8 @@ The plan has **239** scenarios: **227 have a test**, and **12 are retired** beca
   registration is checked" now maps to the go-live test
 - eleven in the features for business providers only and verification by a KYC provider
 - fifteen in the features for ongoing monitoring, a seriously flagged provider and its payouts
-- eight in the two features added while reviewing the usecase plan: retired jobs and tools, and a
-  payment that fails at request
+- thirteen in the three features added while reviewing the usecase plan: retired jobs and tools, a
+  payment that fails at request, and a request paid before the provider answers
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -299,6 +299,11 @@ Two scenarios map to more than one test:
 | 237 | A payment that fails at request | A failed payment ends the request | `ReservationPaymentFailureTest` | `aFailedPaymentEndsTheRequest` |
 | 238 | A payment that fails at request | The provider cannot accept a request whose payment failed | `ReservationPaymentFailureTest` | `theProviderCannotAcceptARequestWhosePaymentFailed` |
 | 239 | A payment that fails at request | Only a request ends for a failed payment | `ReservationPaymentFailureTest` | `onlyARequestEndsForAFailedPayment` |
+| 240 | A request is paid before the provider answers | The provider cannot accept a request before its payment is secured | `ReservationPaymentConfirmationTest` | `theProviderCannotAcceptARequestBeforeItsPaymentIsSecured` |
+| 241 | A request is paid before the provider answers | The provider accepts once the payment is secured | `ReservationPaymentConfirmationTest` | `theProviderAcceptsOnceThePaymentIsSecured` |
+| 242 | A request is paid before the provider answers | A payment below the total is not enough | `ReservationPaymentConfirmationTest` | `aPaymentBelowTheTotalIsNotEnough` |
+| 243 | A request is paid before the provider answers | An edit that raises the total waits for payment again | `ReservationPaymentConfirmationTest` | `anEditThatRaisesTheTotalWaitsForPaymentAgain`, `theProviderAcceptsAnEditedRequestOnceTheNewTotalIsSecured` |
+| 244 | A request is paid before the provider answers | An edit that lowers the total stays paid | `ReservationPaymentConfirmationTest` | `anEditThatLowersTheTotalStaysPaid` |
 
 ## 2. Product spec rules with no test
 
@@ -380,7 +385,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 209 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 391 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 397 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 143 | `PaymentArchitectureTest` |
 | resolution | 3.0 | 100% | 100% | 40 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 38 | `ConversationArchitectureTest` |
@@ -391,7 +396,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,433 of 1,433 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,439 of 1,439 mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -451,6 +456,6 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
     were added.
   - For a flagged provider, `ReservationRestoredIE`, `PayoutHeldIE`, `PayoutHoldReleasedIE` and
     `PayoutWithheldIE` were added.
-  - While reviewing the usecase plan, `ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`
-    and `SearchPerformedIE` were added, with a new event interface, `DiscoveryIE`.
-  - The contract test now covers 61 events.
+  - While reviewing the usecase plan, `ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`,
+    `PaymentSecuredIE` and `SearchPerformedIE` were added, with a new event interface, `DiscoveryIE`.
+  - The contract test now covers 62 events.

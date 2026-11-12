@@ -34,6 +34,7 @@ import reservation.domain.exception.LocationNotCheckedException;
 import reservation.domain.exception.MemberNotNamedException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
+import reservation.domain.exception.PaymentNotSecuredException;
 import reservation.domain.exception.ProviderMissedCheckInException;
 import reservation.domain.exception.ReportAlreadyFiledException;
 import reservation.domain.exception.ReportWindowClosedException;
@@ -74,6 +75,7 @@ public final class Reservation {
     private boolean faceCheckUnavailable;
     private Instant checkedInAt;
     private Ending ending;
+    private Money securedPayment = Money.ZERO;
     private Instant noShowReportedAt;
     private Completion completion;
     private final Map<Party, Report> reports = new EnumMap<>(Party.class);
@@ -157,12 +159,16 @@ public final class Reservation {
     }
 
     /**
-     * The provider accepts the request. They can accept only a job that ends by their re-verification due
-     * date as it is now, {@code providerVerifiedUntil}; passing a re-check moves it later.
+     * The provider accepts the request. They can accept only a request whose payment is secured, and only
+     * a job that ends by their re-verification due date as it is now, {@code providerVerifiedUntil};
+     * passing a re-check moves it later.
      */
     public void accept(Instant providerVerifiedUntil, Instant now) {
         requireStatus(ReservationStatus.REQUESTED, "accepted");
         requireNotExpired(now);
+        if (!isPaymentSecured()) {
+            throw new PaymentNotSecuredException(id);
+        }
         requireEndsByProviderVerification(details, providerVerifiedUntil);
         status = ReservationStatus.RESERVED;
     }
@@ -180,6 +186,21 @@ public final class Reservation {
             throw new RequestNotYetExpiredException(requestExpiresAt());
         }
         status = ReservationStatus.EXPIRED;
+    }
+
+    /**
+     * Records the payment secured for the request so far: the amount authorised on the card, or paid by
+     * FPX. The provider can accept only once it covers the total, so an edit that raises the total waits
+     * for payment again.
+     */
+    public void confirmPayment(Money secured) {
+        requireStatus(ReservationStatus.REQUESTED, "confirmed as paid");
+        securedPayment = Objects.requireNonNull(secured);
+    }
+
+    /** Whether the payment secured so far covers the total. Until it does, the provider cannot accept. */
+    public boolean isPaymentSecured() {
+        return !securedPayment.isLessThan(price.total());
     }
 
     /**

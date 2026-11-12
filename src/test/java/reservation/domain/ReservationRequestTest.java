@@ -155,6 +155,7 @@ class ReservationRequestTest {
     @Test
     void aPausedListingRefusesNewRequestsButKeepsAcceptedOnes() {
         Reservation accepted = request(aBooking());
+        accepted.confirmPayment(accepted.price().total());
         accepted.accept(VERIFIED_UNTIL, NOW.plus(Duration.ofMinutes(5)));
 
         assertThatThrownBy(() -> Reservation.request(

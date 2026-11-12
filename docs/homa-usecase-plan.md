@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** ready for review. Nothing in the usecase layer is built yet. The domain phase is finished, and the questions that had to be decided before starting are decided (see the end). One question, U12, is open; it must be decided before the `reservation` and `payment` contexts are built, not before the first ones.
+**Status:** ready for review. Nothing in the usecase layer is built yet. The domain phase is finished, and every question, U1 to U12, is decided (see the end).
 
 ## Conventions
 
@@ -112,23 +112,24 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 
 **reservation**
 - Customer: `CustomerCreateEnquiry` → `EnquiryCreatedIE`; `CustomerBookAgain`; `CustomerRequestReservation` → `ReservationRequestedIE` (and `EnquiryRequestedIE` when made from an enquiry); `CustomerEditRequest` → `ReservationEditedIE`; `CustomerViewCancellationTerms`; `CustomerCancelReservation` (a request → `RequestCancelledIE` only; a reserved booking → `ReservationCancelledIE` and `SettlementDecidedIE`; R12); `CustomerChallengeNoShow` → `NoShowChallengedIE`
-- Provider: `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `KycRecordFaceCheck` (the KYC provider's final result for each person) → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
+- Provider: `ProviderViewRequests` (only requests whose payment is secured, R14); `ProviderAcceptRequest` → `ReservationAcceptedIE` (refused while the listing is paused, R2, and by the domain until the payment is secured, R14); `ProviderDeclineRequest`; `ProviderCancelReservation`; `ProviderNameTeam` → `TeamNamedIE`; `ProviderCheckIn` → `ProviderCheckedInIE`; `KycRecordFaceCheck` (the KYC provider's final result for each person) → `FaceCheckRecordedIE` (and `CheckInCompletedIE` on the first pass); `FaceCheckServiceUnavailable` → `CheckInCompletedIE`; `ProviderReportCustomerNoShow`; `ProviderSubmitCompletion` → `CompletionSubmittedIE`
 - Either party: `PartyFileReport` → `ReportFiledIE`
 - Scheduled: `HomaExpireRequests`, `HomaMarkProviderNoShows`, `HomaCloseNoShowReportWindows`, `HomaRemindTeams`, `HomaRemindCompletions`, `HomaMissCompletionDeadlines`, `HomaCloseDisputeWindows`, `HomaCloseEnquiries`
 - Each ending after acceptance publishes `ReservationCancelledIE` or `ReservationCompletedIE`, with `SettlementDecidedIE` and `FineChargedIE` as the domain returns them. A request ends with one event: `ReservationDeclinedIE`, `ReservationExpiredIE` or `RequestCancelledIE`.
 - Flagged providers: the `ProviderFlaggedIE` handler disputes each accepted reservation whose job isn't completed → `ReservationFlaggedIE`; `HomaCancelFlaggedReservation` (from the case queue) → `ReservationCancelledIE` and `SettlementDecidedIE`; `HomaRestoreFlaggedReservation` → `ReservationRestoredIE`; `HomaCancelUndecidedFlaggedReservations` (scheduled, at each booked start) → `ReservationCancelledIE` and `SettlementDecidedIE` (R10)
-- Handlers: `CaseDecidedIE` (resolve), `PaymentFailedIE` (ends the request with `Reservation.paymentFailed`, and publishes nothing more; R12), `HomaPolicyChangedIE`, the listing events, the verification events (R6, R10)
+- Handlers: `CaseDecidedIE` (resolve), `PaymentSecuredIE` (records the amount with `Reservation.confirmPayment`; R14), `PaymentFailedIE` (ends the request with `Reservation.paymentFailed`, and publishes nothing more; R12), `HomaPolicyChangedIE`, the listing events, the verification events (R6, R10)
 
 **payment**
 - Handlers:
-  - `ReservationRequestedIE` (authorise the card or take the FPX payment; a failure → `PaymentFailedIE`, R12)
-  - `ReservationEditedIE`, `ReservationAcceptedIE` (capture → `PaymentCapturedIE`)
+  - `ReservationRequestedIE` (authorise the card or take the FPX payment → `PaymentSecuredIE`; a failure → `PaymentFailedIE`; R12, R14)
+  - `ReservationEditedIE` (adjust the authorisation, take the FPX increase or refund the decrease → `PaymentSecuredIE` with the new amount; a failure → `PaymentFailedIE`)
+  - `ReservationAcceptedIE` (capture → `PaymentCapturedIE`)
   - `ReservationDeclinedIE`, `ReservationExpiredIE` and `RequestCancelledIE` (end before acceptance with `cancelBeforeAcceptance`)
   - `SettlementDecidedIE` (settle, then a payout with fine deductions → `PayoutCreatedIE`; held at once for a flagged business → `PayoutHeldIE`)
   - `FineChargedIE`
   - `ProviderFlaggedIE` (hold every payable payout of the business → `PayoutHeldIE`) and `ProviderReverifiedIE` (new payouts are no longer held; payouts already held wait for the founders) (R10)
 - Homa: `HomaWaiveFine` → `FineWaivedIE`; `HomaReleasePayout` → `PayoutHoldReleasedIE`; `HomaWithholdPayout` → `PayoutWithheldIE`
-- Stripe reporting back (webhooks, with the same signature and repeat checks as R9): `StripeRecordFpxPaid`; `StripeRecordPaymentFailed` → `PaymentFailedIE`; `StripeRecordRefund` → `PaymentRefundedIE`; `StripeRecordPayoutFailed` (shown in admin tracking and retried in Stripe)
+- Stripe reporting back (webhooks, with the same signature and repeat checks as R9): `StripeRecordFpxPaid` → `PaymentSecuredIE`; `StripeRecordPaymentFailed` → `PaymentFailedIE`; `StripeRecordRefund` → `PaymentRefundedIE`; `StripeRecordPayoutFailed` (shown in admin tracking and retried in Stripe)
 - Queries: `CustomerViewPayments` (payments and refunds with their status), `ProviderViewIncome` (earnings, payouts, fines being deducted)
 
 **resolution**
@@ -251,11 +252,26 @@ These rules come from decisions made after the domain phase. Each one needs a us
     - When the card is declined, or the FPX payment fails or is abandoned, payment creates no `Payment`
       and publishes `PaymentFailedIE`. reservation ends the request with `Reservation.paymentFailed`
       and publishes nothing more. The customer is told from `PaymentFailedIE`.
+    - When a payment fails after an edit, payment first ends the payment it already holds with
+      `cancelBeforeAcceptance` (the authorisation is released, or the FPX payment refunded in full),
+      then publishes `PaymentFailedIE`.
     - A `PaymentFailedIE` for a reservation that is no longer a request is refused by the domain; the
       handler records it and changes nothing.
 13. **R13. Every search is recorded, without the customer.** `CustomerSearchProviders` publishes
     `SearchPerformedIE` with the jobs, start, hours, helpers, city and the numbers of exact and close
     matches. It never carries the customer's id, name or address.
+
+14. **R14. A request is paid before the provider answers.**
+    - payment publishes `PaymentSecuredIE` with the amount when the card is authorised or the FPX
+      payment is paid, and again after an edit, with the new amount.
+    - reservation records it with `Reservation.confirmPayment(amount)`. The domain refuses an
+      acceptance until the secured amount covers the total (`PaymentNotSecuredException`), so an edit
+      that raises the total waits for payment again.
+    - The provider is told about a new request from `PaymentSecuredIE`, not `ReservationRequestedIE`,
+      and `ProviderViewRequests` lists only requests whose payment is secured.
+    - The request's expiry still runs from when it was requested.
+    - A `PaymentSecuredIE` for a reservation that is no longer a request is refused by the domain; the
+      handler records it and changes nothing.
 
 ## Admin console
 
@@ -375,22 +391,9 @@ in and check the views; there are no domain rules to test.
 2. privacy, then tracking, which listens to every context's events.
 3. `app/`, the composition root, with only the U1 adapters needed for usecase tests across contexts.
 
-Each context passes its gates before the next starts. U12 must be decided before step 1 reaches
-reservation.
+Each context passes its gates before the next starts.
 
 ## Open questions
-
-### Open
-
-12. **U12. A provider could accept a request before it is paid.** `Reservation.request` creates a
-    request the provider can accept at once, but payment answers `ReservationRequestedIE` afterwards,
-    and an FPX payment takes minutes at the bank. Until payment succeeds or fails, nothing stops an
-    acceptance. A card whose authorisation can't be raised after an edit has the same gap.
-    *Recommendation:* payment publishes a new `PaymentSecuredIE` when the card is authorised or the FPX
-    payment is paid. reservation records it with a new domain method, `Reservation.confirmPayment`, and
-    `accept` refuses a request whose payment isn't confirmed. The provider is told about a new request
-    from `PaymentSecuredIE`, not `ReservationRequestedIE`. A failed re-authorisation after an edit ends
-    the request like any failed payment (R12). This needs a domain change in `reservation`.
 
 ### Decided
 
@@ -424,3 +427,8 @@ reservation.
 11. **U11. Fine waiver reason categories.** *Decided:* the categories (customer-caused, emergency, Homa
     fault, other) are kept by the usecase with the free text; the domain keeps the text it has today.
     Promote them to the domain only if a rule ever depends on them.
+12. **U12. A provider could accept a request before it is paid.** `Reservation.request` creates the
+    request first and payment answers afterwards, and an FPX payment takes minutes at the bank.
+    *Decided:* payment publishes `PaymentSecuredIE`; reservation records the amount
+    (`Reservation.confirmPayment`), and the domain refuses an acceptance until it covers the total. The
+    provider is told about a request only once it is paid. See R14.

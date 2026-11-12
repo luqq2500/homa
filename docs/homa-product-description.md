@@ -120,6 +120,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
   - **Card:** authorised when submitting the request and charged only when the provider accepts. A declined, expired or cancelled request releases the authorisation, so nothing is refunded because nothing was charged.
   - **Online banking (FPX):** paid in full when submitting the request, because FPX cannot be authorised first.
   - Card and FPX are the only payment methods, and each reservation is paid with one of them.
+  - **Paid before the provider answers:** the provider sees a request, and can accept it, only once the card is authorised or the FPX payment is paid.
   - **A payment that fails:** if the card is declined, or the FPX payment fails or is abandoned, the request ends straight away and nothing is charged. The customer is told and can request again.
 - Homa holds every charged payment until it is released or refunded.
 - The payment is released to the provider when the dispute window ends without a report. The window runs until after the provider submits job completion, so the customer always has time to review the finished work.
@@ -133,7 +134,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 
 ### Request Policy
 
-- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. For a card, the authorisation is updated to the new total. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded.
+- The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. For a card, the authorisation is updated to the new total. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
 - A request expires if the provider does not respond within the **request expiry time**, always before the booked start. The provider can accept or decline up to that moment; at the expiry time the request has expired.
 - Editing a request does not restart its expiry. It still expires the request expiry time after it was first submitted, or at the booked start if the edit moves the start earlier than that.
 - A declined or expired request costs the customer nothing: the card authorisation is released, or an upfront payment is refunded in full, including the service fee.

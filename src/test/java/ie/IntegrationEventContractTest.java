@@ -28,6 +28,7 @@ import ie.events.NoShowChallengedIE;
 import ie.events.PaymentCapturedIE;
 import ie.events.PaymentFailedIE;
 import ie.events.PaymentRefundedIE;
+import ie.events.PaymentSecuredIE;
 import ie.events.PayoutAccountReadyIE;
 import ie.events.PayoutCreatedIE;
 import ie.events.PayoutHeldIE;
@@ -165,6 +166,7 @@ class IntegrationEventContractTest {
                 Arguments.of(ServiceAreaPublishedIE.class, CatalogueIE.class),
                 Arguments.of(RequestCancelledIE.class, ReservationIE.class),
                 Arguments.of(PaymentFailedIE.class, PaymentIE.class),
+                Arguments.of(PaymentSecuredIE.class, PaymentIE.class),
                 Arguments.of(SearchPerformedIE.class, DiscoveryIE.class));
     }
 
@@ -236,7 +238,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(61);
+        assertThat(events().count()).isEqualTo(62);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

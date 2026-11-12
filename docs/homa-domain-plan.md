@@ -310,6 +310,8 @@ ProviderListing.clearSupervisorRule()
 ProviderListing.coverCities(Set<City> cities, ServiceAreaView area)
 ProviderListing.chooseCancellationTier(CancellationTier tier)
 ProviderListing.updateRoster(TeamRoster roster)    // shrinks the helper range with the helpers; no helper, or no supervisor for a rule, takes a live listing offline
+ProviderListing.withdrawJob(JobCode retired)       // a job Homa retired comes off; a live listing left with no job goes offline
+ProviderListing.withdrawTool(ToolCode retired)     // a tool Homa retired comes off; the listing stays live
 ProviderListing.goLive(boolean providerReady)                 // the roster must cover the minimum helpers
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
@@ -572,7 +574,10 @@ Reservation.request(String customerId, ReservationDetails d, OfferingSnapshot o,
 Reservation.price() : PriceBreakdown
 Reservation.requestExpiresAt() : Instant
 Reservation.edit(ReservationDetails d, Instant providerVerifiedUntil, Instant now) : PriceChange
-Reservation.accept(Instant providerVerifiedUntil, Instant now)
+Reservation.confirmPayment(Money secured)                             // the amount authorised or paid so far
+Reservation.isPaymentSecured() : boolean                              // it covers the total
+Reservation.paymentFailed()                                           // ends the request: Cancelled, PAYMENT_FAILED
+Reservation.accept(Instant providerVerifiedUntil, Instant now)        // only once the payment is secured
 Reservation.decline(Instant now)
 Reservation.expire(Instant now)
 
@@ -1515,6 +1520,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ServiceAreaPublishedIE` | catalogue | offering | `ServiceArea.launch` |
 | `RequestCancelledIE` | reservation | payment | `Reservation.cancelByCustomer` on a request |
 | `PaymentFailedIE` | payment | reservation | a failed authorisation or FPX payment; no `Payment` is created |
+| `PaymentSecuredIE` | payment | reservation, (notifications) | `Payment.authoriseCard`, `Payment.payUpfrontByFpx`, `Payment.adjustTotal` |
 | `SearchPerformedIE` | discovery | (admin tracking) | `MatchClassifier`'s results for one `SearchCriteria` |
 
 **Testing:** event records have no logic, so CRAP and mutation gates don't apply. One test per event checks it can only be built with all required fields and is immutable. The dependency-rule gate checks that `ie/` imports only `kernel/`.
@@ -1754,7 +1760,7 @@ hours either side.
     close match; empty means no match.
   - A match result lists every reason it is not exact.
 - **Integration events (`ie/`):**
-  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events (61 since the usecase review) in the
+  - Eight publishing contexts each have an event interface in `ie/port`, and the 57 events (62 since the usecase review) in the
     plan's table are records in `ie/events`, including `feedback`'s two, the team membership events
     and the re-verification events.
     Availability, conversation and discovery only listen.
@@ -2829,7 +2835,7 @@ Feature: A seriously flagged provider's payouts
 ## Change after the domain phase: getting ready for the usecase phase
 
 Decided while reviewing the usecase plan, and confirmed by the product owner (usecase plan questions U2
-to U5 and U8). Two rules were missing from the domain, and four events from `ie/`.
+to U5, U8 and U12). Three rules were missing from the domain, and five events from `ie/`.
 
 **`offering`: a retired job or tool comes off the listings**
 
@@ -2850,12 +2856,26 @@ to U5 and U8). Two rules were missing from the domain, and four events from `ie/
   - Nothing was charged, so there is no settlement, no fee and no fine.
   - Only a request can end this way (`InvalidStatusTransitionException`).
 
-**`ie/`: four events, which makes 61**
+**`reservation`: a request is paid before the provider answers**
+
+- `Reservation.confirmPayment(Money secured)` records the payment secured so far: the amount authorised
+  on the card, or paid by FPX. Only a request takes one (`InvalidStatusTransitionException`).
+- `Reservation.isPaymentSecured()` is true once that amount covers the total.
+- `Reservation.accept` refuses a request whose payment isn't secured (`PaymentNotSecuredException`).
+- An edit that raises the total makes the request wait for payment again, because the secured amount no
+  longer covers it. An edit that lowers the total, or keeps it, stays paid.
+- A confirmation for less than the total, such as one that arrives late for the total before an edit,
+  is recorded and is not enough.
+- Declining and expiring don't depend on payment.
+
+**`ie/`: five events, which makes 62**
 
 - `ServiceAreaPublishedIE` (catalogue): the cities Homa serves, for offering.
 - `RequestCancelledIE` (reservation): the customer cancelled a request before the provider answered.
   payment handles it like a decline, because nothing is owed.
 - `PaymentFailedIE` (payment): the payment failed at request; reservation ends the request.
+- `PaymentSecuredIE` (payment): the card is authorised, or the FPX payment is paid, with the amount;
+  reservation records it, and the provider can then answer.
 - `SearchPerformedIE` (discovery): what was searched for and how many providers matched, with nothing
   about the customer. discovery gets its own event interface, `DiscoveryIE`.
 
@@ -2907,6 +2927,37 @@ Feature: A payment that fails at request
     When a failed payment is reported for it
     Then it is refused with "InvalidStatusTransitionException"
     And the booking stays Reserved
+
+Feature: A request is paid before the provider answers
+
+  Background:
+    Given a request with a total of RM230.00
+
+  Scenario: The provider cannot accept a request before its payment is secured
+    Given no payment is secured yet
+    When the provider accepts it
+    Then it is refused with "PaymentNotSecuredException"
+    And it stays Requested
+
+  Scenario: The provider accepts once the payment is secured
+    Given RM230.00 is secured
+    When the provider accepts it
+    Then the reservation is Reserved
+
+  Scenario: A payment below the total is not enough
+    Given RM229.99 is secured
+    When the provider accepts it
+    Then it is refused with "PaymentNotSecuredException"
+
+  Scenario: An edit that raises the total waits for payment again
+    Given RM230.00 is secured
+    When the customer edits the request to 4 hours, a total of RM299.00
+    Then the provider cannot accept it until RM299.00 is secured
+
+  Scenario: An edit that lowers the total stays paid
+    Given RM230.00 is secured
+    When the customer edits the request to 1 helper
+    Then the provider can still accept it
 ```
 
 **Decided while building:**
@@ -2918,6 +2969,11 @@ Feature: A payment that fails at request
 - **`RequestCancelledIE` replaces `ReservationCancelledIE` and `SettlementDecidedIE`** for a request the
   customer cancels. A request holds no slot and owes nothing, so one event is enough, as for a decline
   or an expiry.
+- **The secured amount, not a yes or no.** `confirmPayment` takes the amount, so the reservation itself
+  knows when an edit has outgrown the payment, and a late confirmation for an old total can't unlock an
+  edited request.
+- **A failed payment after an edit ends the request**, like any failed payment (`paymentFailed`). The
+  customer can request again.
 
 ## Open questions
 
