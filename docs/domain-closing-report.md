@@ -5,7 +5,7 @@
 **Closed:** 8 November 2026, at commit `24a771e` on `main`
 **Sources:** `docs/homa-product-description.md`, `docs/homa-domain-plan.md`, `docs/backend_module_discipline.md`
 **Evidence:** `docs/domain-audit.md`
-**Last updated:** 12 November 2026, with addenda 25 to 28, on `claude/bold-wright-b1q5ui`
+**Last updated:** 12 November 2026, with addenda 25 to 29, on `claude/bold-wright-b1q5ui`
 
 ## 1. Summary
 
@@ -730,4 +730,19 @@ Before the usecase phase starts, the product owner asked for a clean slate.
   point to that history.
 - **Scenarios:** 313 in the plan; 301 have a test and 12 are retired.
 - **Gates:** whole build 1,386 tests, 1,654 mutants, all killed, worst CRAP 5.0.
+
+## 29. Addendum: the decision target, role changes and evidence retention
+
+Spec decisions by the product owner, with no code change.
+
+- **Decision target:** Homa decides each case within **3 days (72 hours)** of it opening, every day
+  counted, weekends and public holidays included; both sides see the exact date and time. It replaces
+  "3 working days", which never said whether holidays count. The measure is the share of cases decided
+  within 72 hours.
+- **A role change and jobs already named:** a job keeps the person in the role they were named in,
+  until the provider names its team again; the new role applies to new naming. The reservation already
+  records each person's role when named, so the code does this today.
+- **Evidence retention:** two places still said 7 days, the domain plan's "Not in the domain phase"
+  and the domain audit. Both now say 120 days, the launch value since addendum 26; the code, the spec
+  and the stories already did.
 

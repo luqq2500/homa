@@ -1482,7 +1482,7 @@ These have no business rules of their own, or they belong to usecase or infra la
 - **Notifications:** what to send and when follows from the IEs above; there's no domain object.
 - **Admin console tracking:** read models over the contexts above.
 - **Privacy data requests:** a workflow for the usecase layer, no domain rules beyond recording each request.
-- **Evidence storage and retention:** the 7-day retention is a scheduled infra job driven by `ReservationCompletedIE` and `CaseDecidedIE`.
+- **Evidence storage and retention:** the retention (120 days at launch, the **evidence retention period**) is a scheduled infra job driven by `ReservationCompletedIE` and `CaseDecidedIE`.
 - **Distance calculation:** the geoservice computes the distance; the domain only checks it against the radius.
 - **Identity verification:** the KYC provider runs KYB, KYC, re-verification and face matching; the domain only records the results it reports.
 
@@ -3590,7 +3590,7 @@ goals and measures; Part 2 states the rules below.
 | S6 | The dispute window extension is 24 hours; the customer is home for check-in and free to leave after | policy (value) |
 | S7 | The address is confirmed with a map pin; the account keeps **access notes**, copied to each request and changeable until completion | account, reservation |
 | S8 | A card edit replaces the authorisation; Homa pays processing fees; receipts and statements; tax checked before launch | None |
-| S9 | Homa aims to decide each case within 3 working days, shown to both parties | None: the queue already has each case's age |
+| S9 | Homa aims to decide each case within 3 days (72 hours, every day counts), shown to both parties. *Changed from "3 working days", which left holidays undefined* | None: the queue already has each case's age |
 | S10 | A provider can declare liability insurance, shown as an **Insured** badge until it expires | offering |
 | S11 | The apps are in Bahasa Melayu and English | None |
 | S12 | The spec is split into a product brief (Part 1) and product rules (Part 2) | None |
@@ -3784,7 +3784,10 @@ lawful-employment tick before Homa knew who the person was, allowed a minor, and
 - `TeamMember.add` needs the confirmation (`EmploymentNotConfirmedException`), so a verified person joins
   only when the provider confirms.
 - `TeamMember.changeRole(role)` changes helper and supervisor and returns whether it changed. A removed
-  member can't change (`TeamMemberRemovedException`).
+  member can't change (`TeamMemberRemovedException`). A reservation's `TeamAssignment` already records
+  each person's role when they are named, so a job already named keeps them in that role until the
+  provider names its team again; the new role applies to new naming only. Nothing in `reservation`
+  changes.
 
 **Usecases already built (`account`):** `ProviderStartAddingTeamMember` takes the role and photo only;
 `KycRecordMemberVerificationResult` records the result with the date of birth and the photo match, and

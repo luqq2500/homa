@@ -413,7 +413,7 @@ Each will need a test in the usecase or infra phase.
 - **Payments infra:** refunds going "back to the original payment method", and refund status and
   expected timing shown to the customer. `PaymentInstruction` doesn't carry the method; `Payment`
   knows it.
-- **Evidence retention** for 7 days after the reservation is resolved: a scheduled infra job. The value
+- **Evidence retention** for 120 days after the reservation is resolved: a scheduled infra job. The value
   is in `policy` and tested there.
 - **Location** used only at the moment of check-in, and the distance itself, which the geoservice works
   out. The domain only checks the distance against the radius.
