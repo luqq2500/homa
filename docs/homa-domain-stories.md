@@ -185,7 +185,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Re-verification required** | Monitoring asks for re-verification by a date; the business or person keeps working, and the verified-until date moves sooner | `requireReverification` | "warning", "soft lapse" |
 | **Lapse**, **lapsed** | A missed re-verification, reported by the KYC provider: a business is paused, a team member leaves the team, until they pass | `lapse()`, `VerificationStatus.LAPSED`, `TeamStatus.LAPSED` | "expired", "suspended", "deactivated" |
 | **Serious flag** | A confirmed red-code finding from monitoring, such as struck off or a sanctions match: the business lapses at once | `recordSeriousFlag`, `seriousFlag()` | "warning", "suspension" |
-| **Early re-check** | Homa asks the KYC provider to re-verify sooner, with a reason | the `HomaRequestEarlyRecheck` usecase | "audit" |
+| **Early re-check** | Homa asks the KYC provider to re-verify sooner, with a reason | the `HomaRequestBusinessRecheck` and `HomaRequestMemberRecheck` usecase | "audit" |
 | **Verification outcome** | What a result did: `VERIFIED`, `REJECTED`, `REVERIFIED`, `RECHECK_FAILED` or `UNCHANGED` | `VerificationOutcome` | — |
 | **Team** | Everyone verified to work for a provider | the team members of one provider | "staff", "crew", "employees" |
 | **Team member** | A verified helper or supervisor on a provider's team; has no account | `TeamMember`, `TeamStatus.MEMBER` | "staff", "worker", or "helper" when it could be a supervisor |
@@ -596,7 +596,7 @@ flowchart LR
 3. **Homa** asks each provider's *calendar* whether they are free, or free near the time.
 4. **Homa** sorts providers in Sarah's city into a *match list*: exact matches and close matches.
 5. **Sarah** opens the *provider page* for Kemas: jobs, tools it brings and doesn't, price, cancellation
-   policy in words, provider type, team (registered names, roles, photos, average stars), when a
+   policy in words, "Business · SSM registered", team (registered names, roles, photos, average stars), when a
    supervisor is included, ratings, and the Verified ID badge.
 
 **Variants**

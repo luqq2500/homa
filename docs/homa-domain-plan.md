@@ -148,7 +148,7 @@ Feature: Featured searches
 | `PolicySnapshot` | Value object | Immutable copy of one version, handed to `reservation` |
 | `CancellationTier` | Enum | `FLEXIBLE`, `STANDARD`, `FIRM` with their percentages |
 
-Values held: service fee 15%; duration 1–6 h; helpers per search 1–10; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%.
+Values held (25): service fee 15%; duration 1–6 h; minimum notice 2 h; booking horizon 30 days; team reminder 6 h before the booked start; earliest check-in 15 min before the booked start; check-in period 15 min; check-in radius 300 m; customer no-show wait 15 min; customer no-show fee travel + 30%; no-show report window 1 h; request expiry 24 h or booked start; completion reminder 30 min; completion deadline 24 h; evidence retention 7 days; dispute window extension 1 h; fee window 24 h; tiers 0% / 10% / 20%; provider late cancellation fine 20%; provider no-show fine 30%; fine deduction cap 50%; rating window 14 days; minimum ratings to show 3. Homa sets no limit on helpers; each provider's maximum is the helpers on its team. The verification rules (documents, re-verification, face check attempts) are the KYC provider's, not Homa-set values.
 
 ```java
 HomaPolicy.initial(Instant now) : HomaPolicy    // the values above, version 1, in force from now
@@ -206,7 +206,7 @@ ProviderAccount.recordKybResult(KybResult result, Instant now) : VerificationOut
 ProviderAccount.lapse()                          // the KYC provider reports a missed re-verification
 ProviderAccount.requireReverification(String reason, Instant deadline)   // monitoring: verified-until moves sooner
 ProviderAccount.recordSeriousFlag(String reason)                         // monitoring: lapses at once
-ProviderAccount.recordPayoutAccountReady()
+ProviderAccount.recordPayoutAccountReady() : boolean   // whether it changed: a repeated report changes nothing
 ProviderAccount.isReadyForGoLive() : boolean    // verified, not lapsed, payout ready
 
 MemberVerification.start(String providerId, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now)
@@ -236,6 +236,8 @@ Feature: Customer registration
     When the customer enters the right code at 10:06
     Then it is rejected with VerificationCodeExpiredException
 
+> **Superseded:** verification is now the business's KYB by the KYC provider, not eKYC ("business providers only, verification by a KYC provider"). A business is ready when its KYB has passed, it has not lapsed, and its payout account is ready. The domain audit maps these scenarios to the tests of today's rule.
+
 Feature: Provider readiness
   Scenario Outline: A provider is ready for go-live only when verified and payout-ready
     Given a provider whose eKYC is <ekyc> and payout account ready is <payout>
@@ -246,6 +248,8 @@ Feature: Provider readiness
       | VERIFIED | false  | false |
       | PENDING  | true   | false |
       | REJECTED | true   | false |
+
+> **Superseded:** there are no invites. The provider fills in one add form (role, photo, lawful-employment confirmation) and the person verifies on the spot with the KYC provider; they are on the team only once verified ("adding a team member" and "verification on the spot"). The domain audit maps these scenarios to the tests of today's rule.
 
 Feature: Team membership
   Scenario: An invited helper is not yet a team member
@@ -347,6 +351,7 @@ Feature: Offering setup
     When the provider sets helpers from 1 to 4
     Then it is rejected with HelpersExceedTeamSizeException
 
+  # Superseded: Homa sets no upper limit on helpers; the maximum is the helpers on the team.
   Scenario: Max helpers cannot exceed 10
     Given the provider has 12 team members
     When the provider sets helpers from 1 to 11
@@ -374,6 +379,7 @@ Feature: Going live
     Then it is rejected with ListingNotReadyException
     And the missing requirements are "profile picture" and "cities"
 
+  # Superseded: there are no invites; someone still waiting for verification does not block go-live.
   Scenario: A pending invite does not block go-live
     Given a complete listing and a verified provider
     And a team of 2 members with minimum helpers 1
@@ -488,6 +494,8 @@ MatchClassifier.classify(SearchCriteria criteria, ProviderCandidate candidate) :
 ```
 
 ```gherkin
+> **Superseded:** in part: Homa sets no upper limit on helpers, so a search needs at least one helper and has no maximum. The domain audit maps these scenarios to the tests of today's rule.
+
 Feature: Search criteria
   Scenario Outline: Search values must be within Homa's ranges
     When the customer searches for <hours> hours with <helpers> helpers
@@ -812,6 +820,8 @@ Feature: Provider cancellation and fines
     When the provider cancels at Saturday 09:00
     Then the provider is fined RM42.00
 
+> **Superseded:** there is no lead. The provider names the helpers, and a supervisor when the booking reaches the supervisor rule, all from the team ("provider types, team roles, documents and face check-in"). The domain audit maps these scenarios to the tests of today's rule.
+
 Feature: Naming who is coming
   Background:
     Given a RESERVED reservation for 2 helpers starting Saturday 10:00
@@ -837,6 +847,8 @@ Feature: Naming who is coming
     Given the team is named
     When the provider changes the team at Saturday 10:00
     Then it is rejected with TeamLockedException
+
+> **Superseded:** in part: check-in is done on the provider app, not by a lead, and after the location check every named person takes a face check with the KYC provider ("face check-in"). The domain audit maps these scenarios to the tests of today's rule.
 
 Feature: Check-in
   Background:
@@ -3112,6 +3124,10 @@ Found while reviewing the `catalogue` and `policy` usecases, and confirmed by th
 - **Changes that change nothing say so.** `JobList.rename`, `JobList.regroup`, `ToolList.rename` and
   `Showcase.rename` return whether anything changed, so the usecase saves, tells and records nothing for
   a rename to the same name.
+
+- **A repeated payout account report changes nothing.** Found while building the `account` usecases:
+  `ProviderAccount.recordPayoutAccountReady()` returns whether it changed anything, so a repeated report
+  from the payment provider is told to the other contexts only once.
 
 ```gherkin
 Feature: The order of the homepage showcase

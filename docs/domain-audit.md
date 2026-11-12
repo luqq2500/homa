@@ -386,7 +386,7 @@ Each will need a test in the usecase or infra phase.
 | 3 | Editing a request does not reset its expiry | Confirmed | `reservation/domain/Reservation.java` `requestExpiresAt()` (lines 116–117, from `requestedAt`); `edit` leaves `requestedAt` alone | `ReservationEditingTest.editingDoesNotResetTheExpiry`, `movingTheStartEarlierCanBringTheExpiryForward` |
 | 4 | "Near the chosen time" for a close match means free for the same duration within 2 hours either side | Confirmed | `discovery/domain/MatchClassifier.java` `NEAR_THE_CHOSEN_TIME` (line 24), passed by the usecase to `availability/domain/ProviderCalendar.java` `nearestAvailableStart` (line 94) | `MatchClassifierMatchingTest`, `ProviderCalendarNearestStartTest` |
 | 5 | SMS codes are 6 digits, valid for 5 minutes, with a new code needed after 5 wrong attempts | Confirmed | `account/domain/PhoneVerification.java` `CODE_VALIDITY`, `MAX_WRONG_ATTEMPTS` and `SIX_DIGITS` (lines 19–22) | `PhoneVerificationConfirmationTest` |
-| 6 | The lead is one of the named helpers; a provider who is their own helper can be the lead | Confirmed | `reservation/domain/TeamAssignment.java` constructor (line 16) | `ReservationTeamNamingTest.theLeadMustBeOneOfTheNamedHelpers`, `aProviderWhoIsTheirOwnHelperCanLeadTheTeam` |
+| 6 | The lead is one of the named helpers; a provider who is their own helper can be the lead | Superseded: there is no lead. The provider names the helpers, and a supervisor when one is due, all from the team | `reservation/domain/TeamAssignment.java` | `ReservationTeamNamingTest` |
 | 7 | Fines come off payouts for completed jobs only, not cancellation-fee or no-show-fee payouts | Confirmed | `payment/domain/PayoutKind.java`; `payment/domain/FineDeductionPolicy.java` `apply` (line 24) | `FineDeductionPolicyTest.onlyPayoutsForCompletedJobsHaveFinesDeducted` |
 | 8 | A request keeps the offering snapshot it was made with | Confirmed | `reservation/domain/Reservation.java` `offering` field (line 54, final) and `edit` checking against it (line 127); `offering/domain/ProviderListing.java` `snapshot()` | `ProviderListingGoLiveTest.aLaterChangeDoesNotTouchASnapshotAlreadyTaken` |
 
@@ -402,7 +402,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 146 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
+| account | 5.0 | 100% | 100% | 195 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 212 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 66 | `AvailabilityArchitectureTest` |
 | reservation | 5.0 | 100% | 100% | 397 | `ReservationArchitectureTest` |
@@ -416,7 +416,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,508 of 1,508 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,512 of 1,512 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.

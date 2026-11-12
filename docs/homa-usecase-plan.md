@@ -376,7 +376,7 @@ sign-ups that never book:
 | `HomaWaiveFine` | Waive what is left of a fine, once, with a **reason category** (customer-caused, emergency, Homa fault, other) and free text. The usecase keeps the category in the audit log and passes the text to the domain | payment | `Fine.waive` | `FineWaivedIE` |
 | `HomaHideRating` | Hide a rating that breaks the rules, with a reason; the averages update | feedback | `Rating.hide`, `RatingSummary.withdraw` | `RatingHiddenIE` |
 | `HomaRemoveTeamMember` | Remove a team member who may not work | account | `TeamMember.remove` | `TeamMemberRemovedIE` |
-| `HomaRequestEarlyRecheck` | Ask the KYC provider for an early re-check, with a reason | account (KYC port) | (none until the KYC provider reports) | — |
+| `HomaRequestBusinessRecheck`, `HomaRequestMemberRecheck` | Ask the KYC provider for an early re-check of a business or a team member, with a reason | account (KYC port) | (none until the KYC provider reports) | — |
 | `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob`, the same for tools, and `HomaFeatureSearch` | The job list, tool list and homepage showcase | catalogue | `JobList`, `ToolList`, `Showcase` | `JobAddedIE`, `JobRetiredIE`, … |
 | `HomaChangePolicyValue` | Change one Homa-set value; a new version for new reservations only | policy | `HomaPolicy.change` | `HomaPolicyChangedIE` |
 | `HomaRecordDataRequest`, `HomaCloseDataRequest` | Record and track a PDPA request: see, correct, copy or delete | privacy (usecase only) | (none) | — |

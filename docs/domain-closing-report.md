@@ -583,3 +583,16 @@ Changed after the phase closed, and confirmed by the product owner.
 - **Spec, plans, stories and glossary** use the new names.
 - **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
 - **Gates:** whole build 1,434 tests, 1,712 mutants, all killed, worst CRAP 5.0.
+
+## 24. Addendum: a repeated payout account report
+
+Changed while building the `account` usecases.
+
+- **`account`:** `ProviderAccount.recordPayoutAccountReady()` returns whether it changed anything, so a
+  repeated report from the payment provider is told to the other contexts only once.
+- **Docs:** the domain plan's original features that later changes replaced (eKYC, invites, the lead,
+  the 10-helper limit) are marked superseded, and point to the change that replaced them.
+- **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
+- **Gates:** whole build 1,543 tests (including the `catalogue`, `policy` and `account` usecases),
+  1,849 mutants, all killed, worst CRAP 5.0.
+
