@@ -42,8 +42,8 @@ the gate script fails if one is missing.
 ## Running the gates
 
 ```bash
-mvn verify                          # unit tests, dependency rule (ArchUnit), mutation >= 90% (PIT)
-python3 tools/quality_gates.py      # CRAP < 6 per method; mutation >= 90% for kernel and each domain (usecase >= 80% later); ratchet
+mvn verify                          # unit tests, dependency rule (ArchUnit), mutation >= 80% overall (PIT)
+python3 tools/quality_gates.py      # CRAP < 6 per method; mutation >= 90% for kernel and each domain, >= 80% for each usecase; ratchet
 python3 tools/quality_gates.py --update   # after a pass: raise the ratchet
 ```
 
@@ -83,11 +83,12 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-Not started: the repository holds the domain modules only for now. The plan,
-`docs/homa-usecase-plan.md`, is ready for review. It covers the conventions, each context's usecases
+In progress. `catalogue` is built: 14 usecases, 75 tests, every mutant killed. The other contexts
+follow in the plan's build order. The plan, `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases
 (including `feedback`, `privacy` and `tracking`), how one context gets another's data, the required
-rules R1 to R14, the admin console (with the founders' growth dashboard and rules A1 to A6), and the
-questions U1 to U12, all decided.
+rules R1 to R14, the admin console (with the founders' growth dashboard and rules A1 to A6), the
+progress per context, and the questions: U1 to U12 are decided, and U13 (a shelf's jobs aren't checked
+against the job list) is open.
 
 ### Decisions taken while building
 

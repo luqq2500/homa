@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** ready for review. Nothing in the usecase layer is built yet. The domain phase is finished, and every question, U1 to U12, is decided (see the end).
+**Status:** in progress. `catalogue` is built and passes its gates (see Progress); the other contexts follow in the build order. Questions U1 to U12 are decided; U13 is open (see the end).
 
 ## Conventions
 
@@ -36,6 +36,13 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
 - **Admin actions:** every usecase whose actor is `Homa` and that changes something takes the founder's
   id (`decidedBy`) in its request and records it, with the action, the reason and the time, through an
   `AdminAuditLog` out port (rule A1). The domain keeps the reason; the audit log keeps who.
+  - Each context declares its own `AdminAuditLog` port and `AdminAction` record in `port/out`, because
+    a context uses nothing of another. One adapter in `app/` can serve them all.
+  - The founder's id is required before anything is done (`DecidedByRequiredException`).
+  - A reason is required for a decision about a person, money or providers' listings
+    (`AdminReasonRequiredException`). Plain curation, such as adding or renaming a job, records who,
+    what and when, with no reason.
+- **Queries with no input** have a response DTO only; an empty request record would say nothing.
 - **Contexts with no domain layer:** `tracking` (read-only views) and `privacy` (recording data
   requests) have no business rules, so they have `usecase` and `infra` only. They are the only
   exceptions to the three layers of the module discipline.
@@ -80,8 +87,9 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 - `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob` → `JobAddedIE`, `JobRetiredIE`
 - `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRetiredIE`
 - `HomaCreateShelf`
-- `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2)
-- Queries: `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
+- `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2). Publishing again sends the same cities again.
+- Retiring a job or tool needs a reason, because it changes providers' listings (R11). Renaming publishes nothing: the code stays.
+- Queries: `HomaViewJobList` and `HomaViewToolList` (everything, retired included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
 
 **policy**
 - `HomaLaunchPolicy` (version 1)
@@ -393,7 +401,29 @@ in and check the views; there are no domain rules to test.
 
 Each context passes its gates before the next starts.
 
+## Progress
+
+| Context | Usecases | Tests | Mutants killed | Worst CRAP | Status |
+|---|---|---|---|---|---|
+| catalogue | 14: add, rename and retire a job or a tool; create a shelf; publish the service area; six views | 75 | 60 of 60 | 3.0 | Done |
+| policy and the rest | — | — | — | — | Not started |
+
+Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
+- the usecase layer depends only on its own domain, `kernel`, `ie` and Java;
+- in ports are interfaces, DTOs are records, and neither carries a domain object or an event;
+- every usecase implements its own in port, and usecase exceptions live in `usecase/exception`.
+
 ## Open questions
+
+### Open
+
+13. **U13. A shelf's jobs aren't checked against the job list.** Found while building `catalogue`.
+    `Shelf.create` accepts any job code, so a shelf can be made for a job that doesn't exist, and
+    retiring a job leaves it in the shelves' preset searches, where it matches no provider.
+    *Recommendation:* `Shelf.create` takes the jobs providers can offer and refuses any other, as
+    `ProviderListing.offerJobs` does; and when a job is retired, `HomaRetireJob` takes it off each
+    shelf's preset search, and a shelf left with no job is no longer shown. This needs a small domain
+    change in `catalogue`. It doesn't block the next contexts.
 
 ### Decided
 

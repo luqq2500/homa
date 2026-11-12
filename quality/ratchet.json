@@ -11,6 +11,10 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "catalogue.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "conversation.domain": {
     "score": 100.0,
     "strength": 100.0
