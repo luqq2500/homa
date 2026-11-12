@@ -2,11 +2,13 @@ package resolution.domain;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import kernel.Money;
 import resolution.domain.exception.CaseAlreadyDecidedException;
+import resolution.domain.exception.CaseNotOpenException;
 import resolution.domain.exception.DecisionReasonRequiredException;
 import resolution.domain.exception.InvalidDecisionAmountException;
 import resolution.domain.exception.ResolutionDetailRequiredException;
@@ -16,6 +18,10 @@ import resolution.domain.exception.ResolutionDetailRequiredException;
  * evidence and the amount at stake. The founders decide it once, with a short reason.
  */
 public final class Case {
+
+    /** The founders' queue order: cases about safety, damage or loss first, then the oldest first. */
+    public static final Comparator<Case> QUEUE_ORDER =
+            Comparator.comparing((Case queued) -> !queued.isSafety()).thenComparing(Case::openedAt);
 
     private final String id;
     private final String reservationId;
@@ -27,6 +33,8 @@ public final class Case {
     private Decision decision;
     private String reason;
     private Instant decidedAt;
+    private boolean safety;
+    private Instant closedAt;
 
     private Case(String reservationId, CaseSource source, List<EvidenceRef> evidence, Money atStake, Instant openedAt) {
         this.id = new CaseId().generate();
@@ -68,6 +76,28 @@ public final class Case {
         reason = why.strip();
         decidedAt = Objects.requireNonNull(now);
         status = CaseStatus.DECIDED;
+    }
+
+    /** A safety, damage or loss report opened the case or joined it, so it goes to the top of the queue. */
+    public void markSafety() {
+        requireOpen();
+        safety = true;
+    }
+
+    public boolean isSafety() {
+        return safety;
+    }
+
+    /** A flag took the reservation over: the case closes with no decision. */
+    public void closeForProviderFlag(Instant now) {
+        requireOpen();
+        closedAt = Objects.requireNonNull(now);
+        status = CaseStatus.CLOSED;
+    }
+
+    /** When a flag closed the case; empty unless it is closed. */
+    public Optional<Instant> closedAt() {
+        return Optional.ofNullable(closedAt);
     }
 
     public boolean isOpen() {
@@ -127,7 +157,10 @@ public final class Case {
     }
 
     private void requireOpen() {
-        if (!isOpen()) {
+        if (status == CaseStatus.CLOSED) {
+            throw new CaseNotOpenException(id);
+        }
+        if (status == CaseStatus.DECIDED) {
             throw new CaseAlreadyDecidedException(id);
         }
     }
