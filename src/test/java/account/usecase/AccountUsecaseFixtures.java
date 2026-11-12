@@ -1,25 +1,34 @@
 package account.usecase;
 
 import account.domain.CustomerAccount;
+import account.domain.MemberVerification;
+import account.domain.MemberVerificationStatus;
 import account.domain.PhoneVerification;
 import account.domain.ProviderAccount;
+import account.domain.TeamMember;
 import account.usecase.exception.ChangedMeanwhileException;
 import account.usecase.port.out.AccountIEPublisher;
+import account.usecase.port.out.AdminAction;
+import account.usecase.port.out.AdminAuditLog;
 import account.usecase.port.out.CustomerAccountRepository;
 import account.usecase.port.out.Geocoder;
 import account.usecase.port.out.IdentityVerificationService;
 import account.usecase.port.out.Location;
+import account.usecase.port.out.MemberVerificationRepository;
 import account.usecase.port.out.PayoutAccountService;
 import account.usecase.port.out.PhoneVerificationRepository;
 import account.usecase.port.out.ProviderAccountRepository;
 import account.usecase.port.out.SmsSender;
+import account.usecase.port.out.TeamMemberRepository;
 import account.usecase.port.out.VerificationCodes;
 import ie.port.AccountIE;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -123,6 +132,63 @@ final class AccountUsecaseFixtures {
         }
     }
 
+    static final class InMemoryMemberVerifications extends Refusable implements MemberVerificationRepository {
+        final Map<String, MemberVerification> saved = new LinkedHashMap<>();
+        int saves;
+
+        @Override
+        public Optional<MemberVerification> find(String verificationId) {
+            return Optional.ofNullable(saved.get(verificationId));
+        }
+
+        @Override
+        public List<MemberVerification> findWaitingFor(String providerId) {
+            return saved.values().stream()
+                    .filter(verification -> verification.providerId().equals(providerId))
+                    .filter(verification -> verification.status() == MemberVerificationStatus.WAITING)
+                    .sorted(Comparator.comparing(MemberVerification::startedAt))
+                    .toList();
+        }
+
+        @Override
+        public void save(MemberVerification verification) {
+            refuseIfChangedMeanwhile("The team member verification");
+            saved.put(verification.id(), verification);
+            saves++;
+        }
+    }
+
+    static final class InMemoryTeamMembers extends Refusable implements TeamMemberRepository {
+        final Map<String, TeamMember> saved = new LinkedHashMap<>();
+        int saves;
+
+        @Override
+        public Optional<TeamMember> find(String memberId) {
+            return Optional.ofNullable(saved.get(memberId));
+        }
+
+        @Override
+        public List<TeamMember> findFor(String providerId) {
+            return saved.values().stream().filter(member -> member.providerId().equals(providerId)).toList();
+        }
+
+        @Override
+        public void save(TeamMember member) {
+            refuseIfChangedMeanwhile("The team member");
+            saved.put(member.id(), member);
+            saves++;
+        }
+    }
+
+    static final class AuditLog implements AdminAuditLog {
+        final List<AdminAction> all = new ArrayList<>();
+
+        @Override
+        public void record(AdminAction action) {
+            all.add(action);
+        }
+    }
+
     static final class PublishedEvents implements AccountIEPublisher {
         final List<AccountIE> all = new ArrayList<>();
 
@@ -170,6 +236,28 @@ final class AccountUsecaseFixtures {
         public String startKyb(String providerId) {
             opened.add("kyb " + providerId);
             return "https://kyc.example/kyb/" + providerId;
+        }
+
+        @Override
+        public String startMemberCheck(String verificationId) {
+            opened.add("check " + verificationId);
+            return "https://kyc.example/check/" + verificationId;
+        }
+
+        @Override
+        public String startMemberReverification(String memberId) {
+            opened.add("reverify " + memberId);
+            return "https://kyc.example/reverify/" + memberId;
+        }
+
+        @Override
+        public void requestBusinessRecheck(String providerId, String reason) {
+            opened.add("recheck business " + providerId + ": " + reason);
+        }
+
+        @Override
+        public void requestMemberRecheck(String memberId, String reason) {
+            opened.add("recheck member " + memberId + ": " + reason);
         }
     }
 

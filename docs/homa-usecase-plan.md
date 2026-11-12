@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** in progress. `catalogue` and `policy` are built and pass their gates (see Progress); the other contexts follow in the build order. Every question, U1 to U13, is decided (see the end).
+**Status:** in progress. `catalogue`, `policy` and `account` are built and pass their gates (see Progress); the other contexts follow in the build order. Questions U1 to U13 are decided; U14 is open (see the end).
 
 ## Conventions
 
@@ -130,10 +130,15 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 - Phone: `RegistrantStartPhoneVerification` (a code from the `VerificationCodes` out port, sent by the `SmsSender` out port only after the verification is saved) and `RegistrantConfirmPhone`. A *registrant* is anyone registering, as a customer or a business.
 - Customer: `CustomerRegisterAccount` → `CustomerRegisteredIE` (the `Geocoder` out port finds the city and coordinates), `CustomerChangeAddress`, `CustomerViewAccount`. The phone verification is used up on registering, so it registers one account; a phone number has at most one customer account and one provider account.
 - Provider: `ProviderRegisterAccount` (no event until KYB passes); `ProviderStartKyb` (opens the KYC provider's KYB pages for the business, with the owner's or director's KYC; the same pages re-verify it); `ProviderViewAccount` (verification, SSM registration, verified-until date, payout account, ready for go-live)
-- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartReverification` (opens the KYC provider's re-verification for the business or a team member, with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` → `TeamMemberRemovedIE`
-- The KYC provider reporting back (webhooks, R9): `KycRecordBusinessResult`, `KycRecordMemberVerificationResult` (adds the member on `VERIFIED`, R7), `KycRecordTeamMemberResult` and `KycRecordLapse` publish one event per `VerificationOutcome`, and nothing for `UNCHANGED` (see required rule R1)
-- Ongoing monitoring (webhooks): `KycRecordReverificationRequired` → `ReverificationRequiredIE`; `KycRecordSeriousFlag` → `ProviderFlaggedIE` for a business, or `TeamMemberLapsedIE` for a team member
-- Early re-check: `HomaRequestEarlyRecheck` asks the KYC provider for one, with a reason; nothing changes in Homa until the KYC provider reports a pass or a lapse
+- Team: `ProviderStartAddingTeamMember` (the add form, with the lawful-employment confirmation; saves the verification, then opens the KYC provider's on-the-spot check on the provider's phone) → `MemberVerificationStartedIE`; `ProviderStartMemberReverification` (with the person present); `ProviderRemoveTeamMember` and `HomaRemoveTeamMember` (with a reason, recorded) → `TeamMemberRemovedIE`; `ProviderViewTeam` (members with their next due date, and anyone waiting for verification; removed members are not shown). A business acts only on its own team (`NotYourTeamMemberException`), and a removed member is treated as gone.
+- The KYC provider reporting back (webhooks, R9), one usecase per report, each publishing one event per `VerificationOutcome` and nothing for `UNCHANGED` (R1):
+  - `KycRecordBusinessResult`: `ProviderVerifiedIE`, `ProviderVerificationRejectedIE`, `ProviderReverifiedIE` or `RecheckFailedIE`.
+  - `KycRecordMemberVerificationResult`: a pass adds the member straight away (R7) → `TeamMemberAddedIE`; a rejection → `MemberVerificationRejectedIE`.
+  - `KycRecordTeamMemberResult`: `TeamMemberReverifiedIE` or `RecheckFailedIE`.
+  - `KycRecordBusinessLapse` → `ProviderVerificationLapsedIE`; `KycRecordMemberLapse` → `TeamMemberLapsedIE`.
+- Ongoing monitoring (webhooks): `KycRecordBusinessReverificationRequired` and `KycRecordMemberReverificationRequired` → `ReverificationRequiredIE`; `KycRecordBusinessFlag` → `ProviderFlaggedIE`; `KycRecordMemberFlag` → `TeamMemberLapsedIE`.
+- Early re-check: `HomaRequestBusinessRecheck` and `HomaRequestMemberRecheck` ask the KYC provider, with a reason, recorded; nothing changes in Homa until the KYC provider reports a pass or a lapse.
+- Still to build with the scheduler: the R9 safety net that asks the KYC provider for checks waiting too long.
 - Payout account: `ProviderAddPayoutAccount` (opens Stripe's onboarding for the business bank account); Stripe reporting back: `StripeRecordPayoutAccountReady` → `PayoutAccountReadyIE`, once: a repeated report changes nothing
 
 **offering**
@@ -443,7 +448,7 @@ Each context passes its gates before the next starts.
 | catalogue | 19: add, rename and retire a job or a tool; regroup a job; feature, rename, move and remove a search in the showcase; publish the service area; seven views | 111 | 92 of 92 | 3.0 | Done |
 | policy | 3: launch the policy, change one value, view the values in force | 112 | 112 of 112 | 3.0 | Done |
 | account, part 1 | 10: start and confirm a phone verification; register a customer, change their address, view their account; register a business, start KYB, add a payout account, record it ready, view the account | 44 | 36 of 36 | 2.0 | Done |
-| account, part 2 | The team and the KYC provider's results | — | — | — | In progress |
+| account, part 2 | 16: add a team member, re-verify one, remove one (business or Homa), view the team; record each KYC result, lapse, required re-verification and flag; Homa's early re-checks | 64 | 97 of 97 | 5.0 | Done |
 | offering and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
@@ -452,6 +457,14 @@ Each built context also has a `<Context>UsecaseArchitectureTest`, which checks t
 - every usecase implements its own in port, and usecase exceptions live in `usecase/exception`.
 
 ## Open questions
+
+### Open
+
+14. **U14. Can a business add team members before its KYB passes?** Found while building `account`. The
+    spec's onboarding lists KYB before setting up the team, but no rule says so, and the code allows it
+    today: a waiting business can start adding helpers. *Recommendation:* refuse it until the business is
+    verified, so nobody's identity is checked for a business that may never pass. This needs a small
+    domain rule in `account` (`MemberVerification.start` takes the business's verification status).
 
 ### Decided
 
