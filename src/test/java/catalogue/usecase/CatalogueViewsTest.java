@@ -5,17 +5,16 @@ import static catalogue.usecase.CatalogueUsecaseFixtures.FOUNDER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
-import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryHomepages;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
-import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShowcases;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryToolLists;
 import catalogue.usecase.CatalogueUsecaseFixtures.PublishedEvents;
 import catalogue.usecase.dto.AddJobRequest;
 import catalogue.usecase.dto.AddToolRequest;
-import catalogue.usecase.dto.CreateShelfRequest;
-import catalogue.usecase.dto.CustomerViewShelvesResponse;
+import catalogue.usecase.dto.FeatureSearchRequest;
+import catalogue.usecase.dto.CustomerViewShowcaseResponse;
 import catalogue.usecase.dto.HomaViewJobListResponse;
-import catalogue.usecase.dto.HomaViewShelvesResponse;
+import catalogue.usecase.dto.HomaViewShowcaseResponse;
 import catalogue.usecase.dto.HomaViewToolListResponse;
 import catalogue.usecase.dto.ProviderViewJobListResponse;
 import catalogue.usecase.dto.ProviderViewToolListResponse;
@@ -31,8 +30,7 @@ class CatalogueViewsTest {
 
     private final InMemoryJobLists jobLists = new InMemoryJobLists();
     private final InMemoryToolLists toolLists = new InMemoryToolLists();
-    private final InMemoryShelves shelves = new InMemoryShelves();
-    private final InMemoryHomepages homepages = new InMemoryHomepages();
+    private final InMemoryShowcases showcases = new InMemoryShowcases();
     private final PublishedEvents events = new PublishedEvents();
     private final AuditLog auditLog = new AuditLog();
 
@@ -41,7 +39,7 @@ class CatalogueViewsTest {
     }
 
     private void jobIsRetired(String code) {
-        new HomaRetireJob(jobLists, shelves, events, auditLog, CLOCK).retire(new RetireJobRequest(FOUNDER, code, "No longer offered"));
+        new HomaRetireJob(jobLists, showcases, events, auditLog, CLOCK).retire(new RetireJobRequest(FOUNDER, code, "No longer offered"));
     }
 
     private void toolIsOnTheList(String code, String name) {
@@ -52,10 +50,10 @@ class CatalogueViewsTest {
         new HomaRetireTool(toolLists, events, auditLog, CLOCK).retire(new RetireToolRequest(FOUNDER, code, "No longer brought"));
     }
 
-    private String shelfIsCreated(String title, int order, String... jobCodes) {
-        return new HomaCreateShelf(shelves, homepages, jobLists, auditLog, CLOCK)
-                .create(new CreateShelfRequest(FOUNDER, title, Set.of(jobCodes), 2, 1, order))
-                .shelfId();
+    private String searchIsFeatured(String title, int position, String... jobCodes) {
+        return new HomaFeatureSearch(showcases, jobLists, auditLog, CLOCK)
+                .feature(new FeatureSearchRequest(FOUNDER, title, Set.of(jobCodes), 2, 1, position))
+                .featuredSearchId();
     }
 
     @Nested
@@ -169,78 +167,78 @@ class CatalogueViewsTest {
     }
 
     @Nested
-    class TheShelves {
+    class TheShowcase {
 
-        private final CustomerViewShelves customersView = new CustomerViewShelves(shelves, homepages);
-        private final HomaViewShelves foundersView = new HomaViewShelves(shelves, homepages);
+        private final CustomerViewShowcase customersView = new CustomerViewShowcase(showcases);
+        private final HomaViewShowcase foundersView = new HomaViewShowcase(showcases);
 
-        TheShelves() {
+        TheShowcase() {
             jobIsOnTheList("KITCHEN", "Kitchen care", "Kitchen");
             jobIsOnTheList("LAUNDRY_FOLD", "Laundry folding", "Laundry");
         }
 
         @Test
-        void aCustomerDoesNotSeeAShelfLeftWithNoJob() {
-            shelfIsCreated("Kitchen rescue", 1, "KITCHEN");
-            String laundry = shelfIsCreated("Laundry day", 2, "LAUNDRY_FOLD");
+        void beforeAnythingIsFeaturedTheHomepageHasNone() {
+            assertThat(customersView.view().featuredSearches()).isEmpty();
+            assertThat(foundersView.view().featuredSearches()).isEmpty();
+        }
+
+        @Test
+        void aCustomerSeesTheFeaturedSearchesInTheOrderHomaSet() {
+            String third = searchIsFeatured("Laundry day", 1, "LAUNDRY_FOLD");
+            String first = searchIsFeatured("Weekend quick refresh", 1, "KITCHEN", "LAUNDRY_FOLD");
+            String second = searchIsFeatured("Kitchen rescue", 2, "KITCHEN");
+
+            assertThat(customersView.view().featuredSearches()).extracting(CustomerViewShowcaseResponse.FeaturedSearch::featuredSearchId)
+                    .containsExactly(first, second, third);
+        }
+
+        @Test
+        void aCustomerSeesEachTitleAndTheSearchItFillsIn() {
+            String id = searchIsFeatured("Weekend quick refresh", 1, "KITCHEN", "LAUNDRY_FOLD");
+
+            CustomerViewShowcaseResponse.FeaturedSearch search = customersView.view().featuredSearches().get(0);
+
+            assertThat(search).isEqualTo(new CustomerViewShowcaseResponse.FeaturedSearch(
+                    id, "Weekend quick refresh", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1));
+            assertThat(search.featuredSearchId()).isEqualTo(id);
+            assertThat(search.title()).isEqualTo("Weekend quick refresh");
+            assertThat(search.jobCodes()).containsExactlyInAnyOrder("KITCHEN", "LAUNDRY_FOLD");
+            assertThat(search.hours()).isEqualTo(2);
+            assertThat(search.helpers()).isEqualTo(1);
+        }
+
+        @Test
+        void aCustomerDoesNotSeeASearchLeftWithNoJob() {
+            searchIsFeatured("Kitchen rescue", 1, "KITCHEN");
+            String laundry = searchIsFeatured("Laundry day", 2, "LAUNDRY_FOLD");
 
             jobIsRetired("KITCHEN");
 
-            assertThat(customersView.view().shelves()).extracting(CustomerViewShelvesResponse.Shelf::shelfId)
+            assertThat(customersView.view().featuredSearches()).extracting(CustomerViewShowcaseResponse.FeaturedSearch::featuredSearchId)
                     .containsExactly(laundry);
         }
 
         @Test
-        void theFoundersSeeEveryShelfInOrderAndWhichAreNoLongerShown() {
-            String laundry = shelfIsCreated("Laundry day", 1, "LAUNDRY_FOLD");
-            String kitchen = shelfIsCreated("Kitchen rescue", 1, "KITCHEN");
+        void theFoundersSeeEveryFeaturedSearchInItsPlaceAndWhichAreNoLongerShown() {
+            String laundry = searchIsFeatured("Laundry day", 1, "LAUNDRY_FOLD");
+            String kitchen = searchIsFeatured("Kitchen rescue", 1, "KITCHEN");
             jobIsRetired("KITCHEN");
 
-            List<HomaViewShelvesResponse.Shelf> all = foundersView.view().shelves();
+            List<HomaViewShowcaseResponse.FeaturedSearch> all = foundersView.view().featuredSearches();
 
             assertThat(all).containsExactly(
-                    new HomaViewShelvesResponse.Shelf(kitchen, "Kitchen rescue", 1, Set.of("KITCHEN"), 2, 1, false),
-                    new HomaViewShelvesResponse.Shelf(laundry, "Laundry day", 2, Set.of("LAUNDRY_FOLD"), 2, 1, true));
-            HomaViewShelvesResponse.Shelf shown = all.get(1);
-            assertThat(shown.shelfId()).isEqualTo(laundry);
+                    new HomaViewShowcaseResponse.FeaturedSearch(kitchen, "Kitchen rescue", 1, Set.of("KITCHEN"), 2, 1, false),
+                    new HomaViewShowcaseResponse.FeaturedSearch(laundry, "Laundry day", 2, Set.of("LAUNDRY_FOLD"), 2, 1, true));
+            HomaViewShowcaseResponse.FeaturedSearch shown = all.get(1);
+            assertThat(shown.featuredSearchId()).isEqualTo(laundry);
             assertThat(shown.title()).isEqualTo("Laundry day");
-            assertThat(shown.order()).isEqualTo(2);
+            assertThat(shown.position()).isEqualTo(2);
             assertThat(shown.jobCodes()).containsExactly("LAUNDRY_FOLD");
             assertThat(shown.hours()).isEqualTo(2);
             assertThat(shown.helpers()).isEqualTo(1);
             assertThat(shown.shown()).isTrue();
             assertThat(all.get(0).shown()).isFalse();
-        }
-
-        @Test
-        void beforeAnyShelfIsCreatedTheHomepageHasNone() {
-            assertThat(customersView.view().shelves()).isEmpty();
-            assertThat(foundersView.view().shelves()).isEmpty();
-        }
-
-        @Test
-        void aCustomerSeesTheShelvesInTheOrderHomaSet() {
-            String third = shelfIsCreated("Laundry day", 1, "LAUNDRY_FOLD");
-            String first = shelfIsCreated("Weekend quick refresh", 1, "KITCHEN", "LAUNDRY_FOLD");
-            String second = shelfIsCreated("Kitchen rescue", 2, "KITCHEN");
-
-            assertThat(customersView.view().shelves()).extracting(CustomerViewShelvesResponse.Shelf::shelfId)
-                    .containsExactly(first, second, third);
-        }
-
-        @Test
-        void aCustomerSeesEachShelfsTitleAndTheSearchItRuns() {
-            String shelfId = shelfIsCreated("Weekend quick refresh", 1, "KITCHEN", "LAUNDRY_FOLD");
-
-            CustomerViewShelvesResponse.Shelf shelf = customersView.view().shelves().get(0);
-
-            assertThat(shelf).isEqualTo(new CustomerViewShelvesResponse.Shelf(
-                    shelfId, "Weekend quick refresh", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1));
-            assertThat(shelf.shelfId()).isEqualTo(shelfId);
-            assertThat(shelf.title()).isEqualTo("Weekend quick refresh");
-            assertThat(shelf.jobCodes()).containsExactlyInAnyOrder("KITCHEN", "LAUNDRY_FOLD");
-            assertThat(shelf.hours()).isEqualTo(2);
-            assertThat(shelf.helpers()).isEqualTo(1);
         }
     }
 }

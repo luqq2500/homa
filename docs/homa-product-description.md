@@ -59,7 +59,7 @@ start times are in 15-minute steps. A start time must be at least the **minimum 
 
 ### Jobs and tools
 
-Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can rename a job or tool, and move a job to another group; providers keep it, and only what is shown changes. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool comes off every provider's listing, and the provider is told; a provider left with no job is taken offline until they offer another one and go live again. Replacing a job is retiring it and adding a new one, which providers pick themselves. Requests and reservations already made keep the job. A homepage shelf searches only for jobs providers can offer; a retired job comes off the shelves, and a shelf left with no job is no longer shown. A retired job or tool is never deleted, and its code is never used for anything else.
+Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can rename a job or tool, and move a job to another group; providers keep it, and only what is shown changes. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool comes off every provider's listing, and the provider is told; a provider left with no job is taken offline until they offer another one and go live again. Replacing a job is retiring it and adding a new one, which providers pick themselves. Requests and reservations already made keep the job. A featured search searches only for jobs providers can offer; a retired job comes off the featured searches, and one left with no job is no longer shown. A retired job or tool is never deleted, and its code is never used for anything else.
 
 ### Teams, helpers and supervisors
 
@@ -335,7 +335,7 @@ Customers register with their phone number, their name and their address. Provid
 
 ### Homepage
 
-A greeting and a search bar to start a search. Below it are shelves curated by Homa, such as "Weekend quick refresh", each driven by a preset search.
+A greeting and a search bar to start a search. Below it is the **showcase**: searches Homa features, such as "Weekend quick refresh", in the order Homa sets. Tapping one fills in the search with its jobs, duration and helpers; the customer picks the date and time, and the city comes from their address.
 
 ### Provider page
 
@@ -424,7 +424,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Settings
 
-- **Catalogue and curation:** manage the job list and its groups, the tool list, and the curated homepage shelves: create, rename, move and remove them. Each shelf has its own place on the homepage.
+- **Catalogue and curation:** manage the job list and its groups, the tool list, and the homepage showcase: feature, rename, move and remove searches. Each featured search has its own place in the showcase.
 - **Homa-set values:** view and change the values used by the policies. A change applies to new reservations only.
 - **Data requests:** handle requests to see, correct, copy or delete personal data, and record each one.
 

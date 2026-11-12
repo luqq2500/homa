@@ -1,18 +1,16 @@
 package catalogue.usecase;
 
-import catalogue.domain.Homepage;
 import catalogue.domain.JobList;
 import catalogue.domain.ServiceArea;
-import catalogue.domain.Shelf;
+import catalogue.domain.Showcase;
 import catalogue.domain.ToolList;
 import catalogue.usecase.port.out.AdminAction;
 import catalogue.usecase.port.out.AdminAuditLog;
 import catalogue.usecase.exception.ChangedMeanwhileException;
 import catalogue.usecase.port.out.CatalogueIEPublisher;
-import catalogue.usecase.port.out.HomepageRepository;
 import catalogue.usecase.port.out.JobListRepository;
 import catalogue.usecase.port.out.ServiceAreaRepository;
-import catalogue.usecase.port.out.ShelfRepository;
+import catalogue.usecase.port.out.ShowcaseRepository;
 import catalogue.usecase.port.out.ToolListRepository;
 import ie.port.CatalogueIE;
 import java.time.Clock;
@@ -71,19 +69,19 @@ final class CatalogueUsecaseFixtures {
         }
     }
 
-    static final class InMemoryHomepages extends Refusable implements HomepageRepository {
-        private Homepage saved;
+    static final class InMemoryShowcases extends Refusable implements ShowcaseRepository {
+        private Showcase saved;
         int saves;
 
         @Override
-        public Optional<Homepage> find() {
+        public Optional<Showcase> find() {
             return Optional.ofNullable(saved);
         }
 
         @Override
-        public void save(Homepage homepage) {
-            refuseIfChangedMeanwhile("The homepage");
-            saved = homepage;
+        public void save(Showcase showcase) {
+            refuseIfChangedMeanwhile("The showcase");
+            saved = showcase;
             saves++;
         }
     }
@@ -101,38 +99,6 @@ final class CatalogueUsecaseFixtures {
         public void save(ToolList toolList) {
             saved = toolList;
             saves++;
-        }
-    }
-
-    static final class InMemoryShelves extends Refusable implements ShelfRepository {
-        private final List<Shelf> saved = new ArrayList<>();
-        int saves;
-
-        @Override
-        public Optional<Shelf> find(String shelfId) {
-            return saved.stream().filter(shelf -> shelf.id().equals(shelfId)).findFirst();
-        }
-
-        @Override
-        public void save(Shelf shelf) {
-            refuseIfChangedMeanwhile("The shelf");
-            saved.removeIf(kept -> kept.id().equals(shelf.id()));
-            saved.add(shelf);
-            saves++;
-        }
-
-        @Override
-        public void remove(String shelfId) {
-            saved.removeIf(kept -> kept.id().equals(shelfId));
-        }
-
-        Shelf titled(String title) {
-            return saved.stream().filter(shelf -> shelf.title().equals(title)).findFirst().orElseThrow();
-        }
-
-        @Override
-        public List<Shelf> findAll() {
-            return List.copyOf(saved);
         }
     }
 

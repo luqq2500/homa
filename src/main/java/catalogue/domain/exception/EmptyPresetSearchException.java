@@ -1,6 +1,6 @@
 package catalogue.domain.exception;
 
-/** A shelf's preset search needs at least one job. */
+/** A featured search's preset search needs at least one job. */
 public class EmptyPresetSearchException extends CatalogueRuleViolationException {
 
     public EmptyPresetSearchException() {

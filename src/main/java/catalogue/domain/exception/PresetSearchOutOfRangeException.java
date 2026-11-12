@@ -1,6 +1,6 @@
 package catalogue.domain.exception;
 
-/** A shelf's preset search needs at least one hour and at least one helper. */
+/** A featured search's preset search needs at least one hour and at least one helper. */
 public class PresetSearchOutOfRangeException extends CatalogueRuleViolationException {
 
     public PresetSearchOutOfRangeException(String what, int value) {

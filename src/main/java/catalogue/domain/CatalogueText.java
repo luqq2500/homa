@@ -1,6 +1,7 @@
 package catalogue.domain;
 
 import catalogue.domain.exception.CatalogueNameRequiredException;
+import catalogue.domain.exception.FeaturedSearchTitleRequiredException;
 import catalogue.domain.exception.InvalidCatalogueCodeException;
 import java.util.regex.Pattern;
 
@@ -17,6 +18,14 @@ final class CatalogueText {
         if (code == null || !CODE_SHAPE.matcher(code).matches()) {
             throw new InvalidCatalogueCodeException(code);
         }
+    }
+
+    /** A featured search's title is required and kept without surrounding spaces. */
+    static String requireTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new FeaturedSearchTitleRequiredException();
+        }
+        return title.strip();
     }
 
     /** Names are required and kept without surrounding spaces. */

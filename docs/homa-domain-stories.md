@@ -92,7 +92,7 @@ Homa's rules never depend on which KYC provider or payment provider is used.
 |---|---|---|
 | *job list*, *tool list* | Homa's lists that providers choose from; retired items are never deleted | `catalogue` |
 | *service area* | The launch cities: Salak Tinggi, Cyberjaya and Putrajaya | `catalogue` |
-| *shelf* | A curated homepage row driven by a preset search | `catalogue` |
+| *featured search* | A search Homa features in the homepage showcase, which fills in the search | `catalogue` |
 | *Homa-set values* | The values the policies use, in versions | `policy` |
 | *phone verification* | A 6-digit SMS code, valid 5 minutes, 5 wrong attempts allowed | `account` |
 | *customer account* | Name, phone number and address with its city | `account` |
@@ -147,7 +147,8 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Tool list**, **tool** | Homa's list of tools that providers say they bring | `ToolList`, `Tool`, `ToolCode` | "equipment" |
 | **Retire** | Take a job or tool off what providers can pick, and off the listings that have it; it is never deleted, and its code is never reused | `JobList.retire`, `ToolList.retire`, `ProviderListing.withdrawJob`, `withdrawTool` | "delete", "remove" |
 | **Service area** | The launch cities: Salak Tinggi, Cyberjaya and Putrajaya | `ServiceArea`, `City` | "region", "zone" |
-| **Shelf** | A curated homepage row driven by a **preset search** | `Shelf`, `PresetSearch` | "banner", "collection" |
+| **Featured search** | A search Homa features on the homepage: a title and the **preset search** it fills in | `FeaturedSearch`, `PresetSearch` | "shelf" (the app may draw it as one), "banner", "collection" |
+| **Showcase** | The featured searches on the homepage, in the order Homa sets | `Showcase` | "homepage" (the screen), "carousel" |
 
 ### policy
 
@@ -386,7 +387,8 @@ reservation runs on known values.
 
 1. **Homa founders** add *jobs* to the *job list*, each in a group such as "kitchen" or "living room".
 2. **Homa founders** add *tools* to the *tool list*.
-3. **Homa founders** create *shelves* for the homepage, each with a preset search.
+3. **Homa founders** feature *searches* in the homepage *showcase*, each with a preset search, and
+   rename, move or remove them.
 4. **Homa founders** launch *Homa-set values* version 1.
 5. Later, **Homa founders** change one *Homa-set value*, such as the **fee window**.
 6. **Homa** keeps the old version for every reservation already requested, and applies the new
@@ -402,8 +404,8 @@ reservation runs on known values.
   keep it; only the group shown changes.
 - 1d. **Homa founders** replace a *job*: they retire it and add a new one. Providers pick the new job
   themselves.
-- 3a. **Homa** refuses a *shelf* that searches for a job providers can't offer. A retired job comes
-  off every shelf's search, and a shelf left with no job is no longer shown.
+- 3a. **Homa** refuses a *featured search* for a job providers can't offer. A retired job comes off
+  every featured search, and one left with no job is no longer shown.
 - 5a. **Homa** refuses a change that breaks a rule across values: Flexible must stay free, no
   cancellation fee may be higher than the customer no-show fee, and the provider no-show fine must stay
   the highest fine.
@@ -419,7 +421,7 @@ reservation runs on known values.
   re-checks, face check attempts) are the KYC provider's, set up to Homa's requirements.
 - Homa sets no limit on helpers.
 
-**In the code:** `catalogue` (`JobList.add`, `rename`, `regroup`, `retire`; `ToolList`; `Shelf.create`, `withdrawJob`), `policy`
+**In the code:** `catalogue` (`JobList.add`, `rename`, `regroup`, `retire`; `ToolList`; `Showcase.feature`, `withdrawJob`), `policy`
 (`HomaPolicy.initial`, `HomaPolicy.change`), `offering` (`ProviderListing.withdrawJob`,
 `withdrawTool`). Events: `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`, `ToolAddedIE`,
 `ToolRenamedIE`, `ToolRetiredIE`, `JobWithdrawnFromListingIE`, `ListingWentOfflineForRetiredJobIE`,
@@ -604,7 +606,8 @@ flowchart LR
   range, they offer none of the jobs, they aren't free at or near the time, or the job would end after
   their verified-until date.
 - 4c. A *paused* listing is left out of search.
-- 1a. **Sarah** starts from a homepage *shelf* instead, with its preset search.
+- 1a. **Sarah** taps a *featured search* in the showcase instead. It fills in the jobs, hours and
+  helpers; she picks the date and time, and the city comes from her address.
 - 4d. **Homa** records each *search*: what was searched for and how many providers matched, with
   nothing about Sarah, so the founders can see where more providers are needed.
 

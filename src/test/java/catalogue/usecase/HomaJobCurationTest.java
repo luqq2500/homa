@@ -12,13 +12,12 @@ import catalogue.domain.exception.DuplicateJobCodeException;
 import catalogue.domain.exception.JobAlreadyRetiredException;
 import catalogue.domain.exception.JobNotFoundException;
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
-import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryHomepages;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
-import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShowcases;
 import catalogue.usecase.CatalogueUsecaseFixtures.PublishedEvents;
 import catalogue.usecase.dto.AddJobRequest;
 import catalogue.usecase.dto.AddJobResponse;
-import catalogue.usecase.dto.CreateShelfRequest;
+import catalogue.usecase.dto.FeatureSearchRequest;
 import catalogue.usecase.dto.RegroupJobRequest;
 import catalogue.usecase.dto.RegroupJobResponse;
 import catalogue.usecase.dto.RenameJobRequest;
@@ -29,7 +28,7 @@ import catalogue.usecase.exception.AdminReasonRequiredException;
 import catalogue.usecase.exception.ChangedMeanwhileException;
 import catalogue.usecase.exception.DecidedByRequiredException;
 import catalogue.usecase.port.out.AdminAction;
-import catalogue.domain.Shelf;
+import catalogue.domain.Showcase;
 import ie.events.JobAddedIE;
 import ie.events.JobRegroupedIE;
 import ie.events.JobRenamedIE;
@@ -48,11 +47,10 @@ class HomaJobCurationTest {
     private final PublishedEvents events = new PublishedEvents();
     private final AuditLog auditLog = new AuditLog();
     private final HomaAddJob addJob = new HomaAddJob(jobLists, events, auditLog, CLOCK);
-    private final InMemoryShelves shelves = new InMemoryShelves();
-    private final InMemoryHomepages homepages = new InMemoryHomepages();
+    private final InMemoryShowcases showcases = new InMemoryShowcases();
     private final HomaRenameJob renameJob = new HomaRenameJob(jobLists, events, auditLog, CLOCK);
     private final HomaRegroupJob regroupJob = new HomaRegroupJob(jobLists, events, auditLog, CLOCK);
-    private final HomaRetireJob retireJob = new HomaRetireJob(jobLists, shelves, events, auditLog, CLOCK);
+    private final HomaRetireJob retireJob = new HomaRetireJob(jobLists, showcases, events, auditLog, CLOCK);
 
     private void kitchenCareIsOnTheList() {
         addJob.add(new AddJobRequest(FOUNDER, "KITCHEN", "Kitchen care", "Kitchen"));
@@ -393,23 +391,36 @@ class HomaJobCurationTest {
         }
 
         @Test
-        void aRetiredJobComesOffTheShelvesThatSearchForIt() {
+        void aRetiredJobComesOffTheFeaturedSearchesThatSearchForIt() {
             kitchenCareIsOnTheList();
             addJob.add(new AddJobRequest(FOUNDER, "LAUNDRY_FOLD", "Laundry folding", "Laundry"));
-            HomaCreateShelf createShelf = new HomaCreateShelf(shelves, homepages, jobLists, auditLog, CLOCK);
-            createShelf.create(new CreateShelfRequest(FOUNDER, "Weekend quick refresh", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1, 1));
-            createShelf.create(new CreateShelfRequest(FOUNDER, "Kitchen rescue", Set.of("KITCHEN"), 2, 1, 2));
-            createShelf.create(new CreateShelfRequest(FOUNDER, "Laundry day", Set.of("LAUNDRY_FOLD"), 2, 1, 3));
-            int savesBefore = shelves.saves;
+            HomaFeatureSearch feature = new HomaFeatureSearch(showcases, jobLists, auditLog, CLOCK);
+            String weekend = feature.feature(new FeatureSearchRequest(FOUNDER, "Weekend quick refresh", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1, 1)).featuredSearchId();
+            String kitchen = feature.feature(new FeatureSearchRequest(FOUNDER, "Kitchen rescue", Set.of("KITCHEN"), 2, 1, 2)).featuredSearchId();
+            String laundry = feature.feature(new FeatureSearchRequest(FOUNDER, "Laundry day", Set.of("LAUNDRY_FOLD"), 2, 1, 3)).featuredSearchId();
+            int savesBefore = showcases.saves;
 
             retireJob.retire(new RetireJobRequest(FOUNDER, "KITCHEN", "Replaced by two smaller jobs"));
 
-            Shelf weekend = shelves.titled("Weekend quick refresh");
-            assertThat(weekend.preset().jobs()).containsExactly(JobCode.of("LAUNDRY_FOLD"));
-            assertThat(weekend.isShown()).isTrue();
-            assertThat(shelves.titled("Kitchen rescue").isShown()).isFalse();
-            assertThat(shelves.titled("Laundry day").isShown()).isTrue();
-            assertThat(shelves.saves).isEqualTo(savesBefore + 2);
+            Showcase showcase = showcases.find().orElseThrow();
+            assertThat(showcase.featuredSearch(weekend).orElseThrow().preset().jobs()).containsExactly(JobCode.of("LAUNDRY_FOLD"));
+            assertThat(showcase.featuredSearch(weekend).orElseThrow().isShown()).isTrue();
+            assertThat(showcase.featuredSearch(kitchen).orElseThrow().isShown()).isFalse();
+            assertThat(showcase.featuredSearch(laundry).orElseThrow().isShown()).isTrue();
+            assertThat(showcases.saves).isEqualTo(savesBefore + 1);
+        }
+
+        @Test
+        void aRetiredJobNoFeaturedSearchSearchesForLeavesTheShowcaseUnsaved() {
+            kitchenCareIsOnTheList();
+            addJob.add(new AddJobRequest(FOUNDER, "LAUNDRY_FOLD", "Laundry folding", "Laundry"));
+            new HomaFeatureSearch(showcases, jobLists, auditLog, CLOCK)
+                    .feature(new FeatureSearchRequest(FOUNDER, "Laundry day", Set.of("LAUNDRY_FOLD"), 2, 1, 1));
+            int savesBefore = showcases.saves;
+
+            retireJob.retire(new RetireJobRequest(FOUNDER, "KITCHEN", "Replaced by two smaller jobs"));
+
+            assertThat(showcases.saves).isEqualTo(savesBefore);
         }
 
         @Test

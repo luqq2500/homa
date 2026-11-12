@@ -12,8 +12,10 @@ usecase, then infra.
 pom.xml                         one Maven project: Java 21, JUnit 5, ArchUnit, JaCoCo, PIT
 src/main/java/
   kernel/                       shared kernel: Money, Percentage (Java standard library only)
-  catalogue/domain/             job list, tool list, service area, homepage shelves
+  catalogue/domain/             job list, tool list, service area, homepage showcase
+  catalogue/usecase/            the catalogue's usecases, ports and DTOs
   policy/domain/                Homa-set values and their versions
+  policy/usecase/               the policy's usecases, ports and DTOs
   account/domain/               customer and business provider accounts, team members, and the results reported by the KYC provider
   offering/domain/              a provider's listing and the rules for going live
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
@@ -83,7 +85,7 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-In progress. `catalogue` (19 usecases, 114 tests) and `policy` (3 usecases, 112 tests) are built,
+In progress. `catalogue` (19 usecases, 111 tests) and `policy` (3 usecases, 112 tests) are built,
 with every mutant killed. The plan also sets rules I1 to I3 for the infra phase. The other contexts
 follow in the plan's build order. The plan, `docs/homa-usecase-plan.md`, covers the conventions, each context's usecases
 (including `feedback`, `privacy` and `tracking`), how one context gets another's data, the required

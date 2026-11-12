@@ -42,7 +42,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 
 | Context | Owns | Main aggregates |
 |---|---|---|
-| `catalogue` | Homa's job list, tool list, launch cities and homepage shelves | `JobList`, `ToolList`, `ServiceArea`, `Shelf` |
+| `catalogue` | Homa's job list, tool list, launch cities and the homepage showcase | `JobList`, `ToolList`, `ServiceArea`, `Showcase` |
 | `policy` | Homa-set values and their versions | `HomaPolicy` |
 | `account` | Customer and provider accounts, helpers, phone and eKYC verification status, payout account status | `CustomerAccount`, `ProviderAccount`, `Helper`, `PhoneVerification` |
 | `offering` | What a provider sells: profile, jobs, tools, pricing, hours, helpers range, cities, cancellation tier, going live | `ProviderListing` |
@@ -87,8 +87,8 @@ policy ─────(rating window, minimum ratings to show)──► feedback
 | `JobList` | Aggregate | Holds jobs; codes are unique; jobs are retired, never deleted |
 | `Tool` / `ToolList` | Entity / Aggregate | Same pattern as jobs |
 | `ServiceArea` | Aggregate | Launch cities: Salak Tinggi, Cyberjaya, Putrajaya |
-| `Shelf` | Aggregate | A curated homepage shelf: title, preset search (jobs, duration, helpers), and whether it is shown |
-| `Homepage` | Aggregate | The order of the shelves: positions from 1, with no gaps and no two shelves in one place |
+| `FeaturedSearch` | Entity | A search Homa features on the homepage: title, preset search (jobs, duration, helpers), and whether it is shown |
+| `Showcase` | Aggregate | The featured searches in order: positions from 1, with no gaps and no two in one place |
 
 ```java
 JobList.add(JobCode code, String name, JobGroup group)
@@ -97,13 +97,13 @@ JobList.regroup(JobCode code, JobGroup group) : boolean // whether the group cha
 JobList.retire(JobCode code)
 JobList.isOffered(JobCode code) : boolean
 ServiceArea.covers(City city) : boolean
-Shelf.create(String title, PresetSearch preset, Set<JobCode> offeredJobs)   // only jobs providers can offer
-Shelf.rename(String title) : boolean   // whether the title changed
-Homepage.place(String shelfId, int position)   // from 1 to one past the last; the rest move down
-Homepage.move(String shelfId, int position) : boolean   // whether it moved
-Homepage.remove(String shelfId)   // the rest move up
-Shelf.withdrawJob(JobCode retired) : boolean   // a shelf left with no job is no longer shown
-Shelf.isShown() : boolean
+Showcase.feature(String title, PresetSearch preset, int position, Set<JobCode> offeredJobs) : FeaturedSearch
+                                       // only jobs providers can offer; from 1 to one past the last; the rest move down
+Showcase.rename(String featuredSearchId, String title) : boolean   // whether the title changed
+Showcase.move(String featuredSearchId, int position) : boolean     // whether it moved
+Showcase.remove(String featuredSearchId)                           // the rest move up
+Showcase.withdrawJob(JobCode retired) : boolean   // one left with no job is no longer shown
+FeaturedSearch.isShown() : boolean
 ```
 
 ```gherkin
@@ -129,9 +129,9 @@ Feature: Service area
       | Putrajaya    | true    |
       | Kajang       | false   |
 
-Feature: Shelves
-  Scenario: A shelf needs a preset search with at least one job
-    When Homa creates a shelf "Weekend quick refresh" with no jobs
+Feature: Featured searches
+  Scenario: A featured search needs a preset search with at least one job
+    When Homa features "Weekend quick refresh" with no jobs
     Then it is rejected with EmptyPresetSearchException
 ```
 
@@ -1670,9 +1670,9 @@ hours either side.
   - The no-show ceiling is checked in both directions: a tier fee can't rise above the customer
     no-show fee, and the customer no-show fee can't drop below a tier fee.
 - **Catalogue details:** codes are upper-case words joined by underscores (`KITCHEN_GREASE`); a job or
-  tool is retired only once and its code is never reused; shelves are ordered from 1. A preset search
-  needs at least one job, hour and helper. Homa's upper limits (6 hours, 10 helpers) can change, so
-  they are checked when the search runs, in `discovery`.
+  tool is retired only once and its code is never reused; featured searches are ordered from 1. A
+  preset search needs at least one job, hour and helper. Homa's duration range can change, so it is
+  checked when the search runs, in `discovery`.
 - **Account details:**
   - Customers register with a name as well as a phone number and address, because the spec says
     providers see "the customer's name, address and reservation details".
@@ -3006,12 +3006,12 @@ code.
 **`catalogue`**
 
 - `JobList.regroup(code, group)` moves a job to another display group. Its code and name stay.
-- `Shelf.create` takes the jobs providers can offer now and refuses any other
-  (`ShelfJobNotOfferedException`, naming the first one alphabetically). A shelf can't be made for a job
-  that doesn't exist or is retired.
-- `Shelf.withdrawJob(code)` takes a retired job off the shelf's search and says whether the shelf had
-  it. A shelf left with no job is no longer shown (`isShown()`), and keeps its last search so the
-  founders can see what it was.
+- Featuring a search takes the jobs providers can offer now and refuses any other
+  (`FeaturedSearchJobNotOfferedException`, naming the first one alphabetically). A search can't be
+  featured for a job that doesn't exist or is retired.
+- `Showcase.withdrawJob(code)` takes a retired job off every featured search that has it and says
+  whether any did. One left with no job is no longer shown (`isShown()`), and keeps its last search so
+  the founders can see what it was.
 
 **`offering`**
 
@@ -3041,22 +3041,22 @@ Feature: Changes to the job list
     When Homa moves "SOFA_VACUUM", which is not on the list
     Then it is refused with "JobNotFoundException"
 
-Feature: Shelves search only for jobs providers can offer
+Feature: Featured searches search only for jobs providers can offer
 
-  Scenario: A shelf searches only for jobs providers can offer
-    When Homa creates a shelf searching for Kitchen and Garden, and Garden is not on the job list
-    Then it is refused with "ShelfJobNotOfferedException"
+  Scenario: A featured search searches only for jobs providers can offer
+    When Homa features a search for Kitchen and Garden, and Garden is not on the job list
+    Then it is refused with "FeaturedSearchJobNotOfferedException"
 
-  Scenario: A retired job comes off the shelf's search
-    Given a shelf searching for Kitchen and Laundry fold
+  Scenario: A retired job comes off the featured searches that search for it
+    Given a featured search for Kitchen and Laundry fold
     When Homa retires Kitchen
-    Then the shelf searches for Laundry fold only
+    Then it searches for Laundry fold only
     And it is still shown
 
-  Scenario: A shelf left with no job is no longer shown
-    Given a shelf searching for Kitchen only
+  Scenario: A featured search left with no job is no longer shown
+    Given a featured search for Kitchen only
     When Homa retires Kitchen
-    Then the shelf is no longer shown
+    Then it is no longer shown, and keeps its place and its last search
 
 Feature: Telling the provider what a retirement did
 
@@ -3080,58 +3080,66 @@ Feature: Telling the provider what a retirement did
 
 - **A separate event for a regroup.** One event per outcome: `JobRegroupedIE`, not a rename event that
   also carries the group.
-- **The founders see hidden shelves.** `HomaViewShelves` lists every shelf with whether it is shown,
-  so a shelf emptied by a retirement can be replaced. Customers see only shown shelves.
+- **The founders see hidden featured searches.** `HomaViewShowcase` lists every featured search with
+  whether it is shown, so one emptied by a retirement can be replaced. Customers see only shown ones.
 - **The listing events stay as they are.** reservation and discovery still get `ListingChangedIE` or
   `ListingWentOfflineIE`; the three new offering events are for telling the provider why.
 
-## Change after the domain phase: the homepage order and changes that change nothing
+## Change after the domain phase: the homepage showcase and changes that change nothing
 
 Found while reviewing the `catalogue` and `policy` usecases, and confirmed by the product owner.
 
 **`catalogue`**
 
-- **The `Homepage` owns the order of the shelves.** A shelf's place was a number on each shelf, so two
-  shelves could share one and their order was then arbitrary. Now:
-  - `Homepage.place(shelfId, position)` puts a new shelf at a position from 1 to one past the last; the
-    shelves from there move down one.
-  - `Homepage.move(shelfId, position)` moves a shelf from 1 to the last place; the shelves in between
-    move along. It says whether the shelf moved.
-  - `Homepage.remove(shelfId)` takes a shelf off; the shelves after it move up.
-  - A shelf has one place (`ShelfAlreadyOnHomepageException`), and only a shelf on the homepage moves or
-    is removed (`ShelfNotOnHomepageException`).
-- `Shelf.create` no longer takes an order, and `Shelf.rename(title)` gives a shelf a new title.
+- **Shelves are now featured searches in a showcase.** What the homepage shows is a search Homa
+  features, so the names say so: a `FeaturedSearch` (once `Shelf`) in the `Showcase` (once
+  `Homepage`). The app may still draw each one as a row; in the code and the docs it is a featured
+  search.
+- **A featured search fills in the search; it is not a search of its own.** Tapping one fills in
+  discovery's ordinary search with its jobs, hours and helpers. The customer picks the date and time,
+  and the city comes from their address.
+- **The `Showcase` owns its featured searches and their order.** A shelf's place was a number on each
+  shelf, so two could share one and their order was then arbitrary. Now one aggregate holds them all,
+  so each change is one save:
+  - `Showcase.feature(title, preset, position, offeredJobs)` features a new search at a position from 1
+    to one past the last; the ones from there move down one.
+  - `Showcase.move(id, position)` moves one from 1 to the last place; the ones in between move along.
+    It says whether it moved.
+  - `Showcase.remove(id)` takes one off; the ones after it move up.
+  - `Showcase.rename(id, title)` gives one a new title.
+  - Only a featured search in the showcase is renamed, moved or removed
+    (`FeaturedSearchNotInShowcaseException`).
 - **Changes that change nothing say so.** `JobList.rename`, `JobList.regroup`, `ToolList.rename` and
-  `Shelf.rename` return whether anything changed, so the usecase saves, tells and records nothing for a
-  rename to the same name.
+  `Showcase.rename` return whether anything changed, so the usecase saves, tells and records nothing for
+  a rename to the same name.
 
 ```gherkin
-Feature: The order of the shelves on the homepage
+Feature: The order of the homepage showcase
 
   Background:
-    Given the homepage has the shelves A, B and C, in that order
+    Given the showcase features A, B and C, in that order
 
-  Scenario: A shelf placed in the middle moves the rest down one
-    When Homa places a new shelf at position 2
+  Scenario: A search featured in the middle moves the rest down one
+    When Homa features a new search at position 2
     Then the order is A, new, B, C
 
-  Scenario: A shelf is placed from the first place to one past the last
-    When Homa places a new shelf at position 5
-    Then it is refused with "InvalidShelfOrderException"
+  Scenario: A search is featured from the first place to one past the last
+    When Homa features a new search at position 5
+    Then it is refused with "InvalidShowcasePositionException"
 
-  Scenario: A shelf has only one place
-    When Homa places B again at position 1
-    Then it is refused with "ShelfAlreadyOnHomepageException"
+  Scenario: Only a featured search in the showcase moves
+    When Homa moves a search that is not featured
+    Then it is refused with "FeaturedSearchNotInShowcaseException"
 
-  Scenario: A shelf moved up moves the shelves in between down
+  Scenario: A search moved up moves the ones in between down
     When Homa moves C to position 1
     Then the order is C, A, B
 
-  Scenario: Moving a shelf to its own place changes nothing
+  Scenario: Moving a search to its own place changes nothing
     When Homa moves B to position 2
     Then nothing moved
 
-  Scenario: A removed shelf leaves no gap
+  Scenario: A removed search leaves no gap
     When Homa removes A
     Then the order is B, C
 

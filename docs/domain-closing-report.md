@@ -565,3 +565,21 @@ Changed after reviewing the `catalogue` and `policy` usecases, and confirmed by 
 - **Spec:** founders create, rename, move and remove the homepage shelves.
 - **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
 - **Gates:** whole build 1,439 tests, 1,715 mutants, all killed, worst CRAP 5.0.
+
+## 23. Addendum: the homepage showcase
+
+Changed after the phase closed, and confirmed by the product owner.
+
+- **Names that say the business:** a homepage shelf is now a `FeaturedSearch`, a search Homa features,
+  and the homepage order is the `Showcase`. The app may still draw each one as a row.
+- **One aggregate:** the `Showcase` owns its featured searches and their order, so featuring, renaming,
+  moving, removing and taking off a retired job are each one save. `Shelf`, `Homepage` and their
+  repositories are gone.
+- **What a featured search does:** it fills in discovery's ordinary search with its jobs, hours and
+  helpers; the customer picks the date and time, and the city comes from their address. It has no
+  search of its own.
+- **Usecases:** `HomaFeatureSearch`, `HomaRenameFeaturedSearch`, `HomaMoveFeaturedSearch`,
+  `HomaRemoveFeaturedSearch`, `HomaViewShowcase` and `CustomerViewShowcase`.
+- **Spec, plans, stories and glossary** use the new names.
+- **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
+- **Gates:** whole build 1,434 tests, 1,712 mutants, all killed, worst CRAP 5.0.

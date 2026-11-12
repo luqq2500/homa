@@ -22,8 +22,8 @@ The plan has **260** scenarios: **248 have a test**, and **12 are retired** beca
   payment that fails at request, and a request paid before the provider answers
 - eight in the three features for changes to the job and tool lists, added while building the
   `catalogue` usecases
-- eight in the two features for the homepage order and changes that change nothing, added after
-  reviewing the first usecases
+- eight in the two features for the homepage showcase order and changes that change nothing, added
+  after reviewing the first usecases
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -67,7 +67,7 @@ Two scenarios map to more than one test:
 | 1 | Job list | Job codes are unique | `JobListCurationTest` | `jobCodesAreUnique` |
 | 2 | Job list | A retired job stays in the list but is no longer offered | `JobListCurationTest` | `aRetiredJobStaysInTheListButIsNoLongerOffered` |
 | 3 | Service area | Only launch cities are covered (outline) | `ServiceAreaCoverageTest` | `onlyLaunchCitiesAreCovered` |
-| 4 | Shelves | A shelf needs a preset search with at least one job | `ShelfCurationTest` | `aShelfNeedsAPresetSearchWithAtLeastOneJob` |
+| 4 | Featured searches | A featured search needs a preset search with at least one job | `ShowcaseCurationTest` | `aFeaturedSearchNeedsAPresetSearchWithAtLeastOneJob` |
 | 5 | Homa-set values | The first version holds the launch values | `HomaPolicyVersioningTest` | `theFirstVersionHoldsTheLaunchValues` |
 | 6 | Homa-set values | Changing a value creates a new version and keeps the old one | `HomaPolicyVersioningTest` | `changingAValueCreatesANewVersionAndKeepsTheOldOne` |
 | 7 | Homa-set values | A cancellation fee can never exceed the customer no-show fee | `HomaPolicyVersioningTest` | `aCancellationFeeCanNeverExceedTheCustomerNoShowFee` |
@@ -310,18 +310,18 @@ Two scenarios map to more than one test:
 | 244 | A request is paid before the provider answers | An edit that lowers the total stays paid | `ReservationPaymentConfirmationTest` | `anEditThatLowersTheTotalStaysPaid` |
 | 245 | Changes to the job list | A job moves to another group and keeps its code and name | `JobListCurationTest` | `aJobMovesToAnotherGroupAndKeepsItsCodeAndName` |
 | 246 | Changes to the job list | Only a job on the list can be regrouped | `JobListCurationTest` | `onlyAJobOnTheListCanBeRegrouped` |
-| 247 | Shelves search only for jobs providers can offer | A shelf searches only for jobs providers can offer | `ShelfCurationTest` | `aShelfSearchesOnlyForJobsProvidersCanOffer` |
-| 248 | Shelves search only for jobs providers can offer | A retired job comes off the shelf's search | `ShelfCurationTest` | `aRetiredJobComesOffTheShelfsSearch` |
-| 249 | Shelves search only for jobs providers can offer | A shelf left with no job is no longer shown | `ShelfCurationTest` | `aShelfLeftWithNoJobIsNoLongerShown` |
+| 247 | Featured searches search only for jobs providers can offer | A featured search searches only for jobs providers can offer | `ShowcaseCurationTest` | `aFeaturedSearchSearchesOnlyForJobsProvidersCanOffer` |
+| 248 | Featured searches search only for jobs providers can offer | A retired job comes off the featured searches that search for it | `ShowcaseCurationTest` | `aRetiredJobComesOffTheSearchesThatSearchForIt` |
+| 249 | Featured searches search only for jobs providers can offer | A featured search left with no job is no longer shown | `ShowcaseCurationTest` | `aSearchLeftWithNoJobIsNoLongerShownAndKeepsItsPlaceAndLastSearch` |
 | 250 | Telling the provider what a retirement did | Withdrawing a job says the listing is still live | `ProviderListingRetiredCatalogueTest` | `aRetiredJobComesOffTheListing` |
 | 251 | Telling the provider what a retirement did | Withdrawing the last job says the listing went offline | `ProviderListingRetiredCatalogueTest` | `aLiveListingLeftWithNoJobGoesOffline` |
 | 252 | Telling the provider what a retirement did | A draft losing its last job was never live | `ProviderListingRetiredCatalogueTest` | `aDraftLosingItsLastJobWasNeverLiveSoDoesNotGoOffline` |
-| 253 | The order of the shelves on the homepage | A shelf placed in the middle moves the rest down one | `HomepageOrderTest` | `aShelfPlacedInTheMiddleMovesTheRestDownOne` |
-| 254 | The order of the shelves on the homepage | A shelf is placed from the first place to one past the last | `HomepageOrderTest` | `aShelfIsPlacedFromTheFirstPlaceToOnePastTheLast` |
-| 255 | The order of the shelves on the homepage | A shelf has only one place | `HomepageOrderTest` | `aShelfHasOnlyOnePlace` |
-| 256 | The order of the shelves on the homepage | A shelf moved up moves the shelves in between down | `HomepageOrderTest` | `aShelfMovedUpMovesTheShelvesInBetweenDown` |
-| 257 | The order of the shelves on the homepage | Moving a shelf to its own place changes nothing | `HomepageOrderTest` | `movingAShelfToItsOwnPlaceChangesNothing` |
-| 258 | The order of the shelves on the homepage | A removed shelf leaves no gap | `HomepageOrderTest` | `aRemovedShelfLeavesNoGap` |
+| 253 | The order of the homepage showcase | A search featured in the middle moves the rest down one | `ShowcaseCurationTest` | `aSearchFeaturedInTheMiddleMovesTheRestDownOne` |
+| 254 | The order of the homepage showcase | A search is featured from the first place to one past the last | `ShowcaseCurationTest` | `aSearchIsFeaturedFromTheFirstPlaceToOnePastTheLast` |
+| 255 | The order of the homepage showcase | Only a featured search in the showcase moves | `ShowcaseCurationTest` | `onlyASearchInTheShowcaseMoves` |
+| 256 | The order of the homepage showcase | A search moved up moves the ones in between down | `ShowcaseCurationTest` | `aSearchMovedUpMovesTheOnesInBetweenDown` |
+| 257 | The order of the homepage showcase | Moving a search to its own place changes nothing | `ShowcaseCurationTest` | `movingASearchToItsOwnPlaceChangesNothing` |
+| 258 | The order of the homepage showcase | A removed search leaves no gap | `ShowcaseCurationTest` | `aRemovedSearchLeavesNoGap` |
 | 259 | Changes that change nothing | Renaming a job to its own name changes nothing | `JobListCurationTest` | `renamingAJobToItsOwnNameChangesNothing` |
 | 260 | Changes that change nothing | Moving a job to its own group changes nothing | `JobListCurationTest` | `movingAJobToItsOwnGroupChangesNothing` |
 
@@ -400,7 +400,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | Context | Worst CRAP (limit < 6) | Mutation score (limit ≥ 90%) | Test strength | Mutants | Dependency rule test |
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
-| catalogue | 4.0 | 100% | 100% | 142 | `CatalogueArchitectureTest` |
+| catalogue | 4.0 | 100% | 100% | 146 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
 | account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 212 | `OfferingArchitectureTest` |
@@ -416,7 +416,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,504 of 1,504 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,508 of 1,508 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.

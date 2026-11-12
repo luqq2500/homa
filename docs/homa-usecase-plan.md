@@ -32,7 +32,7 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
   context's single `<Context>IEPublisher` out port. Domain objects never leave the usecase layer: DTOs
   hold primitives, Strings, kernel and JDK value types, the same as events.
 - **Errors:** domain exceptions pass through unchanged. Usecase exceptions cover orchestration only,
-  such as `ShelfNotFoundException`.
+  such as `PolicyNotLaunchedException`.
 - **Admin actions:** every usecase whose actor is `Homa` and that changes something takes the founder's
   id (`decidedBy`) in its request and records it, with the action, the reason and the time, through an
   `AdminAuditLog` out port (rule A1). The domain keeps the reason; the audit log keeps who.
@@ -115,10 +115,10 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 **catalogue**
 - `HomaAddJob`, `HomaRenameJob`, `HomaRegroupJob`, `HomaRetireJob` → `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`
 - `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRenamedIE`, `ToolRetiredIE`
-- Shelves: `HomaCreateShelf` (only for jobs providers can offer, placed at a position on the homepage), `HomaRenameShelf`, `HomaMoveShelf` and `HomaRemoveShelf`. The `Homepage` keeps the order, so positions run from 1 with no gaps and no two shelves in one place. `HomaRetireJob` also takes the job off every shelf's search; a shelf left with no job is no longer shown.
+- The homepage showcase: `HomaFeatureSearch` (only for jobs providers can offer, at a position in the showcase), `HomaRenameFeaturedSearch`, `HomaMoveFeaturedSearch` and `HomaRemoveFeaturedSearch`. The `Showcase` holds the featured searches and their order, so positions run from 1 with no gaps and no two in one place, and each change is one save. `HomaRetireJob` also takes the job off every featured search; one left with no job is no longer shown.
 - `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2). Publishing again sends the same cities again.
 - Retiring a job or tool needs a reason, because it changes providers' listings (R11). Renaming and regrouping keep the code, so listings are untouched; the events update the names and groups other contexts show.
-- Queries: `HomaViewJobList`, `HomaViewToolList` and `HomaViewShelves` (everything, retired and hidden included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
+- Queries: `HomaViewJobList`, `HomaViewToolList` and `HomaViewShowcase` (everything, retired and hidden included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShowcase` (in order), `ProviderViewServiceArea`. A featured search fills in discovery's ordinary search; the customer picks the date and time.
 
 **policy**
 - `HomaLaunchPolicy` (version 1, once) → `HomaPolicyChangedIE`
@@ -343,7 +343,7 @@ sign-ups that never book:
 
 | Metric | Defined as | Broken down by |
 |---|---|---|
-| **Customer growth** | **Active customers**: booked at least one completed job in the last 90 days. Also new customers, and first-booking conversion | City, how they found Homa (shelf or search), month |
+| **Customer growth** | **Active customers**: booked at least one completed job in the last 90 days. Also new customers, and first-booking conversion | City, how they found Homa (featured search or search bar), month |
 | **Provider growth** | **Active live providers**: live and completed a job in the last 30 days. Also the onboarding funnel: registered, KYB passed, first team member added, live, first job | City, job, team size |
 | **Retention** | **Customer repeat rate**: a second booking within 60 days of the first. Also monthly cohorts, and provider retention: active providers still active the next month | Cohort, city, provider |
 | **Revenue** | **Net service fee**: the service fee Homa keeps after refunds. Also total booking value and the take rate | City, month, provider |
@@ -371,7 +371,7 @@ sign-ups that never book:
 | `HomaHideRating` | Hide a rating that breaks the rules, with a reason; the averages update | feedback | `Rating.hide`, `RatingSummary.withdraw` | `RatingHiddenIE` |
 | `HomaRemoveTeamMember` | Remove a team member who may not work | account | `TeamMember.remove` | `TeamMemberRemovedIE` |
 | `HomaRequestEarlyRecheck` | Ask the KYC provider for an early re-check, with a reason | account (KYC port) | (none until the KYC provider reports) | — |
-| `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob`, the same for tools, and `HomaCreateShelf` | The job list, tool list and homepage shelves | catalogue | `JobList`, `ToolList`, `Shelf` | `JobAddedIE`, `JobRetiredIE`, … |
+| `HomaAddJob`, `HomaRenameJob`, `HomaRetireJob`, the same for tools, and `HomaFeatureSearch` | The job list, tool list and homepage showcase | catalogue | `JobList`, `ToolList`, `Showcase` | `JobAddedIE`, `JobRetiredIE`, … |
 | `HomaChangePolicyValue` | Change one Homa-set value; a new version for new reservations only | policy | `HomaPolicy.change` | `HomaPolicyChangedIE` |
 | `HomaRecordDataRequest`, `HomaCloseDataRequest` | Record and track a PDPA request: see, correct, copy or delete | privacy (usecase only) | (none) | — |
 | `HomaViewProvider` | A provider's page: listing, verified-until date, team, go-live status, fines and waivers, cancellation count, reservations, held payouts; links to the KYC provider and Stripe | tracking | (query) | — |
@@ -387,7 +387,7 @@ sign-ups that never book:
 | `HomaViewStuckOnboarding` | Providers | Businesses stuck at KYB, with no team member, or missing go-live requirements (`missingForGoLive`), to follow up |
 | `HomaViewSlowResponders` | Retention | Providers with low acceptance or many expired requests, the main cause of a customer's bad first experience |
 | `HomaViewOneTimeCustomers` | Retention | Customers who completed one job and didn't book again within 30 days, for a book-again prompt |
-| `HomaViewShelfPerformance` | Customers, revenue | Bookings and revenue per homepage shelf, to curate better |
+| `HomaViewShowcasePerformance` | Customers, revenue | Bookings and revenue per featured search, to curate better |
 | `HomaViewCity` | All four | Supply against demand per city, before opening a new city |
 
 Later, when there is a team: roles (founders; support agents who read and reply but don't decide cases
@@ -439,7 +439,7 @@ Each context passes its gates before the next starts.
 
 | Context | Usecases | Tests | Mutants killed | Worst CRAP | Status |
 |---|---|---|---|---|---|
-| catalogue | 19: add, rename and retire a job or a tool; regroup a job; create, rename, move and remove a shelf; publish the service area; seven views | 114 | 99 of 99 | 3.0 | Done |
+| catalogue | 19: add, rename and retire a job or a tool; regroup a job; feature, rename, move and remove a search in the showcase; publish the service area; seven views | 111 | 92 of 92 | 3.0 | Done |
 | policy | 3: launch the policy, change one value, view the values in force | 112 | 112 of 112 | 3.0 | Done |
 | account and the rest | — | — | — | — | Not started |
 
@@ -490,4 +490,5 @@ Each built context also has a `<Context>UsecaseArchitectureTest`, which checks t
 13. **U13. A shelf's jobs aren't checked against the job list.** *Decided:* `Shelf.create` takes the
     jobs providers can offer and refuses any other; a retired job comes off every shelf's search, and a
     shelf left with no job is no longer shown. The founders see every shelf, hidden ones included
-    (`HomaViewShelves`).
+    (`HomaViewShelves`). Shelves have since become featured searches in the homepage showcase
+    (`Showcase`, `HomaViewShowcase`); the rules are the same.
