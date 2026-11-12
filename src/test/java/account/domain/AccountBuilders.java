@@ -76,9 +76,14 @@ final class AccountBuilders {
         return KycResult.verified("Aina binti Ahmad", on(day));
     }
 
-    /** The provider starts adding a helper on {@code day}, confirming lawful employment. */
+    /** A verified business starts adding a helper on {@code day}, confirming lawful employment. */
     static MemberVerification aHelperWaitingSince(String day) {
-        return MemberVerification.start("provider-1", TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn(day), on(day));
+        return aHelperWaitingSince(aVerifiedProvider(), day);
+    }
+
+    /** {@code business} starts adding a helper on {@code day}, confirming lawful employment. */
+    static MemberVerification aHelperWaitingSince(ProviderAccount business, String day) {
+        return MemberVerification.start(business, TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn(day), on(day));
     }
 
     /** Aina, a helper added and verified on 1 January, until 1 April. */

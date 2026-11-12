@@ -2,6 +2,7 @@ package account.domain;
 
 import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.PhotoRequiredException;
+import account.domain.exception.ProviderNotVerifiedException;
 import account.domain.exception.VerificationNotWaitingException;
 import java.time.Instant;
 import java.util.Objects;
@@ -36,10 +37,17 @@ public final class MemberVerification {
         this.startedAt = now;
     }
 
-    /** Starts adding a team member. Refused without a photo or without the lawful-employment confirmation. */
+    /**
+     * Starts adding a team member for {@code business}. Only a business whose KYB has passed, and that has
+     * not lapsed, adds team members, so nobody's identity is checked for a business that may never be
+     * verified. Refused without a photo or without the lawful-employment confirmation.
+     */
     public static MemberVerification start(
-            String providerId, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now) {
-        String provider = AccountText.require(providerId, "A team member's provider");
+            ProviderAccount business, TeamRole role, Photo photo, EmploymentConfirmation confirmation, Instant now) {
+        if (business.verificationStatus() != VerificationStatus.VERIFIED) {
+            throw new ProviderNotVerifiedException(business.id(), business.verificationStatus());
+        }
+        String provider = business.id();
         Objects.requireNonNull(role);
         if (photo == null) {
             throw new PhotoRequiredException();

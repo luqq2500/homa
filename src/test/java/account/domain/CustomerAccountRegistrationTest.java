@@ -52,4 +52,32 @@ class CustomerAccountRegistrationTest {
         assertThat(customer.address().city()).isEqualTo(City.of("Putrajaya"));
         assertThatThrownBy(() -> customer.changeAddress(null)).isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void aCustomerChangesTheirName() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+
+        boolean changed = customer.rename(" Siti Aminah ");
+
+        assertThat(changed).isTrue();
+        assertThat(customer.name()).isEqualTo("Siti Aminah");
+    }
+
+    @Test
+    void changingToTheSameNameChangesNothing() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+
+        assertThat(customer.rename(" Siti ")).isFalse();
+        assertThat(customer.name()).isEqualTo("Siti");
+    }
+
+    @Test
+    void aNewNameIsRequired() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+
+        assertThatThrownBy(() -> customer.rename(" "))
+                .isInstanceOf(AccountDetailRequiredException.class)
+                .hasMessage("A customer's name is required");
+        assertThat(customer.name()).isEqualTo("Siti");
+    }
 }

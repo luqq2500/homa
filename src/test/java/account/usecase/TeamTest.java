@@ -6,6 +6,8 @@ import static account.usecase.AccountUsecaseFixtures.at;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import account.domain.BusinessRegistration;
+import account.domain.KybResult;
 import account.domain.MemberVerification;
 import account.domain.MemberVerificationStatus;
 import account.domain.PhoneNumber;
@@ -16,6 +18,7 @@ import account.domain.TeamRole;
 import account.domain.TeamStatus;
 import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.AccountDetailRequiredException;
+import account.domain.exception.ProviderNotVerifiedException;
 import account.domain.exception.TeamMemberRemovedException;
 import account.usecase.AccountUsecaseFixtures.AuditLog;
 import account.usecase.AccountUsecaseFixtures.InMemoryMemberVerifications;
@@ -76,6 +79,7 @@ class TeamTest {
         PhoneVerification phone = PhoneVerification.start(PhoneNumber.of(PHONE), "482915", NOW);
         phone.confirm("482915", NOW);
         ProviderAccount provider = ProviderAccount.register(phone);
+        provider.recordKybResult(KybResult.verified(new BusinessRegistration("202601012345", "Kemas Home Care Sdn Bhd"), A_YEAR_ON), NOW);
         providers.saved.put(provider.id(), provider);
         return provider.id();
     }
@@ -120,6 +124,20 @@ class TeamTest {
             StartAddingTeamMemberResponse started = add.start(new StartAddingTeamMemberRequest(kemas, "SUPERVISOR", "photos/ben.jpg", true, TERMS));
 
             assertThat(events.all).containsExactly(new MemberVerificationStartedIE(started.verificationId(), kemas, "SUPERVISOR", NOW));
+        }
+
+        @Test
+        void aBusinessWhoseKybHasNotPassedCannotStartAdding() {
+            PhoneVerification phone = PhoneVerification.start(PhoneNumber.of(PHONE), "482915", NOW);
+            phone.confirm("482915", NOW);
+            ProviderAccount waiting = ProviderAccount.register(phone);
+            providers.saved.put(waiting.id(), waiting);
+
+            assertThatThrownBy(() -> addingAHelper(waiting.id())).isInstanceOf(ProviderNotVerifiedException.class);
+
+            assertThat(verifications.saved).isEmpty();
+            assertThat(kyc.opened).isEmpty();
+            assertThat(events.all).isEmpty();
         }
 
         @Test

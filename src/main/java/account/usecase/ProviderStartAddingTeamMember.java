@@ -48,7 +48,7 @@ public final class ProviderStartAddingTeamMember implements ProviderTeamMemberAd
         EmploymentConfirmation confirmation =
                 request.lawfullyEmployed() ? EmploymentConfirmation.given(request.termsVersion(), now) : null;
 
-        MemberVerification verification = MemberVerification.start(provider.id(), role, Photo.of(request.photo()), confirmation, now);
+        MemberVerification verification = MemberVerification.start(provider, role, Photo.of(request.photo()), confirmation, now);
 
         verifications.save(verification);
         String checkUrl = kyc.startMemberCheck(verification.id());

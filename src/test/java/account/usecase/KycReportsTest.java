@@ -6,6 +6,8 @@ import static account.usecase.AccountUsecaseFixtures.at;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import account.domain.BusinessRegistration;
+import account.domain.KybResult;
 import account.domain.PhoneNumber;
 import account.domain.PhoneVerification;
 import account.domain.ProviderAccount;
@@ -90,6 +92,9 @@ class KycReportsTest {
     }
 
     private String ainaIsOnTheTeam() {
+        if (kemas().verificationStatus() == VerificationStatus.PENDING) {
+            kemas().recordKybResult(KybResult.verified(new BusinessRegistration(SSM, KEMAS), A_YEAR_ON), NOW);
+        }
         String verificationId = new ProviderStartAddingTeamMember(providers, verifications, kyc, events, clock)
                 .start(new StartAddingTeamMemberRequest(kemas, "HELPER", "photos/aina.jpg", true, "terms-1")).verificationId();
         new KycRecordMemberVerificationResult(verifications, members, events, clock)

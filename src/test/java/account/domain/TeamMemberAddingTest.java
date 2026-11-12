@@ -1,6 +1,8 @@
 package account.domain;
 
 import static account.domain.AccountBuilders.aHelperWaitingSince;
+import static account.domain.AccountBuilders.aProvider;
+import static account.domain.AccountBuilders.aVerifiedProvider;
 import static account.domain.AccountBuilders.aina;
 import static account.domain.AccountBuilders.ainaVerifiedUntil;
 import static account.domain.AccountBuilders.confirmedOn;
@@ -13,6 +15,7 @@ import account.domain.exception.EmploymentNotConfirmedException;
 import account.domain.exception.MemberAlreadyAddedException;
 import account.domain.exception.MemberNotVerifiedException;
 import account.domain.exception.PhotoRequiredException;
+import account.domain.exception.ProviderNotVerifiedException;
 import account.domain.exception.TeamMemberRemovedException;
 import account.domain.exception.VerificationDetailsRequiredException;
 import account.domain.exception.VerificationNotWaitingException;
@@ -30,7 +33,8 @@ class TeamMemberAddingTest {
 
         @Test
         void aConfirmedAndVerifiedPersonIsAdded() {
-            MemberVerification verification = aHelperWaitingSince("1 March");
+            ProviderAccount kemas = aVerifiedProvider();
+            MemberVerification verification = aHelperWaitingSince(kemas, "1 March");
 
             VerificationOutcome outcome = verification.recordKycResult(ainaVerifiedUntil("1 June"), on("2 March"));
             TeamMember aina = TeamMember.add(verification, on("2 March"));
@@ -44,7 +48,7 @@ class TeamMemberAddingTest {
             assertThat(aina.lastVerifiedAt()).isEqualTo(on("2 March"));
             assertThat(aina.employmentConfirmation()).isEqualTo(new EmploymentConfirmation(on("1 March"), "2026-11"));
             assertThat(aina.photo()).isEqualTo(Photo.of("photos/aina.jpg"));
-            assertThat(aina.providerId()).isEqualTo("provider-1");
+            assertThat(aina.providerId()).isEqualTo(kemas.id());
             assertThat(aina.addedAt()).isEqualTo(on("2 March"));
             assertThat(aina.id()).isNotBlank().isNotEqualTo(verification.id());
             assertThat(verification.status()).isEqualTo(MemberVerificationStatus.ADDED);
@@ -53,15 +57,16 @@ class TeamMemberAddingTest {
 
         @Test
         void aWaitingVerificationIsNotOnTheTeam() {
+            ProviderAccount kemas = aVerifiedProvider();
             MemberVerification verification = MemberVerification.start(
-                    "provider-1", TeamRole.SUPERVISOR, Photo.of("photos/siti.jpg"), confirmedOn("1 March"), on("1 March"));
+                    kemas, TeamRole.SUPERVISOR, Photo.of("photos/siti.jpg"), confirmedOn("1 March"), on("1 March"));
 
             assertThat(verification.status()).isEqualTo(MemberVerificationStatus.WAITING);
             assertThat(verification.hasEnded()).isFalse();
             assertThat(verification.registeredName()).isEmpty();
             assertThat(verification.verifiedUntil()).isEmpty();
             assertThat(verification.verifiedAt()).isEmpty();
-            assertThat(verification.providerId()).isEqualTo("provider-1");
+            assertThat(verification.providerId()).isEqualTo(kemas.id());
             assertThat(verification.role()).isEqualTo(TeamRole.SUPERVISOR);
             assertThat(verification.photo()).isEqualTo(Photo.of("photos/siti.jpg"));
             assertThat(verification.confirmation()).isEqualTo(confirmedOn("1 March"));
@@ -72,21 +77,51 @@ class TeamMemberAddingTest {
         @Test
         void theAddFormNeedsTheConfirmation() {
             assertThatThrownBy(() -> MemberVerification.start(
-                            "provider-1", TeamRole.HELPER, Photo.of("photos/aina.jpg"), null, on("1 March")))
+                            aVerifiedProvider(), TeamRole.HELPER, Photo.of("photos/aina.jpg"), null, on("1 March")))
                     .isInstanceOf(EmploymentNotConfirmedException.class);
         }
 
         @Test
         void theAddFormNeedsAProviderARolePhotoAndTime() {
-            assertThatThrownBy(() -> MemberVerification.start("provider-1", TeamRole.HELPER, null, confirmedOn("1 March"), on("1 March")))
+            ProviderAccount kemas = aVerifiedProvider();
+            assertThatThrownBy(() -> MemberVerification.start(kemas, TeamRole.HELPER, null, confirmedOn("1 March"), on("1 March")))
                     .isInstanceOf(PhotoRequiredException.class);
-            assertThatThrownBy(() -> MemberVerification.start(" ", TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), on("1 March")))
-                    .isInstanceOf(AccountDetailRequiredException.class)
-                    .hasMessage("A team member's provider is required");
-            assertThatThrownBy(() -> MemberVerification.start("provider-1", null, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), on("1 March")))
+            assertThatThrownBy(() -> MemberVerification.start(null, TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), on("1 March")))
                     .isInstanceOf(NullPointerException.class);
-            assertThatThrownBy(() -> MemberVerification.start("provider-1", TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), null))
+            assertThatThrownBy(() -> MemberVerification.start(kemas, null, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), on("1 March")))
                     .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> MemberVerification.start(kemas, TeamRole.HELPER, Photo.of("photos/aina.jpg"), confirmedOn("1 March"), null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void aBusinessWhoseKybIsPendingCannotAddTeamMembers() {
+            ProviderAccount waiting = aProvider();
+
+            assertThatThrownBy(() -> aHelperWaitingSince(waiting, "1 March"))
+                    .isInstanceOf(ProviderNotVerifiedException.class)
+                    .hasMessageContaining(waiting.id())
+                    .hasMessageContaining("PENDING");
+        }
+
+        @Test
+        void aBusinessWhoseKybWasRejectedCannotAddTeamMembers() {
+            ProviderAccount rejected = aProvider();
+            rejected.recordKybResult(KybResult.rejected(), on("1 January"));
+
+            assertThatThrownBy(() -> aHelperWaitingSince(rejected, "1 March"))
+                    .isInstanceOf(ProviderNotVerifiedException.class)
+                    .hasMessageContaining("REJECTED");
+        }
+
+        @Test
+        void aLapsedBusinessCannotAddTeamMembers() {
+            ProviderAccount lapsed = aVerifiedProvider();
+            lapsed.lapse();
+
+            assertThatThrownBy(() -> aHelperWaitingSince(lapsed, "1 March"))
+                    .isInstanceOf(ProviderNotVerifiedException.class)
+                    .hasMessageContaining("LAPSED");
         }
 
         @Test

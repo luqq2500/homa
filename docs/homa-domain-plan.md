@@ -3243,10 +3243,10 @@ a **new** rule. The product description states every one of them.
 **`account`**
 
 - `CustomerAccount.rename(name)` changes the customer's name and returns whether it changed. A blank
-  name is refused (`CustomerNameRequiredException`, as at registration).
+  name is refused (`AccountDetailRequiredException`, as at registration).
 - `MemberVerification.start(business, role, photo, confirmation, now)` takes the `ProviderAccount` and
   refuses a business that is not `VERIFIED` (pending, rejected or lapsed) with
-  `BusinessNotVerifiedException`. The provider id comes from the business.
+  `ProviderNotVerifiedException`. The provider id comes from the business.
 
 **`offering`**
 
@@ -3368,9 +3368,9 @@ Feature: Adding team members needs a verified business
     Examples:
       | status   | result                       |
       | VERIFIED | waiting for verification     |
-      | PENDING  | BusinessNotVerifiedException |
-      | REJECTED | BusinessNotVerifiedException |
-      | LAPSED   | BusinessNotVerifiedException |
+      | PENDING  | ProviderNotVerifiedException |
+      | REJECTED | ProviderNotVerifiedException |
+      | LAPSED   | ProviderNotVerifiedException |
 
 Feature: Customers change their name
 

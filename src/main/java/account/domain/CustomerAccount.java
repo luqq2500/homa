@@ -10,7 +10,7 @@ public final class CustomerAccount {
 
     private final String id;
     private final PhoneNumber phone;
-    private final String name;
+    private String name;
     private Address address;
 
     private CustomerAccount(String id, PhoneNumber phone, String name, Address address) {
@@ -27,6 +27,17 @@ public final class CustomerAccount {
                 verified.phone(),
                 AccountText.require(name, "A customer's name"),
                 Objects.requireNonNull(address));
+    }
+
+    /**
+     * The customer changes their name, for example to correct it. Returns whether it changed: the same
+     * name changes nothing.
+     */
+    public boolean rename(String newName) {
+        String renamed = AccountText.require(newName, "A customer's name");
+        boolean changed = !renamed.equals(name);
+        name = renamed;
+        return changed;
     }
 
     public void changeAddress(Address newAddress) {
