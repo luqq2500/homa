@@ -108,6 +108,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 
 - Each new or changed event gets its case in the event contract test: it can only be built with every field, it can't be changed afterwards, it carries only allowed types, and it belongs to its context's interface.
 - An event is added to `ie/` in the same step as the usecase that publishes it.
+- Latitude and longitude are `double`s, a primitive the discipline allows. The contract test's list of allowed types has no `double` yet, so it gains one.
 
 ## How a usecase gets another context's data
 
