@@ -85,8 +85,8 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 Not started. An earlier start (the `catalogue`, `policy` and `account` usecases and a plan) was removed
 so the phase begins fresh from the domain as it now stands, after the spec, domain plan and code were
-aligned. The new usecase plan is drafted for review in `docs/homa-usecase-plan.md`; its open questions
-are decided before the contexts they touch are built. The earlier plan and
+aligned. The new usecase plan is drafted for review in `docs/homa-usecase-plan.md`. It covers the usecase
+module of each bounded context only, from the product description and the module discipline. The earlier plan and
 code are in git history up to `170c533`.
 
 ### Decisions taken while building
