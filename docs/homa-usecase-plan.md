@@ -2,7 +2,7 @@
 
 This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): the `usecase` layer of each bounded context. It sits on the finished domain phase (`docs/homa-domain-plan.md`, `docs/domain-audit.md`). Infra comes after.
 
-**Status:** in progress. `catalogue` is built and passes its gates (see Progress); the other contexts follow in the build order. Every question, U1 to U13, is decided (see the end).
+**Status:** in progress. `catalogue` and `policy` are built and pass their gates (see Progress); the other contexts follow in the build order. Every question, U1 to U13, is decided (see the end).
 
 ## Conventions
 
@@ -93,9 +93,10 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 - Queries: `HomaViewJobList`, `HomaViewToolList` and `HomaViewShelves` (everything, retired and hidden included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
 
 **policy**
-- `HomaLaunchPolicy` (version 1)
-- `HomaChangePolicyValue` → `HomaPolicyChangedIE`
+- `HomaLaunchPolicy` (version 1, once) → `HomaPolicyChangedIE`
+- `HomaChangePolicyValue` → `HomaPolicyChangedIE`, with the whole new version. It needs a reason, because a change applies to every new reservation.
 - Query: `HomaViewPolicy`
+- The console names each value, such as `SERVICE_FEE` or `STANDARD_CANCELLATION_FEE`, and writes its amount by kind: a percentage (`17.5%`), an ISO-8601 period (`PT2H`, `P30D`), a count (`300`) or a range of hours (`1-6`). `HomaViewPolicy` shows each value by the same name and in the same form, so the console can show a value and send it back changed. The usecase only translates; the domain checks every value's shape and the rules across values.
 
 **account**
 - Customer: `CustomerStartPhoneVerification` (SMS out port), `CustomerConfirmPhone`, `CustomerRegisterAccount` → `CustomerRegisteredIE`, `CustomerChangeAddress` (geoservice out port)
@@ -411,7 +412,8 @@ Each context passes its gates before the next starts.
 | Context | Usecases | Tests | Mutants killed | Worst CRAP | Status |
 |---|---|---|---|---|---|
 | catalogue | 16: add, rename and retire a job or a tool; regroup a job; create a shelf; publish the service area; seven views | 85 | 73 of 73 | 3.0 | Done |
-| policy and the rest | — | — | — | — | Not started |
+| policy | 3: launch the policy, change one value, view the values in force | 101 | 107 of 107 | 3.0 | Done |
+| account and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:
 - the usecase layer depends only on its own domain, `kernel`, `ie` and Java;
