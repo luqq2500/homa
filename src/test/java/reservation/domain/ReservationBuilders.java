@@ -66,6 +66,11 @@ final class ReservationBuilders {
 
     /** Homa's launch values, as policy version 1. */
     static PolicySnapshot theLaunchPolicy() {
+        return theLaunchPolicyWithHours(1, 6);
+    }
+
+    /** Homa's launch values, with a duration range of {@code minHours} to {@code maxHours}. */
+    static PolicySnapshot theLaunchPolicyWithHours(int minHours, int maxHours) {
         return new PolicySnapshot(
                 1,
                 Percentage.of(15),
@@ -88,7 +93,9 @@ final class ReservationBuilders {
                 Duration.ofMinutes(30),
                 Duration.ofHours(24),
                 Duration.ofHours(1),
-                Duration.ofHours(6));
+                Duration.ofHours(6),
+                minHours,
+                maxHours);
     }
 
     static final EvidenceRef A_PHOTO = EvidenceRef.of("evidence/kitchen-after.jpg");
@@ -119,6 +126,14 @@ final class ReservationBuilders {
         private Set<City> cities = Set.of(City.of("Cyberjaya"));
         private boolean takesRequests = true;
         private Optional<SupervisorRule> supervisorRule = Optional.empty();
+        private int minHours = 2;
+        private int maxHours = 4;
+
+        OfferingBuilder withHours(int min, int max) {
+            minHours = min;
+            maxHours = max;
+            return this;
+        }
 
         /** The provider sends a supervisor from {@code helpers} helpers or from {@code hours} hours. */
         OfferingBuilder sendingASupervisorFrom(int helpers, int hours) {
@@ -159,7 +174,7 @@ final class ReservationBuilders {
 
         OfferingSnapshot build() {
             return new OfferingSnapshot(
-                    "provider-1", rate, travel, 2, 4, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier,
+                    "provider-1", rate, travel, minHours, maxHours, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier,
                     supervisorRule, takesRequests);
         }
     }
@@ -207,6 +222,12 @@ final class ReservationBuilders {
         private OfferingBuilder offering = anOffering();
         private DetailsBuilder details = aBooking();
         private Instant requestedAt = thursday("09:00");
+        private PolicySnapshot policy = theLaunchPolicy();
+
+        ReservationBuilder underPolicy(PolicySnapshot chosen) {
+            policy = chosen;
+            return this;
+        }
 
         ReservationBuilder withOffering(OfferingBuilder chosen) {
             offering = chosen;
@@ -243,7 +264,7 @@ final class ReservationBuilders {
         /** Requested, with its payment not secured yet. */
         Reservation requestedUnpaid() {
             return Reservation.request(
-                    "customer-1", details.build(), offering.build(), theLaunchPolicy(), Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL,
+                    "customer-1", details.build(), offering.build(), policy, Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL,
                     requestedAt);
         }
 

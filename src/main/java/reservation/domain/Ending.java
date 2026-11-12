@@ -4,6 +4,8 @@ package reservation.domain;
 public enum Ending {
     /** The customer's payment failed when the request was made: nothing was charged and the request ended. */
     PAYMENT_FAILED,
+    /** The provider accepted another booking that takes this request's time, so the request was declined at once. */
+    TIME_TAKEN,
     /** The customer cancelled before the provider answered: free on every tier. */
     CUSTOMER_CANCELLED_REQUEST,
     /** The customer cancelled a reserved booking before the fee window, or on the Flexible tier. */

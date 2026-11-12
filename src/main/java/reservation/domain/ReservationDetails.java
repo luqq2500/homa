@@ -17,9 +17,9 @@ public record ReservationDetails(Set<JobCode> jobs, Instant start, int hours, in
         Objects.requireNonNull(address);
     }
 
-    /** The same details for a different start, as when booking again. */
-    public ReservationDetails startingAt(Instant newStart) {
-        return new ReservationDetails(jobs, newStart, hours, helpers, address);
+    /** The same jobs, hours and helpers, at a new start and the customer's current address, as when booking again. */
+    public ReservationDetails forBookingAgain(Instant newStart, Address currentAddress) {
+        return new ReservationDetails(jobs, newStart, hours, helpers, currentAddress);
     }
 
     /** When the booked time ends. */

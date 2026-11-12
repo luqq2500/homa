@@ -28,13 +28,20 @@ public record PolicySnapshot(
         Duration completionReminder,
         Duration completionDeadline,
         Duration disputeWindowExtension,
-        Duration teamReminder) {
+        Duration teamReminder,
+        int minHours,
+        int maxHours) {
 
     public PolicySnapshot {
         cancellationFees = Map.copyOf(cancellationFees);
         for (CancellationTier tier : CancellationTier.values()) {
             Objects.requireNonNull(cancellationFees.get(tier), "No fee for the " + tier + " tier");
         }
+    }
+
+    /** Whether a booking of {@code hours} is inside Homa's duration range. */
+    public boolean allowsHours(int hours) {
+        return hours >= minHours && hours <= maxHours;
     }
 
     /** The share of the hours fee the tier charges for a cancellation inside the fee window. */

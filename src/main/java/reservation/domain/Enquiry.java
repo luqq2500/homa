@@ -39,9 +39,13 @@ public final class Enquiry {
                 Objects.requireNonNull(now));
     }
 
-    /** A new enquiry with the same customer, provider and details as {@code past}, for a new start. */
-    public static Enquiry bookAgainFrom(Enquiry past, Instant newStart, Instant now) {
-        return create(past.customerId, past.providerId, past.details.startingAt(newStart), now);
+    /**
+     * Books again from a past enquiry or reservation: a new enquiry with the same provider, jobs, hours and
+     * helpers as {@code past}, at the customer's current address and a new start.
+     */
+    public static Enquiry bookAgain(
+            String customerId, String providerId, ReservationDetails past, Address currentAddress, Instant newStart, Instant now) {
+        return create(customerId, providerId, past.forBookingAgain(newStart, currentAddress), now);
     }
 
     /** An enquiry that was never requested closes when its booked start passes. */

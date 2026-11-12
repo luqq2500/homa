@@ -1525,7 +1525,7 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ListingResumedIE` | offering | discovery, reservation | `ProviderListing.resume` |
 | `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgain` |
 | `RequestDeclinedForTakenTimeIE` | reservation | payment, (notifications) | `Reservation.declineForTakenTime` |
-| `TeamMemberDroppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `TEAM_INCOMPLETE` or `CANNOT_WORK` |
+| `TeamMemberDroppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `REMOVED`, `TEAM_INCOMPLETE` or `CANNOT_WORK` |
 | `EnquiryRequestedIE` | reservation | conversation | `Enquiry.markRequested` |
 | `EnquiryClosedIE` | reservation | conversation | `Enquiry.isClosed` turning true |
 | `ReservationRequestedIE` | reservation | payment | `Reservation.request` |
@@ -3273,21 +3273,25 @@ a **new** rule. The product description states every one of them.
 
 **`reservation`**
 
-- **Homa's range at request (4):** `request` and `edit` refuse hours outside the `PolicySnapshot`'s
-  duration range (`HoursOutsideHomaRangeException`), as well as outside the provider's.
+- **Homa's range at request (4):** reservation's `PolicySnapshot` gains Homa's duration range
+  (`minHours`, `maxHours`, `allowsHours`). `request` and `edit` refuse hours outside it
+  (`HoursOutsideHomaRangeException`), as well as outside the provider's.
 - **Book again (6):** `Enquiry.bookAgain(customerId, providerId, pastDetails, currentAddress, newStart,
-  now)` creates an enquiry with the past jobs, hours and helpers, the current address and the new start.
-  The usecase passes the details of a past enquiry or reservation. `bookAgainFrom(Enquiry, ...)` is
-  removed.
+  now)` creates an enquiry with the past jobs, hours and helpers, the current address and the new start
+  (`ReservationDetails.forBookingAgain`, which replaces `startingAt`). The usecase passes the details of
+  a past enquiry or reservation. `bookAgainFrom(Enquiry, ...)` is removed.
 - **Address (7):** `edit` refuses details with a different address (`AddressNotEditableException`).
 - **Safety reports (10):** `ReportType` gains `SAFETY_DAMAGE_OR_LOSS`. It follows every other report
   rule: one per party, from the booked start until the dispute window ends, and it moves the
   reservation to Disputed.
 - **A person comes off the team (11):** `dropFromTeam(memberId, now) : TeamDrop`.
-  - `NOT_NAMED`: they weren't named, so nothing changes.
+  - `NOT_AFFECTED`: they weren't named, or the reservation isn't reserved or disputed over the job, so
+    nothing changes.
+  - `REMOVED`: before the booked start, they come off the named team and it is still complete, for
+    example an optional supervisor.
   - `TEAM_INCOMPLETE`: before the booked start, they come off the named team. The team stays named
-    with the others, but `isTeamComplete()` is false until the provider names it again with
-    `nameTeam`. While it is incomplete, `checkIn` refuses (`TeamNotNamedException`) and
+    with the others, but `isTeamComplete()` (as many helpers as booked, and a supervisor when the rule
+    requires one) is false until the provider names it again with `nameTeam`. While it is incomplete, `checkIn` refuses (`TeamNotNamedException`) and
     `isTeamReminderDue` is true from the team reminder time. A team still incomplete at the end of the
     check-in period gives a provider no-show, as today.
   - `CANNOT_WORK`: from the booked start the team is locked, so they stay named but `canWork` is false
@@ -3312,7 +3316,7 @@ a **new** rule. The product description states every one of them.
 - **Safety first (10):** `Case.markSafety()` marks a case about safety, damage or loss, when a safety
   report opens it or joins it. `Case.QUEUE_ORDER` puts safety cases first, then the oldest first.
 - **Closed by a flag (13):** `Case.closeForProviderFlag(now)` closes an open case with no decision
-  (`CLOSED`). A closed case can't be decided or take evidence (`CaseNotOpenException`).
+  (`CLOSED`) and records `closedAt`. A closed case can't be decided or take evidence (`CaseNotOpenException`).
 
 **`conversation`**
 
@@ -3430,7 +3434,13 @@ Feature: A person who lapses or is removed comes off the team
 
   Scenario: Someone not named changes nothing
     When Dina comes off the team
-    Then the result is NOT_NAMED
+    Then the result is NOT_AFFECTED
+
+  Scenario: An optional supervisor comes off and the team stays complete
+    Given the provider also named Siti as a supervisor, with no supervisor rule
+    When Siti comes off the team on Friday 18:00
+    Then the result is REMOVED
+    And the team is complete
 
 Feature: Completion while disputed over the job
 

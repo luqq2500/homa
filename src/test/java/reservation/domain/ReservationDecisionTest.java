@@ -119,6 +119,18 @@ class ReservationDecisionTest {
         }
 
         @Test
+        void homaGivesTheProviderPartOfTheNoShowFee() {
+            Reservation reservation = aChallengedNoShow();
+
+            Settlement settlement = reservation.resolve(CaseDecision.partialRefund(rm("40.00")), saturday("15:00"));
+
+            assertThat(reservation.status()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(settlement.providerEarning()).isEqualTo(rm("40.00"));
+            assertThat(settlement.serviceFee()).isEqualTo(rm("6.00"));
+            assertThat(settlement.customerRefund()).isEqualTo(rm("184.00"));
+        }
+
+        @Test
         void aPartialRefundCannotGiveTheProviderMoreThanTheNoShowFee() {
             assertThatThrownBy(() -> aChallengedNoShow().resolve(CaseDecision.partialRefund(rm("74.01")), saturday("15:00")))
                     .isInstanceOf(InvalidDecisionAmountException.class);

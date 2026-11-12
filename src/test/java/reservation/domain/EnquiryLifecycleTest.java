@@ -3,6 +3,7 @@ package reservation.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static reservation.domain.ReservationBuilders.aBooking;
+import static reservation.domain.ReservationBuilders.aReservation;
 import static reservation.domain.ReservationBuilders.jobs;
 import static reservation.domain.ReservationBuilders.nextSaturday;
 import static reservation.domain.ReservationBuilders.saturday;
@@ -52,7 +53,7 @@ class EnquiryLifecycleTest {
         Enquiry past = Enquiry.create(
                 "customer-1", "provider-1", aBooking().forJobs("KITCHEN").forHours(3).withHelpers(2).build(), thursday("09:00"));
 
-        Enquiry again = Enquiry.bookAgainFrom(past, nextSaturday("10:00"), saturday("15:00"));
+        Enquiry again = Enquiry.bookAgain("customer-1", "provider-1", past.details(), past.details().address(), nextSaturday("10:00"), saturday("15:00"));
 
         assertThat(again.id()).isNotEqualTo(past.id());
         assertThat(again.customerId()).isEqualTo("customer-1");
@@ -80,5 +81,21 @@ class EnquiryLifecycleTest {
                 .isInstanceOf(ReservationDetailRequiredException.class);
         assertThatThrownBy(() -> anEnquiryForSaturday10().markRequested(" "))
                 .isInstanceOf(ReservationDetailRequiredException.class);
+    }
+
+    @Test
+    void bookingAgainFromAPastReservationKeepsTheJobAndUsesTheCurrentAddress() {
+        Reservation past = aReservation().forBooking(aBooking().forJobs("KITCHEN").forHours(3).withHelpers(2)).reserved();
+        Address movedTo = Address.of("8 Jalan Bunga", City.of("Putrajaya"));
+
+        Enquiry again = Enquiry.bookAgain("customer-1", past.providerId(), past.details(), movedTo, nextSaturday("10:00"), saturday("15:00"));
+
+        assertThat(again.customerId()).isEqualTo("customer-1");
+        assertThat(again.providerId()).isEqualTo("provider-1");
+        assertThat(again.details().jobs()).isEqualTo(jobs("KITCHEN"));
+        assertThat(again.details().hours()).isEqualTo(3);
+        assertThat(again.details().helpers()).isEqualTo(2);
+        assertThat(again.details().start()).isEqualTo(nextSaturday("10:00"));
+        assertThat(again.details().address()).isEqualTo(movedTo);
     }
 }

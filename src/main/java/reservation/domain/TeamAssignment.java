@@ -35,6 +35,15 @@ public record TeamAssignment(Set<String> helpers, Set<String> supervisors) {
         return Set.copyOf(everyone);
     }
 
+    /** The same team without {@code memberId}. */
+    TeamAssignment without(String memberId) {
+        Set<String> remainingHelpers = new HashSet<>(helpers);
+        Set<String> remainingSupervisors = new HashSet<>(supervisors);
+        remainingHelpers.remove(memberId);
+        remainingSupervisors.remove(memberId);
+        return new TeamAssignment(remainingHelpers, remainingSupervisors);
+    }
+
     boolean names(String memberId) {
         return helpers.contains(memberId) || supervisors.contains(memberId);
     }

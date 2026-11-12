@@ -4,12 +4,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import kernel.Money;
 import kernel.Percentage;
+import reservation.domain.exception.AddressNotEditableException;
 import reservation.domain.exception.AlreadyCheckedInException;
 import reservation.domain.exception.CancellationLockedDuringCheckInPeriodException;
 import reservation.domain.exception.CheckInPeriodNotOverException;
@@ -25,6 +28,7 @@ import reservation.domain.exception.FaceCheckAlreadyRecordedException;
 import reservation.domain.exception.FlaggedReservationStartedException;
 import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
+import reservation.domain.exception.HoursOutsideHomaRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
 import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.JobEndsAfterProviderVerificationException;
@@ -32,6 +36,7 @@ import reservation.domain.exception.JobNotOfferedException;
 import reservation.domain.exception.ListingPausedException;
 import reservation.domain.exception.LocationNotCheckedException;
 import reservation.domain.exception.MemberNotNamedException;
+import reservation.domain.exception.NoShowReportTooLateException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
 import reservation.domain.exception.PaymentNotSecuredException;
@@ -72,6 +77,7 @@ public final class Reservation {
     private TeamAssignment team;
     private CheckIn checkIn;
     private final List<FaceCheck> faceChecks = new ArrayList<>();
+    private final Set<String> offTheTeam = new HashSet<>();
     private boolean faceCheckUnavailable;
     private Instant checkedInAt;
     private Ending ending;
@@ -150,6 +156,9 @@ public final class Reservation {
             throw new ReservationNotEditableException(status);
         }
         requireNotExpired(now);
+        if (!newDetails.address().equals(details.address())) {
+            throw new AddressNotEditableException(details.address());
+        }
         requireFits(newDetails, offering, policy, now);
         requireEndsByProviderVerification(newDetails, providerVerifiedUntil);
         Money previous = price.total();
@@ -177,6 +186,15 @@ public final class Reservation {
         requireStatus(ReservationStatus.REQUESTED, "declined");
         requireNotExpired(now);
         status = ReservationStatus.DECLINED;
+    }
+
+    /**
+     * The provider accepted another booking that takes this request's time, so it can no longer be accepted:
+     * it is declined at once instead of waiting to expire, and it costs the customer nothing.
+     */
+    public void declineForTakenTime(Instant now) {
+        decline(now);
+        ending = Ending.TIME_TAKEN;
     }
 
     /** Ends a request the provider did not answer in time. */
@@ -279,13 +297,40 @@ public final class Reservation {
     }
 
     /**
+     * Whether the named team covers the booking: as many helpers as were booked, and a supervisor when the
+     * booking reaches the provider's supervisor rule. Check-in is locked until it does.
+     */
+    public boolean isTeamComplete() {
+        return team != null
+                && team.helpers().size() == details.helpers()
+                && !(team.supervisors().isEmpty() && offering.requiresSupervisor(details.helpers(), details.hours()));
+    }
+
+    /**
+     * A named person lapsed or was removed from the provider's team, so they come off this job. Before the
+     * booked start they come off the named team, which may then be incomplete until the provider names
+     * someone in their place. From the booked start the team is locked, so they stay named but cannot work.
+     */
+    public TeamDrop dropFromTeam(String memberId, Instant now) {
+        if (!isUpcomingOrOngoing() || !isNamed(memberId)) {
+            return TeamDrop.NOT_AFFECTED;
+        }
+        if (!now.isBefore(start())) {
+            offTheTeam.add(memberId);
+            return TeamDrop.CANNOT_WORK;
+        }
+        team = team.without(memberId);
+        return isTeamComplete() ? TeamDrop.REMOVED : TeamDrop.TEAM_INCOMPLETE;
+    }
+
+    /**
      * The location check, the first step of check-in: the device is within the check-in radius, from the
      * earliest check-in to the end of the check-in period. Check-in completes with the first face check
      * passed, or when the face check service is unavailable.
      */
     public void checkIn(int distanceMetres, Instant now) {
         requireStatus(ReservationStatus.RESERVED, "checked in");
-        if (team == null) {
+        if (!isTeamComplete()) {
             throw new TeamNotNamedException();
         }
         if (checkIn != null) {
@@ -339,7 +384,7 @@ public final class Reservation {
      * unavailable and their face check had not already failed.
      */
     public boolean canWork(String memberId) {
-        return isNamed(memberId) && (hasPassedFaceCheck(memberId) || coveredByOutage(memberId));
+        return isNamed(memberId) && !offTheTeam.contains(memberId) && (hasPassedFaceCheck(memberId) || coveredByOutage(memberId));
     }
 
     /**
@@ -368,6 +413,9 @@ public final class Reservation {
         if (now.isBefore(noShowWaitEndsAt())) {
             throw new NoShowWaitNotOverException(noShowWaitEndsAt());
         }
+        if (now.isAfter(end())) {
+            throw new NoShowReportTooLateException(end());
+        }
         noShowReportedAt = now;
         status = ReservationStatus.CANCELLED;
         ending = Ending.CUSTOMER_NO_SHOW;
@@ -386,9 +434,13 @@ public final class Reservation {
         status = ReservationStatus.DISPUTED;
     }
 
-    /** The provider marks the job completed, with photo or video evidence. There is no automatic completion. */
+    /**
+     * The provider marks the job completed, with photo or video evidence. There is no automatic completion.
+     * It can also be submitted while the reservation is disputed over the job; it then stays disputed and the
+     * evidence goes to Homa's review.
+     */
     public void submitCompletion(List<EvidenceRef> evidence, Instant now) {
-        requireStatus(ReservationStatus.RESERVED, "completed");
+        requireReservedOrJobDispute("completed");
         requireCheckedIn();
         requireNoCompletion();
         if (evidence.isEmpty()) {
@@ -437,11 +489,12 @@ public final class Reservation {
     /** The dispute window ended with no report: the job is completed and the payment is released. */
     /**
      * The KYC provider seriously flagged the provider's business, for example struck off or a sanctions
-     * match. An accepted reservation whose job is not completed moves to Disputed at once: the team cannot
-     * check in, and nobody files reports on it.
+     * match. An accepted reservation whose completion has not been submitted moves to Disputed at once,
+     * including one already disputed over the job, whose reports are kept: the team cannot check in, and
+     * nobody files reports on it.
      */
     public void disputeForProviderFlag(Instant now) {
-        requireStatus(ReservationStatus.RESERVED, "disputed for a flagged provider");
+        requireReservedOrJobDispute("disputed for a flagged provider");
         requireNoCompletion();
         status = ReservationStatus.DISPUTED;
         ending = Ending.PROVIDER_FLAGGED;
@@ -517,7 +570,7 @@ public final class Reservation {
      */
     public boolean isTeamReminderDue(Instant now) {
         return status == ReservationStatus.RESERVED
-                && team == null
+                && !isTeamComplete()
                 && !now.isBefore(start().minus(policy.teamReminder()))
                 && now.isBefore(start());
     }
@@ -753,10 +806,23 @@ public final class Reservation {
 
     /** A reserved booking, or one already disputed over the job, takes reports. A challenged no-show does not. */
     private void requireReportable() {
-        boolean jobDispute = status == ReservationStatus.DISPUTED && ending == null;
-        if (status != ReservationStatus.RESERVED && !jobDispute) {
-            throw new InvalidStatusTransitionException(status, "reported");
+        requireReservedOrJobDispute("reported");
+    }
+
+    /** A reserved booking, or one disputed over the job: not a challenged no-show or a flagged provider's. */
+    private void requireReservedOrJobDispute(String action) {
+        if (!isUpcomingOrOngoing()) {
+            throw new InvalidStatusTransitionException(status, action);
         }
+    }
+
+    /** Reserved, or disputed over the job: a job the team is still coming to or working on. */
+    private boolean isUpcomingOrOngoing() {
+        return status == ReservationStatus.RESERVED || isJobDispute();
+    }
+
+    private boolean isJobDispute() {
+        return status == ReservationStatus.DISPUTED && ending == null;
     }
 
     private void requireInsideDisputeWindow(Instant now) {
@@ -801,6 +867,9 @@ public final class Reservation {
 
     private static void requireFits(ReservationDetails details, OfferingSnapshot offering, PolicySnapshot policy, Instant now) {
         requireBookableStart(details.start(), policy, now);
+        if (!policy.allowsHours(details.hours())) {
+            throw new HoursOutsideHomaRangeException(details.hours(), policy.minHours(), policy.maxHours());
+        }
         requireWithinProviderRanges(details, offering);
         details.jobs().stream().filter(job -> !offering.jobs().contains(job)).findFirst().ifPresent(job -> {
             throw new JobNotOfferedException(job);
