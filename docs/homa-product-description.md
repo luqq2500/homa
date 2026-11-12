@@ -98,7 +98,7 @@ Percentages are rounded half up to the nearest sen. When a payment is split betw
 
 | Status | Meaning |
 |---|---|
-| **Requested** | The customer's card is authorised, or the customer has paid upfront, and is waiting for the provider to respond |
+| **Requested** | The customer has requested; once the card is authorised or the upfront payment is paid, it waits for the provider to respond |
 | **Reserved** | The provider accepted the request |
 | **Declined** | The provider declined |
 | **Expired** | The provider did not respond in time |
@@ -222,7 +222,7 @@ While the check is waiting, the provider app shows it as **waiting for verificat
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members verify only their identity with the KYC provider. Each time the provider adds a team member, they confirm on the add form that this person is lawfully employed by or engaged with them and allowed to work in Malaysia, and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Team members can be Malaysian or foreign. Homa removes a team member if it learns they are not allowed to work, and records what happened. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
-- Customers register with their phone number, verified by an SMS code, and their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
+- Customers and businesses register with their phone number, verified by an SMS code; customers also give their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
 - A business whose KYB is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team and can no longer be named for jobs.
 - **Re-verification:** the KYC provider re-verifies every business **every year**, and every team member **every year and when their identity document expires**, and reminds the provider before each is due. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present. A pass moves the verified-until date out; a failed attempt changes nothing.
 - **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and the provider must name someone else for any upcoming job they were named on. A lapsed business has its listing **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
@@ -285,8 +285,8 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 ### Provider Cancellation Fines
 
 - When a provider cancels or does not show, the customer is always refunded in full.
-- A provider who cancels more than 24 hours before the booked start pays no fine.
-- A provider who cancels within 24 hours before the booked start pays Homa a fine of **20% of the hours fee**.
+- A provider who cancels before the **fee window** (24 hours before the booked start) pays no fine.
+- A provider who cancels within the fee window pays Homa a fine of **20% of the hours fee**. The fee window is the same one the customer's Standard and Firm tiers use, so if Homa changes it, both move together.
 - A provider who does not check in by the booked start plus the check-in period, who cancels after the booked start, or who cancels after checking in, pays Homa a fine of **30% of the hours fee**. This is the highest provider fine, so not showing up is never cheaper than cancelling late, and Homa keeps it that way when changing either fine.
 - The fines are the same for every provider. They do not depend on the cancellation tier the provider chose.
 - When the travel fee is included in the price, the percentage applies to the full provider price.
@@ -321,7 +321,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Dispute window extension** | Dispute Policy | 1 hour after the later of the booked end and job completion |
 | **Fee window** | Cancellation Policy | 24 hours before the booked start |
 | **Cancellation tiers** | Cancellation Policy | Flexible: free cancellation. Standard: 10% of the hours fee within the fee window. Firm: 20% of the hours fee within the fee window |
-| **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within 24 hours before the booked start |
+| **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within the fee window before the booked start |
 | **Provider no-show fine** | Provider Cancellation Fines | 30% of the hours fee, for no check-in, or a cancellation after the booked start or after check-in |
 | **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout |
 | **Rating window** | Rating Policy | 14 days after the reservation becomes Completed |
@@ -331,7 +331,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 ### Account
 
-Customers register with their phone number, their name and their address. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in. The account shows the customer's payments and refunds with their status.
+Customers register with their phone number, their name and their address. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in, so an address the geoservice cannot find is not accepted. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
 
 ### Homepage
 
@@ -409,7 +409,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 - One queue for every case that needs Homa's decision: customer and provider reports, wrongful no-show reports, missed completion deadlines, and seriously flagged businesses: their disputed reservations, to cancel with a full refund or restore once the flag is cleared, and their held payouts, to release or keep back. If the other party also reports while a case is open, their report and evidence join the same case.
 - For each case the founders see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
-- Each decision is recorded with a short reason, and both the customer and the provider are notified of the outcome.
+- Each decision is recorded with a short reason and the founder who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
 - Fine waivers are decided here too.
 
 ### Tracking
@@ -424,8 +424,8 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Settings
 
-- **Catalogue and curation:** manage the job list and its groups, the tool list, and the homepage showcase: feature, rename, move and remove searches. Each featured search has its own place in the showcase.
-- **Homa-set values:** view and change the values used by the policies. A change applies to new reservations only.
+- **Catalogue and curation:** manage the job list and its groups, the tool list, and the homepage showcase: feature, rename, move and remove searches. Each featured search has its own place in the showcase. Retiring a job or tool needs a reason, because it changes providers' listings.
+- **Homa-set values:** view and change the values used by the policies, one at a time and with a reason. A change applies to new reservations only.
 - **Data requests:** handle requests to see, correct, copy or delete personal data, and record each one.
 
 ## Not in the MVP
@@ -454,5 +454,5 @@ Homa will use outside services for these instead of developing them, so its own 
 | **Payment provider (Stripe Connect)** | Authorises and charges cards, takes upfront FPX payments, holds payments until release, onboards providers for payouts, pays out to providers and processes refunds to the original method |
 | **Push notification service (to be chosen)** | Sends reminders and alerts to customers and providers, such as new requests, check-in, completion and reports |
 | **Geoservice (open source)** | Handles addresses, locations and distance, including the location check at check-in |
-| **SMS provider (to be chosen)** | Sends phone verification codes when customers register |
+| **SMS provider (to be chosen)** | Sends phone verification codes when customers and businesses register |
 | **Calendar services** | Google Calendar and Apple Calendar sync for provider availability |
