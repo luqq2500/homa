@@ -1525,7 +1525,8 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `ListingResumedIE` | offering | discovery, reservation | `ProviderListing.resume` |
 | `EnquiryCreatedIE` | reservation | conversation | `Enquiry.create`, `Enquiry.bookAgain` |
 | `RequestDeclinedForTakenTimeIE` | reservation | payment, (notifications) | `Reservation.declineForTakenTime` |
-| `TeamMemberDroppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `REMOVED`, `TEAM_INCOMPLETE` or `CANNOT_WORK` |
+| `TeamMemberDroppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `REMOVED` or `TEAM_INCOMPLETE`, with whether the team is complete |
+| `TeamMemberStoppedIE` | reservation | (notifications) | `Reservation.dropFromTeam` returning `CANNOT_WORK` |
 | `EnquiryRequestedIE` | reservation | conversation | `Enquiry.markRequested` |
 | `EnquiryClosedIE` | reservation | conversation | `Enquiry.isClosed` turning true |
 | `ReservationRequestedIE` | reservation | payment | `Reservation.request` |
@@ -3327,9 +3328,11 @@ a **new** rule. The product description states every one of them.
 
 **`ie/`**
 
-- `CustomerRenamedIE`, `RequestDeclinedForTakenTimeIE`, `TeamMemberDroppedIE`,
-  `CaseClosedForProviderFlagIE`, `ListingHoursNarrowedIE` and `ListingWentOfflineForHoursIE` are added.
-- `ReportFiledIE` carries the report type, so resolution can mark a safety case.
+- `CustomerRenamedIE`, `RequestDeclinedForTakenTimeIE`, `TeamMemberDroppedIE`, `TeamMemberStoppedIE`,
+  `CaseClosedForProviderFlagIE`, `ListingHoursNarrowedIE` and `ListingWentOfflineForHoursIE` are added,
+  which makes 75 events. A person coming off the team is two events, one per outcome: dropped before
+  the start (with whether the team is still complete), or stopped from the start.
+- `ReportFiledIE` already carries the report type, so resolution can mark a safety case.
 - `EnquiryCreatedIE` comes from `Enquiry.bookAgain` instead of `bookAgainFrom`.
 - offering listens to `HomaPolicyChangedIE` to fit the hours.
 

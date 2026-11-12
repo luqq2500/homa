@@ -3,11 +3,13 @@ package ie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ie.events.CaseClosedForProviderFlagIE;
 import ie.events.CaseDecidedIE;
 import ie.events.CheckInCompletedIE;
 import ie.events.CompletionDeadlineMissedIE;
 import ie.events.CompletionSubmittedIE;
 import ie.events.CustomerRegisteredIE;
+import ie.events.CustomerRenamedIE;
 import ie.events.EnquiryClosedIE;
 import ie.events.EnquiryCreatedIE;
 import ie.events.EnquiryRequestedIE;
@@ -21,10 +23,12 @@ import ie.events.JobRenamedIE;
 import ie.events.JobRetiredIE;
 import ie.events.JobWithdrawnFromListingIE;
 import ie.events.ListingChangedIE;
+import ie.events.ListingHoursNarrowedIE;
 import ie.events.ListingPausedIE;
 import ie.events.ListingResumedIE;
-import ie.events.ListingWentOfflineForRetiredJobIE;
 import ie.events.ListingWentLiveIE;
+import ie.events.ListingWentOfflineForHoursIE;
+import ie.events.ListingWentOfflineForRetiredJobIE;
 import ie.events.ListingWentOfflineIE;
 import ie.events.MemberVerificationRejectedIE;
 import ie.events.MemberVerificationStartedIE;
@@ -49,6 +53,7 @@ import ie.events.RatingSubmittedIE;
 import ie.events.RecheckFailedIE;
 import ie.events.ReportFiledIE;
 import ie.events.RequestCancelledIE;
+import ie.events.RequestDeclinedForTakenTimeIE;
 import ie.events.ReservationAcceptedIE;
 import ie.events.ReservationCancelledIE;
 import ie.events.ReservationCompletedIE;
@@ -63,9 +68,11 @@ import ie.events.SearchPerformedIE;
 import ie.events.ServiceAreaPublishedIE;
 import ie.events.SettlementDecidedIE;
 import ie.events.TeamMemberAddedIE;
+import ie.events.TeamMemberDroppedIE;
 import ie.events.TeamMemberLapsedIE;
 import ie.events.TeamMemberRemovedIE;
 import ie.events.TeamMemberReverifiedIE;
+import ie.events.TeamMemberStoppedIE;
 import ie.events.TeamNamedIE;
 import ie.events.ToolAddedIE;
 import ie.events.ToolRenamedIE;
@@ -179,7 +186,14 @@ class IntegrationEventContractTest {
                 Arguments.of(RequestCancelledIE.class, ReservationIE.class),
                 Arguments.of(PaymentFailedIE.class, PaymentIE.class),
                 Arguments.of(PaymentSecuredIE.class, PaymentIE.class),
-                Arguments.of(SearchPerformedIE.class, DiscoveryIE.class));
+                Arguments.of(SearchPerformedIE.class, DiscoveryIE.class),
+                Arguments.of(CustomerRenamedIE.class, AccountIE.class),
+                Arguments.of(RequestDeclinedForTakenTimeIE.class, ReservationIE.class),
+                Arguments.of(TeamMemberDroppedIE.class, ReservationIE.class),
+                Arguments.of(TeamMemberStoppedIE.class, ReservationIE.class),
+                Arguments.of(CaseClosedForProviderFlagIE.class, ResolutionIE.class),
+                Arguments.of(ListingHoursNarrowedIE.class, OfferingIE.class),
+                Arguments.of(ListingWentOfflineForHoursIE.class, OfferingIE.class));
     }
 
     @ParameterizedTest(name = "{0} is a {1}")
@@ -250,7 +264,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(68);
+        assertThat(events().count()).isEqualTo(75);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {
