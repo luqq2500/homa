@@ -102,10 +102,15 @@ public final class ProviderListing {
     }
 
     private JobWithdrawal goOfflineWithNoJob() {
+        return goOffline() ? JobWithdrawal.WITHDRAWN_AND_OFFLINE : JobWithdrawal.WITHDRAWN;
+    }
+
+    /** Takes the listing offline and returns whether it was live. */
+    private boolean goOffline() {
         boolean wasLive = live;
         live = false;
         paused = false;
-        return wasLive ? JobWithdrawal.WITHDRAWN_AND_OFFLINE : JobWithdrawal.WITHDRAWN;
+        return wasLive;
     }
 
     /**
@@ -130,6 +135,29 @@ public final class ProviderListing {
             throw new HoursOutOfRangeException(range.min(), range.max(), limits.minHours(), limits.maxHours());
         }
         hours = range;
+    }
+
+    /**
+     * Homa changed its duration range: the listing's hours keep inside it. Like the helper range, they only
+     * ever shrink: a wider range changes nothing, and the provider sets their hours again to use it. When
+     * none of the hours are inside, they are cleared, and a live listing is no longer live.
+     */
+    public HoursFit fitHours(HomaLimits limits) {
+        if (hours == null) {
+            return HoursFit.NOT_AFFECTED;
+        }
+        int min = Math.max(hours.min(), limits.minHours());
+        int max = Math.min(hours.max(), limits.maxHours());
+        if (min > max) {
+            hours = null;
+            return goOffline() ? HoursFit.CLEARED_AND_OFFLINE : HoursFit.CLEARED;
+        }
+        HoursRange fitted = HoursRange.of(min, max);
+        if (fitted.equals(hours)) {
+            return HoursFit.NOT_AFFECTED;
+        }
+        hours = fitted;
+        return HoursFit.NARROWED;
     }
 
     /**
