@@ -12,6 +12,7 @@ import catalogue.domain.exception.EmptyPresetSearchException;
 import catalogue.domain.exception.InvalidShelfOrderException;
 import catalogue.domain.exception.ShelfJobNotOfferedException;
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryHomepages;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
 import catalogue.usecase.CatalogueUsecaseFixtures.PublishedEvents;
@@ -19,6 +20,7 @@ import catalogue.usecase.dto.AddJobRequest;
 import catalogue.usecase.dto.CreateShelfRequest;
 import catalogue.usecase.dto.CreateShelfResponse;
 import catalogue.usecase.dto.RetireJobRequest;
+import catalogue.usecase.exception.ChangedMeanwhileException;
 import catalogue.usecase.exception.DecidedByRequiredException;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,8 @@ class HomaShelfCreationTest {
     private final InMemoryShelves shelves = new InMemoryShelves();
     private final AuditLog auditLog = new AuditLog();
     private final InMemoryJobLists jobLists = new InMemoryJobLists();
-    private final HomaCreateShelf createShelf = new HomaCreateShelf(shelves, jobLists, auditLog, CLOCK);
+    private final InMemoryHomepages homepages = new InMemoryHomepages();
+    private final HomaCreateShelf createShelf = new HomaCreateShelf(shelves, homepages, jobLists, auditLog, CLOCK);
 
     HomaShelfCreationTest() {
         HomaAddJob addJob = new HomaAddJob(jobLists, new PublishedEvents(), new AuditLog(), CLOCK);
@@ -54,7 +57,7 @@ class HomaShelfCreationTest {
         assertThat(saved.preset().jobs()).containsExactlyInAnyOrder(JobCode.of("KITCHEN"), JobCode.of("LAUNDRY_FOLD"));
         assertThat(saved.preset().hours()).isEqualTo(2);
         assertThat(saved.preset().helpers()).isEqualTo(1);
-        assertThat(saved.order()).isEqualTo(1);
+        assertThat(homepages.find().orElseThrow().shelfIds()).containsExactly(saved.id());
         assertThat(created).isEqualTo(new CreateShelfResponse(saved.id(), "Weekend quick refresh", 1));
         assertThat(created.shelfId()).isEqualTo(saved.id());
         assertThat(created.title()).isEqualTo("Weekend quick refresh");
@@ -101,7 +104,7 @@ class HomaShelfCreationTest {
 
     @Test
     void beforeAnyJobIsAddedNoShelfCanBeCreated() {
-        HomaCreateShelf withNoJobList = new HomaCreateShelf(shelves, new InMemoryJobLists(), auditLog, CLOCK);
+        HomaCreateShelf withNoJobList = new HomaCreateShelf(shelves, homepages, new InMemoryJobLists(), auditLog, CLOCK);
 
         assertThatThrownBy(() -> withNoJobList.create(weekendQuickRefresh())).isInstanceOf(ShelfJobNotOfferedException.class);
     }
@@ -113,6 +116,43 @@ class HomaShelfCreationTest {
         assertThatThrownBy(() -> createShelf.create(noPlace)).isInstanceOf(InvalidShelfOrderException.class);
 
         assertThat(shelves.findAll()).isEmpty();
+        assertThat(homepages.find()).isEmpty();
+        assertThat(auditLog.all).isEmpty();
+    }
+
+    @Test
+    void aShelfIsPlacedNoFurtherThanOnePastTheLast() {
+        createShelf.create(weekendQuickRefresh());
+        CreateShelfRequest tooFar = new CreateShelfRequest(FOUNDER, "Kitchen rescue", Set.of("KITCHEN"), 2, 1, 3);
+
+        assertThatThrownBy(() -> createShelf.create(tooFar))
+                .isInstanceOf(InvalidShelfOrderException.class)
+                .hasMessage("A shelf's place is from 1 to 2, was 3");
+
+        assertThat(shelves.findAll()).hasSize(1);
+        assertThat(homepages.find().orElseThrow().shelfIds()).hasSize(1);
+    }
+
+    @Test
+    void aShelfPlacedFirstMovesTheOthersDown() {
+        CreateShelfResponse weekend = createShelf.create(weekendQuickRefresh());
+
+        CreateShelfResponse kitchen = createShelf.create(
+                new CreateShelfRequest(FOUNDER, "Kitchen rescue", Set.of("KITCHEN"), 2, 1, 1));
+
+        assertThat(kitchen.order()).isEqualTo(1);
+        assertThat(homepages.find().orElseThrow().shelfIds()).containsExactly(kitchen.shelfId(), weekend.shelfId());
+        assertThat(homepages.saves).isEqualTo(2);
+    }
+
+    @Test
+    void aShelfIsNotCreatedWhenAnotherFounderChangedTheHomepageFirst() {
+        homepages.anotherFounderSavesFirst();
+
+        assertThatThrownBy(() -> createShelf.create(weekendQuickRefresh())).isInstanceOf(ChangedMeanwhileException.class);
+
+        assertThat(homepages.find()).isEmpty();
+        assertThat(auditLog.all).isEmpty();
     }
 
     @Test

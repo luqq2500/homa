@@ -32,7 +32,9 @@ import policy.usecase.dto.ChangePolicyValueRequest;
 import policy.usecase.dto.ChangePolicyValueResponse;
 import policy.usecase.dto.HomaViewPolicyResponse;
 import policy.usecase.dto.LaunchPolicyRequest;
+import policy.usecase.PolicyUsecaseFixtures.AnotherFounderChangesFirst;
 import policy.usecase.exception.AdminReasonRequiredException;
+import policy.usecase.exception.ChangedMeanwhileException;
 import policy.usecase.exception.DecidedByRequiredException;
 import policy.usecase.exception.InvalidPolicyAmountException;
 import policy.usecase.exception.PolicyNotLaunchedException;
@@ -227,9 +229,29 @@ class HomaPolicyChangeTest {
             assertThat(shown("FEE_WINDOW")).isEqualTo("P1D");
             changing("FEE_WINDOW", "PT25H");
             assertThat(shown("FEE_WINDOW")).isEqualTo("PT25H");
-            changing("FEE_WINDOW", "PT24H0.5S");
-            assertThat(shown("FEE_WINDOW")).isEqualTo("PT24H0.5S");
-            assertThat(inForce().feeWindow()).isEqualTo(Duration.ofHours(24).plusMillis(500));
+            changing("FEE_WINDOW", "PT24H1M");
+            assertThat(shown("FEE_WINDOW")).isEqualTo("PT24H1M");
+            assertThat(inForce().feeWindow()).isEqualTo(Duration.ofHours(24).plusMinutes(1));
+        }
+
+        @Test
+        void aChangeIsRefusedWhenAnotherFounderChangedAValueFirstAndTheirChangeIsKept() {
+            AnotherFounderChangesFirst racing = new AnotherFounderChangesFirst();
+            HomaLaunchPolicy launchIt = new HomaLaunchPolicy(racing, events, auditLog, at(LAUNCH));
+            HomaChangePolicyValue changeIt = new HomaChangePolicyValue(racing, events, auditLog, at(A_WEEK_LATER));
+            launchIt.launch(new LaunchPolicyRequest(FOUNDER));
+            changeIt.change(new ChangePolicyValueRequest(FOUNDER, "SERVICE_FEE", "17%", WHY));
+            int toldBefore = events.all.size();
+            int recordedBefore = auditLog.all.size();
+
+            assertThatThrownBy(() -> changeIt.change(new ChangePolicyValueRequest("founder-ben", "CHECK_IN_RADIUS", "250", WHY)))
+                    .isInstanceOf(ChangedMeanwhileException.class)
+                    .hasMessage("The Homa-set values changed meanwhile; try again on what is there now");
+
+            assertThat(racing.versions).hasSize(2);
+            assertThat(racing.versions.get(1).snapshot().serviceFee()).isEqualTo(Percentage.of(17));
+            assertThat(events.all).hasSize(toldBefore);
+            assertThat(auditLog.all).hasSize(recordedBefore);
         }
     }
 
@@ -272,12 +294,20 @@ class HomaPolicyChangeTest {
             return Stream.of(
                     Arguments.of("35", 3500), Arguments.of("35%", 3500), Arguments.of(" 35% ", 3500),
                     Arguments.of("35.5", 3550), Arguments.of("35.25%", 3525), Arguments.of("100%", 10000),
-                    Arguments.of("100.00", 10000), Arguments.of("030", 3000));
+                    Arguments.of("100.00", 10000));
+        }
+
+        @Test
+        void aPercentageBelowOneIsWrittenWithASingleLeadingZero() {
+            changing("SERVICE_FEE", "0.5%");
+            assertThat(inForce().serviceFee()).isEqualTo(Percentage.ofBasisPoints(50));
+            changing("SERVICE_FEE", "0");
+            assertThat(inForce().serviceFee()).isEqualTo(Percentage.ZERO);
         }
 
         @ParameterizedTest(name = "\"{0}\" is not a percentage")
         @NullSource
-        @ValueSource(strings = {"", "abc", "35.255%", "100.01%", "101", "1000%", "-5%", "35 %", "%"})
+        @ValueSource(strings = {"", "abc", "35.255%", "100.01%", "101", "1000%", "-5%", "35 %", "%", "030", "00.5"})
         void anAmountThatIsNotAPercentageFromNoneToAllIsRefused(String amount) {
             assertThatThrownBy(() -> changing("CUSTOMER_NO_SHOW_FEE", amount))
                     .isInstanceOf(InvalidPolicyAmountException.class)
@@ -299,11 +329,11 @@ class HomaPolicyChangeTest {
 
         @ParameterizedTest(name = "\"{0}\" is not a period")
         @NullSource
-        @ValueSource(strings = {"", "2 hours", "2h", "PT"})
-        void anAmountThatIsNotAPeriodIsRefused(String amount) {
+        @ValueSource(strings = {"", "2 hours", "2h", "PT", "PT2H30S", "PT2H0.5S", "PT90S"})
+        void anAmountThatIsNotAPeriodOfWholeMinutesIsRefused(String amount) {
             assertThatThrownBy(() -> changing("MINIMUM_NOTICE", amount))
                     .isInstanceOf(InvalidPolicyAmountException.class)
-                    .hasMessageStartingWith("MINIMUM_NOTICE needs a period such as PT2H or P30D, was ");
+                    .hasMessageStartingWith("MINIMUM_NOTICE needs a period of whole minutes such as PT2H or P30D, was ");
             nothingChanged();
         }
 
@@ -316,7 +346,7 @@ class HomaPolicyChangeTest {
 
         @ParameterizedTest(name = "\"{0}\" is not a whole number")
         @NullSource
-        @ValueSource(strings = {"", "-1", "2.5", "three", "1234567890", " 3 0 "})
+        @ValueSource(strings = {"", "-1", "2.5", "three", "1234567890", " 3 0 ", "05"})
         void anAmountThatIsNotAWholeNumberIsRefused(String amount) {
             assertThatThrownBy(() -> changing("MINIMUM_RATINGS_TO_SHOW", amount))
                     .isInstanceOf(InvalidPolicyAmountException.class)
@@ -333,7 +363,7 @@ class HomaPolicyChangeTest {
 
         @ParameterizedTest(name = "\"{0}\" is not a range")
         @NullSource
-        @ValueSource(strings = {"", "1 - 6", "1to6", "-6", "1-", "12345-6", "1-12345"})
+        @ValueSource(strings = {"", "1 - 6", "1to6", "-6", "1-", "12345-6", "1-12345", "0-6", "01-6", "1-06"})
         void anAmountThatIsNotARangeOfHoursIsRefused(String amount) {
             assertThatThrownBy(() -> changing("DURATION_RANGE", amount))
                     .isInstanceOf(InvalidPolicyAmountException.class)

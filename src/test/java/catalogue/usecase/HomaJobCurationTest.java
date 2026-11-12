@@ -12,6 +12,7 @@ import catalogue.domain.exception.DuplicateJobCodeException;
 import catalogue.domain.exception.JobAlreadyRetiredException;
 import catalogue.domain.exception.JobNotFoundException;
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryHomepages;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
 import catalogue.usecase.CatalogueUsecaseFixtures.PublishedEvents;
@@ -25,6 +26,7 @@ import catalogue.usecase.dto.RenameJobResponse;
 import catalogue.usecase.dto.RetireJobRequest;
 import catalogue.usecase.dto.RetireJobResponse;
 import catalogue.usecase.exception.AdminReasonRequiredException;
+import catalogue.usecase.exception.ChangedMeanwhileException;
 import catalogue.usecase.exception.DecidedByRequiredException;
 import catalogue.usecase.port.out.AdminAction;
 import catalogue.domain.Shelf;
@@ -47,6 +49,7 @@ class HomaJobCurationTest {
     private final AuditLog auditLog = new AuditLog();
     private final HomaAddJob addJob = new HomaAddJob(jobLists, events, auditLog, CLOCK);
     private final InMemoryShelves shelves = new InMemoryShelves();
+    private final InMemoryHomepages homepages = new InMemoryHomepages();
     private final HomaRenameJob renameJob = new HomaRenameJob(jobLists, events, auditLog, CLOCK);
     private final HomaRegroupJob regroupJob = new HomaRegroupJob(jobLists, events, auditLog, CLOCK);
     private final HomaRetireJob retireJob = new HomaRetireJob(jobLists, shelves, events, auditLog, CLOCK);
@@ -57,6 +60,59 @@ class HomaJobCurationTest {
 
     private boolean isOffered(String code) {
         return jobLists.find().orElseThrow().isOffered(JobCode.of(code));
+    }
+
+    @Nested
+    class WhenAnotherFounderSavedFirst {
+
+        @Test
+        void anAddIsRefusedAndNothingIsToldOrRecorded() {
+            jobLists.anotherFounderSavesFirst();
+
+            assertThatThrownBy(() -> addJob.add(new AddJobRequest(FOUNDER, "KITCHEN", "Kitchen care", "Kitchen")))
+                    .isInstanceOf(ChangedMeanwhileException.class)
+                    .hasMessage("The job list changed meanwhile; try again on what is there now");
+
+            assertThat(jobLists.find()).isEmpty();
+            assertThat(events.all).isEmpty();
+            assertThat(auditLog.all).isEmpty();
+        }
+
+        @Test
+        void aRenameIsRefusedAndNothingIsToldOrRecorded() {
+            kitchenCareIsOnTheList();
+            jobLists.anotherFounderSavesFirst();
+
+            assertThatThrownBy(() -> renameJob.rename(new RenameJobRequest(FOUNDER, "KITCHEN", "Kitchen refresh")))
+                    .isInstanceOf(ChangedMeanwhileException.class);
+
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
+        }
+
+        @Test
+        void aRegroupIsRefusedAndNothingIsToldOrRecorded() {
+            kitchenCareIsOnTheList();
+            jobLists.anotherFounderSavesFirst();
+
+            assertThatThrownBy(() -> regroupJob.regroup(new RegroupJobRequest(FOUNDER, "KITCHEN", "Living room")))
+                    .isInstanceOf(ChangedMeanwhileException.class);
+
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
+        }
+
+        @Test
+        void aRetirementIsRefusedAndNothingIsToldOrRecorded() {
+            kitchenCareIsOnTheList();
+            jobLists.anotherFounderSavesFirst();
+
+            assertThatThrownBy(() -> retireJob.retire(new RetireJobRequest(FOUNDER, "KITCHEN", "Replaced")))
+                    .isInstanceOf(ChangedMeanwhileException.class);
+
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
+        }
     }
 
     @Nested
@@ -167,6 +223,18 @@ class HomaJobCurationTest {
         }
 
         @Test
+        void renamingAJobToItsOwnNameSavesTellsAndRecordsNothing() {
+            kitchenCareIsOnTheList();
+
+            RenameJobResponse renamed = renameJob.rename(new RenameJobRequest(FOUNDER, "KITCHEN", " Kitchen care "));
+
+            assertThat(renamed).isEqualTo(new RenameJobResponse("KITCHEN", "Kitchen care"));
+            assertThat(jobLists.saves).isEqualTo(1);
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
+        }
+
+        @Test
         void aJobThatIsNotOnTheListIsNotRenamed() {
             assertThatThrownBy(() -> renameJob.rename(new RenameJobRequest(FOUNDER, "KITCHEN", "Kitchen refresh")))
                     .isInstanceOf(JobNotFoundException.class);
@@ -213,6 +281,18 @@ class HomaJobCurationTest {
 
             assertThat(events.all).hasSize(2).last().isEqualTo(new JobRegroupedIE("KITCHEN", "Living room", NOW));
             assertThat(auditLog.all).last().isEqualTo(recorded("REGROUP_JOB", "KITCHEN"));
+        }
+
+        @Test
+        void movingAJobToItsOwnGroupSavesTellsAndRecordsNothing() {
+            kitchenCareIsOnTheList();
+
+            RegroupJobResponse moved = regroupJob.regroup(new RegroupJobRequest(FOUNDER, "KITCHEN", "Kitchen"));
+
+            assertThat(moved).isEqualTo(new RegroupJobResponse("KITCHEN", "Kitchen"));
+            assertThat(jobLists.saves).isEqualTo(1);
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
         }
 
         @Test
@@ -316,19 +396,20 @@ class HomaJobCurationTest {
         void aRetiredJobComesOffTheShelvesThatSearchForIt() {
             kitchenCareIsOnTheList();
             addJob.add(new AddJobRequest(FOUNDER, "LAUNDRY_FOLD", "Laundry folding", "Laundry"));
-            HomaCreateShelf createShelf = new HomaCreateShelf(shelves, jobLists, auditLog, CLOCK);
+            HomaCreateShelf createShelf = new HomaCreateShelf(shelves, homepages, jobLists, auditLog, CLOCK);
             createShelf.create(new CreateShelfRequest(FOUNDER, "Weekend quick refresh", Set.of("KITCHEN", "LAUNDRY_FOLD"), 2, 1, 1));
             createShelf.create(new CreateShelfRequest(FOUNDER, "Kitchen rescue", Set.of("KITCHEN"), 2, 1, 2));
             createShelf.create(new CreateShelfRequest(FOUNDER, "Laundry day", Set.of("LAUNDRY_FOLD"), 2, 1, 3));
+            int savesBefore = shelves.saves;
 
             retireJob.retire(new RetireJobRequest(FOUNDER, "KITCHEN", "Replaced by two smaller jobs"));
 
-            Shelf weekend = shelves.find("Weekend quick refresh");
+            Shelf weekend = shelves.titled("Weekend quick refresh");
             assertThat(weekend.preset().jobs()).containsExactly(JobCode.of("LAUNDRY_FOLD"));
             assertThat(weekend.isShown()).isTrue();
-            assertThat(shelves.find("Kitchen rescue").isShown()).isFalse();
-            assertThat(shelves.find("Laundry day").isShown()).isTrue();
-            assertThat(shelves.saves).isEqualTo(3 + 2);
+            assertThat(shelves.titled("Kitchen rescue").isShown()).isFalse();
+            assertThat(shelves.titled("Laundry day").isShown()).isTrue();
+            assertThat(shelves.saves).isEqualTo(savesBefore + 2);
         }
 
         @Test

@@ -424,7 +424,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Settings
 
-- **Catalogue and curation:** manage the job list and its groups, the tool list, and the curated homepage shelves.
+- **Catalogue and curation:** manage the job list and its groups, the tool list, and the curated homepage shelves: create, rename, move and remove them. Each shelf has its own place on the homepage.
 - **Homa-set values:** view and change the values used by the policies. A change applies to new reservations only.
 - **Data requests:** handle requests to see, correct, copy or delete personal data, and record each one.
 

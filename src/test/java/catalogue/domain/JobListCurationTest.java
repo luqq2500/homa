@@ -81,8 +81,9 @@ class JobListCurationTest {
         void aJobMovesToAnotherGroupAndKeepsItsCodeAndName() {
             JobList list = aJobList().with("SOFA_VACUUM").build();
 
-            list.regroup(job("SOFA_VACUUM"), JobGroup.of("Living room"));
+            boolean changed = list.regroup(job("SOFA_VACUUM"), JobGroup.of("Living room"));
 
+            assertThat(changed).isTrue();
             Job moved = list.job(job("SOFA_VACUUM")).orElseThrow();
             assertThat(moved.group()).isEqualTo(JobGroup.of("Living room"));
             assertThat(moved.name()).isEqualTo("Job SOFA_VACUUM");
@@ -94,6 +95,14 @@ class JobListCurationTest {
             JobList list = aJobList().with("SOFA_VACUUM").build();
 
             assertThatThrownBy(() -> list.regroup(job("SOFA_VACUUM"), null)).isInstanceOf(NullPointerException.class);
+            assertThat(list.job(job("SOFA_VACUUM")).orElseThrow().group()).isEqualTo(CatalogueBuilders.KITCHEN);
+        }
+
+        @Test
+        void movingAJobToItsOwnGroupChangesNothing() {
+            JobList list = aJobList().with("SOFA_VACUUM").build();
+
+            assertThat(list.regroup(job("SOFA_VACUUM"), JobGroup.of("Kitchen"))).isFalse();
             assertThat(list.job(job("SOFA_VACUUM")).orElseThrow().group()).isEqualTo(CatalogueBuilders.KITCHEN);
         }
 
@@ -113,10 +122,19 @@ class JobListCurationTest {
         void aRenamedJobKeepsItsCode() {
             JobList list = aJobList().with("KITCHEN_GREASE").build();
 
-            list.rename(job("KITCHEN_GREASE"), "Kitchen degreasing");
+            boolean changed = list.rename(job("KITCHEN_GREASE"), "Kitchen degreasing");
 
+            assertThat(changed).isTrue();
             assertThat(list.job(job("KITCHEN_GREASE")).orElseThrow().name()).isEqualTo("Kitchen degreasing");
             assertThat(list.isOffered(job("KITCHEN_GREASE"))).isTrue();
+        }
+
+        @Test
+        void renamingAJobToItsOwnNameChangesNothing() {
+            JobList list = aJobList().with("KITCHEN_GREASE").build();
+
+            assertThat(list.rename(job("KITCHEN_GREASE"), " Job KITCHEN_GREASE ")).isFalse();
+            assertThat(list.job(job("KITCHEN_GREASE")).orElseThrow().name()).isEqualTo("Job KITCHEN_GREASE");
         }
 
         @Test

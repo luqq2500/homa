@@ -43,6 +43,13 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
     (`AdminReasonRequiredException`). Plain curation, such as adding or renaming a job, records who,
     what and when, with no reason.
 - **Queries with no input** have a response DTO only; an empty request record would say nothing.
+- **Nothing changed, nothing done.** When the domain says a change changed nothing (a rename to the same
+  name, a move to the same place), the usecase saves, publishes and records nothing, and answers with
+  things as they are.
+- **Order of a change:** validate everything first (the founder, the reason, the domain call), then save,
+  then publish, then record. A refused change saves, publishes and records nothing.
+- **Each usecase implements exactly one in port**, and no other usecase implements it. ArchUnit checks
+  this in each context.
 - **Contexts with no domain layer:** `tracking` (read-only views) and `privacy` (recording data
   requests) have no business rules, so they have `usecase` and `infra` only. They are the only
   exceptions to the three layers of the module discipline.
@@ -50,6 +57,27 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
   usecase test proves the orchestration: what is loaded, saved and published, and what is passed to the
   domain. It does not test the domain's rules again. The mutation gate is **at least 80%** for
   `usecase`, with the ratchet. `tools/quality_gates.py` gates each layer separately.
+
+## Rules for the infra phase
+
+Found while reviewing the first usecases. They apply to every context, and each has an infra test.
+
+1. **I1. A save never overwrites a change made meanwhile.** Every repository port says that a save made
+   on an out-of-date copy is refused with the context's `ChangedMeanwhileException`, for example when
+   two founders edit the job list at once. Infra implements it with a version check (optimistic
+   locking). The Homa-set values are stricter: a save is refused unless its version is one more than the
+   version in force, so there can never be two versions with the same number. The founder whose save is
+   refused tries again on what is there now.
+2. **I2. Only authentication says who is acting.**
+   - `decidedBy`, and later the customer's or provider's id, is set by `infra/security` from the
+     authenticated user. A controller never takes it from the request body.
+   - `infra/security` lets only founders reach the `Homa*` in ports, only the customer reach their own
+     reservations, and only the provider reach their own listing and team.
+   - The usecases trust the id they are given; checking who may call them is infra's job.
+3. **I3. A change is all or nothing.** The save, the events and the audit entry of one usecase happen in
+   one transaction. Events go out through an outbox written in that transaction (Discipline §10), so a
+   change is never saved without its event or its audit entry, and an event is never sent for a change
+   that was rolled back.
 
 ## How a context gets another context's data
 
@@ -87,7 +115,7 @@ feedback also listens to `ReservationRequestedIE` and `TeamNamedIE`.
 **catalogue**
 - `HomaAddJob`, `HomaRenameJob`, `HomaRegroupJob`, `HomaRetireJob` → `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `JobRetiredIE`
 - `HomaAddTool`, `HomaRenameTool`, `HomaRetireTool` → `ToolAddedIE`, `ToolRenamedIE`, `ToolRetiredIE`
-- `HomaCreateShelf` (only for jobs providers can offer). `HomaRetireJob` also takes the job off every shelf's search; a shelf left with no job is no longer shown.
+- Shelves: `HomaCreateShelf` (only for jobs providers can offer, placed at a position on the homepage), `HomaRenameShelf`, `HomaMoveShelf` and `HomaRemoveShelf`. The `Homepage` keeps the order, so positions run from 1 with no gaps and no two shelves in one place. `HomaRetireJob` also takes the job off every shelf's search; a shelf left with no job is no longer shown.
 - `HomaPublishServiceArea` → `ServiceAreaPublishedIE` (the launch cities; U2). Publishing again sends the same cities again.
 - Retiring a job or tool needs a reason, because it changes providers' listings (R11). Renaming and regrouping keep the code, so listings are untouched; the events update the names and groups other contexts show.
 - Queries: `HomaViewJobList`, `HomaViewToolList` and `HomaViewShelves` (everything, retired and hidden included), `ProviderViewJobList` (offered jobs by group), `ProviderViewToolList`, `CustomerViewShelves` (in order), `ProviderViewServiceArea`
@@ -411,8 +439,8 @@ Each context passes its gates before the next starts.
 
 | Context | Usecases | Tests | Mutants killed | Worst CRAP | Status |
 |---|---|---|---|---|---|
-| catalogue | 16: add, rename and retire a job or a tool; regroup a job; create a shelf; publish the service area; seven views | 85 | 73 of 73 | 3.0 | Done |
-| policy | 3: launch the policy, change one value, view the values in force | 101 | 107 of 107 | 3.0 | Done |
+| catalogue | 19: add, rename and retire a job or a tool; regroup a job; create, rename, move and remove a shelf; publish the service area; seven views | 114 | 99 of 99 | 3.0 | Done |
+| policy | 3: launch the policy, change one value, view the values in force | 112 | 112 of 112 | 3.0 | Done |
 | account and the rest | — | — | — | — | Not started |
 
 Each built context also has a `<Context>UsecaseArchitectureTest`, which checks that:

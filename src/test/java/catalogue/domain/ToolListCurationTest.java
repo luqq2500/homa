@@ -72,9 +72,19 @@ class ToolListCurationTest {
         void aRenamedToolKeepsItsCode() {
             ToolList list = aToolList().with("STEAM_MOP").build();
 
-            list.rename(tool("STEAM_MOP"), "Steam cleaner");
+            boolean changed = list.rename(tool("STEAM_MOP"), "Steam cleaner");
+
+            assertThat(changed).isTrue();
 
             assertThat(list.tool(tool("STEAM_MOP")).orElseThrow().name()).isEqualTo("Steam cleaner");
+        }
+
+        @Test
+        void renamingAToolToItsOwnNameChangesNothing() {
+            ToolList list = aToolList().with("STEAM_MOP").build();
+
+            assertThat(list.rename(tool("STEAM_MOP"), "Tool STEAM_MOP")).isFalse();
+            assertThat(list.tool(tool("STEAM_MOP")).orElseThrow().name()).isEqualTo("Tool STEAM_MOP");
         }
 
         @Test

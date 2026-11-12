@@ -5,6 +5,7 @@ import static catalogue.usecase.CatalogueUsecaseFixtures.FOUNDER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import catalogue.usecase.CatalogueUsecaseFixtures.AuditLog;
+import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryHomepages;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryJobLists;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryShelves;
 import catalogue.usecase.CatalogueUsecaseFixtures.InMemoryToolLists;
@@ -31,6 +32,7 @@ class CatalogueViewsTest {
     private final InMemoryJobLists jobLists = new InMemoryJobLists();
     private final InMemoryToolLists toolLists = new InMemoryToolLists();
     private final InMemoryShelves shelves = new InMemoryShelves();
+    private final InMemoryHomepages homepages = new InMemoryHomepages();
     private final PublishedEvents events = new PublishedEvents();
     private final AuditLog auditLog = new AuditLog();
 
@@ -51,7 +53,7 @@ class CatalogueViewsTest {
     }
 
     private String shelfIsCreated(String title, int order, String... jobCodes) {
-        return new HomaCreateShelf(shelves, jobLists, auditLog, CLOCK)
+        return new HomaCreateShelf(shelves, homepages, jobLists, auditLog, CLOCK)
                 .create(new CreateShelfRequest(FOUNDER, title, Set.of(jobCodes), 2, 1, order))
                 .shelfId();
     }
@@ -169,8 +171,8 @@ class CatalogueViewsTest {
     @Nested
     class TheShelves {
 
-        private final CustomerViewShelves customersView = new CustomerViewShelves(shelves);
-        private final HomaViewShelves foundersView = new HomaViewShelves(shelves);
+        private final CustomerViewShelves customersView = new CustomerViewShelves(shelves, homepages);
+        private final HomaViewShelves foundersView = new HomaViewShelves(shelves, homepages);
 
         TheShelves() {
             jobIsOnTheList("KITCHEN", "Kitchen care", "Kitchen");
@@ -190,7 +192,7 @@ class CatalogueViewsTest {
 
         @Test
         void theFoundersSeeEveryShelfInOrderAndWhichAreNoLongerShown() {
-            String laundry = shelfIsCreated("Laundry day", 2, "LAUNDRY_FOLD");
+            String laundry = shelfIsCreated("Laundry day", 1, "LAUNDRY_FOLD");
             String kitchen = shelfIsCreated("Kitchen rescue", 1, "KITCHEN");
             jobIsRetired("KITCHEN");
 
@@ -213,11 +215,12 @@ class CatalogueViewsTest {
         @Test
         void beforeAnyShelfIsCreatedTheHomepageHasNone() {
             assertThat(customersView.view().shelves()).isEmpty();
+            assertThat(foundersView.view().shelves()).isEmpty();
         }
 
         @Test
         void aCustomerSeesTheShelvesInTheOrderHomaSet() {
-            String third = shelfIsCreated("Laundry day", 3, "LAUNDRY_FOLD");
+            String third = shelfIsCreated("Laundry day", 1, "LAUNDRY_FOLD");
             String first = shelfIsCreated("Weekend quick refresh", 1, "KITCHEN", "LAUNDRY_FOLD");
             String second = shelfIsCreated("Kitchen rescue", 2, "KITCHEN");
 

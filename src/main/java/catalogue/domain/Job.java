@@ -22,12 +22,17 @@ public final class Job {
         this.active = true;
     }
 
-    void rename(String newName) {
-        name = CatalogueText.requireName(newName, "A job");
+    boolean rename(String newName) {
+        String renamed = CatalogueText.requireName(newName, "A job");
+        boolean changed = !renamed.equals(name);
+        name = renamed;
+        return changed;
     }
 
-    void regroup(JobGroup newGroup) {
-        group = Objects.requireNonNull(newGroup);
+    boolean regroup(JobGroup newGroup) {
+        boolean changed = !Objects.requireNonNull(newGroup).equals(group);
+        group = newGroup;
+        return changed;
     }
 
     void retire() {

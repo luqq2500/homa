@@ -1,12 +1,15 @@
 package catalogue.usecase;
 
+import catalogue.domain.Homepage;
 import catalogue.domain.JobList;
 import catalogue.domain.ServiceArea;
 import catalogue.domain.Shelf;
 import catalogue.domain.ToolList;
 import catalogue.usecase.port.out.AdminAction;
 import catalogue.usecase.port.out.AdminAuditLog;
+import catalogue.usecase.exception.ChangedMeanwhileException;
 import catalogue.usecase.port.out.CatalogueIEPublisher;
+import catalogue.usecase.port.out.HomepageRepository;
 import catalogue.usecase.port.out.JobListRepository;
 import catalogue.usecase.port.out.ServiceAreaRepository;
 import catalogue.usecase.port.out.ShelfRepository;
@@ -35,7 +38,23 @@ final class CatalogueUsecaseFixtures {
         return new AdminAction(FOUNDER, action, subject, "", NOW);
     }
 
-    static final class InMemoryJobLists implements JobListRepository {
+    /** Refuses the next save, as a repository does when another founder saved first. */
+    abstract static class Refusable {
+        private boolean refuseNext;
+
+        void anotherFounderSavesFirst() {
+            refuseNext = true;
+        }
+
+        void refuseIfChangedMeanwhile(String what) {
+            if (refuseNext) {
+                refuseNext = false;
+                throw new ChangedMeanwhileException(what);
+            }
+        }
+    }
+
+    static final class InMemoryJobLists extends Refusable implements JobListRepository {
         private JobList saved;
         int saves;
 
@@ -46,7 +65,25 @@ final class CatalogueUsecaseFixtures {
 
         @Override
         public void save(JobList jobList) {
+            refuseIfChangedMeanwhile("The job list");
             saved = jobList;
+            saves++;
+        }
+    }
+
+    static final class InMemoryHomepages extends Refusable implements HomepageRepository {
+        private Homepage saved;
+        int saves;
+
+        @Override
+        public Optional<Homepage> find() {
+            return Optional.ofNullable(saved);
+        }
+
+        @Override
+        public void save(Homepage homepage) {
+            refuseIfChangedMeanwhile("The homepage");
+            saved = homepage;
             saves++;
         }
     }
@@ -67,18 +104,29 @@ final class CatalogueUsecaseFixtures {
         }
     }
 
-    static final class InMemoryShelves implements ShelfRepository {
+    static final class InMemoryShelves extends Refusable implements ShelfRepository {
         private final List<Shelf> saved = new ArrayList<>();
         int saves;
 
         @Override
+        public Optional<Shelf> find(String shelfId) {
+            return saved.stream().filter(shelf -> shelf.id().equals(shelfId)).findFirst();
+        }
+
+        @Override
         public void save(Shelf shelf) {
+            refuseIfChangedMeanwhile("The shelf");
             saved.removeIf(kept -> kept.id().equals(shelf.id()));
             saved.add(shelf);
             saves++;
         }
 
-        Shelf find(String title) {
+        @Override
+        public void remove(String shelfId) {
+            saved.removeIf(kept -> kept.id().equals(shelfId));
+        }
+
+        Shelf titled(String title) {
             return saved.stream().filter(shelf -> shelf.title().equals(title)).findFirst().orElseThrow();
         }
 

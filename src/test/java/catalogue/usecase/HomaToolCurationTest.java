@@ -157,6 +157,18 @@ class HomaToolCurationTest {
         }
 
         @Test
+        void renamingAToolToItsOwnNameSavesTellsAndRecordsNothing() {
+            theSteamMopIsOnTheList();
+
+            RenameToolResponse renamed = renameTool.rename(new RenameToolRequest(FOUNDER, "STEAM_MOP", "Steam mop"));
+
+            assertThat(renamed).isEqualTo(new RenameToolResponse("STEAM_MOP", "Steam mop"));
+            assertThat(toolLists.saves).isEqualTo(1);
+            assertThat(events.all).hasSize(1);
+            assertThat(auditLog.all).hasSize(1);
+        }
+
+        @Test
         void aToolThatIsNotOnTheListIsNotRenamed() {
             assertThatThrownBy(() -> renameTool.rename(new RenameToolRequest(FOUNDER, "STEAM_MOP", "Steam cleaner")))
                     .isInstanceOf(ToolNotFoundException.class);

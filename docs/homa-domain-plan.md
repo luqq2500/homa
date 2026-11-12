@@ -87,16 +87,21 @@ policy ─────(rating window, minimum ratings to show)──► feedback
 | `JobList` | Aggregate | Holds jobs; codes are unique; jobs are retired, never deleted |
 | `Tool` / `ToolList` | Entity / Aggregate | Same pattern as jobs |
 | `ServiceArea` | Aggregate | Launch cities: Salak Tinggi, Cyberjaya, Putrajaya |
-| `Shelf` | Aggregate | A curated homepage shelf: title, order, preset search (jobs, duration, helpers), and whether it is shown |
+| `Shelf` | Aggregate | A curated homepage shelf: title, preset search (jobs, duration, helpers), and whether it is shown |
+| `Homepage` | Aggregate | The order of the shelves: positions from 1, with no gaps and no two shelves in one place |
 
 ```java
 JobList.add(JobCode code, String name, JobGroup group)
-JobList.rename(JobCode code, String name)
-JobList.regroup(JobCode code, JobGroup group)
+JobList.rename(JobCode code, String name) : boolean    // whether the name changed
+JobList.regroup(JobCode code, JobGroup group) : boolean // whether the group changed
 JobList.retire(JobCode code)
 JobList.isOffered(JobCode code) : boolean
 ServiceArea.covers(City city) : boolean
-Shelf.create(String title, PresetSearch preset, int order, Set<JobCode> offeredJobs)   // only jobs providers can offer
+Shelf.create(String title, PresetSearch preset, Set<JobCode> offeredJobs)   // only jobs providers can offer
+Shelf.rename(String title) : boolean   // whether the title changed
+Homepage.place(String shelfId, int position)   // from 1 to one past the last; the rest move down
+Homepage.move(String shelfId, int position) : boolean   // whether it moved
+Homepage.remove(String shelfId)   // the rest move up
 Shelf.withdrawJob(JobCode retired) : boolean   // a shelf left with no job is no longer shown
 Shelf.isShown() : boolean
 ```
@@ -3079,6 +3084,69 @@ Feature: Telling the provider what a retirement did
   so a shelf emptied by a retirement can be replaced. Customers see only shown shelves.
 - **The listing events stay as they are.** reservation and discovery still get `ListingChangedIE` or
   `ListingWentOfflineIE`; the three new offering events are for telling the provider why.
+
+## Change after the domain phase: the homepage order and changes that change nothing
+
+Found while reviewing the `catalogue` and `policy` usecases, and confirmed by the product owner.
+
+**`catalogue`**
+
+- **The `Homepage` owns the order of the shelves.** A shelf's place was a number on each shelf, so two
+  shelves could share one and their order was then arbitrary. Now:
+  - `Homepage.place(shelfId, position)` puts a new shelf at a position from 1 to one past the last; the
+    shelves from there move down one.
+  - `Homepage.move(shelfId, position)` moves a shelf from 1 to the last place; the shelves in between
+    move along. It says whether the shelf moved.
+  - `Homepage.remove(shelfId)` takes a shelf off; the shelves after it move up.
+  - A shelf has one place (`ShelfAlreadyOnHomepageException`), and only a shelf on the homepage moves or
+    is removed (`ShelfNotOnHomepageException`).
+- `Shelf.create` no longer takes an order, and `Shelf.rename(title)` gives a shelf a new title.
+- **Changes that change nothing say so.** `JobList.rename`, `JobList.regroup`, `ToolList.rename` and
+  `Shelf.rename` return whether anything changed, so the usecase saves, tells and records nothing for a
+  rename to the same name.
+
+```gherkin
+Feature: The order of the shelves on the homepage
+
+  Background:
+    Given the homepage has the shelves A, B and C, in that order
+
+  Scenario: A shelf placed in the middle moves the rest down one
+    When Homa places a new shelf at position 2
+    Then the order is A, new, B, C
+
+  Scenario: A shelf is placed from the first place to one past the last
+    When Homa places a new shelf at position 5
+    Then it is refused with "InvalidShelfOrderException"
+
+  Scenario: A shelf has only one place
+    When Homa places B again at position 1
+    Then it is refused with "ShelfAlreadyOnHomepageException"
+
+  Scenario: A shelf moved up moves the shelves in between down
+    When Homa moves C to position 1
+    Then the order is C, A, B
+
+  Scenario: Moving a shelf to its own place changes nothing
+    When Homa moves B to position 2
+    Then nothing moved
+
+  Scenario: A removed shelf leaves no gap
+    When Homa removes A
+    Then the order is B, C
+
+Feature: Changes that change nothing
+
+  Scenario: Renaming a job to its own name changes nothing
+    Given the job list has "KITCHEN_GREASE" named "Job KITCHEN_GREASE"
+    When Homa renames it "Job KITCHEN_GREASE"
+    Then nothing changed
+
+  Scenario: Moving a job to its own group changes nothing
+    Given "SOFA_VACUUM" is in Kitchen
+    When Homa moves it to Kitchen
+    Then nothing changed
+```
 
 ## Open questions
 

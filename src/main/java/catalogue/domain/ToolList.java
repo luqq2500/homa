@@ -37,8 +37,9 @@ public final class ToolList {
         tools.put(code, new Tool(code, name));
     }
 
-    public void rename(ToolCode code, String name) {
-        existing(code).rename(name);
+    /** Renames a tool. Its code stays. Returns whether the name changed: the same name changes nothing. */
+    public boolean rename(ToolCode code, String name) {
+        return existing(code).rename(name);
     }
 
     public void retire(ToolCode code) {

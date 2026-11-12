@@ -5,7 +5,7 @@ Updated after the follow-up decisions (G1 to G4 and #5).
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **252** scenarios: **240 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **260** scenarios: **248 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -22,6 +22,8 @@ The plan has **252** scenarios: **240 have a test**, and **12 are retired** beca
   payment that fails at request, and a request paid before the provider answers
 - eight in the three features for changes to the job and tool lists, added while building the
   `catalogue` usecases
+- eight in the two features for the homepage order and changes that change nothing, added after
+  reviewing the first usecases
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -314,6 +316,14 @@ Two scenarios map to more than one test:
 | 250 | Telling the provider what a retirement did | Withdrawing a job says the listing is still live | `ProviderListingRetiredCatalogueTest` | `aRetiredJobComesOffTheListing` |
 | 251 | Telling the provider what a retirement did | Withdrawing the last job says the listing went offline | `ProviderListingRetiredCatalogueTest` | `aLiveListingLeftWithNoJobGoesOffline` |
 | 252 | Telling the provider what a retirement did | A draft losing its last job was never live | `ProviderListingRetiredCatalogueTest` | `aDraftLosingItsLastJobWasNeverLiveSoDoesNotGoOffline` |
+| 253 | The order of the shelves on the homepage | A shelf placed in the middle moves the rest down one | `HomepageOrderTest` | `aShelfPlacedInTheMiddleMovesTheRestDownOne` |
+| 254 | The order of the shelves on the homepage | A shelf is placed from the first place to one past the last | `HomepageOrderTest` | `aShelfIsPlacedFromTheFirstPlaceToOnePastTheLast` |
+| 255 | The order of the shelves on the homepage | A shelf has only one place | `HomepageOrderTest` | `aShelfHasOnlyOnePlace` |
+| 256 | The order of the shelves on the homepage | A shelf moved up moves the shelves in between down | `HomepageOrderTest` | `aShelfMovedUpMovesTheShelvesInBetweenDown` |
+| 257 | The order of the shelves on the homepage | Moving a shelf to its own place changes nothing | `HomepageOrderTest` | `movingAShelfToItsOwnPlaceChangesNothing` |
+| 258 | The order of the shelves on the homepage | A removed shelf leaves no gap | `HomepageOrderTest` | `aRemovedShelfLeavesNoGap` |
+| 259 | Changes that change nothing | Renaming a job to its own name changes nothing | `JobListCurationTest` | `renamingAJobToItsOwnNameChangesNothing` |
+| 260 | Changes that change nothing | Moving a job to its own group changes nothing | `JobListCurationTest` | `movingAJobToItsOwnGroupChangesNothing` |
 
 ## 2. Product spec rules with no test
 
@@ -390,7 +400,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 | Context | Worst CRAP (limit < 6) | Mutation score (limit ≥ 90%) | Test strength | Mutants | Dependency rule test |
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
-| catalogue | 4.0 | 100% | 100% | 97 | `CatalogueArchitectureTest` |
+| catalogue | 4.0 | 100% | 100% | 142 | `CatalogueArchitectureTest` |
 | policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
 | account | 5.0 | 100% | 100% | 191 | `AccountArchitectureTest` |
 | offering | 5.0 | 100% | 100% | 212 | `OfferingArchitectureTest` |
@@ -406,7 +416,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,459 of 1,459 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,504 of 1,504 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.

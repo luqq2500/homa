@@ -36,13 +36,17 @@ public final class JobList {
         jobs.put(code, new Job(code, name, group));
     }
 
-    public void rename(JobCode code, String name) {
-        existing(code).rename(name);
+    /** Renames a job. Its code stays. Returns whether the name changed: the same name changes nothing. */
+    public boolean rename(JobCode code, String name) {
+        return existing(code).rename(name);
     }
 
-    /** Moves a job to another display group, such as from Kitchen to Living room. Its code stays. */
-    public void regroup(JobCode code, JobGroup group) {
-        existing(code).regroup(group);
+    /**
+     * Moves a job to another display group, such as from Kitchen to Living room. Its code stays. Returns
+     * whether the group changed: the same group changes nothing.
+     */
+    public boolean regroup(JobCode code, JobGroup group) {
+        return existing(code).regroup(group);
     }
 
     public void retire(JobCode code) {

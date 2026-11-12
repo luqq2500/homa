@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import policy.domain.HomaPolicy;
+import policy.usecase.exception.ChangedMeanwhileException;
 import policy.usecase.port.out.AdminAction;
 import policy.usecase.port.out.AdminAuditLog;
 import policy.usecase.port.out.PolicyIEPublisher;
@@ -27,8 +28,11 @@ final class PolicyUsecaseFixtures {
         return Clock.fixed(now, ZoneOffset.UTC);
     }
 
-    /** Keeps every version saved, the last one in force. */
-    static final class InMemoryPolicies implements PolicyRepository {
+    /**
+     * Keeps every version saved, the last one in force. Like a real repository, it refuses a version that is
+     * not one more than the version in force.
+     */
+    static class InMemoryPolicies implements PolicyRepository {
         final List<HomaPolicy> versions = new ArrayList<>();
 
         @Override
@@ -38,7 +42,22 @@ final class PolicyUsecaseFixtures {
 
         @Override
         public void save(HomaPolicy policy) {
+            if (policy.version() != versions.size() + 1) {
+                throw new ChangedMeanwhileException("The Homa-set values");
+            }
             versions.add(policy);
+        }
+    }
+
+    /**
+     * A repository where another founder's change lands between reading and saving: each founder reads the
+     * version before the one in force.
+     */
+    static final class AnotherFounderChangesFirst extends InMemoryPolicies {
+
+        @Override
+        public Optional<HomaPolicy> findCurrent() {
+            return versions.size() < 2 ? super.findCurrent() : Optional.of(versions.get(versions.size() - 2));
         }
     }
 

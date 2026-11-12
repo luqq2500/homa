@@ -16,7 +16,8 @@ import java.time.Instant;
 
 /**
  * Moves a job to another display group, such as from Kitchen to Living room. Its code stays, so listings
- * and reservations keep it; the other contexts are told so the group they show is updated.
+ * and reservations keep it; the other contexts are told so the group they show is updated. Moving it to
+ * its own group changes nothing, so nothing is saved, told or recorded.
  */
 public final class HomaRegroupJob implements HomaJobRegrouper {
 
@@ -39,12 +40,14 @@ public final class HomaRegroupJob implements HomaJobRegrouper {
         JobCode code = JobCode.of(request.code());
         JobList jobList = jobLists.find().orElseGet(JobList::create);
 
-        jobList.regroup(code, JobGroup.of(request.group()));
+        boolean changed = jobList.regroup(code, JobGroup.of(request.group()));
         Job moved = jobList.job(code).orElseThrow();
 
-        jobLists.save(jobList);
-        events.publish(new JobRegroupedIE(moved.code().value(), moved.group().name(), now));
-        admin.record(founder, "REGROUP_JOB", code.value(), now);
+        if (changed) {
+            jobLists.save(jobList);
+            events.publish(new JobRegroupedIE(moved.code().value(), moved.group().name(), now));
+            admin.record(founder, "REGROUP_JOB", code.value(), now);
+        }
         return new RegroupJobResponse(moved.code().value(), moved.group().name());
     }
 }

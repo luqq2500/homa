@@ -549,3 +549,19 @@ owner.
   U13 is decided.
 - **Scenarios:** 252 in the plan; 240 have a test and 12 are retired.
 - **Gates:** whole build 1,271 tests, 1,532 mutants, all killed, worst CRAP 5.0.
+
+## 22. Addendum: after the first usecase review
+
+Changed after reviewing the `catalogue` and `policy` usecases, and confirmed by the product owner.
+
+- **`catalogue`:** a `Homepage` aggregate owns the order of the shelves, so positions run from 1 with no
+  gaps and no two shelves in one place; shelves can be renamed, moved and removed. Renames and regroups
+  say whether anything changed, so a change that changes nothing is not saved, told or recorded.
+- **Usecases:** shelf rename, move and remove; a save made on an out-of-date copy is refused
+  (`ChangedMeanwhileException`); the policy is saved only as the next version; policy amounts are read
+  without leading zeros and in whole minutes; each usecase implements exactly one in port.
+- **Usecase plan:** rules I1 to I3 for the infra phase: no save overwrites a change made meanwhile, only
+  authentication says who is acting, and a change with its events and audit entry is all or nothing.
+- **Spec:** founders create, rename, move and remove the homepage shelves.
+- **Scenarios:** 260 in the plan; 248 have a test and 12 are retired.
+- **Gates:** whole build 1,439 tests, 1,715 mutants, all killed, worst CRAP 5.0.

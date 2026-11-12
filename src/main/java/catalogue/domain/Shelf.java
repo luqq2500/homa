@@ -1,6 +1,5 @@
 package catalogue.domain;
 
-import catalogue.domain.exception.InvalidShelfOrderException;
 import catalogue.domain.exception.ShelfJobNotOfferedException;
 import catalogue.domain.exception.ShelfTitleRequiredException;
 import java.util.Objects;
@@ -10,35 +9,27 @@ import java.util.stream.Collectors;
 /**
  * A homepage shelf curated by Homa, such as "Weekend quick refresh", driven by a preset search.
  *
+ * <p>Where a shelf sits on the homepage is the {@link Homepage}'s to say, so positions stay unique.
+ *
  * <p>A shelf searches only for jobs providers can offer. When Homa retires one of its jobs, the job comes
  * off the shelf's search; a shelf left with no job is no longer shown.
  */
 public final class Shelf {
 
     private final String id;
-    private final String title;
-    private final int order;
+    private String title;
     private PresetSearch preset;
     private boolean shown = true;
 
-    private Shelf(String id, String title, PresetSearch preset, int order) {
+    private Shelf(String id, String title, PresetSearch preset) {
         this.id = id;
         this.title = title;
         this.preset = preset;
-        this.order = order;
     }
 
-    /**
-     * @param order the shelf's place on the homepage, from 1 for the first shelf
-     * @param offeredJobs the jobs providers can offer now; the preset search may name no other
-     */
-    public static Shelf create(String title, PresetSearch preset, int order, Set<JobCode> offeredJobs) {
-        if (title == null || title.isBlank()) {
-            throw new ShelfTitleRequiredException();
-        }
-        if (order < 1) {
-            throw new InvalidShelfOrderException(order);
-        }
+    /** @param offeredJobs the jobs providers can offer now; the preset search may name no other */
+    public static Shelf create(String title, PresetSearch preset, Set<JobCode> offeredJobs) {
+        String required = requireTitle(title);
         preset.jobs().stream()
                 .filter(job -> !offeredJobs.contains(job))
                 .sorted((a, b) -> a.value().compareTo(b.value()))
@@ -46,7 +37,22 @@ public final class Shelf {
                 .ifPresent(job -> {
                     throw new ShelfJobNotOfferedException(job.value());
                 });
-        return new Shelf(new ShelfId().generate(), title.strip(), preset, order);
+        return new Shelf(new ShelfId().generate(), required, preset);
+    }
+
+    /** Gives the shelf a new title. Returns whether it changed: the same title changes nothing. */
+    public boolean rename(String newTitle) {
+        String renamed = requireTitle(newTitle);
+        boolean changed = !renamed.equals(title);
+        title = renamed;
+        return changed;
+    }
+
+    private static String requireTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new ShelfTitleRequiredException();
+        }
+        return title.strip();
     }
 
     /**
@@ -85,9 +91,5 @@ public final class Shelf {
 
     public PresetSearch preset() {
         return preset;
-    }
-
-    public int order() {
-        return order;
     }
 }

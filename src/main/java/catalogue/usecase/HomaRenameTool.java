@@ -15,7 +15,8 @@ import java.time.Instant;
 
 /**
  * Renames a tool on Homa's tool list. Its code stays, so listings and reservations keep it; the other
- * contexts are told so the name they show is updated.
+ * contexts are told so the name they show is updated. Renaming to the same name changes nothing, so
+ * nothing is saved, told or recorded.
  */
 public final class HomaRenameTool implements HomaToolRenamer {
 
@@ -38,12 +39,14 @@ public final class HomaRenameTool implements HomaToolRenamer {
         ToolCode code = ToolCode.of(request.code());
         ToolList toolList = toolLists.find().orElseGet(ToolList::create);
 
-        toolList.rename(code, request.name());
+        boolean changed = toolList.rename(code, request.name());
         Tool renamed = toolList.tool(code).orElseThrow();
 
-        toolLists.save(toolList);
-        events.publish(new ToolRenamedIE(renamed.code().value(), renamed.name(), now));
-        admin.record(founder, "RENAME_TOOL", code.value(), now);
+        if (changed) {
+            toolLists.save(toolList);
+            events.publish(new ToolRenamedIE(renamed.code().value(), renamed.name(), now));
+            admin.record(founder, "RENAME_TOOL", code.value(), now);
+        }
         return new RenameToolResponse(renamed.code().value(), renamed.name());
     }
 }

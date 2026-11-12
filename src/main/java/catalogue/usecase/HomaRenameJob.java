@@ -15,7 +15,8 @@ import java.time.Instant;
 
 /**
  * Renames a job on Homa's job list. Its code stays, so listings and reservations keep it; the other
- * contexts are told so the name they show is updated.
+ * contexts are told so the name they show is updated. Renaming to the same name changes nothing, so
+ * nothing is saved, told or recorded.
  */
 public final class HomaRenameJob implements HomaJobRenamer {
 
@@ -38,12 +39,14 @@ public final class HomaRenameJob implements HomaJobRenamer {
         JobCode code = JobCode.of(request.code());
         JobList jobList = jobLists.find().orElseGet(JobList::create);
 
-        jobList.rename(code, request.name());
+        boolean changed = jobList.rename(code, request.name());
         Job renamed = jobList.job(code).orElseThrow();
 
-        jobLists.save(jobList);
-        events.publish(new JobRenamedIE(renamed.code().value(), renamed.name(), now));
-        admin.record(founder, "RENAME_JOB", code.value(), now);
+        if (changed) {
+            jobLists.save(jobList);
+            events.publish(new JobRenamedIE(renamed.code().value(), renamed.name(), now));
+            admin.record(founder, "RENAME_JOB", code.value(), now);
+        }
         return new RenameJobResponse(renamed.code().value(), renamed.name());
     }
 }

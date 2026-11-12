@@ -20,8 +20,11 @@ public final class Tool {
         this.active = true;
     }
 
-    void rename(String newName) {
-        name = CatalogueText.requireName(newName, "A tool");
+    boolean rename(String newName) {
+        String renamed = CatalogueText.requireName(newName, "A tool");
+        boolean changed = !renamed.equals(name);
+        name = renamed;
+        return changed;
     }
 
     void retire() {
