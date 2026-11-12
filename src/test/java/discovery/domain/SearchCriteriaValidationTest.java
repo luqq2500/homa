@@ -87,4 +87,16 @@ class SearchCriteriaValidationTest {
         assertThatThrownBy(() -> new SearchLimits(1, 6, null, Duration.ofDays(30))).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new SearchLimits(1, 6, Duration.ofHours(2), null)).isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void aSearchKeepsTheStartsTheCustomerCouldBook() {
+        SearchCriteria search = SearchCriteria.of(Set.of(JobCode.of("KITCHEN")), SATURDAY_1200, 2, 1, City.of("Cyberjaya"), SATURDAY_0900, LAUNCH_LIMITS);
+
+        assertThat(search.earliestStart()).isEqualTo(SATURDAY_0900.plus(Duration.ofHours(2)));
+        assertThat(search.latestStart()).isEqualTo(SATURDAY_0900.plus(Duration.ofDays(30)));
+        assertThatThrownBy(() -> new SearchCriteria(Set.of(JobCode.of("KITCHEN")), SATURDAY_1200, 2, 1, City.of("Cyberjaya"), null, SATURDAY_1200))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new SearchCriteria(Set.of(JobCode.of("KITCHEN")), SATURDAY_1200, 2, 1, City.of("Cyberjaya"), SATURDAY_0900, null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

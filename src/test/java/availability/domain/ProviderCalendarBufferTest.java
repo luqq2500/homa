@@ -10,11 +10,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import availability.domain.exception.NegativeBufferBetweenJobsException;
 import availability.domain.exception.SlotNotAvailableException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Feature: Buffer between jobs. */
 class ProviderCalendarBufferTest {
+
+    private static final Instant NO_EARLIEST = Instant.MIN;
+    private static final Instant NO_LATEST = Instant.MAX;
 
     private static final Duration HALF_AN_HOUR = Duration.ofMinutes(30);
 
@@ -74,7 +78,7 @@ class ProviderCalendarBufferTest {
     void theNearestStartRespectsTheBuffer() {
         ProviderCalendar calendar = aCalendarWithR1From10To13AndABufferOf(HALF_AN_HOUR);
 
-        assertThat(calendar.nearestAvailableStart(slot("13:00", "14:00"), Duration.ofHours(2))).contains(saturday("13:30"));
+        assertThat(calendar.nearestAvailableStart(slot("13:00", "14:00"), Duration.ofHours(2), NO_EARLIEST, NO_LATEST)).contains(saturday("13:30"));
     }
 
     @Test

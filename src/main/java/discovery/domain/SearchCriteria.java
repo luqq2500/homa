@@ -11,8 +11,13 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 
-/** What the customer searches for: the jobs, a start, a duration, a number of helpers, in the city of their address. */
-public record SearchCriteria(Set<JobCode> jobs, Instant start, int hours, int helpers, City city) {
+/**
+ * What the customer searches for: the jobs, a start, a duration, a number of helpers, in the city of their
+ * address. It also keeps the earliest and latest starts the customer could book when they searched, so a
+ * start suggested for a close match is always bookable.
+ */
+public record SearchCriteria(
+        Set<JobCode> jobs, Instant start, int hours, int helpers, City city, Instant earliestStart, Instant latestStart) {
 
     private static final long QUARTER_HOUR_SECONDS = Duration.ofMinutes(15).toSeconds();
 
@@ -20,6 +25,8 @@ public record SearchCriteria(Set<JobCode> jobs, Instant start, int hours, int he
         jobs = Set.copyOf(jobs);
         Objects.requireNonNull(start);
         Objects.requireNonNull(city);
+        Objects.requireNonNull(earliestStart);
+        Objects.requireNonNull(latestStart);
     }
 
     /** A search checked against Homa's ranges, minimum notice and booking horizon at {@code now}. */
@@ -29,8 +36,15 @@ public record SearchCriteria(Set<JobCode> jobs, Instant start, int hours, int he
             throw new NoJobsChosenException();
         }
         requireWithinHomasRanges(hours, helpers, limits);
-        requireBookableStart(start, now, limits);
-        return new SearchCriteria(jobs, start, hours, helpers, city);
+        Instant earliest = now.plus(limits.minimumNotice());
+        Instant latest = now.plus(limits.bookingHorizon());
+        requireBookableStart(start, earliest, latest);
+        return new SearchCriteria(jobs, start, hours, helpers, city, earliest, latest);
+    }
+
+    /** Whether the customer could book {@code candidateStart}: from the minimum notice to the booking horizon. */
+    public boolean isBookable(Instant candidateStart) {
+        return !candidateStart.isBefore(earliestStart) && !candidateStart.isAfter(latestStart);
     }
 
     /** The time the booking would take. */
@@ -47,15 +61,13 @@ public record SearchCriteria(Set<JobCode> jobs, Instant start, int hours, int he
         }
     }
 
-    private static void requireBookableStart(Instant start, Instant now, SearchLimits limits) {
+    private static void requireBookableStart(Instant start, Instant earliest, Instant latest) {
         if (start.getEpochSecond() % QUARTER_HOUR_SECONDS != 0 || start.getNano() != 0) {
             throw new StartNotOnQuarterHourException(start);
         }
-        Instant earliest = now.plus(limits.minimumNotice());
         if (start.isBefore(earliest)) {
             throw new StartTooSoonException(start, earliest);
         }
-        Instant latest = now.plus(limits.bookingHorizon());
         if (start.isAfter(latest)) {
             throw new StartBeyondHorizonException(start, latest);
         }

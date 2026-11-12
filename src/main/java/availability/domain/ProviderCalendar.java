@@ -88,14 +88,16 @@ public final class ProviderCalendar {
 
     /**
      * The available start nearest to the wanted one, for a slot of the same length, looking in 15-minute
-     * steps up to {@code within} before or after. When two starts are equally near, the later one is
-     * chosen.
+     * steps up to {@code within} before or after. Only starts from {@code earliest} to {@code latest} count,
+     * so a customer is never offered a start they cannot book. When two starts are equally near, the later
+     * one is chosen.
      */
-    public Optional<Instant> nearestAvailableStart(TimeSlot wanted, Duration within) {
+    public Optional<Instant> nearestAvailableStart(TimeSlot wanted, Duration within, Instant earliest, Instant latest) {
         long steps = within.dividedBy(TimeSlot.STEP);
         for (long step = 0; step <= steps; step++) {
             Duration offset = TimeSlot.STEP.multipliedBy(step);
-            Optional<Instant> found = firstAvailable(wanted, wanted.start().plus(offset), wanted.start().minus(offset));
+            Optional<Instant> found = firstAvailable(
+                    wanted, earliest, latest, wanted.start().plus(offset), wanted.start().minus(offset));
             if (found.isPresent()) {
                 return found;
             }
@@ -127,8 +129,11 @@ public final class ProviderCalendar {
         return providerId;
     }
 
-    private Optional<Instant> firstAvailable(TimeSlot wanted, Instant... starts) {
-        return Stream.of(starts).filter(start -> isAvailable(wanted.startingAt(start))).findFirst();
+    private Optional<Instant> firstAvailable(TimeSlot wanted, Instant earliest, Instant latest, Instant... starts) {
+        return Stream.of(starts)
+                .filter(start -> !start.isBefore(earliest) && !start.isAfter(latest))
+                .filter(start -> isAvailable(wanted.startingAt(start)))
+                .findFirst();
     }
 
     /** Walks the sorted windows from the slot's start, until the slot's end is reached or a gap is found. */

@@ -121,11 +121,58 @@ class MatchClassifierMatchingTest {
     }
 
     @Test
-    void someJobsAndANearbyTimeIsStillACloseMatch() {
+    void someJobsAndANearbyTimeIsNoMatch() {
         MatchResult result = aProvider().offering("KITCHEN", "TOILET_CARE").freeOnlyNearTheTime().classified();
 
-        assertThat(result.match()).isEqualTo(Match.CLOSE);
+        assertThat(result.match()).isEqualTo(Match.NONE);
         assertThat(result.reasons()).containsExactlyInAnyOrder(MatchReason.MISSING_JOBS, MatchReason.NEARBY_TIME);
+    }
+
+    /** Thursday 09:00 with 2 hours' notice: the earliest bookable start is Thursday 11:00. */
+    private static final Instant THURSDAY_1100 = THURSDAY_0900.plus(Duration.ofHours(2));
+    /** With a 30-day horizon, the latest bookable start is 30 days after Thursday 09:00. */
+    private static final Instant LATEST_BOOKABLE = THURSDAY_0900.plus(Duration.ofDays(30));
+    private static final Duration A_QUARTER_HOUR = Duration.ofMinutes(15);
+
+    private static MatchResult classifiedFor(Instant searchedStart, Instant freeFrom) {
+        SearchCriteria search = SearchCriteria.of(
+                jobs("KITCHEN", "LAUNDRY_FOLD"), searchedStart, 3, 2, City.of("Cyberjaya"), THURSDAY_0900,
+                SearchCriteriaValidationTest.LAUNCH_LIMITS);
+        return MatchClassifier.classify(
+                search, new ProviderCandidate("provider-1", jobs("KITCHEN", "LAUNDRY_FOLD"), 2, 4, 1, 3, Set.of(City.of("Cyberjaya")),
+                        Optional.of(freeFrom), SATURDAY_1000.plus(Duration.ofDays(60))));
+    }
+
+    @Test
+    void aNearbyStartBeforeTheMinimumNoticeIsNotOffered() {
+        MatchResult result = classifiedFor(THURSDAY_1100.plus(Duration.ofHours(1)), THURSDAY_1100.minus(A_QUARTER_HOUR));
+
+        assertThat(result.match()).isEqualTo(Match.NONE);
+        assertThat(result.reasons()).containsExactly(MatchReason.NOT_FREE);
+    }
+
+    @Test
+    void aNearbyStartAtTheMinimumNoticeIsOffered() {
+        MatchResult result = classifiedFor(THURSDAY_1100.plus(Duration.ofHours(1)), THURSDAY_1100);
+
+        assertThat(result.match()).isEqualTo(Match.CLOSE);
+        assertThat(result.reasons()).containsExactly(MatchReason.NEARBY_TIME);
+    }
+
+    @Test
+    void aNearbyStartAfterTheBookingHorizonIsNotOffered() {
+        MatchResult result = classifiedFor(LATEST_BOOKABLE.minus(A_QUARTER_HOUR), LATEST_BOOKABLE.plus(A_QUARTER_HOUR));
+
+        assertThat(result.match()).isEqualTo(Match.NONE);
+        assertThat(result.reasons()).containsExactly(MatchReason.NOT_FREE);
+    }
+
+    @Test
+    void aNearbyStartAtTheBookingHorizonIsOffered() {
+        MatchResult result = classifiedFor(LATEST_BOOKABLE.minus(A_QUARTER_HOUR), LATEST_BOOKABLE);
+
+        assertThat(result.match()).isEqualTo(Match.CLOSE);
+        assertThat(result.reasons()).containsExactly(MatchReason.NEARBY_TIME);
     }
 
     @Test

@@ -13,8 +13,9 @@ import java.util.function.Predicate;
  * <ul>
  *   <li><b>Exact:</b> covers the city, offers every chosen job, fits the helpers and duration, and is free
  *       at the chosen time.
- *   <li><b>Close:</b> covers the city and fits the helpers and duration, but offers only some of the jobs,
- *       or is free only near the chosen time.
+ *   <li><b>Close:</b> covers the city and fits the helpers and duration, but differs in one way only: it
+ *       offers only some of the jobs, or it is free only near the chosen time. Both at once is no match.
+ *       A start it suggests is one the customer can book.
  *   <li><b>No match:</b> anything else, including a job that would end after the provider's
  *       re-verification is due.
  * </ul>
@@ -32,8 +33,16 @@ public final class MatchClassifier {
         if (!none.isEmpty()) {
             return new MatchResult(candidate.providerId(), Match.NONE, none);
         }
-        Set<MatchReason> close = failing(closeMatchRules(criteria), candidate);
-        return new MatchResult(candidate.providerId(), close.isEmpty() ? Match.EXACT : Match.CLOSE, close);
+        Set<MatchReason> differences = failing(closeMatchRules(criteria), candidate);
+        return new MatchResult(candidate.providerId(), matchFor(differences), differences);
+    }
+
+    /** No difference is exact, one is close, and two are too far from the search. */
+    private static Match matchFor(Set<MatchReason> differences) {
+        if (differences.isEmpty()) {
+            return Match.EXACT;
+        }
+        return differences.size() == 1 ? Match.CLOSE : Match.NONE;
     }
 
     /** Each rule a provider must meet to be any match at all. */
@@ -45,7 +54,7 @@ public final class MatchClassifier {
         rules.put(MatchReason.DURATION_OUTSIDE_RANGE,
                 candidate -> criteria.hours() >= candidate.minHours() && criteria.hours() <= candidate.maxHours());
         rules.put(MatchReason.NO_CHOSEN_JOBS, candidate -> criteria.jobs().stream().anyMatch(candidate.jobs()::contains));
-        rules.put(MatchReason.NOT_FREE, candidate -> candidate.nearestFreeStart().isPresent());
+        rules.put(MatchReason.NOT_FREE, candidate -> candidate.nearestFreeStart().filter(criteria::isBookable).isPresent());
         rules.put(MatchReason.VERIFICATION_DUE_BEFORE_END, candidate -> candidate.verifiedThroughJobOf(criteria.hours()));
         return rules;
     }
