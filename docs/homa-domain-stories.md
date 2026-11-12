@@ -538,7 +538,7 @@ Aina joins the Kemas team as a helper.
   allows her to work for Kemas.
 - 7a. **Nur Aina** adds **Siti** the same way, with the role **supervisor**.
 - 7b. Later, **Nur Aina** changes a *team member*'s role between helper and supervisor, without a new
-  check.
+  check. Jobs already naming them keep the role they were named in, until she names those teams again.
 - 7c. Later, **Nur Aina** removes a *team member*, or **Homa founders** remove one who is not allowed to
   work. A removed person cannot come back, and comes off every upcoming job they were named on
   (story 13).
@@ -987,7 +987,8 @@ and police reports.
 
 **Rules:** each party files one report per reservation, from the booked start to the end of the
 dispute window. A partial refund gives the provider any amount from RM0 up to what was at stake. Homa
-aims to decide every case within 3 working days, and both parties see the expected date. Safety cases
+aims to decide every case within 3 days (72 hours, every day counts), and both parties see when it is
+due. Safety cases
 come first, then the oldest.
 
 **In the code:** `reservation` (`Reservation.fileReport`, `resolve`), `resolution` (`Case.open`,
