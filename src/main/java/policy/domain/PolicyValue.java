@@ -51,10 +51,17 @@ public sealed interface PolicyValue {
 
     // ---- Requests ----
 
-    /** How long the provider has to answer a request, unless the booked start comes sooner. */
+    /** How long the provider has to answer a request, unless the response deadline comes sooner. */
     record RequestExpiry(Duration period) implements PolicyValue {
         public RequestExpiry {
             PolicyShape.requirePeriod("The request expiry time", period);
+        }
+    }
+
+    /** How long before the booked start every request is answered, so the customer always knows in time. */
+    record ResponseDeadline(Duration beforeStart) implements PolicyValue {
+        public ResponseDeadline {
+            PolicyShape.requirePeriod("The response deadline", beforeStart);
         }
     }
 

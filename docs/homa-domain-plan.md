@@ -704,6 +704,8 @@ Feature: Requesting a reservation
     And Homa later publishes policy version 2
     Then the reservation still uses policy version 1
 
+# Changed in "the 7-star experience": a request expires by the response deadline, 1 hour before the
+# booked start, not at the start. Saturday 06:00 for Saturday 10:00 now expires at Saturday 09:00.
 Feature: Request expiry
   Scenario Outline: A request expires after 24 hours or at the booked start, whichever is sooner
     Given a request made at <requested> for a start at <start>

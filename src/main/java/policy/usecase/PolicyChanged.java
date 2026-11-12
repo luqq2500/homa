@@ -13,7 +13,7 @@ final class PolicyChanged {
     static HomaPolicyChangedIE from(PolicySnapshot s) {
         return new HomaPolicyChangedIE(
                 s.version(), s.effectiveFrom(), s.serviceFee(), s.durationRange().minHours(), s.durationRange().maxHours(),
-                s.minimumNotice(), s.bookingHorizon(), s.requestExpiry(), s.feeWindow(),
+                s.minimumNotice(), s.bookingHorizon(), s.requestExpiry(), s.responseDeadline(), s.feeWindow(),
                 s.cancellationFee(CancellationTier.FLEXIBLE), s.cancellationFee(CancellationTier.STANDARD),
                 s.cancellationFee(CancellationTier.FIRM),
                 s.providerLateCancellationFine(), s.providerNoShowFine(), s.fineDeductionCap(),

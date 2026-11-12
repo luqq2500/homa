@@ -10,6 +10,7 @@ import java.util.Set;
  *
  * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
  * @param supervisorRule when a supervisor is sent; empty when the provider sets none
+ * @param acceptancePolicy whether requests wait for the provider or are accepted instantly once paid
  */
 public record OfferingSnapshot(
         String providerId,
@@ -23,7 +24,8 @@ public record OfferingSnapshot(
         CancellationTier cancellationTier,
         TeamRoster roster,
         Optional<SupervisorRule> supervisorRule,
-        boolean takesRequests) {
+        boolean takesRequests,
+        AcceptancePolicy acceptancePolicy) {
 
     public OfferingSnapshot {
         Objects.requireNonNull(providerId);
@@ -37,5 +39,6 @@ public record OfferingSnapshot(
         Objects.requireNonNull(cancellationTier);
         Objects.requireNonNull(roster);
         Objects.requireNonNull(supervisorRule);
+        Objects.requireNonNull(acceptancePolicy);
     }
 }

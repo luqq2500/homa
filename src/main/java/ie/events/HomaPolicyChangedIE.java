@@ -16,6 +16,7 @@ public record HomaPolicyChangedIE(
         Duration minimumNotice,
         Duration bookingHorizon,
         Duration requestExpiry,
+        Duration responseDeadline,
         Duration feeWindow,
         Percentage flexibleCancellationFee,
         Percentage standardCancellationFee,
@@ -44,6 +45,7 @@ public record HomaPolicyChangedIE(
         Objects.requireNonNull(minimumNotice, "minimumNotice");
         Objects.requireNonNull(bookingHorizon, "bookingHorizon");
         Objects.requireNonNull(requestExpiry, "requestExpiry");
+        Objects.requireNonNull(responseDeadline, "responseDeadline");
         Objects.requireNonNull(feeWindow, "feeWindow");
         Objects.requireNonNull(flexibleCancellationFee, "flexibleCancellationFee");
         Objects.requireNonNull(standardCancellationFee, "standardCancellationFee");

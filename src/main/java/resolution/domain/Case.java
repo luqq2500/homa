@@ -148,6 +148,14 @@ public final class Case {
         });
     }
 
+    /**
+     * What the provider must cover under the decision: the amount at stake less what they receive. For a
+     * chargeback, it is recovered from the provider's next payouts like a fine. Empty until decided.
+     */
+    public Optional<Money> providerCovers() {
+        return providerReceives().map(atStake::minus);
+    }
+
     public Optional<String> reason() {
         return Optional.ofNullable(reason);
     }

@@ -22,6 +22,7 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.ResponseDeadline;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import java.time.Duration;
@@ -86,6 +87,10 @@ public final class PolicySnapshot {
 
     public Duration requestExpiry() {
         return value(RequestExpiry.class).period();
+    }
+
+    public Duration responseDeadline() {
+        return value(ResponseDeadline.class).beforeStart();
     }
 
     public Duration feeWindow() {

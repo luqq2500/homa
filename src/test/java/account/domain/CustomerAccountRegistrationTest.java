@@ -7,6 +7,7 @@ import static account.domain.AccountBuilders.anUnconfirmedPhoneVerification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import account.domain.exception.AccessNotesTooLongException;
 import account.domain.exception.AccountDetailRequiredException;
 import account.domain.exception.PhoneNotVerifiedException;
 import org.junit.jupiter.api.Test;
@@ -79,5 +80,38 @@ class CustomerAccountRegistrationTest {
                 .isInstanceOf(AccountDetailRequiredException.class)
                 .hasMessage("A customer's name is required");
         assertThat(customer.name()).isEqualTo("Siti");
+    }
+
+    @Test
+    void aCustomerKeepsAccessNotesOnTheirAccount() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+
+        assertThat(customer.accessNotes().isNone()).isTrue();
+        assertThat(customer.changeAccessNotes(" Unit 12-3, register at the guardhouse ")).isTrue();
+
+        assertThat(customer.accessNotes().text()).isEqualTo("Unit 12-3, register at the guardhouse");
+        assertThat(customer.accessNotes().isNone()).isFalse();
+        assertThat(customer.changeAccessNotes("Unit 12-3, register at the guardhouse")).isFalse();
+    }
+
+    @Test
+    void blankAccessNotesClearThem() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+        customer.changeAccessNotes("Park at B2");
+
+        assertThat(customer.changeAccessNotes(" ")).isTrue();
+        assertThat(customer.accessNotes()).isEqualTo(AccessNotes.NONE);
+        assertThat(customer.changeAccessNotes(null)).isFalse();
+    }
+
+    @Test
+    void accessNotesAreAtMost500Characters() {
+        CustomerAccount customer = CustomerAccount.register(aConfirmedPhoneVerification(), "Siti", anAddressIn("Cyberjaya"));
+
+        assertThat(customer.changeAccessNotes("x".repeat(500))).isTrue();
+        assertThatThrownBy(() -> customer.changeAccessNotes("x".repeat(501)))
+                .isInstanceOf(AccessNotesTooLongException.class)
+                .hasMessage("Access notes are at most 500 characters, were 501");
+        assertThat(customer.accessNotes().text()).hasSize(500);
     }
 }

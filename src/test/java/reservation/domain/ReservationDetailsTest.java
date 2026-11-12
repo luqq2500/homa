@@ -52,8 +52,12 @@ class ReservationDetailsTest {
     void anOfferingBelongsToAProvider() {
         assertThatThrownBy(() -> new OfferingSnapshot(
                         " ", rm("30"), Optional.empty(), 2, 4, 1, 3, jobs("KITCHEN"), Set.of(City.of("Cyberjaya")), CancellationTier.FIRM,
-                        Optional.empty(), true))
+                        Optional.empty(), true, AcceptancePolicy.REQUEST_AND_ACCEPT))
                 .isInstanceOf(ReservationDetailRequiredException.class);
+        assertThatThrownBy(() -> new OfferingSnapshot(
+                        "provider-1", rm("30"), Optional.empty(), 2, 4, 1, 3, jobs("KITCHEN"), Set.of(City.of("Cyberjaya")), CancellationTier.FIRM,
+                        Optional.empty(), true, null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -68,7 +72,7 @@ class ReservationDetailsTest {
                         launch.checkInPeriod(), launch.checkInRadiusMetres(), launch.customerNoShowWait(),
                         launch.customerNoShowFee(), launch.noShowReportWindow(), launch.completionReminder(),
                         launch.completionDeadline(), launch.disputeWindowExtension(), launch.teamReminder(), launch.minHours(),
-                        launch.maxHours()))
+                        launch.maxHours(), launch.responseDeadline()))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("STANDARD");
     }

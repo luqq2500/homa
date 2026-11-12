@@ -24,13 +24,15 @@ class ReservationRequestExpiryTest {
     static Stream<Arguments> expiries() {
         return Stream.of(
                 Arguments.of(thursday("09:00"), saturday("10:00"), friday("09:00")),
-                Arguments.of(saturday("06:00"), saturday("10:00"), saturday("10:00")),
-                Arguments.of(friday("10:00"), saturday("10:00"), saturday("10:00")));
+                Arguments.of(saturday("06:00"), saturday("10:00"), saturday("09:00")),
+                Arguments.of(friday("10:00"), saturday("10:00"), saturday("09:00")),
+                Arguments.of(friday("09:00"), saturday("10:00"), saturday("09:00")),
+                Arguments.of(friday("08:00"), saturday("10:00"), saturday("08:00")));
     }
 
     @ParameterizedTest(name = "requested {0} for {1}: expires {2}")
     @MethodSource("expiries")
-    void aRequestExpiresAfter24HoursOrAtTheBookedStartWhicheverIsSooner(Instant requested, Instant start, Instant expires) {
+    void aRequestExpiresAfter24HoursOrAtTheResponseDeadlineWhicheverIsSooner(Instant requested, Instant start, Instant expires) {
         Reservation reservation = aReservation().requestedAt(requested).forBooking(aBooking().startingAt(start)).requested();
 
         assertThat(reservation.requestExpiresAt()).isEqualTo(expires);

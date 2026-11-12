@@ -37,6 +37,17 @@ class FineDeductionPolicyTest {
     }
 
     @Test
+    void whatTheProviderCoversForAChargebackIsRecoveredLikeAFine() {
+        Fine chargeback = Fine.charge("provider-1", new FineCharge("reservation-0", rm("150.00"), FineReason.CHARGEBACK), monday());
+
+        Payout payout = FineDeductionPolicy.apply(aPayoutOf("200.00"), List.of(chargeback), HALF);
+
+        assertThat(chargeback.reason()).isEqualTo(FineReason.CHARGEBACK);
+        assertThat(payout.deducted()).isEqualTo(rm("100.00"));
+        assertThat(chargeback.outstanding()).isEqualTo(rm("50.00"));
+    }
+
+    @Test
     void theRestOfTheFineComesOffTheNextPayout() {
         Fine fine = aFineOf("54.00", monday());
         FineDeductionPolicy.apply(aPayoutOf("80.00"), List.of(fine), HALF);

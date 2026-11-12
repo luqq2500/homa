@@ -1,11 +1,11 @@
 # Domain phase audit
 
 Checked against `docs/homa-domain-plan.md` and `docs/homa-product-description.md` on a clean build.
-Updated after the follow-up decisions (G1 to G4 and #5), and after aligning the product spec, domain plan and code.
+Updated after the follow-up decisions (G1 to G4 and #5), after aligning the product spec, domain plan and code, and after the 7-star experience.
 
 ## 1. Every Gherkin scenario has a matching test
 
-The plan has **290** scenarios: **278 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
+The plan has **306** scenarios: **294 have a test**, and **12 are retired** because the rule they describe moved to the KYC provider, or no longer exists now that every provider is a business. The tested ones are the original 122, plus:
 - five in the "Buffer between jobs" feature
 - 25 in the four `feedback` features
 - the "Team membership" change, which replaced the two "Helpers" scenarios with six and reworded one
@@ -26,6 +26,7 @@ The plan has **290** scenarios: **278 have a test**, and **12 are retired** beca
   after reviewing the first usecases
 - thirty in the fourteen features of "aligning the product spec, domain plan and code" (rows 261 to
   290)
+- sixteen in the five features of "the 7-star experience" (rows 291 to 306)
 
 **Retired (12):**
 - Due-date maths and re-check timing (rows 157, 158, 180).
@@ -117,7 +118,7 @@ Two scenarios map to more than one test:
 | 49 | Requesting a reservation | Jobs must be offered by the provider | `ReservationRequestTest` | `jobsMustBeOfferedByTheProvider` |
 | 50 | Requesting a reservation | The customer's city must be covered | `ReservationRequestTest` | `theCustomersCityMustBeCovered` |
 | 51 | Requesting a reservation | The reservation keeps the policy in force when requested | `ReservationRequestTest` | `theReservationKeepsThePolicyInForceWhenRequested` |
-| 52 | Request expiry | A request expires after 24 hours or at the booked start, whichever is sooner (outline) | `ReservationRequestExpiryTest` | `aRequestExpiresAfter24HoursOrAtTheBookedStartWhicheverIsSooner` |
+| 52 | Request expiry | A request expires after 24 hours or at the booked start, whichever is sooner (outline); since the 7-star change, at the response deadline (row 291) | `ReservationRequestExpiryTest` | `aRequestExpiresAfter24HoursOrAtTheResponseDeadlineWhicheverIsSooner` |
 | 53 | Request expiry | The provider cannot accept an expired request | `ReservationRequestExpiryTest` | `theProviderCannotAcceptAnExpiredRequest` |
 | 54 | Request expiry | An unanswered request expires | `ReservationRequestExpiryTest` | `anUnansweredRequestExpires` |
 | 55 | Accepting and declining | The provider accepts a request | `ReservationAcceptanceTest` | `theProviderAcceptsARequest` |
@@ -356,6 +357,22 @@ Two scenarios map to more than one test:
 | 288 | Close matches differ in one way only | A suggested start must be bookable | `MatchClassifierMatchingTest`, `ProviderCalendarNearestStartTest` | `aNearbyStartBeforeTheMinimumNoticeIsNotOffered`, `aStartBeforeTheEarliestBookableStartIsNotOffered` |
 | 289 | Requesting opens the reservation's chat | A direct request opens the chat with no message | `ReservationChatOpeningTest` | `aDirectRequestOpensTheChatWithNoMessage` |
 | 290 | Requesting opens the reservation's chat | The provider can write first in a reservation's chat | `ReservationChatOpeningTest` | `theProviderCanWriteFirstInAReservationsChat` |
+| 291 | The response deadline | A request is answered by the response deadline at the latest | `ReservationRequestExpiryTest` | `aRequestExpiresAfter24HoursOrAtTheResponseDeadlineWhicheverIsSooner` |
+| 292 | The response deadline | The response deadline is shorter than the minimum notice | `HomaPolicyVersioningTest` | `theResponseDeadlineIsShorterThanTheMinimumNotice` |
+| 293 | The response deadline | The launch values give time back | `HomaPolicyVersioningTest` | `completionIsRemindedAfterHalfAnHourAndDueWithinADay`, `requestsExpireAfterADayAndTheFeeWindowIsTheDayBeforeTheStart` |
+| 294 | Instant book | A listing accepts by request unless the provider chooses Instant book | `ProviderListingAcceptanceAndInsuranceTest` | `aListingAcceptsByRequestUnlessTheProviderChoosesInstantBook`, `theSnapshotCarriesInstantBook` |
+| 295 | Instant book | An instant-book request is accepted once it is paid | `ReservationInstantBookTest` | `anInstantBookRequestIsAcceptedOnceItIsPaid` |
+| 296 | Instant book | An instant-book request is not accepted before it is paid | `ReservationInstantBookTest` | `anInstantBookRequestIsNotAcceptedBeforeItIsPaid` |
+| 297 | Instant book | Only an instant-book request is accepted instantly | `ReservationInstantBookTest` | `onlyAnInstantBookRequestIsAcceptedInstantly` |
+| 298 | Instant book | The provider can't decline an instant-book request | `ReservationInstantBookTest` | `theProviderCannotDeclineAnInstantBookRequest` |
+| 299 | Instant book | An instant-book request whose time is taken still ends | `ReservationInstantBookTest` | `anInstantBookRequestWhoseTimeIsTakenStillEnds` |
+| 300 | Access notes | A customer keeps access notes on their account | `CustomerAccountRegistrationTest` | `aCustomerKeepsAccessNotesOnTheirAccount` |
+| 301 | Access notes | Access notes are at most 500 characters | `CustomerAccountRegistrationTest`, `ReservationAccessNotesTest` | `accessNotesAreAtMost500Characters`, `notesAreAtMost500Characters` |
+| 302 | Access notes | A reservation's notes change until the job is completed | `ReservationAccessNotesTest` | `aReservationsNotesChangeUntilTheJobIsCompleted`, `afterCompletionTheNotesNoLongerChange` |
+| 303 | The Insured badge | Declared insurance shows until it expires | `ProviderListingAcceptanceAndInsuranceTest` | `declaredInsuranceShowsUntilItExpires` |
+| 304 | The Insured badge | Insurance that has already expired can't be declared | `ProviderListingAcceptanceAndInsuranceTest` | `insuranceThatHasAlreadyExpiredCannotBeDeclared` |
+| 305 | Chargebacks | The provider covers what the decision doesn't give them | `CaseQueueTest` | `theProviderCoversNothingWhenHomaContestsTheChargeback`, `theProviderCoversAllOfAChargebackDecidedAsAFullRefund`, `theProviderCoversWhatAPartialRefundDoesNotGiveThem` |
+| 306 | Chargebacks | What the provider covers is recovered like a fine | `FineDeductionPolicyTest` | `whatTheProviderCoversForAChargebackIsRecoveredLikeAFine` |
 
 ## 2. Product spec rules with no test
 
@@ -433,13 +450,13 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 |---|---|---|---|---|---|
 | kernel | 3.0 | 100% | 100% | 37 | `KernelArchitectureTest`: only `java..`; public types are records |
 | catalogue | 4.0 | 100% | 100% | 146 | `CatalogueArchitectureTest` |
-| policy | 3.0 | 100% | 100% | 59 | `PolicyArchitectureTest` |
-| account | 5.0 | 100% | 100% | 201 | `AccountArchitectureTest` |
-| offering | 5.0 | 100% | 100% | 227 | `OfferingArchitectureTest` |
+| policy | 3.0 | 100% | 100% | 64 | `PolicyArchitectureTest` |
+| account | 5.0 | 100% | 100% | 209 | `AccountArchitectureTest` |
+| offering | 5.0 | 100% | 100% | 237 | `OfferingArchitectureTest` |
 | availability | 4.0 | 100% | 100% | 71 | `AvailabilityArchitectureTest` |
-| reservation | 5.0 | 100% | 100% | 439 | `ReservationArchitectureTest` |
+| reservation | 5.0 | 100% | 100% | 455 | `ReservationArchitectureTest` |
 | payment | 5.0 | 100% | 100% | 143 | `PaymentArchitectureTest` |
-| resolution | 3.0 | 100% | 100% | 50 | `ResolutionArchitectureTest` |
+| resolution | 3.0 | 100% | 100% | 51 | `ResolutionArchitectureTest` |
 | conversation | 3.0 | 100% | 100% | 39 | `ConversationArchitectureTest` |
 | discovery | 5.0 | 100% | 100% | 83 | `DiscoveryArchitectureTest` |
 | feedback | 4.0 | 100% | 100% | 105 | `FeedbackArchitectureTest` |
@@ -448,7 +465,7 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
 - **CRAP below 6:** passes in every context. The worst is 5.0, in account, offering, reservation,
   payment and discovery.
 - **Mutation at least 90% for kernel and domain:** every context is at 100% score and test strength,
-  1,600 of 1,600 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
+  1,640 of 1,640 domain and kernel mutants killed. The ratchet in `quality/ratchet.json` holds each context at 100%.
 - **Domain imports only kernel:** each context's `<Context>ArchitectureTest` checks that its domain
   depends only on itself, `kernel..` and `java..`. That also stops any context importing another. A
   planted `offering → policy` import failed this test.
@@ -516,4 +533,8 @@ From `mvn clean verify` and `python3 tools/quality_gates.py` on this commit.
   - While aligning the product spec, domain plan and code, `CustomerRenamedIE`,
     `RequestDeclinedForTakenTimeIE`, `TeamMemberDroppedIE`, `TeamMemberStoppedIE`,
     `CaseClosedForProviderFlagIE`, `ListingHoursNarrowedIE` and `ListingWentOfflineForHoursIE` were added.
-  - The contract test now covers 75 events.
+  - For the 7-star experience, `CustomerAccessNotesChangedIE`, `AccessNotesChangedIE`,
+    `ProviderInsuranceDeclaredIE`, `ProviderInsuranceClearedIE` and `ChargebackDecidedIE` were added;
+    `HomaPolicyChangedIE` carries the response deadline, and `ListingWentLiveIE`, `ListingChangedIE` and
+    `ReservationAcceptedIE` carry `instantBook`.
+  - The contract test now covers 80 events.

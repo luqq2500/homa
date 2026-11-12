@@ -28,6 +28,7 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.ResponseDeadline;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import policy.usecase.exception.UnknownPolicyValueException;
@@ -58,6 +59,10 @@ enum PolicyValueName {
         Duration d = PolicyAmounts.period("REQUEST_EXPIRY", amount);
         return new RequestExpiry(d);
     }, s -> PolicyAmounts.write(s.requestExpiry())),
+    RESPONSE_DEADLINE(Kind.PERIOD, amount -> {
+        Duration d = PolicyAmounts.period("RESPONSE_DEADLINE", amount);
+        return new ResponseDeadline(d);
+    }, s -> PolicyAmounts.write(s.responseDeadline())),
     FEE_WINDOW(Kind.PERIOD, amount -> {
         Duration d = PolicyAmounts.period("FEE_WINDOW", amount);
         return new FeeWindow(d);

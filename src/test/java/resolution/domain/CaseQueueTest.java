@@ -107,4 +107,41 @@ class CaseQueueTest {
         assertThatThrownBy(() -> decided.closeForProviderFlag(SUNDAY)).isInstanceOf(CaseAlreadyDecidedException.class);
         assertThat(decided.status()).isEqualTo(CaseStatus.DECIDED);
     }
+
+    private static Case aChargebackOf(String amount) {
+        return Case.open("reservation-1", CaseSource.CHARGEBACK, List.of(A_PHOTO), Money.parse(amount), FRIDAY);
+    }
+
+    @Test
+    void theProviderCoversNothingWhenHomaContestsTheChargeback() {
+        Case chargeback = aChargebackOf("200.00");
+
+        chargeback.decide(Decision.release(), "The job was done as booked", SATURDAY);
+
+        assertThat(chargeback.source()).isEqualTo(CaseSource.CHARGEBACK);
+        assertThat(chargeback.providerCovers()).contains(Money.parse("0.00"));
+    }
+
+    @Test
+    void theProviderCoversAllOfAChargebackDecidedAsAFullRefund() {
+        Case chargeback = aChargebackOf("200.00");
+
+        chargeback.decide(Decision.fullRefund(), "No one came", SATURDAY);
+
+        assertThat(chargeback.providerCovers()).contains(Money.parse("200.00"));
+    }
+
+    @Test
+    void theProviderCoversWhatAPartialRefundDoesNotGiveThem() {
+        Case chargeback = aChargebackOf("200.00");
+
+        chargeback.decide(Decision.partialRefund(Money.parse("50.00")), "Half the rooms were done", SATURDAY);
+
+        assertThat(chargeback.providerCovers()).contains(Money.parse("150.00"));
+    }
+
+    @Test
+    void anUndecidedCaseCoversNothingYet() {
+        assertThat(aChargebackOf("200.00").providerCovers()).isEmpty();
+    }
 }

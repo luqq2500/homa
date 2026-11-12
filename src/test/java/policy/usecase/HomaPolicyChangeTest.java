@@ -170,6 +170,7 @@ class HomaPolicyChangeTest {
                     Arguments.of("MINIMUM_NOTICE", "PT3H", "PT3H"),
                     Arguments.of("BOOKING_HORIZON", "P60D", "P60D"),
                     Arguments.of("REQUEST_EXPIRY", "PT12H", "PT12H"),
+                    Arguments.of("RESPONSE_DEADLINE", "PT30M", "PT30M"),
                     Arguments.of("FEE_WINDOW", "PT48H", "P2D"),
                     Arguments.of("FLEXIBLE_CANCELLATION_FEE", "0%", "0%"),
                     Arguments.of("STANDARD_CANCELLATION_FEE", "15%", "15%"),

@@ -1,8 +1,18 @@
 package offering.domain;
 
+import java.time.Instant;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 import offering.domain.exception.CityNotInServiceAreaException;
 import offering.domain.exception.HelpersExceedTeamSizeException;
 import offering.domain.exception.HoursOutOfRangeException;
+import offering.domain.exception.InsuranceExpiredException;
 import offering.domain.exception.JobNotInCatalogueException;
 import offering.domain.exception.ListingAlreadyLiveException;
 import offering.domain.exception.ListingAlreadyPausedException;
@@ -13,14 +23,6 @@ import offering.domain.exception.NoCitiesCoveredException;
 import offering.domain.exception.NoJobsOfferedException;
 import offering.domain.exception.NoSupervisorOnTeamException;
 import offering.domain.exception.ToolNotInCatalogueException;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
 
 /**
  * A provider's listing: what they sell, at what price, when and where. A listing starts as a draft and
@@ -47,6 +49,8 @@ public final class ProviderListing {
     private CancellationTier cancellationTier;
     private TeamRoster roster = TeamRoster.empty();
     private SupervisorRule supervisorRule;
+    private AcceptancePolicy acceptancePolicy = AcceptancePolicy.REQUEST_AND_ACCEPT;
+    private InsuranceDeclaration insurance;
     private boolean live;
     private boolean paused;
 
@@ -202,6 +206,40 @@ public final class ProviderListing {
         cancellationTier = Objects.requireNonNull(tier);
     }
 
+    /** Chooses how reservations are accepted: by request, the default, or instantly once paid. */
+    public void chooseAcceptancePolicy(AcceptancePolicy policy) {
+        acceptancePolicy = Objects.requireNonNull(policy);
+    }
+
+    /**
+     * Declares the provider's liability insurance, shown as an Insured badge until it expires. Insurance
+     * that has already expired can't be declared.
+     */
+    public void declareInsurance(InsuranceDeclaration declaration, Instant now) {
+        if (!declaration.validUntil().isAfter(now)) {
+            throw new InsuranceExpiredException(declaration.validUntil());
+        }
+        insurance = declaration;
+    }
+
+    /** The provider no longer declares any insurance. */
+    public void clearInsurance() {
+        insurance = null;
+    }
+
+    /** Whether the provider page shows the Insured badge at {@code now}: declared insurance not yet expired. */
+    public boolean isInsured(Instant now) {
+        return insurance != null && now.isBefore(insurance.validUntil());
+    }
+
+    public Optional<InsuranceDeclaration> insurance() {
+        return Optional.ofNullable(insurance);
+    }
+
+    public AcceptancePolicy acceptancePolicy() {
+        return acceptancePolicy;
+    }
+
     /**
      * Records the provider's team. If the team's helpers drop below the helpers range, the range shrinks
      * with them, so the provider can always name everyone who is coming. A live listing with no helper
@@ -288,7 +326,7 @@ public final class ProviderListing {
         }
         return new OfferingSnapshot(
                 providerId, hourlyRate, travelFee, hours, helpers, jobs, tools, cities, cancellationTier, roster,
-                Optional.ofNullable(supervisorRule), !paused);
+                Optional.ofNullable(supervisorRule), !paused, acceptancePolicy);
     }
 
     public boolean isLive() {

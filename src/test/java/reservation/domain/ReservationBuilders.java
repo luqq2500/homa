@@ -64,7 +64,11 @@ final class ReservationBuilders {
         return Address.of("12 Jalan Teknokrat 3", City.of(city));
     }
 
-    /** Homa's launch values, as policy version 1. */
+    /**
+     * Homa's values as the reservation features use them: the launch values of version 1, except that the
+     * dispute window extension is kept at 1 hour as a test value (the launch value is 24 hours), so the
+     * worked times in the features stay readable.
+     */
     static PolicySnapshot theLaunchPolicy() {
         return theLaunchPolicyWithHours(1, 6);
     }
@@ -95,7 +99,8 @@ final class ReservationBuilders {
                 Duration.ofHours(1),
                 Duration.ofHours(6),
                 minHours,
-                maxHours);
+                maxHours,
+                Duration.ofHours(1));
     }
 
     static final EvidenceRef A_PHOTO = EvidenceRef.of("evidence/kitchen-after.jpg");
@@ -128,6 +133,13 @@ final class ReservationBuilders {
         private Optional<SupervisorRule> supervisorRule = Optional.empty();
         private int minHours = 2;
         private int maxHours = 4;
+        private AcceptancePolicy acceptance = AcceptancePolicy.REQUEST_AND_ACCEPT;
+
+        /** The provider uses Instant book: a request is accepted once it is paid. */
+        OfferingBuilder withInstantBook() {
+            acceptance = AcceptancePolicy.INSTANT_BOOK;
+            return this;
+        }
 
         OfferingBuilder withHours(int min, int max) {
             minHours = min;
@@ -175,7 +187,7 @@ final class ReservationBuilders {
         OfferingSnapshot build() {
             return new OfferingSnapshot(
                     "provider-1", rate, travel, minHours, maxHours, 1, 3, jobs("KITCHEN", "LAUNDRY_FOLD", "TOILET_CARE"), cities, tier,
-                    supervisorRule, takesRequests);
+                    supervisorRule, takesRequests, acceptance);
         }
     }
 

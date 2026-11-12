@@ -18,6 +18,9 @@ import policy.domain.exception.CancellationFeeAboveNoShowCeilingException;
 import policy.domain.exception.FlexibleTierMustBeFreeException;
 import policy.domain.exception.NoShowFineBelowLateCancellationFineException;
 import policy.domain.exception.PolicyChangeBeforeCurrentVersionException;
+import policy.domain.PolicyValue.ResponseDeadline;
+import policy.domain.PolicyValue.MinimumNotice;
+import policy.domain.exception.ResponseDeadlineNotBeforeMinimumNoticeException;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Nested;
@@ -50,6 +53,7 @@ class HomaPolicyVersioningTest {
         @Test
         void requestsExpireAfterADayAndTheFeeWindowIsTheDayBeforeTheStart() {
             assertThat(launch.requestExpiry()).isEqualTo(Duration.ofHours(24));
+            assertThat(launch.responseDeadline()).isEqualTo(Duration.ofHours(1));
             assertThat(launch.feeWindow()).isEqualTo(Duration.ofHours(24));
         }
 
@@ -88,8 +92,8 @@ class HomaPolicyVersioningTest {
         void completionIsRemindedAfterHalfAnHourAndDueWithinADay() {
             assertThat(launch.completionReminder()).isEqualTo(Duration.ofMinutes(30));
             assertThat(launch.completionDeadline()).isEqualTo(Duration.ofHours(24));
-            assertThat(launch.disputeWindowExtension()).isEqualTo(Duration.ofHours(1));
-            assertThat(launch.evidenceRetention()).isEqualTo(Duration.ofDays(7));
+            assertThat(launch.disputeWindowExtension()).isEqualTo(Duration.ofHours(24));
+            assertThat(launch.evidenceRetention()).isEqualTo(Duration.ofDays(120));
         }
 
         @Test
@@ -100,7 +104,7 @@ class HomaPolicyVersioningTest {
 
         @Test
         void everyHomaSetValueIsInTheFirstVersion() {
-            assertThat(launch.values()).hasSize(25);
+            assertThat(launch.values()).hasSize(26);
             assertThatThrownBy(() -> launch.values().clear()).isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -136,7 +140,7 @@ class HomaPolicyVersioningTest {
 
             assertThat(version2.snapshot().serviceFee()).isEqualTo(Percentage.of(12));
             assertThat(version2.snapshot().checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
-            assertThat(version2.snapshot().values()).hasSize(25);
+            assertThat(version2.snapshot().values()).hasSize(26);
         }
 
         @Test
@@ -237,6 +241,17 @@ class HomaPolicyVersioningTest {
 
     @Nested
     class ProviderFines {
+
+        @Test
+        void theResponseDeadlineIsShorterThanTheMinimumNotice() {
+            assertThatThrownBy(() -> theLaunchPolicy().change(new ResponseDeadline(Duration.ofHours(2)), A_WEEK_LATER))
+                    .isInstanceOf(ResponseDeadlineNotBeforeMinimumNoticeException.class)
+                    .hasMessageContaining("PT2H");
+            assertThatThrownBy(() -> theLaunchPolicy().change(new MinimumNotice(Duration.ofHours(1)), A_WEEK_LATER))
+                    .isInstanceOf(ResponseDeadlineNotBeforeMinimumNoticeException.class);
+            assertThat(theLaunchPolicy().change(new ResponseDeadline(Duration.ofMinutes(119)), A_WEEK_LATER).snapshot().responseDeadline())
+                    .isEqualTo(Duration.ofMinutes(119));
+        }
 
         @Test
         void notShowingUpIsNeverCheaperThanCancellingLate() {

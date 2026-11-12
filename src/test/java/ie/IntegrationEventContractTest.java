@@ -3,11 +3,14 @@ package ie;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ie.events.AccessNotesChangedIE;
 import ie.events.CaseClosedForProviderFlagIE;
 import ie.events.CaseDecidedIE;
+import ie.events.ChargebackDecidedIE;
 import ie.events.CheckInCompletedIE;
 import ie.events.CompletionDeadlineMissedIE;
 import ie.events.CompletionSubmittedIE;
+import ie.events.CustomerAccessNotesChangedIE;
 import ie.events.CustomerRegisteredIE;
 import ie.events.CustomerRenamedIE;
 import ie.events.EnquiryClosedIE;
@@ -44,6 +47,8 @@ import ie.events.PayoutHoldReleasedIE;
 import ie.events.PayoutWithheldIE;
 import ie.events.ProviderCheckedInIE;
 import ie.events.ProviderFlaggedIE;
+import ie.events.ProviderInsuranceClearedIE;
+import ie.events.ProviderInsuranceDeclaredIE;
 import ie.events.ProviderReverifiedIE;
 import ie.events.ProviderVerificationLapsedIE;
 import ie.events.ProviderVerificationRejectedIE;
@@ -193,7 +198,12 @@ class IntegrationEventContractTest {
                 Arguments.of(TeamMemberStoppedIE.class, ReservationIE.class),
                 Arguments.of(CaseClosedForProviderFlagIE.class, ResolutionIE.class),
                 Arguments.of(ListingHoursNarrowedIE.class, OfferingIE.class),
-                Arguments.of(ListingWentOfflineForHoursIE.class, OfferingIE.class));
+                Arguments.of(ListingWentOfflineForHoursIE.class, OfferingIE.class),
+                Arguments.of(CustomerAccessNotesChangedIE.class, AccountIE.class),
+                Arguments.of(AccessNotesChangedIE.class, ReservationIE.class),
+                Arguments.of(ProviderInsuranceDeclaredIE.class, OfferingIE.class),
+                Arguments.of(ProviderInsuranceClearedIE.class, OfferingIE.class),
+                Arguments.of(ChargebackDecidedIE.class, ResolutionIE.class));
     }
 
     @ParameterizedTest(name = "{0} is a {1}")
@@ -264,7 +274,7 @@ class IntegrationEventContractTest {
 
     @Test
     void everyEventInThePlanIsHere() {
-        assertThat(events().count()).isEqualTo(75);
+        assertThat(events().count()).isEqualTo(80);
     }
 
     private static Object build(Class<? extends Record> event, int missing) throws Exception {

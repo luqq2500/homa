@@ -12,6 +12,7 @@ public final class CustomerAccount {
     private final PhoneNumber phone;
     private String name;
     private Address address;
+    private AccessNotes accessNotes = AccessNotes.NONE;
 
     private CustomerAccount(String id, PhoneNumber phone, String name, Address address) {
         this.id = id;
@@ -38,6 +39,21 @@ public final class CustomerAccount {
         boolean changed = !renamed.equals(name);
         name = renamed;
         return changed;
+    }
+
+    /**
+     * The customer changes the notes that help the team get in. Each new request copies them. Returns
+     * whether they changed; blank notes clear them.
+     */
+    public boolean changeAccessNotes(String notes) {
+        AccessNotes changed = AccessNotes.of(notes);
+        boolean different = !changed.equals(accessNotes);
+        accessNotes = changed;
+        return different;
+    }
+
+    public AccessNotes accessNotes() {
+        return accessNotes;
     }
 
     public void changeAddress(Address newAddress) {

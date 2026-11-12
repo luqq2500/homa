@@ -30,6 +30,7 @@ import reservation.domain.exception.HelperNotOnRosterException;
 import reservation.domain.exception.HelpersOutsideProviderRangeException;
 import reservation.domain.exception.HoursOutsideHomaRangeException;
 import reservation.domain.exception.HoursOutsideProviderRangeException;
+import reservation.domain.exception.InstantBookCannotBeDeclinedException;
 import reservation.domain.exception.InvalidStatusTransitionException;
 import reservation.domain.exception.JobEndsAfterProviderVerificationException;
 import reservation.domain.exception.JobNotOfferedException;
@@ -39,6 +40,7 @@ import reservation.domain.exception.MemberNotNamedException;
 import reservation.domain.exception.NoShowReportTooLateException;
 import reservation.domain.exception.NoShowWaitNotOverException;
 import reservation.domain.exception.NotCheckedInException;
+import reservation.domain.exception.NotInstantBookException;
 import reservation.domain.exception.PaymentNotSecuredException;
 import reservation.domain.exception.ProviderMissedCheckInException;
 import reservation.domain.exception.ReportAlreadyFiledException;
@@ -84,6 +86,7 @@ public final class Reservation {
     private Money securedPayment = Money.ZERO;
     private Instant noShowReportedAt;
     private Completion completion;
+    private AccessNotes accessNotes = AccessNotes.NONE;
     private final Map<Party, Report> reports = new EnumMap<>(Party.class);
 
     private Reservation(
@@ -141,10 +144,14 @@ public final class Reservation {
         return price;
     }
 
-    /** A request expires after the request expiry time, or at the booked start if that comes sooner. */
+    /**
+     * A request expires after the request expiry time, or at the response deadline before the booked start
+     * if that comes sooner, so the customer always knows in time.
+     */
     public Instant requestExpiresAt() {
         Instant afterExpiryTime = requestedAt.plus(policy.requestExpiry());
-        return afterExpiryTime.isBefore(details.start()) ? afterExpiryTime : details.start();
+        Instant responseDeadline = details.start().minus(policy.responseDeadline());
+        return afterExpiryTime.isBefore(responseDeadline) ? afterExpiryTime : responseDeadline;
     }
 
     /**
@@ -182,7 +189,26 @@ public final class Reservation {
         status = ReservationStatus.RESERVED;
     }
 
+    /**
+     * A provider who uses Instant book has their request accepted the moment its payment is secured, with
+     * the same checks as {@link #accept}. A provider who accepts by request accepts it themselves.
+     */
+    public void acceptInstantly(Instant providerVerifiedUntil, Instant now) {
+        if (!offering.isInstantBook()) {
+            throw new NotInstantBookException(id);
+        }
+        accept(providerVerifiedUntil, now);
+    }
+
+    /** The provider declines the request. An instant-book request is accepted once paid, so it can't be declined. */
     public void decline(Instant now) {
+        if (offering.isInstantBook()) {
+            throw new InstantBookCannotBeDeclinedException(id);
+        }
+        endDeclined(now);
+    }
+
+    private void endDeclined(Instant now) {
         requireStatus(ReservationStatus.REQUESTED, "declined");
         requireNotExpired(now);
         status = ReservationStatus.DECLINED;
@@ -193,8 +219,25 @@ public final class Reservation {
      * it is declined at once instead of waiting to expire, and it costs the customer nothing.
      */
     public void declineForTakenTime(Instant now) {
-        decline(now);
+        endDeclined(now);
         ending = Ending.TIME_TAKEN;
+    }
+
+    /**
+     * The customer changes the notes that help the team get in, such as the unit or parking. Each request
+     * starts with the notes from the customer's account; they can change until the job is completed.
+     */
+    public void changeAccessNotes(String notes, Instant now) {
+        Objects.requireNonNull(now);
+        if (status != ReservationStatus.REQUESTED && !isUpcomingOrOngoing()) {
+            throw new InvalidStatusTransitionException(status, "given new access notes");
+        }
+        requireNoCompletion();
+        accessNotes = AccessNotes.of(notes);
+    }
+
+    public AccessNotes accessNotes() {
+        return accessNotes;
     }
 
     /** Ends a request the provider did not answer in time. */

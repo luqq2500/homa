@@ -22,12 +22,14 @@ import policy.domain.PolicyValue.ProviderLateCancellationFine;
 import policy.domain.PolicyValue.ProviderNoShowFine;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.RequestExpiry;
+import policy.domain.PolicyValue.ResponseDeadline;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
 import policy.domain.exception.CancellationFeeAboveNoShowCeilingException;
 import policy.domain.exception.FlexibleTierMustBeFreeException;
 import policy.domain.exception.NoShowFineBelowLateCancellationFineException;
 import policy.domain.exception.PolicyChangeBeforeCurrentVersionException;
+import policy.domain.exception.ResponseDeadlineNotBeforeMinimumNoticeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +48,7 @@ public final class HomaPolicy {
             new MinimumNotice(Duration.ofHours(2)),
             new BookingHorizon(Duration.ofDays(30)),
             new RequestExpiry(Duration.ofHours(24)),
+            new ResponseDeadline(Duration.ofHours(1)),
             new FeeWindow(Duration.ofHours(24)),
             new CancellationTierFee(CancellationTier.FLEXIBLE, CancellationTier.FLEXIBLE.launchFee()),
             new CancellationTierFee(CancellationTier.STANDARD, CancellationTier.STANDARD.launchFee()),
@@ -62,8 +65,8 @@ public final class HomaPolicy {
             new NoShowReportWindow(Duration.ofHours(1)),
             new CompletionReminder(Duration.ofMinutes(30)),
             new CompletionDeadline(Duration.ofHours(24)),
-            new DisputeWindowExtension(Duration.ofHours(1)),
-            new EvidenceRetention(Duration.ofDays(7)),
+            new DisputeWindowExtension(Duration.ofHours(24)),
+            new EvidenceRetention(Duration.ofDays(120)),
             new RatingWindow(Duration.ofDays(14)),
             new MinimumRatingsToShow(3));
 
@@ -89,6 +92,7 @@ public final class HomaPolicy {
         requireFlexibleIsFree(next);
         requireCancellationFeesWithinNoShowCeiling(next);
         requireNoShowFineIsTheHighestFine(next);
+        requireResponseDeadlineBeforeMinimumNotice(next);
         return new HomaPolicy(next);
     }
 
@@ -119,6 +123,13 @@ public final class HomaPolicy {
             if (fee.isGreaterThan(ceiling)) {
                 throw new CancellationFeeAboveNoShowCeilingException(tier.name(), fee, ceiling);
             }
+        }
+    }
+
+    /** A request made at the minimum notice must still have time to be answered before its response deadline. */
+    private static void requireResponseDeadlineBeforeMinimumNotice(PolicySnapshot values) {
+        if (values.responseDeadline().compareTo(values.minimumNotice()) >= 0) {
+            throw new ResponseDeadlineNotBeforeMinimumNoticeException(values.responseDeadline(), values.minimumNotice());
         }
     }
 

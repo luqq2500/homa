@@ -31,6 +31,7 @@ class HomaPolicyViewTest {
                 new Value("MINIMUM_NOTICE", "PERIOD", "PT2H"),
                 new Value("BOOKING_HORIZON", "PERIOD", "P30D"),
                 new Value("REQUEST_EXPIRY", "PERIOD", "P1D"),
+                new Value("RESPONSE_DEADLINE", "PERIOD", "PT1H"),
                 new Value("FEE_WINDOW", "PERIOD", "P1D"),
                 new Value("FLEXIBLE_CANCELLATION_FEE", "PERCENTAGE", "0%"),
                 new Value("STANDARD_CANCELLATION_FEE", "PERCENTAGE", "10%"),
@@ -47,8 +48,8 @@ class HomaPolicyViewTest {
                 new Value("NO_SHOW_REPORT_WINDOW", "PERIOD", "PT1H"),
                 new Value("COMPLETION_REMINDER", "PERIOD", "PT30M"),
                 new Value("COMPLETION_DEADLINE", "PERIOD", "P1D"),
-                new Value("DISPUTE_WINDOW_EXTENSION", "PERIOD", "PT1H"),
-                new Value("EVIDENCE_RETENTION", "PERIOD", "P7D"),
+                new Value("DISPUTE_WINDOW_EXTENSION", "PERIOD", "P1D"),
+                new Value("EVIDENCE_RETENTION", "PERIOD", "P120D"),
                 new Value("RATING_WINDOW", "PERIOD", "P14D"),
                 new Value("MINIMUM_RATINGS_TO_SHOW", "COUNT", "3"));
         Value first = inForce.values().get(0);

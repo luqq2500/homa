@@ -30,7 +30,8 @@ public record PolicySnapshot(
         Duration disputeWindowExtension,
         Duration teamReminder,
         int minHours,
-        int maxHours) {
+        int maxHours,
+        Duration responseDeadline) {
 
     public PolicySnapshot {
         cancellationFees = Map.copyOf(cancellationFees);

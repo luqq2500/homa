@@ -25,6 +25,7 @@ public record ListingWentLiveIE(
         Set<String> supervisorIds,
         int supervisorFromHelpers,
         int supervisorFromHours,
+        boolean instantBook,
         Instant occurredAt) implements OfferingIE {
 
     public ListingWentLiveIE {

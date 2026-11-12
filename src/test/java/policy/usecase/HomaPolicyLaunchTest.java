@@ -47,12 +47,12 @@ class HomaPolicyLaunchTest {
 
         assertThat(events.all).containsExactly(new HomaPolicyChangedIE(
                 1, LAUNCH, Percentage.of(15), 1, 6,
-                Duration.ofHours(2), Duration.ofDays(30), Duration.ofHours(24), Duration.ofHours(24),
+                Duration.ofHours(2), Duration.ofDays(30), Duration.ofHours(24), Duration.ofHours(1), Duration.ofHours(24),
                 Percentage.ZERO, Percentage.of(10), Percentage.of(20),
                 Percentage.of(20), Percentage.of(30), Percentage.of(50),
                 Duration.ofHours(6), Duration.ofMinutes(15), Duration.ofMinutes(15), 300,
                 Duration.ofMinutes(15), Percentage.of(30), Duration.ofHours(1),
-                Duration.ofMinutes(30), Duration.ofHours(24), Duration.ofHours(1), Duration.ofDays(7),
+                Duration.ofMinutes(30), Duration.ofHours(24), Duration.ofHours(24), Duration.ofDays(120),
                 Duration.ofDays(14), 3, LAUNCH));
     }
 

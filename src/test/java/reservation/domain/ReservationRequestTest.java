@@ -126,7 +126,7 @@ class ReservationRequestTest {
                 v1.cancellationFees(), v1.providerLateCancellationFine(), v1.providerNoShowFine(), v1.earliestCheckIn(),
                 v1.checkInPeriod(), v1.checkInRadiusMetres(), v1.customerNoShowWait(), v1.customerNoShowFee(),
                 v1.noShowReportWindow(), v1.completionReminder(), v1.completionDeadline(), v1.disputeWindowExtension(),
-                v1.teamReminder(), v1.minHours(), v1.maxHours());
+                v1.teamReminder(), v1.minHours(), v1.maxHours(), v1.responseDeadline());
 
         Reservation underVersion2 = Reservation.request(
                 "customer-2", aBooking().build(), anOffering().build(), version2, Optional.empty(), PaymentMethod.CARD, VERIFIED_UNTIL, NOW);

@@ -12,6 +12,7 @@ import kernel.Money;
  * @param separateTravelFee the flat travel fee when charged separately; empty when travel is included
  * @param supervisorRule when the provider sends a supervisor; empty when they set none
  * @param takesRequests false while the listing is paused because the provider's re-verification lapsed
+ * @param acceptancePolicy whether the request waits for the provider or is accepted instantly once paid
  */
 public record OfferingSnapshot(
         String providerId,
@@ -25,7 +26,8 @@ public record OfferingSnapshot(
         Set<City> cities,
         CancellationTier cancellationTier,
         Optional<SupervisorRule> supervisorRule,
-        boolean takesRequests) {
+        boolean takesRequests,
+        AcceptancePolicy acceptancePolicy) {
 
     public OfferingSnapshot {
         providerId = ReservationText.require(providerId, "A provider id");
@@ -35,6 +37,11 @@ public record OfferingSnapshot(
         cities = Set.copyOf(cities);
         Objects.requireNonNull(cancellationTier);
         Objects.requireNonNull(supervisorRule);
+        Objects.requireNonNull(acceptancePolicy);
+    }
+
+    boolean isInstantBook() {
+        return acceptancePolicy == AcceptancePolicy.INSTANT_BOOK;
     }
 
     boolean requiresSupervisor(int helpers, int hours) {

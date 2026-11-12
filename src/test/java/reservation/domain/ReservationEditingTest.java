@@ -80,6 +80,6 @@ class ReservationEditingTest {
 
         reservation.edit(aBooking().startingAt(friday("08:00")).build(), VERIFIED_UNTIL, thursday("10:00"));
 
-        assertThat(reservation.requestExpiresAt()).isEqualTo(friday("08:00"));
+        assertThat(reservation.requestExpiresAt()).isEqualTo(friday("07:00"));
     }
 }

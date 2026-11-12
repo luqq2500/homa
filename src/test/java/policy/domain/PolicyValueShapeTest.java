@@ -28,6 +28,7 @@ import policy.domain.PolicyValue.RequestExpiry;
 import policy.domain.PolicyValue.RatingWindow;
 import policy.domain.PolicyValue.ServiceFee;
 import policy.domain.PolicyValue.TeamReminder;
+import policy.domain.PolicyValue.ResponseDeadline;
 import policy.domain.exception.CheckInRadiusNotPositiveException;
 import policy.domain.exception.InvalidPolicyRangeException;
 import policy.domain.exception.MinimumRatingsToShowNotPositiveException;
@@ -58,6 +59,7 @@ class PolicyValueShapeTest {
                     Named.of("team reminder", TeamReminder::new),
                     Named.of("earliest check-in", EarliestCheckIn::new),
                     Named.of("check-in period", CheckInPeriod::new),
+                    Named.of("response deadline", ResponseDeadline::new),
                     Named.of("customer no-show wait", CustomerNoShowWait::new),
                     Named.of("no-show report window", NoShowReportWindow::new),
                     Named.of("completion reminder", CompletionReminder::new),
