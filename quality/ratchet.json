@@ -3,19 +3,11 @@
     "score": 100.0,
     "strength": 100.0
   },
-  "account.usecase": {
-    "score": 100.0,
-    "strength": 100.0
-  },
   "availability.domain": {
     "score": 100.0,
     "strength": 100.0
   },
   "catalogue.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "catalogue.usecase": {
     "score": 100.0,
     "strength": 100.0
   },
@@ -44,10 +36,6 @@
     "strength": 100.0
   },
   "policy.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "policy.usecase": {
     "score": 100.0,
     "strength": 100.0
   },

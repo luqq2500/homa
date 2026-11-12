@@ -5,7 +5,7 @@
 **Closed:** 8 November 2026, at commit `24a771e` on `main`
 **Sources:** `docs/homa-product-description.md`, `docs/homa-domain-plan.md`, `docs/backend_module_discipline.md`
 **Evidence:** `docs/domain-audit.md`
-**Last updated:** 12 November 2026, with addenda 25 to 27, on `claude/bold-wright-b1q5ui`
+**Last updated:** 12 November 2026, with addenda 25 to 28, on `claude/bold-wright-b1q5ui`
 
 ## 1. Summary
 
@@ -25,14 +25,14 @@ paused at the product owner's request, so the repository holds the domain module
 | Integration events | 38, all with contract tests |
 | Open product questions for the domain | 0 |
 
-**Where it stands now** (after addendum 27; the table above is the state at closing):
+**Where it stands now** (after addendum 28; the table above is the state at closing):
 
 | Measure | Now |
 |---|---|
 | Gherkin scenarios | 313 in the plan: 301 have a test, 12 are retired |
-| Tests (domain, `ie`, and the `catalogue`, `policy` and `account` usecases) | 1,726, all passing |
+| Tests (domain, `kernel` and `ie`) | 1,386, all passing |
 | Mutants, domain and `kernel` | 1,654, all killed |
-| Mutants, whole build | 2,000, all killed; 100% score and test strength in every layer |
+| Mutants, whole build | 1,654, all killed; 100% score and test strength in every layer |
 | Worst CRAP score | 5.0 |
 | Integration events | 82, all with contract tests |
 | Homa-set values | 26 |
@@ -166,7 +166,7 @@ README under "Decisions taken while building". All of them are confirmed.
 
 ## 7. Carried forward
 
-**Usecase phase** (`catalogue`, `policy` and `account` built; plan in `docs/homa-usecase-plan.md`)
+**Usecase phase** (not started; the earlier code and plan were removed, see addendum 28)
 - **Open questions U1 to U7** need review before it starts. U1 is how reservation and discovery check
   availability. U4 is cancelling a request, and U5 is a payment that fails at request.
 - **Obligations the domain leaves to the usecases:**
@@ -230,7 +230,7 @@ the payment and calls `acceptInstantly` once it is secured.
 ## 9. How to verify
 
 ```bash
-mvn clean verify                 # 1,726 tests now (827 at closing), ArchUnit dependency rules, PIT mutation
+mvn clean verify                 # 1,386 tests now (827 at closing), ArchUnit dependency rules, PIT mutation
 python3 tools/quality_gates.py   # CRAP < 6, mutation >= 90% per context, ratchet
 ```
 
@@ -709,4 +709,25 @@ After a product critique of the add form (domain plan, "adding a team member, ph
   reason, which makes 82.
 - **Scenarios:** 313 in the plan; 301 have a test and 12 are retired.
 - **Gates:** whole build 1,726 tests, 2,000 mutants, all killed, worst CRAP 5.0.
+
+## 28. Addendum: the earlier usecase code and plan removed
+
+Before the usecase phase starts, the product owner asked for a clean slate.
+
+- **Removed:** the `catalogue`, `policy` and `account` usecases, their tests, and
+  `docs/homa-usecase-plan.md`, with their entries in `quality/ratchet.json`. They were built and planned
+  before the spec, domain plan and code were aligned, and the phase now starts fresh from the domain as
+  it stands. Everything removed is in git history up to `170c533`.
+- **Still to carry into the new plan** (decided earlier, recorded in that history): how one context
+  gets another's data (projections fed by events), availability checked through a port the composition
+  root implements (U1), the required rules (a request paid before the provider answers, a paused
+  provider can't accept, a seriously flagged provider's reservations, one event per verification
+  outcome, and others), the admin console rules (every decision records who and why; money moves only
+  through Homa's rules), and the infra rules (no save overwrites a change made meanwhile, only
+  authentication says who is acting, a change and its events are all or nothing). The domain methods
+  listed in section 7 have no usecase yet.
+- **Unchanged:** the domain, `kernel` and `ie/`. The domain plan's mentions of the usecase plan now
+  point to that history.
+- **Scenarios:** 313 in the plan; 301 have a test and 12 are retired.
+- **Gates:** whole build 1,386 tests, 1,654 mutants, all killed, worst CRAP 5.0.
 

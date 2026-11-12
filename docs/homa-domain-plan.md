@@ -1931,7 +1931,7 @@ Helper.verification() : Verification
 
 **`ie/`:** `RecheckOpenedIE` (provider and team member, for the reminder), `HelperReverifiedIE`, `HelperLapsedIE`, `ProviderReverifiedIE`, `ProviderVerificationLapsedIE`. `offering` listens to `HelperLapsedIE` and `HelperJoinedTeamIE`/`HelperReverifiedIE` to rebuild the roster, and to `ProviderVerificationLapsedIE`/`ProviderReverifiedIE` to pause and resume.
 
-**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies. *Changed in "aligning the product spec, domain plan and code": the person comes off the team with `Reservation.dropFromTeam`, so the team is incomplete until it is named again.* This rule and the other rules from this change are listed as required rules R1 to R5 in `docs/homa-usecase-plan.md`.
+**Usecase phase:** a lapsed helper named on an upcoming reservation means the provider must name someone else before the start; the reservation's existing "team must be on the roster" rule then applies. *Changed in "aligning the product spec, domain plan and code": the person comes off the team with `Reservation.dropFromTeam`, so the team is incomplete until it is named again.* This rule and the other rules from this change are listed as required rules R1 to R5 in the earlier usecase plan (removed before the usecase phase restarts; in git history up to `170c533`).
 
 **Decided while building** (all confirmed by the product owner):
 
@@ -1998,7 +1998,7 @@ Helper.verification() : Verification
     Accepted reservations go ahead.
   - The pause lives in offering, and a waiting request's snapshot is from before the pause. So this is
     a required usecase rule, and the domain stays as it is: `ProviderAcceptRequest` refuses with
-    `ListingPausedException` while the listing is paused (see `docs/homa-usecase-plan.md`).
+    `ListingPausedException` while the listing is paused (see the earlier usecase plan (removed before the usecase phase restarts; in git history up to `170c533`)).
 
 ```gherkin
 Feature: Periodic re-verification
@@ -2111,7 +2111,7 @@ later. Passing a re-check moves the due date 3 months out, and those dates open 
   `RecheckOpenedIE`, whose `dueAt` an early re-check moves sooner.
 
 **Usecase phase:** the request, edit and accept usecases pass the due date from reservation's
-projection (required rule R6 in `docs/homa-usecase-plan.md`).
+projection (required rule R6 in the earlier usecase plan (removed before the usecase phase restarts; in git history up to `170c533`)).
 
 **Note:** bookings go up to 30 days ahead, but the regular re-check opens only 14 days before the
 due date. So from 30 to 14 days before it, a job after the due date can't be booked, and the provider
