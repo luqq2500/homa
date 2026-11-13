@@ -1,4 +1,12 @@
 {
+  "account.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "account.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "catalogue.domain": {
     "score": 100.0,
     "strength": 100.0
