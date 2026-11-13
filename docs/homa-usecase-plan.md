@@ -80,9 +80,9 @@ This plan covers the **usecase phase** (Backend Module Discipline §8, step 2): 
   id it has recorded (`ProcessedEvents` out port).
 - **Errors:** domain exceptions pass through unchanged. Usecase exceptions cover orchestration only:
   a record not found (`ReservationNotFoundException`), an actor acting on something not theirs
-  (`NotYourReservationException`), a missing founder or reason.
+  (`NotYourReservationException`), a missing admin or reason.
 - **Who is acting** comes only from authentication: `infra/security/` puts the customer's, provider's or
-  founder's id into the request. A usecase trusts the id it is given and checks only that the record
+  admin's id into the request. A usecase trusts the id it is given and checks only that the record
   belongs to that actor.
 - **Scheduled work** (Discipline §10): a scheduler trigger lands in `infra/transport/messaging/` and
   calls ordinary usecase ports. Each context with scheduled work has one query, `HomaListDueWork`, which
@@ -105,12 +105,12 @@ The actor names the port and the usecase. Each is a word from the ubiquitous lan
 | `Customer` | A homeowner, signed in or, for search and browse, a guest | `CustomerRequestReservation` |
 | `Registrant` | Anyone verifying a phone number to register | `RegistrantConfirmPhone` |
 | `Provider` | A business provider, through its owner or director in the provider app | `ProviderAcceptRequest` |
-| `Founder` | Homa's founders, in the admin console | `FounderDecideCase` |
+| `Admin` | Homa's admins, in the admin console: the founders, for now | `AdminDecideCase` |
 | `Homa` | The platform acting on its own: scheduled steps and reminders | `HomaExpireRequest` |
 | `KycProvider` | The KYC provider reporting a result | `KycProviderRecordKybResult` |
 | `PaymentProvider` | The payment provider reporting a payment, refund, payout or chargeback | `PaymentProviderRecordPaymentSecured` |
 
-**Changed from the earlier plan:** the founders' usecases were named `Homa…`. They are `Founder…` now, so
+**Changed from the earlier plan:** the admin console's usecases were named `Homa…`. They are `Admin…` now, so
 `Homa` means only the platform acting on its own, as in the domain stories.
 
 ## How a context gets another context's data
@@ -166,7 +166,7 @@ contexts that need it. **Each needs the product owner's confirmation.**
 | D3 | **Chargebacks reach resolution** | The payment provider reports a chargeback to payment, but cases live in resolution | `payment`: `Payment.recordChargeback(amount, now)`. `ie/`: `ChargebackOpenedIE` |
 | D4 | **Reminders are sent once** | `isTeamReminderDue` and `isCompletionReminderDue` stay true, so a scheduled reminder would repeat | `reservation`: `recordTeamReminded(now)` and `recordCompletionReminded(now)`; a team that becomes incomplete again is due again. `ie/`: `TeamReminderDueIE`, `CompletionReminderDueIE` |
 | D5 | **The provider record** | "Jobs done" and "cancellations" on the provider page are business definitions | `reservation`: a `ProviderRecord` read model rule: jobs done are Completed with a provider earning above RM0; cancellations are fined late cancellations and no-shows, waived or not |
-| D6 | **A case says it opened** | Founders open chats and evidence only for a case, and the contexts that hold them must know a case is open | `ie/`: `CaseOpenedIE` |
+| D6 | **A case says it opened** | Admins open chats and evidence only for a case, and the contexts that hold them must know a case is open | `ie/`: `CaseOpenedIE` |
 | D7 | **A paused listing can't accept, in the domain** | The earlier plan checked the pause in the usecase. Rules stay in the domain | `reservation`: `accept` and `acceptInstantly` take whether the listing takes requests now, and refuse with `ListingPausedException` |
 | D8 | **A `notification` context** | The spec tells people of dozens of moments, in their own language, by push or SMS. That is a business of its own: who is told what, in which language, on which channel | New context: `Notice`, `NoticeKind`, `Language`, `Channel`; rules: each person's language (Bahasa Melayu or English), the channel per kind (SMS as well as push for a job on hold, a provider no-show and a team change on the day) |
 | D9 | **A `privacy` context** | Data requests have a rule: Homa answers within the PDPA's 21 days | New context: `DataRequest` (kind: see, correct, copy, delete; received, due, closed) |
@@ -221,7 +221,7 @@ section. Events marked (D) come from a domain prerequisite.
 
 ## catalogue
 
-**Purpose:** the founders curate the job list, the tool list, the service area and the homepage
+**Purpose:** admins curate the job list, the tool list, the service area and the homepage
 showcase; providers and customers read them.
 
 **Out ports:** `JobListRepository`, `ToolListRepository`, `ShowcaseRepository`,
@@ -229,19 +229,19 @@ showcase; providers and customers read them.
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
-| `FounderAddJob` | `FounderJobAdder.add` | `JobList.add` | `JobAddedIE` |
-| `FounderRenameJob` | `FounderJobRenamer.rename` | `JobList.rename` (nothing when unchanged) | `JobRenamedIE` |
-| `FounderRegroupJob` | `FounderJobRegrouper.regroup` | `JobList.regroup` | `JobRegroupedIE` |
-| `FounderRetireJob` | `FounderJobRetirer.retire` (with a reason) | `JobList.retire`, then `Showcase.withdrawJob` | `JobRetiredIE` |
-| `FounderAddTool` | `FounderToolAdder.add` | `ToolList.add` | `ToolAddedIE` |
-| `FounderRenameTool` | `FounderToolRenamer.rename` | `ToolList.rename` | `ToolRenamedIE` |
-| `FounderRetireTool` | `FounderToolRetirer.retire` (with a reason) | `ToolList.retire` | `ToolRetiredIE` |
-| `FounderFeatureSearch` | `FounderSearchFeaturer.feature` | `Showcase.feature` (jobs providers can offer only) | — |
-| `FounderRenameFeaturedSearch` | `FounderFeaturedSearchRenamer.rename` | `Showcase.rename` | — |
-| `FounderMoveFeaturedSearch` | `FounderFeaturedSearchMover.move` | `Showcase.move` | — |
-| `FounderRemoveFeaturedSearch` | `FounderFeaturedSearchRemover.remove` | `Showcase.remove` | — |
-| `FounderPublishServiceArea` | `FounderServiceAreaPublisher.publish` | `ServiceArea.launch` | `ServiceAreaPublishedIE` |
-| `FounderViewJobList`, `FounderViewToolList`, `FounderViewShowcase` | `…Viewer.view` | (query: everything, retired and hidden included) | — |
+| `AdminAddJob` | `AdminJobAdder.add` | `JobList.add` | `JobAddedIE` |
+| `AdminRenameJob` | `AdminJobRenamer.rename` | `JobList.rename` (nothing when unchanged) | `JobRenamedIE` |
+| `AdminRegroupJob` | `AdminJobRegrouper.regroup` | `JobList.regroup` | `JobRegroupedIE` |
+| `AdminRetireJob` | `AdminJobRetirer.retire` (with a reason) | `JobList.retire`, then `Showcase.withdrawJob` | `JobRetiredIE` |
+| `AdminAddTool` | `AdminToolAdder.add` | `ToolList.add` | `ToolAddedIE` |
+| `AdminRenameTool` | `AdminToolRenamer.rename` | `ToolList.rename` | `ToolRenamedIE` |
+| `AdminRetireTool` | `AdminToolRetirer.retire` (with a reason) | `ToolList.retire` | `ToolRetiredIE` |
+| `AdminFeatureSearch` | `AdminSearchFeaturer.feature` | `Showcase.feature` (jobs providers can offer only) | — |
+| `AdminRenameFeaturedSearch` | `AdminFeaturedSearchRenamer.rename` | `Showcase.rename` | — |
+| `AdminMoveFeaturedSearch` | `AdminFeaturedSearchMover.move` | `Showcase.move` | — |
+| `AdminRemoveFeaturedSearch` | `AdminFeaturedSearchRemover.remove` | `Showcase.remove` | — |
+| `AdminPublishServiceArea` | `AdminServiceAreaPublisher.publish` | `ServiceArea.launch` | `ServiceAreaPublishedIE` |
+| `AdminViewJobList`, `AdminViewToolList`, `AdminViewShowcase` | `…Viewer.view` | (query: everything, retired and hidden included) | — |
 | `ProviderViewJobList`, `ProviderViewToolList`, `ProviderViewServiceArea` | `…Viewer.view` | (query: what providers can choose) | — |
 | `CustomerViewJobList`, `CustomerViewShowcase` | `…Viewer.view` | (query: offered jobs by group; the showcase in order) | — |
 
@@ -256,19 +256,19 @@ Feature: Curating the catalogue
 
   Scenario: Retiring a job is told to the other contexts and recorded with its reason
     Given the job list offers KITCHEN_GREASE, featured in "Weekend quick refresh"
-    When founder Aisyah retires KITCHEN_GREASE because "Replaced by kitchen care"
+    When admin Aisyah retires KITCHEN_GREASE because "Replaced by kitchen care"
     Then the job list is saved with KITCHEN_GREASE retired
     And the showcase is saved without it
     And JobRetiredIE is published for KITCHEN_GREASE
     And the audit log records Aisyah, the retirement and the reason
 
   Scenario: A retirement without a reason changes nothing
-    When founder Aisyah retires KITCHEN_GREASE with no reason
+    When admin Aisyah retires KITCHEN_GREASE with no reason
     Then it is refused with AdminReasonRequiredException
     And nothing is saved, published or recorded
 
   Scenario: Renaming a job to its own name changes nothing
-    When founder Aisyah renames KITCHEN_GREASE to its own name
+    When admin Aisyah renames KITCHEN_GREASE to its own name
     Then nothing is saved, published or recorded
 ```
 
@@ -276,15 +276,15 @@ Feature: Curating the catalogue
 
 ## policy
 
-**Purpose:** the founders launch and change the Homa-set values; the other contexts keep a copy.
+**Purpose:** admins launch and change the Homa-set values; the other contexts keep a copy.
 
 **Out ports:** `PolicyRepository`, `PolicyIEPublisher`, `AdminAuditLog`.
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
-| `FounderLaunchPolicy` | `FounderPolicyLauncher.launch` | `HomaPolicy.initial` (version 1, once) | `HomaPolicyChangedIE` |
-| `FounderChangePolicyValue` | `FounderPolicyValueChanger.change` (one value, with a reason) | `HomaPolicy.change` | `HomaPolicyChangedIE` |
-| `FounderViewPolicy` | `FounderPolicyViewer.view` | (query: the 26 values in force) | — |
+| `AdminLaunchPolicy` | `AdminPolicyLauncher.launch` | `HomaPolicy.initial` (version 1, once) | `HomaPolicyChangedIE` |
+| `AdminChangePolicyValue` | `AdminPolicyValueChanger.change` (one value, with a reason) | `HomaPolicy.change` | `HomaPolicyChangedIE` |
+| `AdminViewPolicy` | `AdminPolicyViewer.view` | (query: the 26 values in force) | — |
 
 **Rules**
 - **P1.** Each value has a name (`SERVICE_FEE`, `RESPONSE_DEADLINE`, …) and is written by kind: a
@@ -301,13 +301,13 @@ Feature: Changing a Homa-set value
 
   Scenario: A change makes a new version for new reservations
     Given policy version 1 is in force
-    When founder Aisyah changes RESPONSE_DEADLINE to PT30M because "More time to answer"
+    When admin Aisyah changes RESPONSE_DEADLINE to PT30M because "More time to answer"
     Then version 2 is saved with a response deadline of 30 minutes
     And HomaPolicyChangedIE is published with version 2 and every value
     And the audit log records Aisyah, the change and the reason
 
   Scenario: A value that breaks a rule across values is refused
-    When founder Aisyah changes RESPONSE_DEADLINE to PT2H while the minimum notice is 2 hours
+    When admin Aisyah changes RESPONSE_DEADLINE to PT2H while the minimum notice is 2 hours
     Then it is refused with ResponseDeadlineNotBeforeMinimumNoticeException
     And nothing is saved, published or recorded
 ```
@@ -375,13 +375,13 @@ in infra)
 | `KycProviderRecordMemberFlag` | `KycProviderMemberFlagRecorder.record` | `TeamMember.lapse` | `TeamMemberLapsedIE` |
 | `PaymentProviderRecordPayoutAccountReady` | `PaymentProviderPayoutAccountReadyRecorder.record` | `ProviderAccount.recordPayoutAccountReady` (once) | `PayoutAccountReadyIE` |
 
-**The founders and Homa**
+**Admins and Homa**
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
-| `FounderRemoveTeamMember` | `FounderTeamMemberRemover.remove` (with a reason) | `TeamMember.remove` | `TeamMemberRemovedIE` |
-| `FounderRequestBusinessRecheck` | `FounderBusinessRecheckRequester.request` (with a reason) | (asks the KYC provider; nothing changes until it reports) | — |
-| `FounderRequestMemberRecheck` | `FounderMemberRecheckRequester.request` (with a reason) | (same) | — |
+| `AdminRemoveTeamMember` | `AdminTeamMemberRemover.remove` (with a reason) | `TeamMember.remove` | `TeamMemberRemovedIE` |
+| `AdminRequestBusinessRecheck` | `AdminBusinessRecheckRequester.request` (with a reason) | (asks the KYC provider; nothing changes until it reports) | — |
+| `AdminRequestMemberRecheck` | `AdminMemberRecheckRequester.request` (with a reason) | (same) | — |
 | `HomaListDueWork` | `HomaDueWorkLister.list` | (query: checks waiting too long for a result) | — |
 | `HomaChaseCheck` | `HomaCheckChaser.chase` | (asks the KYC provider for the check's status; its answer arrives as a usual result) | — |
 
@@ -622,15 +622,15 @@ This is the biggest context. Build it in the slices listed under **Build order**
 | `ProviderFileReport` | `ProviderReportFiler.file` | `fileReport` (the provider) | `ReportFiledIE` |
 | `ProviderViewReservation` | `ProviderReservationViewer.view` | (query: access notes only once accepted) | — |
 
-**The KYC provider, the founders and Homa**
+**The KYC provider, admins and Homa**
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
 | `KycProviderRecordFaceCheck` | `KycProviderFaceCheckRecorder.record` | `recordFaceCheck` | `FaceCheckRecordedIE`; `CheckInCompletedIE` on the first pass |
 | `HomaRecordFaceCheckOutage` | `HomaFaceCheckOutageRecorder.record` (infra found the KYC provider unreachable) | `recordFaceCheckUnavailable` | `CheckInCompletedIE` |
-| `FounderCancelFlaggedReservation` | `FounderFlaggedReservationCanceller.cancel` (with a reason) | `cancelForProviderFlag` | `ReservationCancelledIE`, `SettlementDecidedIE` |
-| `FounderRestoreFlaggedReservation` | `FounderFlaggedReservationRestorer.restore` (with a reason; only once the flag is cleared) | `restoreAfterFlagCleared` | `ReservationRestoredIE` |
-| `FounderViewReservation` | `FounderReservationViewer.view` | (query: the full history) | — |
+| `AdminCancelFlaggedReservation` | `AdminFlaggedReservationCanceller.cancel` (with a reason) | `cancelForProviderFlag` | `ReservationCancelledIE`, `SettlementDecidedIE` |
+| `AdminRestoreFlaggedReservation` | `AdminFlaggedReservationRestorer.restore` (with a reason; only once the flag is cleared) | `restoreAfterFlagCleared` | `ReservationRestoredIE` |
+| `AdminViewReservation` | `AdminReservationViewer.view` | (query: the full history) | — |
 | `HomaListDueWork` | `HomaDueWorkLister.list` | (query: by kind, the ids due now) | — |
 | `HomaExpireRequest` | `HomaRequestExpirer.expire` | `expire` | `ReservationExpiredIE` |
 | `HomaRemindTeam` | `HomaTeamReminder.remind` | `isTeamReminderDue`, `recordTeamReminded` (D4) | `TeamReminderDueIE` |
@@ -654,7 +654,7 @@ This is the biggest context. Build it in the slices listed under **Build order**
 | `HandleTeamMemberLapsedIE`, `HandleTeamMemberRemovedIE` | those events | `TeamRosterView`; `dropFromTeam` on every upcoming or ongoing reservation naming them (R9) | `TeamMemberDroppedIE` or `TeamMemberStoppedIE` for each |
 | `HandleTeamMemberAddedIE`, `HandleTeamMemberRoleChangedIE`, `HandleTeamMemberReverifiedIE` | those events | `TeamRosterView` | — |
 | `HandleProviderFreeTimeChangedIE` | `ProviderFreeTimeChangedIE` | `FreeTimeView`; `declineForTakenTime` on the provider's open requests that are no longer free (R8) | `RequestDeclinedForTakenTimeIE` for each |
-| `HandleCaseOpenedIE` | `CaseOpenedIE` (D6) | records the reservation as having an open case, so founders can see its evidence | — |
+| `HandleCaseOpenedIE` | `CaseOpenedIE` (D6) | records the reservation as having an open case, so admins can see its evidence | — |
 | the listing events, `HandleHomaPolicyChangedIE`, `HandleCustomerRegisteredIE`, `HandleCustomerAddressChangedIE`, `HandleCustomerAccessNotesChangedIE` | those events | `OfferingView`, `PolicyView`, `CustomerView` | — |
 
 **Rules**
@@ -675,7 +675,7 @@ This is the biggest context. Build it in the slices listed under **Build order**
   (`SlotNotFreeException`, a usecase exception). The authoritative check is the hold in the
   acceptance's transaction (AV1).
 - **R5. A seriously flagged provider's reservations:** `HandleProviderFlaggedIE` disputes every accepted
-  reservation with no completion; the founders cancel each with a full refund or restore it once the
+  reservation with no completion; the admins cancel each with a full refund or restore it once the
   flag is cleared, before the start; `HomaCancelUndecidedFlaggedReservation` cancels any undecided at
   the booked start. There is no "let it go ahead" (A3).
 - **R6. A customer no-show's settlement waits for the window.** `ProviderReportCustomerNoShow` publishes
@@ -762,16 +762,16 @@ replace an authorisation, capture, release, refund, transfer a payout), and the 
 | `PaymentProviderRecordPaymentSecured` | `PaymentProviderPaymentSecuredRecorder.record` | `Payment.authoriseCard`, `payUpfrontByFpx` or `adjustTotal` | `PaymentSecuredIE` |
 | `PaymentProviderRecordPaymentFailed` | `PaymentProviderPaymentFailedRecorder.record` | (no `Payment` for a first payment; `cancelBeforeAcceptance` after an edit) | `PaymentFailedIE` |
 | `PaymentProviderRecordRefund` | `PaymentProviderRefundRecorder.record` | (marks the refund done) | `PaymentRefundedIE` |
-| `PaymentProviderRecordPayoutFailed` | `PaymentProviderPayoutFailedRecorder.record` | (marks it for a retry and for the founders) | — |
+| `PaymentProviderRecordPayoutFailed` | `PaymentProviderPayoutFailedRecorder.record` | (marks it for a retry and for the admins) | — |
 | `PaymentProviderRecordChargeback` | `PaymentProviderChargebackRecorder.record` | `Payment.recordChargeback` (D3) | `ChargebackOpenedIE` |
-| `FounderWaiveFine` | `FounderFineWaiver.waive` (a reason category and text) | `Fine.waive` | `FineWaivedIE` |
-| `FounderReleasePayout` | `FounderPayoutReleaser.release` (with a reason) | `Payout.releaseHold` | `PayoutHoldReleasedIE` |
-| `FounderWithholdPayout` | `FounderPayoutWithholder.withhold` (with a reason) | `Payout.withhold` | `PayoutWithheldIE` |
+| `AdminWaiveFine` | `AdminFineWaiver.waive` (a reason category and text) | `Fine.waive` | `FineWaivedIE` |
+| `AdminReleasePayout` | `AdminPayoutReleaser.release` (with a reason) | `Payout.releaseHold` | `PayoutHoldReleasedIE` |
+| `AdminWithholdPayout` | `AdminPayoutWithholder.withhold` (with a reason) | `Payout.withhold` | `PayoutWithheldIE` |
 | `HomaListDueWork` | `HomaDueWorkLister.list` | (query: payouts and releases due) | — |
 | `HomaPayOut` | `HomaPayouter.payOut` | (transfers a payable payout whose release time has come) | — |
 | `CustomerViewPayments` | `CustomerPaymentsViewer.view` | (query: payments and refunds with their status and expected timing) | — |
 | `ProviderViewIncome` | `ProviderIncomeViewer.view` | (query: earnings, payouts, fines deducted) | — |
-| `FounderViewPayments` | `FounderPaymentsViewer.view` | (query; links to the payment provider's console) | — |
+| `AdminViewPayments` | `AdminPaymentsViewer.view` | (query; links to the payment provider's console) | — |
 
 **Event handlers**
 
@@ -811,7 +811,7 @@ Feature: Settling and paying out
     Then the payout is saved held
     And PayoutHeldIE is published
 
-  Scenario: A chargeback reaches the founders
+  Scenario: A chargeback reaches the admins
     When the payment provider reports a RM230.00 chargeback on Sarah's payment
     Then the payment is saved with the chargeback
     And ChargebackOpenedIE is published
@@ -821,15 +821,15 @@ Feature: Settling and paying out
 
 ## resolution
 
-**Purpose:** the founders' case queue and their decisions.
+**Purpose:** the admins' case queue and their decisions.
 
 **Out ports:** `CaseRepository`, `ResolutionIEPublisher`, `AdminAuditLog`.
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
-| `FounderDecideCase` | `FounderCaseDecider.decide` (release, partial or full refund, with a reason) | `Case.decide` | `CaseDecidedIE`; `ChargebackDecidedIE` for a chargeback case |
-| `FounderViewCaseQueue` | `FounderCaseQueueViewer.view` | (query: `Case.QUEUE_ORDER`, with the time left of the 72-hour target) | — |
-| `FounderViewCase` | `FounderCaseViewer.view` | (query: the case and its evidence; the reservation, chat and payment come from their own contexts' founder views) | — |
+| `AdminDecideCase` | `AdminCaseDecider.decide` (release, partial or full refund, with a reason) | `Case.decide` | `CaseDecidedIE`; `ChargebackDecidedIE` for a chargeback case |
+| `AdminViewCaseQueue` | `AdminCaseQueueViewer.view` | (query: `Case.QUEUE_ORDER`, with the time left of the 72-hour target) | — |
+| `AdminViewCase` | `AdminCaseViewer.view` | (query: the case and its evidence; the reservation, chat and payment come from their own contexts' admin views) | — |
 | `CustomerViewCase`, `ProviderViewCase` | `…Viewer.view` | (query: status and when the decision is due) | — |
 
 **Event handlers**
@@ -849,7 +849,7 @@ Feature: Settling and paying out
   case is due. It is a service promise: nothing happens automatically when it passes.
 
 ```gherkin
-Feature: The founders' queue
+Feature: The admins' queue
 
   Scenario: A safety report opens a case at the top of the queue
     Given an open case from Friday about finished work
@@ -880,7 +880,7 @@ Feature: The founders' queue
 | `ProviderPostMessage` | `ProviderMessagePoster.post` | `post` | — |
 | `CustomerViewInbox`, `ProviderViewInbox` | `…Viewer.view` | (query: chats grouped by provider, or by customer) | — |
 | `CustomerViewChat`, `ProviderViewChat` | `…Viewer.view` | (query) | — |
-| `FounderViewChat` | `FounderChatViewer.view` | (query: only while the reservation has an open case, `OpenCaseView`) | — |
+| `AdminViewChat` | `AdminChatViewer.view` | (query: only while the reservation has an open case, `OpenCaseView`) | — |
 
 **Event handlers**
 
@@ -894,7 +894,7 @@ Feature: The founders' queue
 
 **Rules**
 - **CO1. A party writes only in their own chats** (`NotYourChatException`).
-- **CO2. Founders open a chat only for a case** (A4).
+- **CO2. Admins open a chat only for a case** (A4).
 
 ---
 
@@ -908,10 +908,10 @@ and the projections `RateableReservationView` and `FeedbackLimitsView`.
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
 | `CustomerRateReservation` | `CustomerReservationRater.rate` | `Rating.submit`; `RatingSummary.record` for the provider and each rated team member | `RatingSubmittedIE` |
-| `FounderHideRating` | `FounderRatingHider.hide` (with a reason) | `Rating.hide`; `RatingSummary.withdraw` | `RatingHiddenIE` |
+| `AdminHideRating` | `AdminRatingHider.hide` (with a reason) | `Rating.hide`; `RatingSummary.withdraw` | `RatingHiddenIE` |
 | `CustomerViewProviderRatings` | `CustomerProviderRatingsViewer.view` | (query: averages shown once there are enough, written feedback newest first) | — |
 | `CustomerViewTeamRatings` | `CustomerTeamRatingsViewer.view` | (query: each named person's overall average) | — |
-| `FounderViewRatings` | `FounderRatingsViewer.view` | (query: every rating, hidden included) | — |
+| `AdminViewRatings` | `AdminRatingsViewer.view` | (query: every rating, hidden included) | — |
 
 **Event handlers:** `HandleReservationRequestedIE` (customer and provider), `HandleTeamNamedIE` (who
 was named), `HandleReservationCompletedIE` (rateable from then) keep `RateableReservationView`;
@@ -952,22 +952,22 @@ says so. Handlers of `ReservationRequestedIE` and `TeamNamedIE` also keep `Recip
 
 ## privacy
 
-**Purpose:** the founders record and answer data requests under the PDPA. This context needs its
+**Purpose:** admins record and answer data requests under the PDPA. This context needs its
 domain first (D9).
 
 **Out ports:** `DataRequestRepository`, `AdminAuditLog`.
 
 | Usecase | In port · method | Domain | Publishes |
 |---|---|---|---|
-| `FounderRecordDataRequest` | `FounderDataRequestRecorder.record` | `DataRequest.receive` (D9) | — |
-| `FounderCloseDataRequest` | `FounderDataRequestCloser.close` (with what was done) | `DataRequest.close` | — |
-| `FounderViewDataRequests` | `FounderDataRequestsViewer.view` | (query: open ones by due date) | — |
+| `AdminRecordDataRequest` | `AdminDataRequestRecorder.record` | `DataRequest.receive` (D9) | — |
+| `AdminCloseDataRequest` | `AdminDataRequestCloser.close` (with what was done) | `DataRequest.close` | — |
+| `AdminViewDataRequests` | `AdminDataRequestsViewer.view` | (query: open ones by due date) | — |
 
 ---
 
 ## tracking
 
-**Purpose:** the founders' views of everything, and the goals and measures from the spec's Part 1.
+**Purpose:** the admins' views of everything, and the goals and measures from the spec's Part 1.
 This context needs its domain first (D10). It listens to every event and is read-only: nothing
 depends on it, and if it falls behind no rule is affected.
 
@@ -975,12 +975,12 @@ depends on it, and if it falls behind no rule is affected.
 
 | Usecase | In port · method | Shows |
 |---|---|---|
-| `FounderViewGoals` | `FounderGoalsViewer.view` | the measures in Goals and Measures, with trends, by city and month |
-| `FounderViewGuardrails` | `FounderGuardrailsViewer.view` | acceptance rate and response time, expiry, cancellation and no-show rates, disputes and refunds, face check failures, lapses and flags, the fine waiver rate |
-| `FounderViewProvider` | `FounderProviderViewer.view` | a provider's listing, standing, team, fines and waivers, cancellation count, reservations, held payouts, and links to the KYC provider's and the payment provider's consoles |
-| `FounderViewCustomer` | `FounderCustomerViewer.view` | a customer's reservations, payments and reports |
-| `FounderViewFlaggedProviders` | `FounderFlaggedProvidersViewer.view` | each flagged business, its disputed reservations and held payouts |
-| `FounderViewSearchGaps` | `FounderSearchGapsViewer.view` | searches with no or only close matches, by city, job, day and time |
+| `AdminViewGoals` | `AdminGoalsViewer.view` | the measures in Goals and Measures, with trends, by city and month |
+| `AdminViewGuardrails` | `AdminGuardrailsViewer.view` | acceptance rate and response time, expiry, cancellation and no-show rates, disputes and refunds, face check failures, lapses and flags, the fine waiver rate |
+| `AdminViewProvider` | `AdminProviderViewer.view` | a provider's listing, standing, team, fines and waivers, cancellation count, reservations, held payouts, and links to the KYC provider's and the payment provider's consoles |
+| `AdminViewCustomer` | `AdminCustomerViewer.view` | a customer's reservations, payments and reports |
+| `AdminViewFlaggedProviders` | `AdminFlaggedProvidersViewer.view` | each flagged business, its disputed reservations and held payouts |
+| `AdminViewSearchGaps` | `AdminSearchGapsViewer.view` | searches with no or only close matches, by city, job, day and time |
 
 **Event handlers:** one per event, each updating the views it feeds.
 
@@ -988,14 +988,14 @@ depends on it, and if it falls behind no rule is affected.
 
 ## Rules for the admin console
 
-Every founder usecase follows these. Each has a usecase test.
+Every admin usecase follows these. Each has a usecase test.
 
-1. **A1. Every decision records who and why.** A founder usecase takes the founder's id
+1. **A1. Every decision records who and why.** An admin usecase takes the admin's id
    (`decidedBy`, from authentication) and, for a decision about a person, money or providers'
    listings, a reason. It writes who, what, why and when to its context's `AdminAuditLog`. Plain
-   curation records who, what and when. A missing founder or reason is refused before anything else
+   curation records who, what and when. A missing admin or reason is refused before anything else
    (`DecidedByRequiredException`, `AdminReasonRequiredException`).
-2. **A2. One event per outcome.** A founder or provider-reported result publishes the event of the
+2. **A2. One event per outcome.** An admin's or a provider's reported result publishes the event of the
    outcome the domain returned, never a generic event with a status.
 3. **A3. Red-code rules can't be overridden.** A flagged reservation is cancelled with a full refund or
    restored only once the flag is cleared; there is no "let it go ahead".
@@ -1003,7 +1003,7 @@ Every founder usecase follows these. Each has a usecase test.
    and selfies stay with the KYC provider; card details stay with the payment provider.
 5. **A5. Fine waivers stay exceptional.** A waiver has a reason category (customer-caused, emergency,
    Homa fault, other) and text, is given once and only for what is left, and covers only the money.
-6. **A6. Money moves only through Homa's rules.** The founders never refund or pay out directly in the
+6. **A6. Money moves only through Homa's rules.** Admins never refund or pay out directly in the
    payment provider's console for a reservation.
 
 ## Rules for the infra phase
@@ -1014,8 +1014,8 @@ The usecase ports promise these; infra keeps them. Each has an infra test.
    out-of-date copy with the context's `ChangedMeanwhileException` (optimistic locking). The Homa-set
    values save only as the next version.
 2. **I2. Only authentication says who is acting.** `infra/security/` sets the customer's, provider's or
-   founder's id from the authenticated user; a controller never takes it from the request body. Only
-   founders reach `Founder…` ports; only the KYC provider's and payment provider's signed webhooks reach
+   admin's id from the authenticated user; a controller never takes it from the request body. Only
+   admins reach `Admin…` ports; only the KYC provider's and payment provider's signed webhooks reach
    theirs; only the scheduler reaches `Homa…` ports.
 3. **I3. A change and its events are all or nothing.** The save, the events and the audit entry of one
    usecase happen in one transaction. Events go out through an outbox written in that transaction
@@ -1094,8 +1094,8 @@ come first in its step.
 3. **U3. Paying for an edit that raises the total.** *Recommendation:* the customer pays the difference
    with `CustomerPayForRequest`, as for the first payment, since a card may need the customer to
    confirm again.
-4. **U4. Deleting personal data across contexts.** *Recommendation:* in the MVP the founders carry out a
-   deletion by hand, contexts by context, and record it with `FounderCloseDataRequest`; automated
+4. **U4. Deleting personal data across contexts.** *Recommendation:* in the MVP the admins carry out a
+   deletion by hand, contexts by context, and record it with `AdminCloseDataRequest`; automated
    deletion events come after launch.
 5. **U5. The new contexts.** D8 to D10 add three bounded contexts. *Recommendation:* agree their domains
    (`notification`, `privacy`, `tracking`) before step 13, since the discipline requires all three
