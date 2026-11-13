@@ -19,6 +19,14 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "offering.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "offering.usecase": {
+    "score": 93.51,
+    "strength": 93.51
+  },
   "policy.domain": {
     "score": 100.0,
     "strength": 100.0
@@ -32,7 +40,7 @@
     "strength": 100.0
   },
   "verification.usecase": {
-    "score": 98.28,
-    "strength": 98.28
+    "score": 100.0,
+    "strength": 100.0
   }
 }

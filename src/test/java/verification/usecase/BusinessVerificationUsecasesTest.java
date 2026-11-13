@@ -138,7 +138,7 @@ class BusinessVerificationUsecasesTest {
         clearer.report(new ReportBusinessFlagClearedRequest(BUSINESS));
         assertThat(world.businesses.timesSaved(BUSINESS)).isEqualTo(4);
         assertThat(world.publisher.published(BusinessFlagClearedIE.class))
-                .containsExactly(new BusinessFlagClearedIE(BUSINESS, NOW));
+                .containsExactly(new BusinessFlagClearedIE(BUSINESS, true, NOW));
     }
 
     @Test

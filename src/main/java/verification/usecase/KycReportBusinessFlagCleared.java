@@ -27,7 +27,7 @@ public final class KycReportBusinessFlagCleared implements KycBusinessFlagCleare
         Business business = Verifications.business(businesses, request.businessId());
         if (business.clearFlag()) {
             businesses.save(business);
-            publisher.publish(new BusinessFlagClearedIE(business.id(), clock.instant()));
+            publisher.publish(new BusinessFlagClearedIE(business.id(), business.isVerified(), clock.instant()));
         }
         return new ReportBusinessFlagClearedResponse(business.status().name());
     }

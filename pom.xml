@@ -141,6 +141,7 @@
                         <param>catalogue.*</param>
                         <param>account.*</param>
                         <param>verification.*</param>
+                        <param>offering.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
@@ -148,6 +149,7 @@
                         <param>catalogue.*</param>
                         <param>account.*</param>
                         <param>verification.*</param>
+                        <param>offering.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>

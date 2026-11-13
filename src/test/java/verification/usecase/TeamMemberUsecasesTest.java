@@ -174,8 +174,8 @@ class TeamMemberUsecasesTest {
     void aRemovedTeamMemberLeavesAndTheOtherContextsAreTold() {
         String memberId = world.teamMember(BUSINESS, "HELPER");
 
-        new ProviderRemoveTeamMember(world.members, world.publisher, world.clock)
-                .remove(new RemoveTeamMemberRequest(BUSINESS, memberId));
+        assertThat(new ProviderRemoveTeamMember(world.members, world.publisher, world.clock)
+                .remove(new RemoveTeamMemberRequest(BUSINESS, memberId)).memberId()).isEqualTo(memberId);
 
         assertThat(world.members.find(memberId).orElseThrow().status()).isEqualTo(TeamMemberStatus.REMOVED);
         assertThat(world.members.timesSaved(memberId)).isEqualTo(4);
@@ -201,7 +201,8 @@ class TeamMemberUsecasesTest {
         String waiting = world.verifiedPerson(BUSINESS, "HELPER");
         AdminRemoveTeamMember usecase = new AdminRemoveTeamMember(world.members, world.publisher, world.clock);
 
-        usecase.remove(new RemoveTeamMemberByHomaRequest("admin-1", memberId, "Not allowed to work"));
+        assertThat(usecase.remove(new RemoveTeamMemberByHomaRequest("admin-1", memberId, "Not allowed to work"))
+                .memberId()).isEqualTo(memberId);
         usecase.remove(new RemoveTeamMemberByHomaRequest("admin-1", waiting, "Not allowed to work"));
 
         assertThat(world.members.find(memberId).orElseThrow().removal()).get().satisfies(removal -> {
