@@ -70,7 +70,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | `Registrant` | Anyone registering with a phone number, before they have an account |
 | `Party` | The customer or the provider, where either can act |
 | `Homa` | The founders in the admin console, or Homa acting on its own at a set time |
-| `Kyc`, `PaymentProvider`, `Calendar` | An outside service reporting a result back, named for its role in the spec (the KYC provider, the payment provider, a calendar service), never for the company behind it |
+| `KycProvider`, `PaymentProvider`, `Calendar` | An outside service reporting a result back, named for its role in the spec (the KYC provider, the payment provider, a calendar service), never for the company behind it |
 
 **Conventions for every usecase**
 
@@ -184,19 +184,19 @@ Spec: *Account*, *Verification Policy*, *Onboarding*, *Teams*, *Providers* (admi
 | `CustomerRename`, `CustomerChangeAddress`, `CustomerChangeAccessNotes` | They can change their name and address at any time; the account keeps access notes | `CustomerAccount` | `CustomerRenamedIE`, `CustomerAddressChangedIE`, `CustomerAccessNotesChangedIE` |
 | `ProviderRegisterAccount` | Register the business with a phone number | `ProviderAccount` | — |
 | `ProviderStartKyb` | Complete KYB on the KYC provider's pages; re-verification the same way | (opens the KYC provider's pages) | — |
-| `KycRecordBusinessResult` | Homa records each result and relies on it | `ProviderAccount` | By outcome (rule R1) |
+| `KycProviderRecordBusinessResult` | Homa records each result and relies on it | `ProviderAccount` | By outcome (rule R1) |
 | `ProviderAddPayoutAccount` | Add a payout account: a business bank account | (opens the payment provider's onboarding, through `PayoutAccountService`) | — |
 | `PaymentProviderRecordPayoutAccountReady` | Providers cannot go live until the payout account is added | `ProviderAccount` | `PayoutAccountReadyIE`, once |
 | `ProviderStartAddingTeamMember` | Start: the role and a profile photo taken with the camera; only once KYB has passed | `MemberVerification` | `MemberVerificationStartedIE` |
-| `KycRecordMemberVerificationResult` | Verify on the spot; the check fails if the photo doesn't match or the person is under 18 | `MemberVerification` | `MemberVerifiedIE`, or `MemberVerificationRejectedIE` with the reason |
+| `KycProviderRecordMemberVerificationResult` | Verify on the spot; the check fails if the photo doesn't match or the person is under 18 | `MemberVerification` | `MemberVerifiedIE`, or `MemberVerificationRejectedIE` with the reason |
 | `ProviderConfirmTeamMember` | Confirm: the lawful-employment tick for this named person; they join only then | `MemberVerification`, `TeamMember` | `TeamMemberAddedIE` |
 | `ProviderChangeTeamMemberRole` | Change a member between helper and supervisor at any time; jobs already named keep the role they were named in (rule R17) | `TeamMember` | `TeamMemberRoleChangedIE` |
 | `ProviderRemoveTeamMember`, `HomaRemoveTeamMember` | The provider can remove a member at any time; Homa removes one not allowed to work, and records it | `TeamMember` | `TeamMemberRemovedIE` |
 | `ProviderStartMemberReverification` | Run each re-verification on the spot with the person present | (opens the KYC provider's check) | — |
-| `KycRecordTeamMemberResult` | A pass moves the verified-until date out; a failed attempt changes nothing | `TeamMember` | By outcome (rule R1) |
-| `KycRecordBusinessLapse`, `KycRecordMemberLapse` | Missing a re-verification: the business or person lapses | `ProviderAccount`, `TeamMember` | `ProviderVerificationLapsedIE`, `TeamMemberLapsedIE` |
-| `KycRecordBusinessReverificationRequired`, `KycRecordMemberReverificationRequired` | Ongoing monitoring: re-verification needed by a date | `ProviderAccount`, `TeamMember` | `ReverificationRequiredIE` |
-| `KycRecordBusinessFlag`, `KycRecordMemberFlag` | A serious flag: the business or person lapses at once | `ProviderAccount`, `TeamMember` | `ProviderFlaggedIE`, `TeamMemberLapsedIE` |
+| `KycProviderRecordTeamMemberResult` | A pass moves the verified-until date out; a failed attempt changes nothing | `TeamMember` | By outcome (rule R1) |
+| `KycProviderRecordBusinessLapse`, `KycProviderRecordMemberLapse` | Missing a re-verification: the business or person lapses | `ProviderAccount`, `TeamMember` | `ProviderVerificationLapsedIE`, `TeamMemberLapsedIE` |
+| `KycProviderRecordBusinessReverificationRequired`, `KycProviderRecordMemberReverificationRequired` | Ongoing monitoring: re-verification needed by a date | `ProviderAccount`, `TeamMember` | `ReverificationRequiredIE` |
+| `KycProviderRecordBusinessFlag`, `KycProviderRecordMemberFlag` | A serious flag: the business or person lapses at once | `ProviderAccount`, `TeamMember` | `ProviderFlaggedIE`, `TeamMemberLapsedIE` |
 | `HomaRequestBusinessRecheck`, `HomaRequestMemberRecheck` | Homa can ask for an early re-check, with a reason | (asks the KYC provider) | — |
 | `CustomerViewAccount`, `ProviderViewAccount`, `ProviderViewTeam` | The account; when the business and each member are next due; who is waiting for verification or for the confirmation | (query) | — |
 | `CustomerViewProviderTeam` | The provider's team: registered name, role, photo, last verification date; only added members | (query) | — |
@@ -275,8 +275,8 @@ Spec: *How Homa Works*, *Reservation Lifecycle*, *Request*, *Acceptance*, *Check
 | `ProviderNameTeam` | Name the helpers, and a supervisor when one is due, before the booked start | `Reservation`, against the team as it is now | `TeamNamedIE` |
 | `ProviderCheckIn` | Check-in is location-based, within the check-in radius | `Reservation`, with the distance from the device to the reservation's pin, from the `Geoservice` port (rule R14) | `ProviderCheckedInIE` |
 | `ProviderStartFaceCheck` | Every named person takes a live selfie | (opens the KYC provider's face check) | — |
-| `KycRecordFaceCheck` | Check-in counts once the first named person passes; a person who fails cannot work | `Reservation` | `FaceCheckRecordedIE`, and `CheckInCompletedIE` on the first pass |
-| `KycRecordFaceCheckUnavailable` | If the face check service is unavailable, check-in goes ahead on location only | `Reservation` | `CheckInCompletedIE` |
+| `KycProviderRecordFaceCheck` | Check-in counts once the first named person passes; a person who fails cannot work | `Reservation` | `FaceCheckRecordedIE`, and `CheckInCompletedIE` on the first pass |
+| `KycProviderRecordFaceCheckUnavailable` | If the face check service is unavailable, check-in goes ahead on location only | `Reservation` | `CheckInCompletedIE` |
 | `ProviderReportCustomerNoShow` | After the customer no-show wait, up to the booked end | `Reservation` (rule R6) | `ReservationCancelledIE` |
 | `ProviderSubmitCompletion` | The provider marks the job completed, with photo or video evidence | `Reservation` | `CompletionSubmittedIE` |
 | `ProviderViewReservations`, `ProviderViewReservation` | The provider sees the access notes from acceptance | (query) | — |
@@ -459,7 +459,7 @@ These are the spec's rules that no single domain object can keep, because they s
    - A live listing that goes offline publishes `ListingWentOfflineIE` plus `ListingWentOfflineForRetiredJobIE` or `ListingWentOfflineForHoursIE`.
    - A draft, or a listing the change doesn't touch, publishes nothing.
    - Requests and reservations already made are never touched by a listing going offline or pausing.
-9. **R9. Homa never marks anyone verified by itself** (*Verification Policy*). Only a result reported by the KYC provider, through a `Kyc…` usecase, changes a verification. `IdentityVerificationService` only starts checks.
+9. **R9. Homa never marks anyone verified by itself** (*Verification Policy*). Only a result reported by the KYC provider, through a `KycProvider…` usecase, changes a verification. `IdentityVerificationService` only starts checks.
 10. **R10. Every search is recorded, without the customer** (*Privacy Policy*). `SearchPerformedIE` carries what was searched for and how many providers matched, and nothing about who searched. A paused listing is left out of search.
 11. **R11. The customer sees who can work** (*Check-in Policy*). `CustomerViewReservation` shows each named person's face check result and time, and marks anyone who cannot work.
 12. **R12. Requesting from an enquiry keeps one chat** (*Chat*). `EnquiryRequestedIE` is published before `ReservationRequestedIE`, so conversation carries the enquiry's chat on and opens no second one.
