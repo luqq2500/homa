@@ -297,8 +297,8 @@ Two scenarios map to more than one test:
 | 227 | A seriously flagged provider | A flagged reservation is not restored from its start | `ReservationProviderFlagTest` | `aFlaggedReservationIsNotRestoredFromItsStart` |
 | 228 | A seriously flagged provider | An undecided flagged reservation is cancelled at its start | `ReservationProviderFlagTest` | `anUndecidedFlaggedReservationIsCancelledAtItsStart` |
 | 229 | A seriously flagged provider's payouts | A flagged provider's payout is held | `PayoutHoldTest` | `aFlaggedProvidersPayoutIsHeld` |
-| 230 | A seriously flagged provider's payouts | The founders release a held payout | `PayoutHoldTest` | `theFoundersReleaseAHeldPayout` |
-| 231 | A seriously flagged provider's payouts | The founders withhold a held payout | `PayoutHoldTest` | `theFoundersWithholdAHeldPayout` |
+| 230 | A seriously flagged provider's payouts | The admins release a held payout | `PayoutHoldTest` | `theAdminsReleaseAHeldPayout` |
+| 231 | A seriously flagged provider's payouts | The admins withhold a held payout | `PayoutHoldTest` | `theAdminsWithholdAHeldPayout` |
 | 232 | Retired jobs and tools | A retired job comes off the listing | `ProviderListingRetiredCatalogueTest` | `aRetiredJobComesOffTheListing` |
 | 233 | Retired jobs and tools | A live listing left with no job goes offline | `ProviderListingRetiredCatalogueTest` | `aLiveListingLeftWithNoJobGoesOffline` |
 | 234 | Retired jobs and tools | The listing goes live again once the provider offers another job | `ProviderListingRetiredCatalogueTest` | `theListingGoesLiveAgainOnceTheProviderOffersAnotherJob` |

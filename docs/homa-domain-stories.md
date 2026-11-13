@@ -54,7 +54,7 @@ reader can go from a sentence to the rule that enforces it.
 | **Bold** | An **actor**: a person, a role, or a system that does something |
 | *Italics* | A *work object*: the thing the actor works with, such as a *request* or a *face check* |
 | `1.`, `2.`, … | The order of the activities. A sentence can start a branch, shown under **Variants** |
-| "Homa" | The Homa platform acting on its own: checking a rule, sending a reminder, or running a scheduled step. When the founders act, the actor is **Homa founders** |
+| "Homa" | The Homa platform acting on its own: checking a rule, sending a reminder, or running a scheduled step. When the admins act, the actor is **Admins** |
 | A **bold** name inside a sentence, such as **request expiry time** | A Homa-set value from the product description. The launch value is shown next to it |
 
 Each story has the same parts:
@@ -76,7 +76,7 @@ the whole journey; the big picture is coarse-grained, the rest are fine-grained.
 | **Helper** | A team member who does the booked jobs. The customer books and pays for helpers. Has no account |
 | **Supervisor** | A team member in charge on site. Not counted or charged as a helper. Has no account |
 | **Homa** | The platform: applies the rules, sends reminders, and runs scheduled steps such as expiring requests and closing dispute windows |
-| **Homa founders** | The people behind the admin console: they curate the lists and values, decide cases and waive fines |
+| **Admins** | Homa's people in the admin console, the founders for now: they curate the lists and values, decide cases and waive fines |
 | **KYC provider** (to be chosen; Persona and Innov8tif are candidates) | Runs every identity check on its own pages: the business's KYB with its owner's or director's KYC, each team member's KYC (with the date of birth, and a comparison of the profile photo with the live selfie), re-verification, early re-checks, and face checks at the door. Reports a final result for each |
 
 | **Stripe** | Authorises and charges cards, takes FPX payments, holds payments, pays out and refunds |
@@ -131,7 +131,7 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | Term | Meaning | In the code | Don't say |
 |---|---|---|---|
 | **Homa** | The platform, acting on its own: applying a rule, reminding, or running a scheduled step | the usecases and domain methods | "the system", "the app" when Homa decides |
-| **Homa founders** | The people who decide cases, waive fines, hide ratings, and set the lists and values | the `Homa…` usecases | "admin", "support" |
+| **Admins** | Homa's people in the admin console, the founders for now: they decide cases, waive fines, hide ratings, and set the lists and values | the `Admin…` usecases | "founders" for the role, "support" |
 | **Customer** | A homeowner who books and pays | `CustomerAccount`, `Party.CUSTOMER` | "user", "client", "homeowner" in rules |
 | **Provider** | A homecare business registered with SSM that sells its team's time. Every provider is a business | `ProviderAccount`, `Party.PROVIDER` | "vendor", "partner", "cleaner", "individual provider" |
 | **Business** | The provider seen as a registered company: its SSM registration, KYB and payouts | `BusinessRegistration` | "company" in rules |
@@ -286,13 +286,13 @@ it. **Don't say** lists the words that drift from it; use the term instead.
 | **Payout** | What one reservation pays the provider, less fines deducted | `Payout`, `PayoutKind` | "settlement" |
 | **Fine** | A provider's fine, deducted from later payouts for completed jobs; a chargeback the provider covers is recovered the same way | `Fine`, `FineReason`, `FineDeductionPolicy` | "penalty" |
 | **Waive** | Homa clears what is left of a fine, with a reason, once | `Fine.waive` | "forgive", "cancel a fine" |
-| **Held payout**, **withheld** | A flagged business's payout waiting for the founders, and one they kept back, which stays with Homa as owed and never counts as revenue | `PayoutStatus.HELD`, `WITHHELD`, `hold`, `releaseHold`, `withhold` | "frozen" |
+| **Held payout**, **withheld** | A flagged business's payout waiting for the admins, and one they kept back, which stays with Homa as owed and never counts as revenue | `PayoutStatus.HELD`, `WITHHELD`, `hold`, `releaseHold`, `withhold` | "frozen" |
 
 ### resolution
 
 | Term | Meaning | In the code | Don't say |
 |---|---|---|---|
-| **Case** | One entry in the founders' queue for a reservation, with its evidence: a report, a challenged no-show, a missed completion deadline or a card chargeback. Safety cases come first, then the oldest | `Case`, `CaseSource`, `QUEUE_ORDER`, `markSafety` | "ticket" |
+| **Case** | One entry in the admins' queue for a reservation, with its evidence: a report, a challenged no-show, a missed completion deadline or a card chargeback. Safety cases come first, then the oldest | `Case`, `CaseSource`, `QUEUE_ORDER`, `markSafety` | "ticket" |
 | **Closed** | A case a flag took over, closed with no decision | `closeForProviderFlag`, `CaseStatus.CLOSED` | "cancelled case" |
 | **Provider covers** | For a chargeback, what the provider must cover: the amount at stake less what they receive | `providerCovers()` | — |
 | **Decision** | **Release**, **partial refund** or **full refund**, with a short reason | `Decision`, `Case.decide` | "verdict", "ruling" |
@@ -358,7 +358,7 @@ cancellation tier, and accepts by **Request and accept**.
 
 The whole journey, coarse-grained. Each step is told in detail by the story in brackets.
 
-1. **Homa founders** set up the *job list*, the *tool list* and the *Homa-set values*. (1)
+1. **Admins** set up the *job list*, the *tool list* and the *Homa-set values*. (1)
 2. **Sarah** registers a *customer account* with her phone number. (2)
 3. **Nur Aina** registers *Kemas Home Care Sdn Bhd* and verifies it through KYB with the **KYC provider**. (3)
 4. **Nur Aina** adds *Aina*, *Ben* and *Siti* to the team; each verifies on the spot, and Nur Aina confirms them. (4)
@@ -379,7 +379,7 @@ decision (17), and a waived fine (20).
 
 ```mermaid
 flowchart LR
-    F([Homa founders]) -- "1 set up lists and values" --> H[[Homa]]
+    F([admins]) -- "1 set up lists and values" --> H[[Homa]]
     S([Sarah, customer]) -- "2 registers" --> H
     P([Nur Aina, provider]) -- "3 verifies the business" --> V([KYC provider])
     P -- "4 adds team, 5 goes live" --> L[listing]
@@ -398,31 +398,31 @@ flowchart LR
 **Goal:** every provider chooses from the same lists, so search can match jobs exactly, and every
 reservation runs on known values.
 
-1. **Homa founders** add *jobs* to the *job list*, each in a group such as "kitchen" or "living room".
-2. **Homa founders** add *tools* to the *tool list*.
-3. **Homa founders** feature *searches* in the homepage *showcase*, each with a preset search, and
+1. **Admins** add *jobs* to the *job list*, each in a group such as "kitchen" or "living room".
+2. **Admins** add *tools* to the *tool list*.
+3. **Admins** feature *searches* in the homepage *showcase*, each with a preset search, and
    rename, move or remove them.
-4. **Homa founders** launch *Homa-set values* version 1.
-5. Later, **Homa founders** change one *Homa-set value*, such as the **fee window**.
+4. **Admins** launch *Homa-set values* version 1.
+5. Later, **Admins** change one *Homa-set value*, such as the **fee window**.
 6. **Homa** keeps the old version for every reservation already requested, and applies the new
    version to new reservations only.
 
 **Variants**
-- 1a. **Homa founders** rename or retire a *job*. A retired job stays in the list, is never deleted,
+- 1a. **Admins** rename or retire a *job*. A retired job stays in the list, is never deleted,
   and its code is never reused. Providers can no longer pick it.
 - 1b. **Homa** takes a retired *job* or *tool* off every *listing* that has it, and tells the
   provider. A live listing left with no job goes offline until the provider offers another and goes
   live again. Requests already made keep the job.
-- 1c. **Homa founders** move a *job* to another group, such as from Kitchen to Living room. Providers
+- 1c. **Admins** move a *job* to another group, such as from Kitchen to Living room. Providers
   keep it; only the group shown changes.
-- 1d. **Homa founders** replace a *job*: they retire it and add a new one. Providers pick the new job
+- 1d. **Admins** replace a *job*: they retire it and add a new one. Providers pick the new job
   themselves.
 - 3a. **Homa** refuses a *featured search* for a job providers can't offer. A retired job comes off
   every featured search, and one left with no job is no longer shown.
 - 5a. **Homa** refuses a change that breaks a rule across values: Flexible must stay free, no
   cancellation fee may be higher than the customer no-show fee, the provider no-show fine must stay
   the highest fine, and the response deadline must stay shorter than the minimum notice.
-- 5b. **Homa founders** narrow the *duration range*, say to 1 to 4 hours: **Homa** shrinks every
+- 5b. **Admins** narrow the *duration range*, say to 1 to 4 hours: **Homa** shrinks every
   listing's hours to fit and tells the provider. A live listing left with no hours inside goes offline
   until the provider sets them and goes live again. Widening the range widens no listing.
 
@@ -539,7 +539,7 @@ Aina joins the Kemas team as a helper.
 - 7a. **Nur Aina** adds **Siti** the same way, with the role **supervisor**.
 - 7b. Later, **Nur Aina** changes a *team member*'s role between helper and supervisor, without a new
   check. Jobs already naming them keep the role they were named in, until she names those teams again.
-- 7c. Later, **Nur Aina** removes a *team member*, or **Homa founders** remove one who is not allowed to
+- 7c. Later, **Nur Aina** removes a *team member*, or **Admins** remove one who is not allowed to
   work. A removed person cannot come back, and comes off every upcoming job they were named on
   (story 13).
 
@@ -594,7 +594,7 @@ flowchart LR
 - 8b. **Nur Aina** declares Kemas's liability *insurance*, with the insurer and the date it's valid
   until; the provider page shows **Insured** until then. Homa doesn't check the policy.
 - 8c. **Nur Aina** declares insurance that has already expired: **Homa** refuses it.
-- 5a. **Homa founders** narrow Homa's duration range below Kemas's hours: **Homa** shrinks them, or
+- 5a. **Admins** narrow Homa's duration range below Kemas's hours: **Homa** shrinks them, or
   takes the listing offline if none are left (story 1).
 
 **Rules**
@@ -664,7 +664,7 @@ Instant book), `ListingWentOfflineIE`, `ProviderInsuranceDeclaredIE`, `ProviderI
 - 1a. **Sarah** taps a *featured search* in the showcase instead. It fills in the jobs, hours and
   helpers; she picks the date and time, and the city comes from her address, or the one she picked.
 - 4d. **Homa** records each *search*: what was searched for and how many providers matched, with
-  nothing about Sarah, so the founders can see where more providers are needed.
+  nothing about Sarah, so the admins can see where more providers are needed.
 
 **Rules:** "jobs done" counts Completed reservations where the provider was paid more than RM0;
 "cancellations" counts fined late cancellations and no-shows, waived or not.
@@ -838,7 +838,7 @@ charge), `payment` (`Fine.charge`). Events: `ReservationCancelledIE`, `Settlemen
 - 2b. A named team member lapses or is removed before the start: **Homa** takes them off the named
   team and tells Sarah. The team is incomplete: **Homa** reminds Nur Aina again, and check-in stays
   locked until she names someone in their place. If nobody is named by the start, Kemas can't check in,
-  and it ends as a provider no-show; the founders can waive the fine when a serious flag came too close
+  and it ends as a provider no-show; the admins can waive the fine when a serious flag came too close
   to the start.
 - 2c. An optional supervisor comes off: the team stays complete.
 - 2d. A named person lapses or is removed during the job: they stop working, and Sarah is told.
@@ -957,17 +957,17 @@ and police reports.
 
 1. At 12:00, **Sarah** files a *report*: a problem during the job, "only one helper came", with a photo.
 2. **Homa** moves the reservation to **Disputed** and stops the release of the payment.
-3. **Homa** opens a *case* in the founders' queue.
+3. **Homa** opens a *case* in the admins' queue.
 4. **Nur Aina** files her own *report* while the case is open.
 5. **Homa** adds Nur Aina's report and evidence to the same *case*.
-6. **Homa founders** review the *case*: the reservation details, evidence, check-in record and chat.
-7. **Homa founders** decide a *partial refund*: Kemas receives RM100.00, with a short reason.
+6. **Admins** review the *case*: the reservation details, evidence, check-in record and chat.
+7. **Admins** decide a *partial refund*: Kemas receives RM100.00, with a short reason.
 8. **Homa** resolves the reservation as **Completed** and settles the *payment*: Kemas receives RM100.00,
    the service fee follows, and Sarah is refunded the rest.
 9. **Homa** notifies **Sarah** and **Nur Aina** of the outcome.
 
 **Variants**
-- 7a. **Homa founders** decide a *release* (Kemas receives the provider price) or a *full refund*.
+- 7a. **Admins** decide a *release* (Kemas receives the provider price) or a *full refund*.
 - 1a. A *report* about the finished work instead of during the job, or a **safety, damage or loss**
   report: harassment, an injury, something broken or missing. A safety case goes to the top of the
   queue. Homa doesn't compensate damage, but helps, for example with a police report, and can ask the
@@ -978,7 +978,7 @@ and police reports.
   takes the reservation over (story 19), the reports are kept, and **Homa** closes the case with no
   decision.
 - 1f. Weeks later, Sarah's bank takes the payment back (a **chargeback**): **Homa** opens a case and
-  answers the bank with the evidence. If the founders decide Kemas is responsible, what Kemas must
+  answers the bank with the evidence. If the admins decide Kemas is responsible, what Kemas must
   cover is recovered from its next payouts like a fine; otherwise Homa contests it.
 - 1b. A missed completion deadline (story 16) or a no-show challenge (story 15) opens the case instead.
   A challenged no-show is reviewed on the challenge alone, takes no reports, and ends **Cancelled**; the
@@ -1015,7 +1015,7 @@ come first, then the oldest.
 - 2c. Homa decided the reservation with a full refund: it is still Completed and can be rated, because
   Sarah's experience counts; it doesn't count as a job done.
 - 3a. A named *supervisor* is rated with the helper categories.
-- 6. **Homa founders** hide a *rating* that breaks the rules (abuse, personal details, paying outside
+- 6. **Admins** hide a *rating* that breaks the rules (abuse, personal details, paying outside
   Homa), with a reason. It no longer counts.
 
 **Rules:** a rating is an opinion and never changes a payout, a fine or a decision; there is no written
@@ -1050,15 +1050,15 @@ feedback about an individual team member; Homa never edits a rating.
   - Every accepted reservation whose completion hasn't been submitted, such as Sarah's on Saturday,
     moves to **Disputed**, even a job under way, whose team stops, and one already disputed over a
     report, whose report is kept. Sarah is told her job is on hold.
-  - **Homa founders** cancel each one with a full refund, RM230.00, with no fine and no cancellation
+  - **Admins** cancel each one with a full refund, RM230.00, with no fine and no cancellation
     fee. If the KYC provider clears the flag before Saturday 10:00, they can restore it instead, and it
     goes ahead.
   - If nobody has decided by Saturday 10:00, **Homa** cancels it with a full refund.
-  - **Homa** holds Kemas's *payouts*, and the founders release them or keep them back, with a reason.
+  - **Homa** holds Kemas's *payouts*, and the admins release them or keep them back, with a reason.
     A payout kept back stays with Homa as owed to Kemas, never as revenue, and Sarah isn't refunded for
     a job that was done.
 - 1d. A team member matches a watchlist (a serious flag): **Homa** takes them off the team at once.
-- 2a. After a safety, damage or loss report, **Homa founders** ask the **KYC provider** for an *early re-check*, with a
+- 2a. After a safety, damage or loss report, **Admins** ask the **KYC provider** for an *early re-check*, with a
   reason. If Aina doesn't pass it in time, the KYC provider reports the lapse.
 - 1e. **Kemas** itself is re-verified every year, through KYB. If it lapses, **Homa** pauses its
   *listing*: it takes no new requests and leaves search, while accepted reservations go ahead. When
@@ -1088,8 +1088,8 @@ feedback about an individual team member; Homa never edits a rating.
 **Goal:** a genuine emergency doesn't cost the provider.
 
 1. **Nur Aina** asks Homa to waive the RM36.00 *late cancellation fine*: her helper was in an accident.
-2. **Homa founders** review the request.
-3. **Homa founders** waive what is left of the *fine*, with a reason.
+2. **Admins** review the request.
+3. **Admins** waive what is left of the *fine*, with a reason.
 4. **Homa** stops deducting the *fine* from Kemas's payouts.
 
 **Variants**
@@ -1129,7 +1129,7 @@ feedback about an individual team member; Homa never edits a rating.
   to the KYC provider, Stripe, the SMS provider, the calendar services and the geoservice. See
   the usecase plan, to be written.
 - **Data requests:** customers, providers and team members asking to see, correct, copy or delete their
-  data, which the founders handle and record in the admin console.
+  data, which the admins handle and record in the admin console.
 - **Admin tracking:** the overview, reservation history, payments, providers, customers, fines and
   ratings views.
 - **Things outside the MVP:** two-way ratings, consequences of violations and suspension, Homa credit,

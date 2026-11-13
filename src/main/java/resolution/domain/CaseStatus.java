@@ -1,6 +1,6 @@
 package resolution.domain;
 
-/** Whether a case is waiting for the founders, has been decided, or was closed without a decision. */
+/** Whether a case is waiting for the admins, has been decided, or was closed without a decision. */
 public enum CaseStatus {
     OPEN,
     DECIDED,

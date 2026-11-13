@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
  * fills in. The customer still picks the date and time, and the city comes from their address.
  *
  * <p>A featured search searches only for jobs providers can offer. When Homa retires one of its jobs, the
- * job comes off it; one left with no job is no longer shown, and keeps its last search so the founders can
+ * job comes off it; one left with no job is no longer shown, and keeps its last search so the admins can
  * see what it was.
  *
  * <p>Featured searches change only through their {@link Showcase}, which also keeps their order.

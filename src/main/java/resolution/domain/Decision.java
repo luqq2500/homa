@@ -3,7 +3,7 @@ package resolution.domain;
 import java.util.Optional;
 import kernel.Money;
 
-/** The outcome the founders choose: release, a partial refund naming what the provider receives, or a full refund. */
+/** The outcome the admins choose: release, a partial refund naming what the provider receives, or a full refund. */
 public record Decision(Outcome outcome, Optional<Money> providerReceives) {
 
     public enum Outcome {

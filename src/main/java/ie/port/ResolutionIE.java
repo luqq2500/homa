@@ -2,7 +2,7 @@ package ie.port;
 
 import java.time.Instant;
 
-/** An integration event published by resolution: the founders' decisions. */
+/** An integration event published by resolution: the admins' decisions. */
 public interface ResolutionIE {
 
     /** When the event happened. */

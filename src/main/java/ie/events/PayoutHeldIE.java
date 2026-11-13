@@ -4,7 +4,7 @@ import ie.port.PaymentIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** A payout to a seriously flagged business is held for Homa's founders to review; it is not paid out. */
+/** A payout to a seriously flagged business is held for Homa's admins to review; it is not paid out. */
 public record PayoutHeldIE(
         String payoutId,
         String providerId,

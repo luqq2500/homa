@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import kernel.Money;
 
-/** The founders decided a chargeback case. What the provider covers is recovered from their next payouts like a fine; RM0.00 when Homa contests it. */
+/** The admins decided a chargeback case. What the provider covers is recovered from their next payouts like a fine; RM0.00 when Homa contests it. */
 public record ChargebackDecidedIE(
         String caseId,
         String reservationId,

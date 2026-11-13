@@ -5,7 +5,7 @@ import kernel.Money;
 import reservation.domain.exception.InvalidDecisionAmountException;
 
 /**
- * The founders' decision on a disputed reservation, received from {@code resolution}: release what was at
+ * The admins' decision on a disputed reservation, received from {@code resolution}: release what was at
  * stake to the provider, a partial refund naming what the provider receives, or a full refund.
  */
 public record CaseDecision(Outcome outcome, Optional<Money> providerReceives) {

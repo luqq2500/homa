@@ -19,7 +19,7 @@ src/main/java/
   availability/domain/          a provider's windows, synced busy blocks, reservation holds and buffer
   reservation/domain/           enquiries and the reservation lifecycle, with every time and money rule
   payment/domain/               payments, fines, payouts and fine deductions
-  resolution/domain/            the founders' case queue and decisions
+  resolution/domain/            the admins' case queue and decisions
   conversation/domain/          chats for enquiries and reservations
   discovery/domain/             search criteria and exact, close or no matches
   feedback/domain/              customers' ratings of providers and helpers, and the averages shown
@@ -76,7 +76,7 @@ Build order from the domain plan:
 | 18 | Business verification through eKYB, including the owner's or director's eKYC; a business starts with no team members | Done |
 | 19 | Business providers only; verification, re-verification and face checks handled by a KYC provider, with Homa keeping the marketplace rules | Done |
 | 20 | Ongoing monitoring and annual re-verification: "re-verification needed by a date", serious flags, and a flagged provider's reservations disputed and cancelled with a full refund | Done |
-| 21 | A flagged provider: founders cancel or restore each disputed reservation, undecided ones cancel at the booked start, and payouts are held for review | Done |
+| 21 | A flagged provider: admins cancel or restore each disputed reservation, undecided ones cancel at the booked start, and payouts are held for review | Done |
 | 22 | Getting ready for the usecase phase: a retired job or tool comes off the listings, a request is paid before the provider can accept it and ends when its payment fails, and five events (`ServiceAreaPublishedIE`, `RequestCancelledIE`, `PaymentFailedIE`, `PaymentSecuredIE`, `SearchPerformedIE`) | Done |
 
 The domain phase is complete: see `docs/domain-closing-report.md`, and its addenda for `feedback`, team membership, re-verification, verified for the whole job, provider types and face check-in, and verification on the spot.

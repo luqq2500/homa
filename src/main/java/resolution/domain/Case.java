@@ -14,12 +14,12 @@ import resolution.domain.exception.InvalidDecisionAmountException;
 import resolution.domain.exception.ResolutionDetailRequiredException;
 
 /**
- * One case in the founders' report queue: a reported, challenged or unfinished reservation, with its
- * evidence and the amount at stake. The founders decide it once, with a short reason.
+ * One case in the admins' report queue: a reported, challenged or unfinished reservation, with its
+ * evidence and the amount at stake. The admins decide it once, with a short reason.
  */
 public final class Case {
 
-    /** The founders' queue order: cases about safety, damage or loss first, then the oldest first. */
+    /** The admins' queue order: cases about safety, damage or loss first, then the oldest first. */
     public static final Comparator<Case> QUEUE_ORDER =
             Comparator.comparing((Case queued) -> !queued.isSafety()).thenComparing(Case::openedAt);
 

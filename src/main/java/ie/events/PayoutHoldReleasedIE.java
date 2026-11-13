@@ -4,7 +4,7 @@ import ie.port.PaymentIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** Homa's founders released a held payout after their review; it is paid out as normal. */
+/** Homa's admins released a held payout after their review; it is paid out as normal. */
 public record PayoutHoldReleasedIE(
         String payoutId,
         String providerId,

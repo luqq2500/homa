@@ -4,8 +4,8 @@ package payment.domain;
 public enum PayoutStatus {
     /** Ready to be paid out. */
     PAYABLE,
-    /** On hold because the provider's business was seriously flagged, waiting for Homa's founders. */
+    /** On hold because the provider's business was seriously flagged, waiting for Homa's admins. */
     HELD,
-    /** The founders kept it back after their review, with a reason, for example a sanctions match. */
+    /** The admins kept it back after their review, with a reason, for example a sanctions match. */
     WITHHELD
 }

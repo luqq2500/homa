@@ -76,7 +76,7 @@ Each principle names the trade-off Homa accepts for it.
 
 ## Goals and Measures
 
-The founders review these monthly in the admin console. First targets are set from the first 8 weeks of data, because Homa has none yet.
+The admins review these monthly in the admin console. First targets are set from the first 8 weeks of data, because Homa has none yet.
 
 | Goal | Measure |
 |---|---|
@@ -323,9 +323,9 @@ Until the person joins, the provider app shows them as **waiting for verificatio
   - During the job, the person stops working, the same as after a failed face check. The customer can report a missing helper.
 - **A seriously flagged business's bookings and money:**
   - Every accepted reservation whose completion hasn't been submitted moves to **Disputed** for the flag at once. That includes a job under way, whose team stops, and a reservation already disputed over a report, whose report and evidence are kept with it. The customer is told the job is on hold while Homa checks, and the team can't check in. A reservation whose completion was submitted carries on as normal, and its payout is held (below).
-  - Homa's founders decide each one: they **cancel it with a full refund**, with no fine and no cancellation fee, which is the normal outcome; or, if the KYC provider has cleared the flag and the booked start hasn't come, they **restore it**, and it goes ahead as booked.
+  - Homa's admins decide each one: they **cancel it with a full refund**, with no fine and no cancellation fee, which is the normal outcome; or, if the KYC provider has cleared the flag and the booked start hasn't come, they **restore it**, and it goes ahead as booked.
   - If nobody has decided by the booked start, Homa cancels it with a full refund. A customer is never left waiting at the door.
-  - The business's payouts are **held**, including those for jobs completed before the flag. The founders review them and either release them or keep them back, with a reason. A payout kept back stays with Homa, recorded as owed to the business and never counted as Homa's revenue. The customer isn't refunded, because the job was done. What happens to it later is decided on legal advice, outside the MVP. **Before launch, a lawyer confirms this.**
+  - The business's payouts are **held**, including those for jobs completed before the flag. The admins review them and either release them or keep them back, with a reason. A payout kept back stays with Homa, recorded as owed to the business and never counted as Homa's revenue. The customer isn't refunded, because the job was done. What happens to it later is decided on legal advice, outside the MVP. **Before launch, a lawyer confirms this.**
 - **Verified for the whole job:** a business can be requested, and can accept, only for a job that ends by its verified-until date. Search leaves a business out for any job that would end later. Once it passes its re-verification, the date moves out and those dates open up.
 - **Early re-check:** Homa can ask the KYC provider for an early re-verification of a business or team member, for example after a safety, damage or loss report. If it isn't passed in time, the KYC provider reports the lapse.
 - The **Verified ID** badge shows when each business and person was last verified.
@@ -506,8 +506,8 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 - One queue for everything that needs Homa's decision. **Cases** are customer and provider reports, wrongful no-show reports, missed completion deadlines and card chargebacks, each decided with a release, a partial refund or a full refund. If the other party also reports while a case is open, their report and evidence join the same case. Safety, damage or loss reports come first; the rest are oldest first. Each case shows how long is left of its 72-hour decision target.
 - **Seriously flagged businesses** are listed in the same queue but are not cases: each of their disputed reservations is cancelled with a full refund or restored once the flag is cleared, and each held payout is released or kept back. A case already open for a reservation the flag takes over is closed without a decision.
-- For each case the founders see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
-- Each decision is recorded with a short reason and the founder who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
+- For each case the admins see the reservation details, evidence, check-in record and chat, and decide on a release, a partial refund or a full refund. Chats and evidence are opened only for a case.
+- Each decision is recorded with a short reason and the admin who made it, and both the customer and the provider are notified of the outcome. Every change made in the admin console is recorded with who made it and when.
 - Fine waivers are decided here too.
 
 ### Tracking

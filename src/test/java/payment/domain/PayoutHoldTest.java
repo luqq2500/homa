@@ -12,7 +12,7 @@ import payment.domain.exception.PayoutNotHeldException;
 import payment.domain.exception.PayoutNotPayableException;
 import payment.domain.exception.PayoutReasonRequiredException;
 
-/** Feature: A seriously flagged provider's payouts are held for the founders' review. */
+/** Feature: A seriously flagged provider's payouts are held for the admins' review. */
 class PayoutHoldTest {
 
     private static Payout aPayoutToKemas() {
@@ -40,7 +40,7 @@ class PayoutHoldTest {
     }
 
     @Test
-    void theFoundersReleaseAHeldPayout() {
+    void theAdminsReleaseAHeldPayout() {
         Payout payout = aPayoutToKemas();
         payout.hold("Possible sanctions match");
 
@@ -51,7 +51,7 @@ class PayoutHoldTest {
     }
 
     @Test
-    void theFoundersWithholdAHeldPayout() {
+    void theAdminsWithholdAHeldPayout() {
         Payout payout = aPayoutToKemas();
         payout.hold("Sanctions match");
 

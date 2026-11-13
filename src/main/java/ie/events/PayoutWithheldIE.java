@@ -4,7 +4,7 @@ import ie.port.PaymentIE;
 import java.time.Instant;
 import java.util.Objects;
 
-/** Homa's founders kept a held payout back after their review, with a reason. */
+/** Homa's admins kept a held payout back after their review, with a reason. */
 public record PayoutWithheldIE(
         String payoutId,
         String providerId,

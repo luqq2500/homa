@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import kernel.Money;
 
-/** The founders decided a case, with a reason. {@code providerReceives} is what is at stake for a release, RM0.00 for a full refund, or the decided amount for a partial refund. */
+/** The admins decided a case, with a reason. {@code providerReceives} is what is at stake for a release, RM0.00 for a full refund, or the decided amount for a partial refund. */
 public record CaseDecidedIE(
         String caseId,
         String reservationId,

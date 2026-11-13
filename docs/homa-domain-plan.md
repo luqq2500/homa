@@ -50,7 +50,7 @@ This plan covers the **domain phase only** (Backend Module Discipline §8, step 
 | `discovery` | Matching a search to providers: exact and close matches | `SearchCriteria`, `MatchClassifier` |
 | `reservation` | Enquiries and the reservation lifecycle: pricing, request, accept, cancel, team, check-in, no-shows, completion, reports, dispute window, settlements | `Enquiry`, `Reservation` |
 | `payment` | Money movement: authorise, hold, release, refund, payouts, fines and fine deductions | `Payment`, `Payout`, `Fine` |
-| `resolution` | Cases that need the founders' decision and their outcomes | `Case` |
+| `resolution` | Cases that need the admins' decision and their outcomes | `Case` |
 | `conversation` | Chats: one per enquiry or reservation, who may write, archiving | `Conversation` |
 | `feedback` | Customers' ratings of providers and helpers, and the averages shown | `Rating`, `RatingSummary` |
 
@@ -567,7 +567,7 @@ Feature: Matching
 | `Ending` | Enum | Why it ended: `CUSTOMER_CANCELLED_FREE`, `CUSTOMER_CANCELLED_IN_FEE_WINDOW`, `CUSTOMER_NO_SHOW`, `PROVIDER_CANCELLED`, `PROVIDER_NO_SHOW`, `COMPLETED`, `DECIDED_BY_HOMA`, and so on |
 | `Settlement` | Value object | Who gets what: customer refund, provider earning, Homa service fee, when it's released |
 | `FineCharge` | Value object | Provider fine amount and reason |
-| `CaseDecision` | Value object | The founders' decision, received from `resolution` |
+| `CaseDecision` | Value object | The admins' decision, received from `resolution` |
 | `CancellationTerms` | Value object | What the review page shows: free until, the fee from then, the locked period, the cost after check-in |
 
 ### Lifecycle
@@ -1189,7 +1189,7 @@ Feature: Fines and payouts
 
 ## resolution
 
-**Purpose:** the founders' report queue. Each case collects the evidence and records one decision with a reason.
+**Purpose:** the admins' report queue. Each case collects the evidence and records one decision with a reason.
 
 | Object | Kind | Responsibility |
 |---|---|---|
@@ -1213,22 +1213,22 @@ Case.QUEUE_ORDER                                  // safety cases first, then ol
 Feature: Deciding a case
   Scenario: A decision needs a reason
     Given an OPEN case
-    When the founder decides to release with no reason
+    When the admin decides to release with no reason
     Then it is rejected with DecisionReasonRequiredException
 
   Scenario: A case is decided once
     Given a DECIDED case
-    When the founder decides again
+    When the admin decides again
     Then it is rejected with CaseAlreadyDecidedException
 
   Scenario: A partial refund must be within the provider price
     Given an OPEN case for a reservation with provider price RM200.00
-    When the founder decides the provider receives RM250.00
+    When the admin decides the provider receives RM250.00
     Then it is rejected with InvalidDecisionAmountException
 
   Scenario Outline: Every source can be decided with any outcome
     Given an OPEN case from <source>
-    When the founder decides <decision> with reason "Checked the photos"
+    When the admin decides <decision> with reason "Checked the photos"
     Then the case is DECIDED
     Examples:
       | source            | decision        |
@@ -1613,7 +1613,7 @@ Build in this order so each context only needs what already exists. Within `rese
 - **Gherkin is the spec, JUnit is the test.** Each feature above becomes a test class; each scenario a test method named after it; each Examples row a parameterised case. Cucumber is optional: if used, it runs with no Spring, matching the framework-free domain rule.
 ### Test naming convention
 
-Tests are named in the **ubiquitous language** of the bounded context (the glossary is in `docs/homa-domain-stories.md`, under "Ubiquitous language"): they describe business behaviour the way a founder or provider would say it, never the method or class being called. A test name should still make sense if the code inside were rewritten.
+Tests are named in the **ubiquitous language** of the bounded context (the glossary is in `docs/homa-domain-stories.md`, under "Ubiquitous language"): they describe business behaviour the way an admin or provider would say it, never the method or class being called. A test name should still make sense if the code inside were rewritten.
 
 **Test classes:** one per feature, named `<Aggregate or domain service><Behaviour>Test`, in the same package as the domain object.
 
@@ -2785,7 +2785,7 @@ are new.
   disputed. *Changed in "aligning the product spec, domain plan and code": a reservation already disputed over the job, with no completion,
   is taken over by the flag too, and its open case is closed.*
 - A job under way (checked in, not completed) is disputed too, and the team stops.
-- The founders decide each one:
+- The admins decide each one:
   - `cancelForProviderFlag(now)` cancels it, ending **Cancelled** with a full refund, no fine and no
     cancellation fee.
   - `restoreAfterFlagCleared(now)` returns it to **Reserved** when the KYC provider has cleared the
@@ -2799,7 +2799,7 @@ are new.
 
 - A payout to a seriously flagged business is **held** (`Payout.hold(reason)`), including those for jobs
   completed before the flag.
-- The founders either `releaseHold()`, so it is paid out as normal, or `withhold(reason)` to keep it
+- The admins either `releaseHold()`, so it is paid out as normal, or `withhold(reason)` to keep it
   back.
 - Only a payable payout is held, and only a held one is released or withheld. A reason is required.
   `isPayable()` says whether it can be paid out now.
@@ -2875,20 +2875,20 @@ Feature: A seriously flagged provider's payouts
     When Kemas is seriously flagged
     Then its payout of RM200.00 is held and not paid out
 
-  Scenario: The founders release a held payout
+  Scenario: The admins release a held payout
     Given Kemas's payout is held
-    When the founders release it
+    When the admins release it
     Then it is paid out as normal
 
-  Scenario: The founders withhold a held payout
+  Scenario: The admins withhold a held payout
     Given Kemas's payout is held
-    When the founders withhold it with the reason "Confirmed sanctions match"
+    When the admins withhold it with the reason "Confirmed sanctions match"
     Then it is not paid out
 ```
 
 **Decided while building** (from the recommendation the product owner chose):
 
-- The founders restore a flagged reservation only after the KYC provider clears the flag. The usecase
+- The admins restore a flagged reservation only after the KYC provider clears the flag. The usecase
   checks the flag; the domain checks that the booked start hasn't come.
 - A withheld payout stays with Homa; what happens to it next, such as with the authorities, is outside
   the domain.
@@ -3066,7 +3066,7 @@ code.
   featured for a job that doesn't exist or is retired.
 - `Showcase.withdrawJob(code)` takes a retired job off every featured search that has it and says
   whether any did. One left with no job is no longer shown (`isShown()`), and keeps its last search so
-  the founders can see what it was.
+  the admins can see what it was.
 
 **`offering`**
 
@@ -3135,7 +3135,7 @@ Feature: Telling the provider what a retirement did
 
 - **A separate event for a regroup.** One event per outcome: `JobRegroupedIE`, not a rename event that
   also carries the group.
-- **The founders see hidden featured searches.** `HomaViewShowcase` lists every featured search with
+- **The admins see hidden featured searches.** `HomaViewShowcase` lists every featured search with
   whether it is shown, so one emptied by a retirement can be replaced. Customers see only shown ones.
 - **The listing events stay as they are.** reservation and discovery still get `ListingChangedIE` or
   `ListingWentOfflineIE`; the three new offering events are for telling the provider why.
@@ -3230,7 +3230,7 @@ a **new** rule. The product description states every one of them.
 | 5 | A business adds team members only once its KYB has passed and while it hasn't lapsed | Spec | account |
 | 6 | Book again from any past enquiry or reservation, at the customer's current address | New | reservation |
 | 7 | The address can't be changed on a request | Spec | reservation |
-| 8 | Flagged businesses are listed in the founders' queue but are not cases | Code | None |
+| 8 | Flagged businesses are listed in the admins' queue but are not cases | Code | None |
 | 9 | A flag disputes a reservation whose completion hasn't been submitted | Plan, code | None |
 | 10 | A third report type: safety, damage or loss, first in the queue | New | reservation, resolution |
 | 11 | A lapsed or removed person comes off every upcoming job's team; during a job they stop working | New | reservation |
@@ -3738,7 +3738,7 @@ Feature: Chargebacks
 
   Scenario Outline: The provider covers what the decision doesn't give them
     Given a chargeback case with RM200.00 at stake
-    When the founders decide <decision>
+    When the admins decide <decision>
     Then the provider covers <covers>
     Examples:
       | decision                           | covers  |

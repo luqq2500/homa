@@ -13,7 +13,7 @@ import payment.domain.exception.PayoutReasonRequiredException;
 
 /**
  * What one reservation pays the provider: the gross earning, less any fines deducted, is the net payout. A
- * payout to a seriously flagged business is held until Homa's founders release it or withhold it.
+ * payout to a seriously flagged business is held until Homa's admins release it or withhold it.
  */
 public final class Payout {
 
@@ -56,14 +56,14 @@ public final class Payout {
         reason = held;
     }
 
-    /** The founders release a held payout after their review: it is paid out as normal. */
+    /** The admins release a held payout after their review: it is paid out as normal. */
     public void releaseHold() {
         requireHeld();
         status = PayoutStatus.PAYABLE;
         reason = null;
     }
 
-    /** The founders keep a held payout back after their review, with a reason, for example a sanctions match. */
+    /** The admins keep a held payout back after their review, with a reason, for example a sanctions match. */
     public void withhold(String why) {
         String kept = requireReason(why);
         requireHeld();

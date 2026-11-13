@@ -1,6 +1,6 @@
 package resolution.domain;
 
-/** Why a case is in the founders' queue. */
+/** Why a case is in the admins' queue. */
 public enum CaseSource {
     CUSTOMER_REPORT,
     PROVIDER_REPORT,

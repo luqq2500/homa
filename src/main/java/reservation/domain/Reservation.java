@@ -544,7 +544,7 @@ public final class Reservation {
     }
 
     /**
-     * Homa's founders cancel a reservation disputed for a flagged provider, with a full refund and no fine.
+     * Homa's admins cancel a reservation disputed for a flagged provider, with a full refund and no fine.
      * It is also what happens at the booked start when nobody decided in time.
      */
     public Settlement cancelForProviderFlag(Instant now) {
@@ -554,7 +554,7 @@ public final class Reservation {
     }
 
     /**
-     * The KYC provider cleared the flag, and the founders restore the reservation before its booked start:
+     * The KYC provider cleared the flag, and the admins restore the reservation before its booked start:
      * it is reserved again and goes ahead as booked.
      */
     public void restoreAfterFlagCleared(Instant now) {
