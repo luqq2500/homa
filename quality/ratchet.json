@@ -43,6 +43,14 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "reservation.domain": {
+    "score": 98.19,
+    "strength": 98.39
+  },
+  "reservation.usecase": {
+    "score": 93.18,
+    "strength": 96.09
+  },
   "verification.domain": {
     "score": 100.0,
     "strength": 100.0

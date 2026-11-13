@@ -723,6 +723,15 @@ public final class Reservation {
 
     // ---- What others read ----
 
+    /** An accepted reservation that has not ended holds the provider's time. */
+    public boolean holdsProvidersTime() {
+        return isUpcomingOrUnderWay();
+    }
+
+    public boolean isRequested() {
+        return status == REQUESTED;
+    }
+
     public String id() {
         return id;
     }
