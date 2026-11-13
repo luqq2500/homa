@@ -26,5 +26,13 @@
   "policy.usecase": {
     "score": 100.0,
     "strength": 100.0
+  },
+  "verification.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "verification.usecase": {
+    "score": 98.28,
+    "strength": 98.28
   }
 }
