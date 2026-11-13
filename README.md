@@ -83,10 +83,11 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-Not started. An earlier start (the `catalogue`, `policy` and `account` usecases and a plan) was removed
-so the phase begins fresh from the domain as it now stands, after the spec, domain plan and code were
-aligned. A new usecase plan, following the domain plan's conventions, comes first. The earlier plan and
-code are in git history up to `170c533`.
+Not started; the plan is drafted. `docs/homa-usecase-plan.md` follows the backend module discipline and
+the domain plan's conventions: each context's usecases, ports, event handlers and rules, the domain
+prerequisites (D1 to D10) to build first, and the open questions (U1 to U6) for the product owner. An
+earlier start was removed so the phase begins fresh from the domain as it now stands; it is in git
+history up to `170c533`.
 
 ### Decisions taken while building
 
