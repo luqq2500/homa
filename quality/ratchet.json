@@ -1,4 +1,12 @@
 {
+  "catalogue.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "catalogue.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "kernel": {
     "score": 100.0,
     "strength": 100.0

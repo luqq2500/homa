@@ -138,10 +138,12 @@
                     <targetClasses>
                         <param>kernel.*</param>
                         <param>policy.*</param>
+                        <param>catalogue.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
                         <param>policy.*</param>
+                        <param>catalogue.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>
