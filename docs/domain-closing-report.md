@@ -5,7 +5,7 @@
 **Closed:** 8 November 2026, at commit `24a771e` on `main`
 **Sources:** `docs/homa-product-description.md`, `docs/homa-domain-plan.md`, `docs/backend_module_discipline.md`
 **Evidence:** `docs/domain-audit.md`
-**Last updated:** 12 November 2026, with addenda 25 to 29, on `claude/bold-wright-b1q5ui`
+**Last updated:** 13 November 2026, with addenda 25 to 30, on `claude/bold-wright-b1q5ui`
 
 ## 1. Summary
 
@@ -745,4 +745,33 @@ Spec decisions by the product owner, with no code change.
 - **Evidence retention:** two places still said 7 days, the domain plan's "Not in the domain phase"
   and the domain audit. Both now say 120 days, the launch value since addendum 26; the code, the spec
   and the stories already did.
+
+## 30. Addendum: final alignment check before closing
+
+A last check that the product spec, the domain plan and the domain code agree, before the domain
+phase is closed and the usecase phase begins.
+
+- **Homa-set values:** all 26 launch values in `HomaPolicy` match the spec's table (its one
+  "Cancellation tiers" row is three values in the code), including the response deadline (1 hour),
+  the dispute window extension (24 hours) and evidence retention (120 days).
+- **Fixed limits in the code** match the spec: SMS codes (6 digits, 5 minutes, 5 wrong attempts), a
+  Malaysian mobile number, rating categories (4 for providers, 5 for team members), written feedback up
+  to 1,000 characters, access notes up to 500, team members 18 or older, and close matches within 2
+  hours.
+- **The domain plan, completed:** its event table now lists all 82 events in `ie/` (seven were only in
+  the change sections), and its object tables and method blocks name the newest objects and methods
+  (the acceptance policy, insurance, access notes, the photo match and member rejections, `TeamDrop`,
+  `acceptInstantly`, `changeAccessNotes`, `providerCovers`).
+- **Open items in the domain: none.** The audit's section 2a items are done or decided, and the plan's
+  open questions are decided. What remains is outside the domain by the plan's "Not in the domain
+  phase": notifications, read models (such as jobs done and cancellations on the provider page),
+  schedulers, evidence storage, privacy requests, and how a chargeback reported to payment reaches
+  resolution (an event for the usecase phase).
+- **Before launch, outside the code:** the lawyer and accountant items and the KYC provider choice in
+  section 7.
+- **Scenarios:** 313 in the plan; 301 have a test and 12 are retired.
+- **Gates (clean build):** 1,386 tests, all passing; 1,654 mutants, all killed, 100% score and test
+  strength in every context; worst CRAP 5.0; the dependency rule passes in every context.
+
+The domain phase is closed.
 

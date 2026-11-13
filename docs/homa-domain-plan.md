@@ -184,13 +184,16 @@ Feature: Homa-set values
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `CustomerAccount` | Aggregate | Verified phone, name (providers see it), address with city |
+| `CustomerAccount` | Aggregate | Verified phone, name (providers see it; the customer can change it), address with city and map pin, and access notes |
+| `AccessNotes` | Value object | Up to 500 characters that help the team get in; blank means none |
 | `PhoneVerification` | Aggregate | SMS code, expiry, attempts |
 | `ProviderAccount` | Aggregate | A business: its verification status, the SSM registration from KYB, the verified-until and last verification dates, and payout account status |
-| `MemberVerification` | Aggregate | Adding a team member before they exist: the add form, with the lawful-employment confirmation, and the KYC outcome |
+| `MemberVerification` | Aggregate | Adding a team member before they exist: the role and live photo, the KYC outcome with the photo match and age check, and the provider's lawful-employment confirmation once verified |
+| `PhotoMatch` | Enum | The KYC provider's comparison of the profile photo with the verified selfie: `MATCHED`, `NOT_MATCHED` |
+| `MemberRejection` | Enum | Why adding a person ended: `CHECK_REJECTED`, `UNDER_18`, `PHOTO_DOES_NOT_MATCH` |
 | `TeamMember` | Aggregate | Belongs to one business: role, registered name, photo, team status, and the verified-until and last verification dates. Only a `MEMBER` is on the team |
 | `TeamStatus` | Enum | `MEMBER` (verified), `LAPSED` (the KYC provider reports a missed re-verification), `REMOVED` |
-| `KycResult`, `KybResult` | Value object | A result from the KYC provider: verified, with the registered name or SSM registration and the verified-until date, or rejected |
+| `KycResult`, `KybResult` | Value object | A result from the KYC provider: verified, with the registered name or SSM registration, the verified-until date and, for a person being added, the date of birth; or rejected |
 | `VerificationOutcome` | Enum | What a result did: `VERIFIED`, `REJECTED`, `REVERIFIED`, `RECHECK_FAILED` or `UNCHANGED` |
 | `VerificationStatus` | Enum | `PENDING`, `VERIFIED`, `REJECTED`, `LAPSED` (a business's state; never a result) |
 | `Address` | Value object | Street text, city, coordinates (from the geoservice) |
@@ -201,6 +204,7 @@ PhoneVerification.confirm(String code, Instant now) : boolean
 CustomerAccount.register(PhoneVerification verified, String name, Address address)
 CustomerAccount.changeAddress(Address address)
 CustomerAccount.rename(String name) : boolean     // whether it changed; see "aligning the product spec, domain plan and code"
+CustomerAccount.changeAccessNotes(String notes) : boolean   // whether they changed; see "the 7-star experience"
 
 ProviderAccount.register(PhoneVerification verified)
 ProviderAccount.recordKybResult(KybResult result, Instant now) : VerificationOutcome
@@ -304,7 +308,10 @@ Feature: Team membership
 
 | Object | Kind | Responsibility |
 |---|---|---|
-| `ProviderListing` | Aggregate | Profile, offered jobs and tools, pricing, ranges, cities, tier, live status |
+| `ProviderListing` | Aggregate | Profile, offered jobs and tools, pricing, ranges, cities, tier, acceptance policy, declared insurance, live status |
+| `AcceptancePolicy` | Enum | `REQUEST_AND_ACCEPT` (the default) or `INSTANT_BOOK` |
+| `InsuranceDeclaration` | Value object | The insurer and the date the declared liability insurance is valid until |
+| `HoursFit` | Enum | What fitting the hours into Homa's range did: `NOT_AFFECTED`, `NARROWED`, `CLEARED`, `CLEARED_AND_OFFLINE` |
 | `Profile` | Value object | Display name and picture |
 | `HourlyRate` | Value object | Rate per helper per hour, above zero |
 | `HoursRange` | Value object | Min and max hours, whole hours, within Homa's 1–6 |
@@ -312,7 +319,7 @@ Feature: Team membership
 | `TravelFee` | Value object | `separate(amount)` or `included()` |
 | `TeamRoster` | Value object | Helper ids (plus the provider if they are a helper) and supervisor ids. Helpers cap the helper range; both are who can be named. Only team members are on it |
 | `SupervisorRule` | Value object | When a supervisor is sent: from a minimum number of helpers, of hours, or both |
-| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster, supervisor rule, whether it takes requests |
+| `OfferingSnapshot` | Value object | What `reservation` copies at request time: rate, ranges, travel fee, jobs, cities, tier, roster, supervisor rule, whether it takes requests, acceptance policy |
 
 ```java
 ProviderListing.draft(String providerId)
@@ -333,6 +340,10 @@ ProviderListing.goLive(boolean providerReady)                 // the roster must
 ProviderListing.missingForGoLive() : Set<GoLiveRequirement>
 ProviderListing.snapshot() : OfferingSnapshot
 ProviderListing.fitHours(HomaLimits limits) : HoursFit   // Homa narrowed its duration range; see "aligning the product spec, domain plan and code"
+ProviderListing.chooseAcceptancePolicy(AcceptancePolicy policy)    // see "the 7-star experience"
+ProviderListing.declareInsurance(InsuranceDeclaration declaration, Instant now)   // refuses one already expired
+ProviderListing.clearInsurance()
+ProviderListing.isInsured(Instant now) : boolean                    // until the declaration's valid-until date
 ```
 
 ```gherkin
@@ -569,6 +580,9 @@ Feature: Matching
 | `FineCharge` | Value object | Provider fine amount and reason |
 | `CaseDecision` | Value object | The admins' decision, received from `resolution` |
 | `CancellationTerms` | Value object | What the review page shows: free until, the fee from then, the locked period, the cost after check-in |
+| `AcceptancePolicy` | Enum | The listing's acceptance policy, as the reservation copied it |
+| `AccessNotes` | Value object | The reservation's notes for getting in, up to 500 characters |
+| `TeamDrop` | Enum | What a person coming off the team did: `NOT_AFFECTED`, `REMOVED`, `TEAM_INCOMPLETE`, `CANNOT_WORK` |
 
 ### Lifecycle
 
@@ -606,6 +620,8 @@ Reservation.confirmPayment(Money secured)                             // the amo
 Reservation.isPaymentSecured() : boolean                              // it covers the total
 Reservation.paymentFailed()                                           // ends the request: Cancelled, PAYMENT_FAILED
 Reservation.accept(Instant providerVerifiedUntil, Instant now)        // only once the payment is secured
+Reservation.acceptInstantly(Instant providerVerifiedUntil, Instant now) // Instant book only; see "the 7-star experience"
+Reservation.changeAccessNotes(String notes, Instant now)              // until the job is completed
 Reservation.decline(Instant now)
 Reservation.declineForTakenTime(Instant now)                          // another accepted booking took the time
 Reservation.expire(Instant now)
@@ -1084,7 +1100,7 @@ Feature: Enquiries
 | `Payment` | Aggregate | One per reservation: method, amount, states `AUTHORISED` (card only), `AUTHORISATION_RELEASED` (card only: ended before acceptance, nothing charged), `HELD`, `RELEASED`, `REFUNDED`, with a record of each part |
 | `PaymentMethod` | Enum | `CARD`, `FPX` |
 | `Payout` | Aggregate | One per reservation that pays the provider: gross earning, fine deductions, net |
-| `Fine` | Aggregate | Amount, reason, deducted so far, waived |
+| `Fine` | Aggregate | Amount, reason (`LATE_CANCELLATION`, `NO_SHOW`, or `CHARGEBACK` for what a provider covers), deducted so far, waived |
 | `FineDeductionPolicy` | Domain service | Applies outstanding fines oldest first, at most 50% of a payout |
 
 ```java
@@ -1206,6 +1222,7 @@ Case.providerReceives() : Optional<Money>         // behind CaseDecidedIE
 Case.isOpen() : boolean
 Case.markSafety()                                 // a safety, damage or loss report opened it or joined it
 Case.closeForProviderFlag(Instant now)            // a flag took the reservation over; no decision
+Case.providerCovers() : Optional<Money>           // for a chargeback: the amount at stake less what the provider receives
 Case.QUEUE_ORDER                                  // safety cases first, then oldest first
 ```
 
@@ -1509,6 +1526,9 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `HomaPolicyChangedIE` | policy | offering, reservation, discovery | `HomaPolicy.change` |
 | `CustomerRegisteredIE` | account | conversation | `CustomerAccount.register` |
 | `CustomerRenamedIE` | account | conversation | `CustomerAccount.rename` returning `true` |
+| `CustomerAccessNotesChangedIE` | account | reservation | `CustomerAccount.changeAccessNotes` returning `true` |
+| `MemberVerifiedIE` | account | (provider app, notifications) | `MemberVerification.recordKycResult` returning `VERIFIED` |
+| `TeamMemberRoleChangedIE` | account | offering, reservation | `TeamMember.changeRole` returning `true` |
 | `ProviderVerifiedIE` | account | offering, reservation, discovery | `ProviderAccount.recordKybResult` returning `VERIFIED`, with `verifiedUntil()` |
 | `ProviderVerificationRejectedIE` | account | offering, (notifications) | `ProviderAccount.recordKybResult` returning `REJECTED` |
 | `PayoutAccountReadyIE` | account | offering, payment | `ProviderAccount.recordPayoutAccountReady` |
@@ -1577,6 +1597,10 @@ The shared `ie/` module holds the contracts that bounded contexts use to talk to
 | `SearchPerformedIE` | discovery | (admin tracking) | `MatchClassifier`'s results for one `SearchCriteria` |
 | `ListingHoursNarrowedIE` | offering | discovery, (notifications) | `ProviderListing.fitHours` returning `NARROWED` on a live listing |
 | `ListingWentOfflineForHoursIE` | offering | discovery, (notifications) | `ProviderListing.fitHours` returning `CLEARED_AND_OFFLINE` |
+| `ProviderInsuranceDeclaredIE` | offering | (provider page, notifications) | `ProviderListing.declareInsurance` |
+| `ProviderInsuranceClearedIE` | offering | (provider page) | `ProviderListing.clearInsurance` |
+| `AccessNotesChangedIE` | reservation | (notifications) | `Reservation.changeAccessNotes` |
+| `ChargebackDecidedIE` | resolution | payment | `Case.decide` on a chargeback case, with `Case.providerCovers` |
 
 **Testing:** event records have no logic, so CRAP and mutation gates don't apply. One test per event checks it can only be built with all required fields and is immutable. The dependency-rule gate checks that `ie/` imports only `kernel/`.
 
