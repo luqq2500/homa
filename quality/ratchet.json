@@ -1,50 +1,6 @@
 {
-  "account.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "availability.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "catalogue.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "conversation.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "discovery.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "feedback.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
   "kernel": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "offering.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "payment.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "policy.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "reservation.domain": {
-    "score": 100.0,
-    "strength": 100.0
-  },
-  "resolution.domain": {
-    "score": 100.0,
-    "strength": 100.0
+    "score": 98.46,
+    "strength": 98.46
   }
 }

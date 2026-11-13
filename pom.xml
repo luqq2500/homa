@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.homa</groupId>
+    <artifactId>homa</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Homa</name>
+
+    <!--
+        One source tree. Each bounded context is a top-level package (catalogue, policy, ...), with its
+        layers below it (catalogue.domain, catalogue.usecase, later catalogue.infra). The shared
+        kernel is the package kernel. Context isolation and the dependency rule are enforced by the
+        ArchUnit tests in each context's test package.
+    -->
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <junit.version>5.12.2</junit.version>
+        <assertj.version>3.27.3</assertj.version>
+        <archunit.version>1.4.1</archunit.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <pitest.version>1.19.1</pitest.version>
+        <pitest.junit5.version>1.2.2</pitest.junit5.version>
+
+        <!--
+            Mutation gate (Discipline §9): at least 90% for kernel and domain, at least 80% for usecase.
+            This project-wide floor is the usecase threshold; tools/quality_gates.py applies each layer's own
+            threshold per context, so domain stays at 90%, with the ratchet in quality/ratchet.json.
+        -->
+        <mutation.threshold>80</mutation.threshold>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Test-only tooling. Production code in kernel/, ie/, domain and usecase depends on nothing outside the JDK. -->
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <compilerArgs>
+                            <arg>-Xlint:all</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- Coverage feeds the CRAP gate (tools/quality_gates.py). -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Mutation gate: the per-layer thresholds are applied by tools/quality_gates.py. -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${pitest.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${pitest.junit5.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <!-- One entry per context. Add each new context here as it is built. -->
+                    <targetClasses>
+                        <param>kernel.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>kernel.*</param>
+                    </targetTests>
+                    <excludedTestClasses>
+                        <param>*ArchitectureTest</param>
+                    </excludedTestClasses>
+                    <mutators>
+                        <mutator>STRONGER</mutator>
+                    </mutators>
+                    <outputFormats>
+                        <param>XML</param>
+                        <param>HTML</param>
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                    <mutationThreshold>${mutation.threshold}</mutationThreshold>
+                    <testStrengthThreshold>${mutation.threshold}</testStrengthThreshold>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>mutation-gate</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>mutationCoverage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
