@@ -110,8 +110,8 @@ The actor names the port and the usecase. Each is a word from the ubiquitous lan
 | `KycProvider` | The KYC provider reporting a result | `KycProviderRecordKybResult` |
 | `PaymentProvider` | The payment provider reporting a payment, refund, payout or chargeback | `PaymentProviderRecordPaymentSecured` |
 
-**Changed from the earlier plan:** the admin console's usecases were named `Homa…`. They are `Admin…` now, so
-`Homa` means only the platform acting on its own, as in the domain stories.
+`Admin` and `Homa` are different actors: `Admin…` usecases are people acting in the admin console, and
+`Homa…` usecases are the platform acting on its own, as in the domain stories.
 
 ## How a context gets another context's data
 
@@ -161,20 +161,19 @@ contexts that need it. **Each needs the product owner's confirmation.**
 
 | # | Prerequisite | Why the usecases need it | Change |
 |---|---|---|---|
-| D1 | **Availability publishes free time** | The earlier plan had reservation and discovery ask availability directly, through an adapter in `app/`. Discipline §4 allows contexts to talk only through events, so that breaks the rule (see U1) | `availability`: `ProviderCalendar.freeTime(from, to)` returns the free stretches (windows, less busy blocks, less holds widened by the buffer). `discovery` and `reservation`: a `FreeTime` value with `isFree(slot)` and `nearestStart(wanted, within, earliest, latest)`, moved from `ProviderCalendar.nearestAvailableStart`. `ie/`: `ProviderFreeTimeChangedIE` |
+| D1 | **Availability publishes free time** | Reservation and discovery need to know when a provider is free, and contexts talk only through events (Discipline §4), so they can't ask availability directly (see U1) | `availability`: `ProviderCalendar.freeTime(from, to)` returns the free stretches (windows, less busy blocks, less holds widened by the buffer). `discovery` and `reservation`: a `FreeTime` value with `isFree(slot)` and `nearestStart(wanted, within, earliest, latest)`, moved from `ProviderCalendar.nearestAvailableStart`. `ie/`: `ProviderFreeTimeChangedIE` |
 | D2 | **Customer address reaches reservation** | A request needs the customer's address, coordinates and city, and check-in needs the coordinates. `CustomerRegisteredIE` carries only the city, and no event tells of a new address | `ie/`: `CustomerRegisteredIE` gains the street and coordinates; new `CustomerAddressChangedIE` |
 | D3 | **Chargebacks reach resolution** | The payment provider reports a chargeback to payment, but cases live in resolution | `payment`: `Payment.recordChargeback(amount, now)`. `ie/`: `ChargebackOpenedIE` |
 | D4 | **Reminders are sent once** | `isTeamReminderDue` and `isCompletionReminderDue` stay true, so a scheduled reminder would repeat | `reservation`: `recordTeamReminded(now)` and `recordCompletionReminded(now)`; a team that becomes incomplete again is due again. `ie/`: `TeamReminderDueIE`, `CompletionReminderDueIE` |
 | D5 | **The provider record** | "Jobs done" and "cancellations" on the provider page are business definitions | `reservation`: a `ProviderRecord` read model rule: jobs done are Completed with a provider earning above RM0; cancellations are fined late cancellations and no-shows, waived or not |
 | D6 | **A case says it opened** | Admins open chats and evidence only for a case, and the contexts that hold them must know a case is open | `ie/`: `CaseOpenedIE` |
-| D7 | **A paused listing can't accept, in the domain** | The earlier plan checked the pause in the usecase. Rules stay in the domain | `reservation`: `accept` and `acceptInstantly` take whether the listing takes requests now, and refuse with `ListingPausedException` |
+| D7 | **A paused listing can't accept, in the domain** | Whether a paused listing can accept is a business rule, and rules stay in the domain, not the usecase | `reservation`: `accept` and `acceptInstantly` take whether the listing takes requests now, and refuse with `ListingPausedException` |
 | D8 | **A `notification` context** | The spec tells people of dozens of moments, in their own language, by push or SMS. That is a business of its own: who is told what, in which language, on which channel | New context: `Notice`, `NoticeKind`, `Language`, `Channel`; rules: each person's language (Bahasa Melayu or English), the channel per kind (SMS as well as push for a job on hold, a provider no-show and a team change on the day) |
 | D9 | **A `privacy` context** | Data requests have a rule: Homa answers within the PDPA's 21 days | New context: `DataRequest` (kind: see, correct, copy, delete; received, due, closed) |
 | D10 | **A `tracking` context** | The goals and measures in the spec's Part 1 are business definitions | New context: the measure definitions (active customer, active live provider, repeat booking within 60 days, first reservation within 7 days, decided within 72 hours) |
 
 The discipline requires every bounded context to have all three layers, so `notification`, `privacy`
-and `tracking` each get a domain layer before their usecases. **Changed from the earlier plan:** it
-gave `privacy` and `tracking` no domain, which the discipline does not allow.
+and `tracking` each get a domain layer before their usecases.
 
 ## Event map
 
@@ -1024,6 +1023,9 @@ The usecase ports promise these; infra keeps them. Each has an infra test.
    transaction, because it guards an invariant across two contexts.
 4. **I4. Webhooks are checked and deduplicated.** The KYC provider's and payment provider's webhooks are
    verified by signature, and a repeated delivery is skipped by its id before any usecase runs.
+5. **I5. Aggregates are rebuilt from storage by infra.** Domain constructors are private and generate
+   new ids, so each repository rebuilds an aggregate as it was saved; usecase tests keep aggregates in
+   memory.
 
 ## Build order
 
@@ -1082,9 +1084,9 @@ come first in its step.
 
 ## Open questions
 
-1. **U1. Availability across contexts.** The earlier plan let reservation and discovery ask
-   availability through an adapter in `app/`. That is one context calling another without an event,
-   which Discipline §4 does not allow. *Recommendation:* D1 (availability publishes free time; the hold
+1. **U1. Availability across contexts.** Reservation and discovery need availability's answer. Asking
+   availability directly, for example through an adapter in `app/`, is one context calling another
+   without an event, which Discipline §4 does not allow. *Recommendation:* D1 (availability publishes free time; the hold
    stays authoritative inside the acceptance's transaction). The cost is a small domain change in three
    contexts and a slightly stale view for search, which the hold covers.
 2. **U2. What declines a request for taken time.** The spec declines open requests whose time clashes
@@ -1104,14 +1106,3 @@ come first in its step.
    (`ProviderFreeTimeChangedIE`, `CustomerAddressChangedIE`, `ChargebackOpenedIE`, `TeamReminderDueIE`,
    `CompletionReminderDueIE`, `CaseOpenedIE`, and `CustomerRegisteredIE` with the address).
    *Recommendation:* add them with their domain prerequisite, in the same step, with contract tests.
-
-### Decided earlier, kept
-
-From the earlier usecase plan (in git history up to `170c533`), still in force:
-- A request is paid before the provider answers, and ends with one event (R1, R2).
-- A paused provider can't accept; going offline never touches accepted reservations (R3, O2).
-- One event per verification outcome (AC1, A2).
-- A seriously flagged provider's reservations and payouts (R5, payment's flag handler).
-- Every search is recorded without the customer (DI1).
-- Who decided is kept by the usecase's audit log; the domain keeps the reason (A1).
-- Rebuilding aggregates from storage is settled in the infra phase.
