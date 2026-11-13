@@ -1127,7 +1127,7 @@ feedback about an individual team member; Homa never edits a rating.
 
 - **Usecases and infrastructure:** how the app calls the domain, the scheduled jobs, and the adapters
   to the KYC provider, Stripe, the SMS provider, the calendar services and the geoservice. See
-  the usecase plan, to be written.
+  the usecase plan (`docs/homa-usecase-plan.md`, a draft for review).
 - **Data requests:** customers, providers and team members asking to see, correct, copy or delete their
   data, which the founders handle and record in the admin console.
 - **Admin tracking:** the overview, reservation history, payments, providers, customers, fines and
