@@ -143,6 +143,7 @@
                         <param>verification.*</param>
                         <param>offering.*</param>
                         <param>availability.*</param>
+                        <param>reservation.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
@@ -152,6 +153,7 @@
                         <param>verification.*</param>
                         <param>offering.*</param>
                         <param>availability.*</param>
+                        <param>reservation.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>
