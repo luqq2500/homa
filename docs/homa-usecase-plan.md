@@ -54,7 +54,8 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | Intent-revealing methods | §6 | `CustomerReservationRequester.request(...)` |
 | Dedicated DTOs | §6 | `RequestReservationRequest`, `RequestReservationResponse`; never shared between usecases, and never a domain object |
 | Depends only on domain and shared modules | §3, §5 | Its own context's `domain`, `kernel/` and `ie/`. Never another context, never infra, never a framework |
-| Infra is reached through `port/out` | §5 | Storage, outside services and the clock's callers are interfaces the usecase declares |
+| Infra is reached through `port/out` | §5 | Storage and outside services are interfaces the usecase declares |
+| No outside service is known by name | §5, rules 2 and 5 | A usecase, port, DTO or exception never names a company or its product, and carries none of its types or statuses. Ports are named for what Homa needs (`PaymentGateway`, `IdentityVerificationService`, `SmsSender`); which company answers is infra's choice, so changing it touches no usecase |
 | The inbound gateway | §4 | Callers depend on the `port/in` interface, never on the implementation |
 | One IE publisher per context | §7 | `<Context>IEPublisher.publish(<Context>IE)` in `port/out` |
 | One handler per event | §7 | `HandleJobRetiredIE implements JobRetiredIEHandler`, in `port/in` and `usecase/` |
@@ -69,7 +70,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | `Registrant` | Anyone registering with a phone number, before they have an account |
 | `Party` | The customer or the provider, where either can act |
 | `Homa` | The founders in the admin console, or Homa acting on its own at a set time |
-| `Kyc`, `Stripe`, `Calendar` | An outside service reporting a result back |
+| `Kyc`, `PaymentProvider`, `Calendar` | An outside service reporting a result back, named for its role in the spec (the KYC provider, the payment provider, a calendar service), never for the company behind it |
 
 **Conventions for every usecase**
 
@@ -104,7 +105,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | `CustomerAddressChangedIE` (new) | `AccountIE` | The customer, street, city, latitude and longitude | `CustomerChangeAddress` | reservation | A new address is used for new searches and requests |
 | `TeamReminderDueIE` (new) | `ReservationIE` | The reservation, the provider and the booked start | `HomaRemindTeams` | Whoever tells the provider (outside this plan) | Homa reminds the provider at the team reminder time |
 | `CompletionReminderDueIE` (new) | `ReservationIE` | The reservation, the provider and the booked end | `HomaRemindCompletions` | Whoever tells the provider (outside this plan) | Homa reminds them to submit it |
-| `ChargebackReceivedIE` (new) | `PaymentIE` | The reservation, the payment and the amount the bank took back | `StripeRecordChargeback` | resolution | A customer who disputes a card payment with their bank opens a case for Homa |
+| `ChargebackReceivedIE` (new) | `PaymentIE` | The reservation, the payment and the amount the bank took back | `PaymentProviderRecordChargeback` | resolution | A customer who disputes a card payment with their bank opens a case for Homa |
 
 - Each new or changed event gets its case in the event contract test: it can only be built with every field, it can't be changed afterwards, it carries only allowed types, and it belongs to its context's interface.
 - An event is added to `ie/` in the same step as the usecase that publishes it.
@@ -184,8 +185,8 @@ Spec: *Account*, *Verification Policy*, *Onboarding*, *Teams*, *Providers* (admi
 | `ProviderRegisterAccount` | Register the business with a phone number | `ProviderAccount` | — |
 | `ProviderStartKyb` | Complete KYB on the KYC provider's pages; re-verification the same way | (opens the KYC provider's pages) | — |
 | `KycRecordBusinessResult` | Homa records each result and relies on it | `ProviderAccount` | By outcome (rule R1) |
-| `ProviderAddPayoutAccount` | Add a payout account: a business bank account | (opens Stripe's onboarding) | — |
-| `StripeRecordPayoutAccountReady` | Providers cannot go live until the payout account is added | `ProviderAccount` | `PayoutAccountReadyIE`, once |
+| `ProviderAddPayoutAccount` | Add a payout account: a business bank account | (opens the payment provider's onboarding, through `PayoutAccountService`) | — |
+| `PaymentProviderRecordPayoutAccountReady` | Providers cannot go live until the payout account is added | `ProviderAccount` | `PayoutAccountReadyIE`, once |
 | `ProviderStartAddingTeamMember` | Start: the role and a profile photo taken with the camera; only once KYB has passed | `MemberVerification` | `MemberVerificationStartedIE` |
 | `KycRecordMemberVerificationResult` | Verify on the spot; the check fails if the photo doesn't match or the person is under 18 | `MemberVerification` | `MemberVerifiedIE`, or `MemberVerificationRejectedIE` with the reason |
 | `ProviderConfirmTeamMember` | Confirm: the lawful-employment tick for this named person; they join only then | `MemberVerification`, `TeamMember` | `TeamMemberAddedIE` |
@@ -235,7 +236,7 @@ Spec: *Availability*, *After going live: Calendar*.
 |---|---|---|---|
 | `ProviderSetAvailabilityWindows` | Providers manage their availability in the app | `ProviderCalendar` | — |
 | `ProviderSetBufferBetweenJobs` | A provider can set a buffer between jobs | `ProviderCalendar` | — |
-| `ProviderConnectCalendar` | Sync with Google Calendar or Apple Calendar | (opens the calendar's consent) | — |
+| `ProviderConnectCalendar` | Providers sync with their calendar | (opens the calendar's consent) | — |
 | `CalendarSyncBusyBlocks` | Results reflect when a provider can actually work | `ProviderCalendar` | — |
 | `AvailabilityChecker` | Bookable times come from each provider's own calendar; a close match's start is always bookable | (query: is a slot free; the nearest free start) | — |
 | `ProviderViewCalendar` | Manage availability | (query) | — |
@@ -334,13 +335,13 @@ Spec: *Payment Protection*, *Request Policy* (payment on edit), *Provider Cancel
 
 | Usecase | Spec | Orchestrates | Publishes |
 |---|---|---|---|
-| `StripeRecordCardAuthorised`, `StripeRecordFpxPaid` | Paid before the provider answers | `Payment` | `PaymentSecuredIE` |
-| `StripeRecordPaymentFailed` | If the card is declined, or the FPX payment fails or is abandoned, the request ends | (no `Payment` exists; rule R2) | `PaymentFailedIE` |
-| `StripeRecordChargeback` | A customer who disputes a card payment with their bank after the job opens a case for Homa | Finds the reservation's `Payment` | `ChargebackReceivedIE` |
-| `StripeRecordRefund`, `StripeRecordPayoutPaid`, `StripeRecordPayoutFailed` | The app shows the refund status; the provider's payouts | Record the status | — |
+| `PaymentProviderRecordCardAuthorised`, `PaymentProviderRecordFpxPaid` | Paid before the provider answers | `Payment` | `PaymentSecuredIE` |
+| `PaymentProviderRecordPaymentFailed` | If the card is declined, or the FPX payment fails or is abandoned, the request ends | (no `Payment` exists; rule R2) | `PaymentFailedIE` |
+| `PaymentProviderRecordChargeback` | A customer who disputes a card payment with their bank after the job opens a case for Homa | Finds the reservation's `Payment` | `ChargebackReceivedIE` |
+| `PaymentProviderRecordRefund`, `PaymentProviderRecordPayoutPaid`, `PaymentProviderRecordPayoutFailed` | The app shows the refund status; the provider's payouts | Record the status | — |
 | `HomaWaiveFine` | Homa can waive a fine after review, once, with a reason | `Fine` (rule A5) | `FineWaivedIE` |
 | `HomaReleasePayout`, `HomaWithholdPayout` | The founders release held payouts or keep them back, with a reason | `Payout` | `PayoutHoldReleasedIE`, `PayoutWithheldIE` |
-| `CustomerViewPaymentToComplete` | You pay by card or online banking (FPX) | (query: what the app needs to finish paying with Stripe) | — |
+| `CustomerViewPaymentToComplete` | You pay by card or online banking (FPX) | (query: what the app needs to finish paying, as `PaymentGateway` gave it) | — |
 | `CustomerViewPayments` | The account shows payments and refunds with their status and expected timing; a receipt for each | (query) | — |
 | `ProviderViewIncome` | Earnings, payouts with a statement each, and any fines being deducted | (query) | — |
 
@@ -430,7 +431,7 @@ These are the spec's rules that no single domain object can keep, because they s
    | Unchanged | none | none | none |
 
 2. **R2. A request is paid before the provider answers, and never waits unpaid** (*Payment Protection*).
-   - On `ReservationRequestedIE`, payment starts the payment with Stripe and keeps it as pending. The customer finishes paying in the app, and Stripe reports the result to a `Stripe…` usecase.
+   - On `ReservationRequestedIE`, payment starts the payment through `PaymentGateway` and keeps it as pending. The customer finishes paying in the app, and the payment provider's result arrives through a `PaymentProvider…` usecase.
    - payment publishes `PaymentSecuredIE` with the amount; reservation records it, and `ProviderViewRequests` lists only requests whose payment is secured.
    - After an edit that raises the total, the request waits for the new amount.
    - A failed or abandoned payment publishes `PaymentFailedIE`; reservation ends the request and publishes nothing more. A payment held from before an edit is released or refunded first. A request that ends while still unpaid cancels the pending payment.
@@ -525,7 +526,7 @@ From the discipline, §9, for the `usecase` layer:
 
 Listed so nothing is lost. None of it is planned here.
 
-- **Infra:** repositories and storage, controllers, the webhooks of the KYC provider and Stripe, the scheduler that calls the `Homa…` timed usecases, security, event delivery and transactions, the adapters behind `SmsSender`, `Geocoder`, `Geoservice`, `IdentityVerificationService`, `PaymentGateway`, `PayoutGateway`, `CalendarService` and `EvidenceStore`, evidence retention, and `app/`, which also joins `ProviderAvailability` to `AvailabilityChecker`.
+- **Infra:** repositories and storage, controllers, the webhooks of the KYC provider and the payment provider, the choice of each outside service and its SDK, the scheduler that calls the `Homa…` timed usecases, security, event delivery and transactions, the adapters behind `SmsSender`, `Geocoder`, `Geoservice`, `IdentityVerificationService`, `PaymentGateway`, `PayoutGateway`, `CalendarService` and `EvidenceStore`, evidence retention, and `app/`, which also joins `ProviderAvailability` to `AvailabilityChecker`.
 - **Modules without a bounded context:** sending push notifications, the admin console's tracking views, and recording data requests.
 - **The domain:** not changed by this plan. No usecase here needs a domain change.
 
@@ -536,11 +537,11 @@ These were open in the first draft. The spec answers each one; the answer is wri
 | # | Question | What the spec says | Answer |
 |---|---|---|---|
 | 1 | When are clashing requests declined after an acceptance? | "Any other open request of theirs that can no longer be accepted ... is declined at once" (*Request Policy*) | In the accepting usecase, straight after the acceptance (rule R5) |
-| 2 | How does the customer pay? | "Card: authorised when submitting the request ... FPX: paid in full when submitting the request"; "the provider sees a request ... only once the card is authorised or the FPX payment is paid"; "Homa does not store card or bank details" (*Payment Protection*, *Privacy Policy*) | payment starts the payment when the request is made; the customer finishes with Stripe; Stripe reports the result (rule R2) |
+| 2 | How does the customer pay? | "Card: authorised when submitting the request ... FPX: paid in full when submitting the request"; "the provider sees a request ... only once the card is authorised or the FPX payment is paid"; "Homa does not store card or bank details" (*Payment Protection*, *Privacy Policy*) | payment starts the payment when the request is made; the customer finishes with the payment provider, which reports the result (rule R2) |
 | 3 | Who puts the provider page together? | The spec lists what the page shows, across the listing, the team and the ratings (*Provider page*) | Three queries, one per context that owns the data (rule R16) |
 | 4 | How does a reminder reach the provider? | "Homa reminds the provider at the team reminder time"; "Homa reminds them to submit it" (*Check-in Policy*, *Completion Policy*) | Two new events, `TeamReminderDueIE` and `CompletionReminderDueIE` |
 | 5 | Where does a request's address come from? | "A new address is used for new searches and requests; requests and reservations already made keep the address they were made with"; "Homa uses the address ... to locate check-in" (*Account*) | The address and its pin travel on `CustomerRegisteredIE` and the new `CustomerAddressChangedIE`; each reservation keeps its pin (rule R14) |
-| 6 | Who learns of a chargeback? | "A customer who disputes a card payment with their bank after the job opens a case for Homa" (*Payment Protection*) | Stripe reports it to payment, which knows the reservation's payment; the new `ChargebackReceivedIE` opens the case in resolution |
+| 6 | Who learns of a chargeback? | "A customer who disputes a card payment with their bank after the job opens a case for Homa" (*Payment Protection*) | The payment provider reports it to payment, which knows the reservation's payment; the new `ChargebackReceivedIE` opens the case in resolution |
 | 8 | Which Homa-set values apply later? | "Each reservation keeps the values that were in force when it was requested"; "each deduction is at most the fine deduction cap of that payout" (*Homa-Set Values*, *Provider Cancellation Fines*) | The values of the reservation's request (rule R15) |
 | 7 | What happens to a job that already names a person whose role changes? | "A job already named keeps the person in the role they were named in, until the provider names that job's team again; the new role applies to jobs named from then on" (*Verification Policy*) | Nothing changes on the job (rule R17) |
 | 9 | When is a case's decision due? | "Within 3 days (72 hours) of it opening; every day counts, weekends and public holidays included. The customer and the provider see the exact date and time it is due" (*Dispute Policy*) | The opening time plus 72 hours (rule R18) |
