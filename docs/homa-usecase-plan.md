@@ -55,7 +55,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | Dedicated DTOs | §6 | `RequestReservationRequest`, `RequestReservationResponse`; never shared between usecases, and never a domain object |
 | Depends only on domain and shared modules | §3, §5 | Its own context's `domain`, `kernel/` and `ie/`. Never another context, never infra, never a framework |
 | Infra is reached through `port/out` | §5 | Storage and outside services are interfaces the usecase declares |
-| No outside service is known by name | §5, rules 2 and 5 | A usecase, port, DTO or exception never names a company or its product, and carries none of its types or statuses. Ports are named for what Homa needs (`PaymentGateway`, `IdentityVerificationService`, `SmsSender`); which company answers is infra's choice, so changing it touches no usecase |
+| No outside service is known by name | §5, rules 2 and 5 | A usecase, port, DTO or exception never names a company or its product, and carries none of its types or statuses. An outside service's port has the spec's name for the service (see "Out ports"); which company answers is infra's choice, so changing it touches no usecase |
 | The inbound gateway | §4 | Callers depend on the `port/in` interface, never on the implementation |
 | One IE publisher per context | §7 | `<Context>IEPublisher.publish(<Context>IE)` in `port/out` |
 | One handler per event | §7 | `HandleJobRetiredIE implements JobRetiredIEHandler`, in `port/in` and `usecase/` |
@@ -70,7 +70,7 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 | `Registrant` | Anyone registering with a phone number, before they have an account |
 | `Party` | The customer or the provider, where either can act |
 | `Homa` | The founders in the admin console, or Homa acting on its own at a set time |
-| `KycProvider`, `PaymentProvider`, `CalendarProvider` | An outside service reporting a result back, named for the service's role in the spec (the KYC provider, the payment provider, a calendar service), never for the company behind it |
+| `KycProvider`, `PaymentProvider`, `CalendarProvider` | An outside service reporting something back. Each has the same name as the out port through which Homa asks that service for things (see "Out ports") |
 
 **Conventions for every usecase**
 
@@ -82,6 +82,30 @@ When this plan and the spec disagree, the spec wins; fix this plan.
 - **A handler whose event no longer applies** changes nothing and does not fail, for example a payment secured for a reservation that is no longer a request.
 - **Founders' actions** take the founder's id and record who, what, why and when through an `AdminAuditLog` out port, because the spec says "every change made in the admin console is recorded with who made it and when".
 - **Queries** are usecases too, with their own interface and response DTO. A query with no input has no request DTO.
+
+**Out ports.** Each context's section below lists every out port with its methods, written `Port.method(arguments) : result`. A port takes and returns the context's own domain types, `kernel/` types, JDK types, or a small record declared next to it in `port/out`. Four shapes are the same in every context:
+
+```java
+<Aggregate>Repository.byId(String id) : Optional<Aggregate>
+<Aggregate>Repository.save(Aggregate aggregate)      // refuses a copy changed meanwhile: ChangedMeanwhileException
+<Context>IEPublisher.publish(<Context>IE event)      // the context's only publisher
+AdminAuditLog.record(AdminAction action)
+    // AdminAction(String decidedBy, String action, String subjectId, Optional<String> reason, Instant at)
+```
+
+A **projection** port (see "How a usecase gets another context's data") has the read methods its usecases use and one write method per event that feeds it, called by that event's handler.
+
+**Outside services.** A port to an outside service has the spec's name for the service. When the service also reports back, the actor of the usecases that record its reports has the same name, so `KycProvider.startKyb(...)` is answered later by a `KycProviderRecord…` usecase.
+
+| Port | The spec's name | Asked by | Reports back through |
+|---|---|---|---|
+| `KycProvider` | KYC provider | account, reservation | `KycProviderRecord…` usecases |
+| `PaymentProvider` | Payment provider | account, payment | `PaymentProviderRecord…` usecases |
+| `CalendarProvider` | Calendar services | availability | `CalendarProviderRecord…` and `CalendarProviderSync…` usecases |
+| `SmsProvider` | SMS provider | account | — |
+| `Geoservice` | Geoservice | account, reservation | — |
+
+Starting something that the person finishes on the service's own pages returns a `Handoff(String reference, String link)`: the app opens the link, and the service's later report names the reference. Each context declares its own `Handoff` record, because contexts share nothing but `kernel/` and `ie/`.
 
 ## The `ie/` module
 
@@ -131,7 +155,10 @@ A bounded context never imports another (§4). So a usecase that needs another c
 | discovery | Each business's verified-until date, and Homa's search limits | `ProviderVerifiedIE`, `ProviderReverifiedIE`, `ReverificationRequiredIE`, `HomaPolicyChangedIE` |
 | discovery | Job and tool names and groups | `JobAddedIE`, `JobRenamedIE`, `JobRegroupedIE`, `ToolAddedIE`, `ToolRenamedIE` |
 | discovery | Each provider's jobs done and cancellations | `ReservationCompletedIE`, `SettlementDecidedIE`, `FineChargedIE` |
-| conversation | Who each enquiry and reservation belongs to | `EnquiryCreatedIE`, `ReservationRequestedIE` |
+| availability | The booking horizon | `HomaPolicyChangedIE` |
+| resolution | Who each reservation belongs to, so only its parties see their case | `ReservationRequestedIE` |
+| conversation | Who each enquiry belongs to | `EnquiryCreatedIE` |
+| conversation | Which reservations have a case, so their chat can be opened for it | `ReportFiledIE`, `NoShowChallengedIE`, `CompletionDeadlineMissedIE`, `ChargebackReceivedIE` |
 | feedback | Each reservation's customer, provider, named team and when it became Completed | `ReservationRequestedIE`, `TeamNamedIE`, `TeamMemberDroppedIE`, `ReservationCompletedIE` |
 | feedback | The rating window in force when each reservation was requested, and the minimum ratings to show now | `HomaPolicyChangedIE`, `ReservationRequestedIE` |
 
@@ -156,7 +183,21 @@ Spec: *Jobs and tools*, *Homepage*, *Settings: catalogue and curation*, *Where H
 | `ProviderViewJobList`, `ProviderViewToolList`, `ProviderViewServiceArea` | Providers choose jobs, tools and cities from Homa's lists | (query) | — |
 | `CustomerViewShowcase`, `CustomerViewJobList` | The homepage showcase in Homa's order; picking jobs for a search | (query) | — |
 
-- **Out ports:** `JobListRepository`, `ToolListRepository`, `ShowcaseRepository`, `ServiceAreaRepository`, `CatalogueIEPublisher`, `AdminAuditLog`.
+**Out ports**
+
+```java
+JobListRepository.find() : Optional<JobList>          // Homa's one job list; empty until the first job is added
+JobListRepository.save(JobList list)
+ToolListRepository.find() : Optional<ToolList>
+ToolListRepository.save(ToolList list)
+ShowcaseRepository.find() : Optional<Showcase>
+ShowcaseRepository.save(Showcase showcase)
+ServiceAreaRepository.find() : Optional<ServiceArea>
+ServiceAreaRepository.save(ServiceArea area)
+CatalogueIEPublisher.publish(CatalogueIE event)
+AdminAuditLog.record(AdminAction action)
+```
+
 - **Usecase exceptions:** `CatalogueNotSetUpException`, `ChangedMeanwhileException`, `AdminReasonRequiredException`.
 
 ### policy
@@ -170,7 +211,16 @@ Spec: *Homa-Set Values*, *Settings: Homa-set values*.
 | `HomaViewPolicy` | View the values | (query) | — |
 
 - The console names each value, such as `SERVICE_FEE`, and writes it by kind: a percentage (`15%`), a period (`PT2H`), a count (`300`) or a range of hours (`1-6`). The usecase only translates; the domain checks each value and the rules across values.
-- **Out ports:** `HomaPolicyRepository`, `PolicyIEPublisher`, `AdminAuditLog`.
+
+**Out ports**
+
+```java
+HomaPolicyRepository.current() : Optional<HomaPolicy>   // the version in force; empty before launch
+HomaPolicyRepository.save(HomaPolicy policy)            // only the next version; refuses any other number
+PolicyIEPublisher.publish(PolicyIE event)
+AdminAuditLog.record(AdminAction action)
+```
+
 - **Usecase exceptions:** `PolicyNotLaunchedException`, `PolicyAlreadyLaunchedException`, `UnknownPolicyValueException`, `ChangedMeanwhileException`.
 
 ### account
@@ -183,25 +233,55 @@ Spec: *Account*, *Verification Policy*, *Onboarding*, *Teams*, *Providers* (admi
 | `CustomerRegisterAccount` | Customers register with their phone number, name and address, confirmed with a pin | `CustomerAccount` | `CustomerRegisteredIE` |
 | `CustomerRename`, `CustomerChangeAddress`, `CustomerChangeAccessNotes` | They can change their name and address at any time; the account keeps access notes | `CustomerAccount` | `CustomerRenamedIE`, `CustomerAddressChangedIE`, `CustomerAccessNotesChangedIE` |
 | `ProviderRegisterAccount` | Register the business with a phone number | `ProviderAccount` | — |
-| `ProviderStartKyb` | Complete KYB on the KYC provider's pages; re-verification the same way | (opens the KYC provider's pages) | — |
+| `ProviderStartKyb` | Complete KYB on the KYC provider's pages; re-verification the same way | (`KycProvider.startKyb`) | — |
 | `KycProviderRecordBusinessResult` | Homa records each result and relies on it | `ProviderAccount` | By outcome (rule R1) |
-| `ProviderAddPayoutAccount` | Add a payout account: a business bank account | (opens the payment provider's onboarding, through `PayoutAccountService`) | — |
+| `ProviderAddPayoutAccount` | Add a payout account: a business bank account | (`PaymentProvider.startPayoutOnboarding`) | — |
 | `PaymentProviderRecordPayoutAccountReady` | Providers cannot go live until the payout account is added | `ProviderAccount` | `PayoutAccountReadyIE`, once |
 | `ProviderStartAddingTeamMember` | Start: the role and a profile photo taken with the camera; only once KYB has passed | `MemberVerification` | `MemberVerificationStartedIE` |
 | `KycProviderRecordMemberVerificationResult` | Verify on the spot; the check fails if the photo doesn't match or the person is under 18 | `MemberVerification` | `MemberVerifiedIE`, or `MemberVerificationRejectedIE` with the reason |
 | `ProviderConfirmTeamMember` | Confirm: the lawful-employment tick for this named person; they join only then | `MemberVerification`, `TeamMember` | `TeamMemberAddedIE` |
 | `ProviderChangeTeamMemberRole` | Change a member between helper and supervisor at any time; jobs already named keep the role they were named in (rule R17) | `TeamMember` | `TeamMemberRoleChangedIE` |
 | `ProviderRemoveTeamMember`, `HomaRemoveTeamMember` | The provider can remove a member at any time; Homa removes one not allowed to work, and records it | `TeamMember` | `TeamMemberRemovedIE` |
-| `ProviderStartMemberReverification` | Run each re-verification on the spot with the person present | (opens the KYC provider's check) | — |
+| `ProviderStartMemberReverification` | Run each re-verification on the spot with the person present | (`KycProvider.startMemberReverification`) | — |
 | `KycProviderRecordTeamMemberResult` | A pass moves the verified-until date out; a failed attempt changes nothing | `TeamMember` | By outcome (rule R1) |
 | `KycProviderRecordBusinessLapse`, `KycProviderRecordMemberLapse` | Missing a re-verification: the business or person lapses | `ProviderAccount`, `TeamMember` | `ProviderVerificationLapsedIE`, `TeamMemberLapsedIE` |
 | `KycProviderRecordBusinessReverificationRequired`, `KycProviderRecordMemberReverificationRequired` | Ongoing monitoring: re-verification needed by a date | `ProviderAccount`, `TeamMember` | `ReverificationRequiredIE` |
 | `KycProviderRecordBusinessFlag`, `KycProviderRecordMemberFlag` | A serious flag: the business or person lapses at once | `ProviderAccount`, `TeamMember` | `ProviderFlaggedIE`, `TeamMemberLapsedIE` |
-| `HomaRequestBusinessRecheck`, `HomaRequestMemberRecheck` | Homa can ask for an early re-check, with a reason | (asks the KYC provider) | — |
+| `HomaRequestBusinessRecheck`, `HomaRequestMemberRecheck` | Homa can ask for an early re-check, with a reason | (`KycProvider.requestBusinessRecheck`, `requestMemberRecheck`) | — |
 | `CustomerViewAccount`, `ProviderViewAccount`, `ProviderViewTeam` | The account; when the business and each member are next due; who is waiting for verification or for the confirmation | (query) | — |
 | `CustomerViewProviderTeam` | The provider's team: registered name, role, photo, last verification date; only added members | (query) | — |
 
-- **Out ports:** `CustomerAccountRepository`, `ProviderAccountRepository`, `PhoneVerificationRepository`, `MemberVerificationRepository`, `TeamMemberRepository`, `AccountIEPublisher`, `VerificationCodes`, `SmsSender`, `Geocoder`, `IdentityVerificationService`, `PayoutAccountService`, `AdminAuditLog`.
+**Out ports**
+
+```java
+PhoneVerificationRepository.byId(String id) : Optional<PhoneVerification>
+PhoneVerificationRepository.save(PhoneVerification verification)
+CustomerAccountRepository.byId(String id) : Optional<CustomerAccount>
+CustomerAccountRepository.byPhone(PhoneNumber phone) : Optional<CustomerAccount>
+CustomerAccountRepository.save(CustomerAccount account)
+ProviderAccountRepository.byId(String id) : Optional<ProviderAccount>
+ProviderAccountRepository.byPhone(PhoneNumber phone) : Optional<ProviderAccount>
+ProviderAccountRepository.save(ProviderAccount account)
+MemberVerificationRepository.byId(String id) : Optional<MemberVerification>
+MemberVerificationRepository.waitingOf(String providerId) : List<MemberVerification>   // waiting for verification or for the confirmation
+MemberVerificationRepository.save(MemberVerification verification)
+TeamMemberRepository.byId(String id) : Optional<TeamMember>
+TeamMemberRepository.ofProvider(String providerId) : List<TeamMember>                  // removed members left out
+TeamMemberRepository.save(TeamMember member)
+AccountIEPublisher.publish(AccountIE event)
+AdminAuditLog.record(AdminAction action)
+
+VerificationCodes.next() : String                                   // a new 6-digit code
+SmsProvider.sendVerificationCode(PhoneNumber phone, String code)
+Geoservice.cityAt(Coordinates pin) : Optional<City>                 // the launch city the customer's pin is in; empty outside them
+KycProvider.startKyb(String providerId) : Handoff                   // KYB with the owner's or director's KYC; also the yearly re-verification
+KycProvider.startMemberCheck(String verificationId, Photo photo) : Handoff   // on the provider's phone; the photo is compared with the selfie
+KycProvider.startMemberReverification(String memberId) : Handoff
+KycProvider.requestBusinessRecheck(String providerId, String reason)
+KycProvider.requestMemberRecheck(String memberId, String reason)
+PaymentProvider.startPayoutOnboarding(String providerId) : Handoff  // the business bank account
+```
+
 - **Usecase exceptions:** `PhoneVerificationNotFoundException`, `PhoneAlreadyRegisteredException` (a phone number has at most one customer account and one business account), `CustomerNotFoundException`, `ProviderNotFoundException`, `MemberVerificationNotFoundException`, `TeamMemberNotFoundException`, `NotYourTeamMemberException`, `AddressNotFoundException`, `AdminReasonRequiredException`, `ChangedMeanwhileException`.
 
 ### offering
@@ -225,7 +305,32 @@ Spec: *Pricing*, *Teams, helpers and supervisors*, *Acceptance Policy*, *Damage 
 | `ProviderReverifiedIE` | Until it passes | `ProviderListing` | `ListingResumedIE` |
 | The catalogue, service area and business readiness events | — | Update the projections | — |
 
-- **Out ports:** `ProviderListingRepository`, the projections, `OfferingIEPublisher`.
+**Out ports**
+
+```java
+ProviderListingRepository.byId(String id) : Optional<ProviderListing>
+ProviderListingRepository.ofProvider(String providerId) : Optional<ProviderListing>   // one listing per business
+ProviderListingRepository.offering(JobCode job) : List<ProviderListing>
+ProviderListingRepository.bringing(ToolCode tool) : List<ProviderListing>
+ProviderListingRepository.withHours() : List<ProviderListing>                         // to fit Homa's duration range
+ProviderListingRepository.save(ProviderListing listing)
+OfferingIEPublisher.publish(OfferingIE event)
+
+OfferingCatalogue.activeJobs() : Set<JobCode>
+OfferingCatalogue.activeTools() : Set<ToolCode>
+OfferingCatalogue.serviceArea() : ServiceAreaView
+OfferingCatalogue.jobAdded(JobCode job), jobRetired(JobCode job), toolAdded(ToolCode tool), toolRetired(ToolCode tool)
+OfferingCatalogue.serviceAreaPublished(Set<City> cities)
+OfferingLimits.current() : Optional<HomaLimits>
+OfferingLimits.keep(HomaLimits limits)
+BusinessReadiness.isReady(String providerId) : boolean       // verified, not lapsed, payout account ready
+BusinessReadiness.verified(String providerId), rejected(String providerId), lapsed(String providerId),
+                  flagged(String providerId), payoutAccountReady(String providerId)
+TeamRosters.of(String providerId) : TeamRoster               // empty when the business has no one on its team
+TeamRosters.memberOn(String providerId, String memberId, String role)   // added, re-verified, or a new role
+TeamRosters.memberOff(String providerId, String memberId)               // lapsed or removed
+```
+
 - **Usecase exceptions:** `ListingNotFoundException`, `ListingAlreadyDraftedException`, `ChangedMeanwhileException`.
 
 ### availability
@@ -236,14 +341,31 @@ Spec: *Availability*, *After going live: Calendar*.
 |---|---|---|---|
 | `ProviderSetAvailabilityWindows` | Providers manage their availability in the app | `ProviderCalendar` | — |
 | `ProviderSetBufferBetweenJobs` | A provider can set a buffer between jobs | `ProviderCalendar` | — |
-| `ProviderConnectCalendar` | Providers sync with their calendar | (opens the calendar's consent) | — |
-| `CalendarProviderSyncBusyBlocks` | Results reflect when a provider can actually work | `ProviderCalendar` | — |
+| `ProviderConnectCalendar` | Providers sync with their calendar | (`CalendarProvider.startConnection`) | — |
+| `CalendarProviderRecordConnection` | The provider gave the calendar consent; the calendar provider reports the connection | Keeps the connection, then syncs at once | — |
+| `CalendarProviderSyncBusyBlocks` | Results reflect when a provider can actually work. The calendar provider says a connected calendar may have changed; how Homa hears it (a notice from the calendar, or infra asking on a schedule) is infra's | `ProviderCalendar`, with the busy blocks from now to the booking horizon plus one day | — |
 | `AvailabilityChecker` | Bookable times come from each provider's own calendar; a close match's start is always bookable | (query: is a slot free; the nearest free start) | — |
 | `ProviderViewCalendar` | Manage availability | (query) | — |
 
-Handlers: `ReservationAcceptedIE` holds the slot; `ReservationCancelledIE` and `ReservationCompletedIE` release it. availability publishes no events.
+Handlers: `ReservationAcceptedIE` holds the slot; `ReservationCancelledIE` and `ReservationCompletedIE` release it; `HomaPolicyChangedIE` keeps the booking horizon. availability publishes no events.
 
-- **Out ports:** `ProviderCalendarRepository`, `CalendarService`.
+**Out ports**
+
+```java
+ProviderCalendarRepository.ofProvider(String providerId) : Optional<ProviderCalendar>
+ProviderCalendarRepository.holding(String reservationId) : Optional<ProviderCalendar>
+ProviderCalendarRepository.save(ProviderCalendar calendar)
+
+CalendarConnections.keep(String providerId, String reference)
+CalendarConnections.of(String providerId) : Optional<String>
+CalendarConnections.providerFor(String reference) : Optional<String>
+AvailabilityLimits.bookingHorizon() : Optional<Duration>
+AvailabilityLimits.keep(Duration bookingHorizon)
+
+CalendarProvider.startConnection(String providerId) : Handoff     // the calendar's consent page
+CalendarProvider.busyBlocks(String reference, Instant from, Instant to) : List<BusyBlock>
+```
+
 - **Usecase exceptions:** `CalendarNotFoundException`, `CalendarNotConnectedException`.
 
 ### reservation
@@ -273,12 +395,12 @@ Spec: *How Homa Works*, *Reservation Lifecycle*, *Request*, *Acceptance*, *Check
 | `ProviderDeclineRequest` | Decline; not for an instant-book request | `Reservation` | `ReservationDeclinedIE` |
 | `ProviderCancelReservation` | The customer is refunded in full and the provider may pay a fine | `Reservation` | `ReservationCancelledIE`, `SettlementDecidedIE`, and `FineChargedIE` when fined |
 | `ProviderNameTeam` | Name the helpers, and a supervisor when one is due, before the booked start | `Reservation`, against the team as it is now | `TeamNamedIE` |
-| `ProviderCheckIn` | Check-in is location-based, within the check-in radius | `Reservation`, with the distance from the device to the reservation's pin, from the `Geoservice` port (rule R14) | `ProviderCheckedInIE` |
-| `ProviderStartFaceCheck` | Every named person takes a live selfie | (opens the KYC provider's face check) | — |
+| `ProviderCheckIn` | Check-in is location-based, within the check-in radius | `Reservation`, with `Geoservice.distanceMetres` from the device's pin to the reservation's pin (rule R14) | `ProviderCheckedInIE` |
+| `ProviderStartFaceCheck` | Every named person takes a live selfie | (`KycProvider.startFaceCheck`) | — |
 | `KycProviderRecordFaceCheck` | Check-in counts once the first named person passes; a person who fails cannot work | `Reservation` | `FaceCheckRecordedIE`, and `CheckInCompletedIE` on the first pass |
 | `KycProviderRecordFaceCheckUnavailable` | If the face check service is unavailable, check-in goes ahead on location only | `Reservation` | `CheckInCompletedIE` |
 | `ProviderReportCustomerNoShow` | After the customer no-show wait, up to the booked end | `Reservation` (rule R6) | `ReservationCancelledIE` |
-| `ProviderSubmitCompletion` | The provider marks the job completed, with photo or video evidence | `Reservation` | `CompletionSubmittedIE` |
+| `ProviderSubmitCompletion` | The provider marks the job completed, with photo or video evidence | `Reservation`, once `EvidenceStore` has the evidence | `CompletionSubmittedIE` |
 | `ProviderViewReservations`, `ProviderViewReservation` | The provider sees the access notes from acceptance | (query) | — |
 
 **Either party, and the founders**
@@ -314,8 +436,56 @@ Spec: *How Homa Works*, *Reservation Lifecycle*, *Request*, *Acceptance*, *Check
 | `TeamMemberLapsedIE`, `TeamMemberRemovedIE` | A lapsed or removed person comes off every upcoming job at once | `Reservation` on each (rule R13) | `TeamMemberDroppedIE` or `TeamMemberStoppedIE` |
 | The listing, policy, verification, team and customer events | — | Update the projections | — |
 
-- **Out ports:** `ReservationRepository`, `EnquiryRepository`, the projections, `NoShowSettlements` (rule R6), `CheckInLocations` (rule R14), `ReservationIEPublisher`, `ProviderAvailability`, `Geoservice`, `IdentityVerificationService`, `EvidenceStore`, `AdminAuditLog`.
-- **Usecase exceptions:** `ReservationNotFoundException`, `EnquiryNotFoundException`, `NotYourReservationException`, `ListingNotAvailableException` (not live any more), `ListingPausedException`, `ProviderNotAvailableException`, `ProviderStillFlaggedException`, `AdminReasonRequiredException`, `ChangedMeanwhileException`.
+**Out ports**
+
+```java
+ReservationRepository.byId(String id) : Optional<Reservation>
+ReservationRepository.inStatus(Set<ReservationStatus> statuses) : List<Reservation>  // for the timed usecases; each asks the domain what is due
+ReservationRepository.openRequestsOf(String providerId) : List<Reservation>
+ReservationRepository.acceptedOf(String providerId) : List<Reservation>              // reserved, or disputed over the job
+ReservationRepository.naming(String memberId) : List<Reservation>                    // whose named team includes them
+ReservationRepository.ofCustomer(String customerId) : List<Reservation>
+ReservationRepository.ofProvider(String providerId) : List<Reservation>
+ReservationRepository.save(Reservation reservation)
+EnquiryRepository.byId(String id) : Optional<Enquiry>
+EnquiryRepository.open() : List<Enquiry>                                             // not requested yet
+EnquiryRepository.ofCustomer(String customerId) : List<Enquiry>
+EnquiryRepository.save(Enquiry enquiry)
+ReservationIEPublisher.publish(ReservationIE event)
+AdminAuditLog.record(AdminAction action)
+
+LiveOfferings.of(String providerId) : Optional<OfferingSnapshot>     // empty when the listing isn't live
+LiveOfferings.isPaused(String providerId) : boolean
+LiveOfferings.keep(String providerId, OfferingSnapshot offering), remove(String providerId),
+              pause(String providerId), resume(String providerId)
+PolicyInForce.current() : Optional<PolicySnapshot>
+PolicyInForce.keep(PolicySnapshot policy)
+ProviderVerifications.verifiedUntil(String providerId) : Optional<Instant>
+ProviderVerifications.isFlagged(String providerId) : boolean
+ProviderVerifications.keepVerifiedUntil(String providerId, Instant until), flag(String providerId), clearFlag(String providerId)
+CustomerDetails.addressOf(String customerId) : Optional<Address>
+CustomerDetails.pinOf(String customerId) : Optional<Pin>
+CustomerDetails.accessNotesOf(String customerId) : String           // empty when none
+CustomerDetails.keepAddress(String customerId, Address address, Pin pin), keepAccessNotes(String customerId, String notes)
+TeamRosters.of(String providerId) : TeamRoster
+TeamRosters.memberOn(String providerId, String memberId, String role), memberOff(String providerId, String memberId)
+NoShowSettlements.keep(Settlement settlement)                        // rule R6
+NoShowSettlements.dueBy(Instant now) : List<Settlement>              // report window ended
+NoShowSettlements.drop(String reservationId)                         // challenged, or released
+CheckInLocations.keep(String reservationId, Pin pin)                 // rule R14
+CheckInLocations.of(String reservationId) : Optional<Pin>
+StepsDone.isDone(String step, String subjectId) : boolean            // a reminder sent, an enquiry closed
+StepsDone.markDone(String step, String subjectId, Instant at)
+StepsDone.clear(String step, String subjectId)                       // the team became incomplete again: remind again
+
+ProviderAvailability.isFree(String providerId, Instant start, Instant end) : boolean
+Geoservice.distanceMetres(Pin from, Pin to) : int
+KycProvider.startFaceCheck(String reservationId, String memberId) : Handoff
+EvidenceStore.areStored(List<EvidenceRef> evidence) : boolean       // the app uploaded each photo or video first
+    // Pin(double latitude, double longitude), declared in port/out, because reservation's Address has no pin
+```
+
+- **Usecase exceptions:** `ReservationNotFoundException`, `EnquiryNotFoundException`, `NotYourReservationException`, `ListingNotAvailableException` (not live any more), `ListingPausedException`, `ProviderNotAvailableException`, `ProviderStillFlaggedException`, `EvidenceNotStoredException`, `CheckInLocationNotKnownException`, `AdminReasonRequiredException`, `ChangedMeanwhileException`.
 
 ### payment
 
@@ -323,8 +493,8 @@ Spec: *Payment Protection*, *Request Policy* (payment on edit), *Provider Cancel
 
 | Handler | Spec | Orchestrates | Publishes |
 |---|---|---|---|
-| `ReservationRequestedIE` | A card is authorised when submitting the request; FPX is paid in full | Starts the payment through `PaymentGateway`, and keeps it as pending (rule R2) | — |
-| `ReservationEditedIE` | A new authorisation for the new total replaces the old one; FPX pays any increase, and any decrease is refunded | `Payment` | `PaymentSecuredIE` with the new amount, or `PaymentFailedIE` |
+| `ReservationRequestedIE` | A card is authorised when submitting the request; FPX is paid in full | `PaymentProvider.startPayment`, and keeps the handoff for the app (rule R2); keeps the fine deduction cap in force for this reservation (rule R15) | — |
+| `ReservationEditedIE` | A new authorisation for the new total replaces the old one; FPX pays any increase, and any decrease is refunded | An FPX decrease: `Payment.adjustTotal` and a refund at once. Otherwise `PaymentProvider.adjust`, and the new amount is secured when the payment provider reports it | An FPX decrease: `PaymentSecuredIE` with the new amount, and `PaymentRefundedIE`. Otherwise nothing yet |
 | `ReservationAcceptedIE` | A card is charged only when the reservation is accepted | `Payment` | `PaymentCapturedIE` |
 | `ReservationDeclinedIE`, `ReservationExpiredIE`, `RequestCancelledIE`, `RequestDeclinedForTakenTimeIE` | A card authorisation is released, or an upfront payment is refunded in full | `Payment` | `PaymentRefundedIE` for an FPX refund |
 | `SettlementDecidedIE` | Homa holds every charged payment until it is released or refunded; payouts per reservation; fines deducted from completed-job payouts within the cap, oldest first | `Payment`, `Payout`, `FineDeductionPolicy` (rule R7 for a flagged business) | `PaymentRefundedIE`, `PayoutCreatedIE`, `PayoutHeldIE` |
@@ -335,17 +505,51 @@ Spec: *Payment Protection*, *Request Policy* (payment on edit), *Provider Cancel
 
 | Usecase | Spec | Orchestrates | Publishes |
 |---|---|---|---|
-| `PaymentProviderRecordCardAuthorised`, `PaymentProviderRecordFpxPaid` | Paid before the provider answers | `Payment` | `PaymentSecuredIE` |
-| `PaymentProviderRecordPaymentFailed` | If the card is declined, or the FPX payment fails or is abandoned, the request ends | (no `Payment` exists; rule R2) | `PaymentFailedIE` |
+| `PaymentProviderRecordCardAuthorised`, `PaymentProviderRecordFpxPaid` | Paid before the provider answers; after an edit, the new total is secured | `Payment` (created, or `adjustTotal` after an edit) | `PaymentSecuredIE` |
+| `PaymentProviderRecordPaymentFailed` | If the card is declined, or the FPX payment fails or is abandoned, the request ends | After an edit, the `Payment` held from before is ended first (rule R2) | `PaymentFailedIE` |
 | `PaymentProviderRecordChargeback` | A customer who disputes a card payment with their bank after the job opens a case for Homa | Finds the reservation's `Payment` | `ChargebackReceivedIE` |
 | `PaymentProviderRecordRefund`, `PaymentProviderRecordPayoutPaid`, `PaymentProviderRecordPayoutFailed` | The app shows the refund status; the provider's payouts | Record the status | — |
 | `HomaWaiveFine` | Homa can waive a fine after review, once, with a reason | `Fine` (rule A5) | `FineWaivedIE` |
 | `HomaReleasePayout`, `HomaWithholdPayout` | The founders release held payouts or keep them back, with a reason | `Payout` | `PayoutHoldReleasedIE`, `PayoutWithheldIE` |
-| `CustomerViewPaymentToComplete` | You pay by card or online banking (FPX) | (query: what the app needs to finish paying, as `PaymentGateway` gave it) | — |
+| `CustomerViewPaymentToComplete` | You pay by card or online banking (FPX) | (query: the handoff `PaymentProvider.startPayment` or `adjust` gave) | — |
 | `CustomerViewPayments` | The account shows payments and refunds with their status and expected timing; a receipt for each | (query) | — |
 | `ProviderViewIncome` | Earnings, payouts with a statement each, and any fines being deducted | (query) | — |
 
-- **Out ports:** `PaymentRepository`, `PendingPayments`, `PayoutRepository`, `FineRepository`, the projections, `PaymentIEPublisher`, `PaymentGateway`, `PayoutGateway`, `AdminAuditLog`.
+**Out ports**
+
+```java
+PaymentRepository.byReservation(String reservationId) : Optional<Payment>
+PaymentRepository.save(Payment payment)
+PayoutRepository.byId(String id) : Optional<Payout>
+PayoutRepository.notPaidOutOf(String providerId) : List<Payout>
+PayoutRepository.ofProvider(String providerId) : List<Payout>
+PayoutRepository.save(Payout payout)
+FineRepository.byId(String id) : Optional<Fine>
+FineRepository.outstandingOf(String providerId) : List<Fine>            // oldest first
+FineRepository.ofProvider(String providerId) : List<Fine>
+FineRepository.save(Fine fine)
+PaymentIEPublisher.publish(PaymentIE event)
+AdminAuditLog.record(AdminAction action)
+
+PaymentHandoffs.keep(String reservationId, Handoff handoff)             // the latest one: at request, or after an edit
+PaymentHandoffs.of(String reservationId) : Optional<Handoff>
+PaymentHandoffs.reservationFor(String reference) : Optional<String>
+FlaggedBusinesses.isFlagged(String providerId) : boolean
+FlaggedBusinesses.flag(String providerId), clear(String providerId)
+DeductionCaps.keepCurrent(Percentage cap)                               // from HomaPolicyChangedIE
+DeductionCaps.keepFor(String reservationId)                             // the current cap, at request (rule R15)
+DeductionCaps.capFor(String reservationId) : Optional<Percentage>
+
+PaymentProvider.startPayment(String reservationId, PaymentMethod method, Money total) : Handoff
+PaymentProvider.adjust(String reference, Money newTotal) : Handoff      // a new card authorisation, or an FPX increase to pay
+PaymentProvider.cancel(String reference)                                // a payment the customer hasn't finished
+PaymentProvider.capture(String reference, Money amount)                 // the card is charged on acceptance
+PaymentProvider.carryOut(String reference, PaymentInstruction instruction)
+    // release an authorisation, refund the customer, collect from them; from the instruction's notBefore.
+    // The provider's earning leaves only through a payout, and the service fee stays with Homa
+PaymentProvider.payOut(String payoutId, String providerId, Money net)   // a payable payout only
+```
+
 - **Usecase exceptions:** `PaymentNotFoundException`, `PayoutNotFoundException`, `FineNotFoundException`, `AdminReasonRequiredException`, `ChangedMeanwhileException`.
 
 ### resolution
@@ -365,7 +569,22 @@ Spec: *Dispute Policy*, *Payment Protection* (chargebacks), *Homa Admin: Reports
 | `CompletionSubmittedIE` | Completion submitted while Disputed: the evidence goes to Homa's review | `Case`, when one is open | — |
 | `ReservationFlaggedIE` | A case already open for a reservation the flag takes over is closed without a decision | `Case` | `CaseClosedForProviderFlagIE` |
 
-- **Out ports:** `CaseRepository`, `ResolutionIEPublisher`, `AdminAuditLog`.
+Handler for the projection: `ReservationRequestedIE` keeps who the reservation belongs to.
+
+**Out ports**
+
+```java
+CaseRepository.byId(String id) : Optional<Case>
+CaseRepository.openFor(String reservationId) : Optional<Case>
+CaseRepository.open() : List<Case>                         // the usecase orders them with Case.QUEUE_ORDER
+CaseRepository.save(Case c)
+ResolutionIEPublisher.publish(ResolutionIE event)
+AdminAuditLog.record(AdminAction action)
+
+CaseParties.of(String reservationId) : Optional<Parties>   // Parties(String customerId, String providerId)
+CaseParties.keep(String reservationId, String customerId, String providerId)
+```
+
 - **Usecase exceptions:** `CaseNotFoundException`, `NotYourCaseException`, `ChangedMeanwhileException`.
 
 ### conversation
@@ -382,7 +601,23 @@ Spec: *Chat*.
 
 Handlers: `EnquiryCreatedIE` (remember whose enquiry it is, so the customer's first message starts its chat); `EnquiryRequestedIE` (the same chat carries on); `ReservationRequestedIE` (requesting opens the reservation's chat with no message, unless it already has one; rule R12); `EnquiryClosedIE` (the chat is archived); the case-opening events (rule A4). conversation publishes no events.
 
-- **Out ports:** `ConversationRepository`, the projections, `AdminAuditLog`.
+**Out ports**
+
+```java
+ConversationRepository.byId(String id) : Optional<Conversation>
+ConversationRepository.forEnquiry(String enquiryId) : Optional<Conversation>
+ConversationRepository.forReservation(String reservationId) : Optional<Conversation>
+ConversationRepository.ofCustomer(String customerId) : List<Conversation>
+ConversationRepository.ofProvider(String providerId) : List<Conversation>
+ConversationRepository.save(Conversation conversation)
+AdminAuditLog.record(AdminAction action)                    // each opening of a chat for a case (rule A4)
+
+EnquiryParties.of(String enquiryId) : Optional<Parties>     // Parties(String customerId, String providerId)
+EnquiryParties.keep(String enquiryId, String customerId, String providerId)
+ReservationsWithCase.hasCase(String reservationId) : boolean
+ReservationsWithCase.caseOpened(String reservationId)
+```
+
 - **Usecase exceptions:** `ChatNotFoundException`, `NotYourChatException`, `EnquiryNotFoundException`, `ChatAlreadyStartedException`, `NoCaseForReservationException`.
 
 ### discovery
@@ -396,7 +631,33 @@ Spec: *How Homa Works* (search and browse), *Provider page*, *Privacy Policy* (s
 
 Handlers: the projections listed earlier.
 
-- **Out ports:** the projections, `ProviderAvailability`, `DiscoveryIEPublisher`.
+**Out ports**
+
+```java
+DiscoveryIEPublisher.publish(DiscoveryIE event)
+
+SearchableListings.inCity(City city) : List<ListedProvider>     // live and not paused
+SearchableListings.of(String providerId) : Optional<ListedProvider>
+SearchableListings.keep(ListedProvider listing), remove(String providerId), pause(String providerId), resume(String providerId),
+                   insure(String providerId, Instant validUntil), uninsure(String providerId)
+    // ListedProvider: the provider, jobs, tools, hourly rate, travel fee, hours, helpers, cities, cancellation tier,
+    // Instant book and insured-until, from the listing events; declared in port/out
+ProviderVerifications.verifiedUntil(String providerId) : Optional<Instant>
+ProviderVerifications.keepVerifiedUntil(String providerId, Instant until)
+SearchLimitsInForce.current() : Optional<SearchLimits>
+SearchLimitsInForce.keep(SearchLimits limits)
+CatalogueNames.job(JobCode job) : Optional<JobName>             // JobName(String name, String group)
+CatalogueNames.tools() : Map<ToolCode, String>                  // every tool, to show the ones not brought
+CatalogueNames.keepJob(JobCode job, String name, String group), keepTool(ToolCode tool, String name)
+ProviderRecords.of(String providerId) : ProviderRecord          // ProviderRecord(int jobsDone, int cancellations)
+ProviderRecords.earned(String reservationId, String providerId, Money earning)   // from SettlementDecidedIE
+ProviderRecords.completed(String reservationId)                 // from ReservationCompletedIE; a job counts once both say paid above RM0
+ProviderRecords.fined(String providerId, String reservationId)  // a late cancellation or no-show, from FineChargedIE
+
+ProviderAvailability.nearestFreeStart(String providerId, Instant start, Instant end,
+                                      Duration within, Instant earliest, Instant latest) : Optional<Instant>
+```
+
 - **Usecase exceptions:** `ProviderNotFoundException`, `SearchLimitsNotKnownException`.
 
 ### feedback
@@ -413,7 +674,32 @@ Spec: *Rating Policy*, *Ratings*, *Homa Admin: Ratings*.
 
 Handlers: the projections listed earlier. Only `ReservationCompletedIE` makes a reservation rateable.
 
-- **Out ports:** `RatingRepository`, `RatingSummaryRepository`, the projections, `FeedbackIEPublisher`, `AdminAuditLog`.
+**Out ports**
+
+```java
+RatingRepository.byId(String id) : Optional<Rating>
+RatingRepository.forReservation(String reservationId) : Optional<Rating>
+RatingRepository.ofProvider(String providerId) : List<Rating>        // newest first
+RatingRepository.all() : List<Rating>                                // newest first, for the founders
+RatingRepository.save(Rating rating)
+RatingSummaryRepository.forProvider(String providerId) : RatingSummary   // a new, empty one when none yet
+RatingSummaryRepository.forMember(String memberId) : RatingSummary
+RatingSummaryRepository.save(RatingSummary summary)
+FeedbackIEPublisher.publish(FeedbackIE event)
+AdminAuditLog.record(AdminAction action)
+
+RateableReservations.of(String reservationId) : Optional<RateableReservation>
+RateableReservations.requested(String reservationId, String customerId, String providerId),
+                     teamNamed(String reservationId, Set<String> memberIds),
+                     memberDropped(String reservationId, String memberId),
+                     completed(String reservationId, Instant at),
+                     rated(String reservationId)
+FeedbackLimitsInForce.keepCurrent(Duration ratingWindow, int minimumRatingsToShow)
+FeedbackLimitsInForce.keepFor(String reservationId)                  // the current rating window, at request (rule R15)
+FeedbackLimitsInForce.forReservation(String reservationId) : Optional<FeedbackLimits>   // its window, today's minimum
+FeedbackLimitsInForce.current() : Optional<FeedbackLimits>          // for showing averages
+```
+
 - **Usecase exceptions:** `ReservationNotKnownException`, `RatingNotFoundException`, `AdminReasonRequiredException`, `ChangedMeanwhileException`.
 
 ## Rules the usecases must keep
@@ -431,10 +717,10 @@ These are the spec's rules that no single domain object can keep, because they s
    | Unchanged | none | none | none |
 
 2. **R2. A request is paid before the provider answers, and never waits unpaid** (*Payment Protection*).
-   - On `ReservationRequestedIE`, payment starts the payment through `PaymentGateway` and keeps it as pending. The customer finishes paying in the app, and the payment provider's result arrives through a `PaymentProvider…` usecase.
+   - On `ReservationRequestedIE`, payment calls `PaymentProvider.startPayment` and keeps the handoff. The customer finishes paying in the app, and the payment provider's result arrives through a `PaymentProviderRecord…` usecase. After an edit, `PaymentProvider.adjust` works the same way.
    - payment publishes `PaymentSecuredIE` with the amount; reservation records it, and `ProviderViewRequests` lists only requests whose payment is secured.
    - After an edit that raises the total, the request waits for the new amount.
-   - A failed or abandoned payment publishes `PaymentFailedIE`; reservation ends the request and publishes nothing more. A payment held from before an edit is released or refunded first. A request that ends while still unpaid cancels the pending payment.
+   - A failed or abandoned payment publishes `PaymentFailedIE`; reservation ends the request and publishes nothing more. A payment held from before an edit is released or refunded first. A request that ends while still unpaid cancels the payment with `PaymentProvider.cancel`.
    - A request ends with exactly one event, and payment treats all four the same way: `ReservationDeclinedIE`, `ReservationExpiredIE`, `RequestCancelledIE`, `RequestDeclinedForTakenTimeIE`.
 3. **R3. Availability is checked at request, at edit and at acceptance** (*Acceptance Policy*, *Chat*).
    - A time the provider isn't free is refused (`ProviderNotAvailableException`).
@@ -459,7 +745,7 @@ These are the spec's rules that no single domain object can keep, because they s
    - A live listing that goes offline publishes `ListingWentOfflineIE` plus `ListingWentOfflineForRetiredJobIE` or `ListingWentOfflineForHoursIE`.
    - A draft, or a listing the change doesn't touch, publishes nothing.
    - Requests and reservations already made are never touched by a listing going offline or pausing.
-9. **R9. Homa never marks anyone verified by itself** (*Verification Policy*). Only a result reported by the KYC provider, through a `KycProvider…` usecase, changes a verification. `IdentityVerificationService` only starts checks.
+9. **R9. Homa never marks anyone verified by itself** (*Verification Policy*). Only a result reported by the KYC provider, through a `KycProviderRecord…` usecase, changes a verification. The `KycProvider` port only starts checks and asks for re-checks.
 10. **R10. Every search is recorded, without the customer** (*Privacy Policy*). `SearchPerformedIE` carries what was searched for and how many providers matched, and nothing about who searched. A paused listing is left out of search.
 11. **R11. The customer sees who can work** (*Check-in Policy*). `CustomerViewReservation` shows each named person's face check result and time, and marks anyone who cannot work.
 12. **R12. Requesting from an enquiry keeps one chat** (*Chat*). `EnquiryRequestedIE` is published before `ReservationRequestedIE`, so conversation carries the enquiry's chat on and opens no second one.
@@ -526,7 +812,7 @@ From the discipline, §9, for the `usecase` layer:
 
 Listed so nothing is lost. None of it is planned here.
 
-- **Infra:** repositories and storage, controllers, the webhooks of the KYC provider and the payment provider, the choice of each outside service and its SDK, the scheduler that calls the `Homa…` timed usecases, security, event delivery and transactions, the adapters behind `SmsSender`, `Geocoder`, `Geoservice`, `IdentityVerificationService`, `PaymentGateway`, `PayoutGateway`, `CalendarService` and `EvidenceStore`, evidence retention, and `app/`, which also joins `ProviderAvailability` to `AvailabilityChecker`.
+- **Infra:** repositories and storage, controllers, the webhooks of the KYC provider and the payment provider, the choice of each outside service and its SDK, the scheduler that calls the `Homa…` timed usecases, security, event delivery and transactions, the adapters behind the out ports (`KycProvider`, `PaymentProvider`, `CalendarProvider`, `SmsProvider`, `Geoservice`, `EvidenceStore`, `VerificationCodes`, the repositories and the projections), evidence retention, and `app/`, which also joins `ProviderAvailability` to `AvailabilityChecker`.
 - **Modules without a bounded context:** sending push notifications, the admin console's tracking views, and recording data requests.
 - **The domain:** not changed by this plan. No usecase here needs a domain change.
 
