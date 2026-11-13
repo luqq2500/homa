@@ -26,7 +26,7 @@ src/main/java/
   ie/port/                      one integration event interface per publishing context
   ie/events/                    the integration event records
 src/test/java/                  the same packages, one test class per feature
-docs/                           the product description, the domain stories, the plans, the module discipline, the domain audit and the domain closing report
+docs/                           the product description, the domain stories, the domain and usecase plans, the module discipline, the domain audit and the domain closing report
 tools/quality_gates.py          CRAP gate, per-context mutation gate and ratchet
 quality/ratchet.json            last passing mutation score per layer
 ```
@@ -83,9 +83,14 @@ The domain phase is complete: see `docs/domain-closing-report.md`, and its adden
 
 ### Usecase phase
 
-Not started. The usecase plan is still to be written, following the backend module discipline and the
-domain plan's conventions. An earlier start was removed so the phase begins fresh from the domain as it
-now stands; it is in git history up to `170c533`.
+Planned, not started: see `docs/homa-usecase-plan.md` (draft for the product owner's review). It finds
+that the domain is ready with changes: 14 findings, in a "Step 0" of small domain and `ie/` changes (a
+shared `TimeRange` and the provider's free time reaching reservation and discovery, the customer's
+address, releasing a customer no-show fee, the 72-hour decision target, a payout's executed state, and
+a few events) and three contexts the spec needs and the domain plan never defined (`notification`,
+`tracking`, `privacy`). It then orders 16 slices, from `catalogue` and `policy` to the last context.
+An earlier start was removed so the phase begins fresh from the domain as it now stands; it is in git
+history up to `170c533`.
 
 ### Decisions taken while building
 
