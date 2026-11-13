@@ -137,9 +137,11 @@
                     <!-- One entry per context. Add each new context here as it is built. -->
                     <targetClasses>
                         <param>kernel.*</param>
+                        <param>policy.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>kernel.*</param>
+                        <param>policy.*</param>
                     </targetTests>
                     <excludedTestClasses>
                         <param>*ArchitectureTest</param>

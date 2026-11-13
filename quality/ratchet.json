@@ -1,6 +1,14 @@
 {
   "kernel": {
-    "score": 98.46,
-    "strength": 98.46
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "policy.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "policy.usecase": {
+    "score": 100.0,
+    "strength": 100.0
   }
 }

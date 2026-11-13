@@ -90,6 +90,7 @@ class TimeRangeTest {
     void overlappingRangesAreJoinedAndSeparateOnesKeptInOrder() {
         assertThat(TimeRange.merge(List.of(range(15, 16), range(10, 13), range(11, 12), range(12, 14))))
                 .containsExactly(range(10, 14), range(15, 16));
+        assertThat(TimeRange.merge(List.of(range(10, 14), range(11, 12)))).containsExactly(range(10, 14));
         assertThat(TimeRange.merge(List.of())).isEmpty();
     }
 

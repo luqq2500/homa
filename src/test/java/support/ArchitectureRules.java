@@ -32,6 +32,19 @@ public final class ArchitectureRules {
         onlyDependsOn(context + ".usecase", context + ".usecase..", context + ".domain..", "kernel..", "ie..", "java..");
     }
 
+    /** Every event in ie/events is a record that implements an event interface from ie/port. */
+    public static void integrationEventsAreRecordsBehindAnInterface() {
+        JavaClasses events = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("ie");
+        classes().that().resideInAPackage("ie.events..")
+                .should().beRecords()
+                .andShould().implement(com.tngtech.archunit.base.DescribedPredicate.describe(
+                        "an event interface from ie.port", type -> type.getPackageName().equals("ie.port")))
+                .check(events);
+        classes().that().resideInAPackage("ie.port..").should().beInterfaces().check(events);
+    }
+
     private static void onlyDependsOn(String module, String... allowed) {
         JavaClasses production = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
