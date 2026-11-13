@@ -484,7 +484,7 @@ These are the spec's rules that no single domain object can keep, because they s
 
 ## Build order
 
-The discipline's order is domain, then usecase, then infra (§8). Within this phase, contexts are built so each one's handlers have events to listen to. A context passes its gates before the next starts.
+The usecase modules are built in this order, so each one's handlers have events to listen to. Each `ie/` addition is built with the usecase that publishes it. A context passes its gates before the next starts.
 
 1. `catalogue`
 2. `policy`
