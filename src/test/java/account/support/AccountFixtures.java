@@ -2,6 +2,7 @@ package account.support;
 
 import account.domain.Address;
 import account.domain.BusinessAccount;
+import account.domain.CodeCheck;
 import account.domain.CustomerAccount;
 import account.domain.Language;
 import account.domain.PhoneNumber;
@@ -24,8 +25,8 @@ public final class AccountFixtures {
 
     /** A verification whose code was confirmed, ready to register an account. */
     public static PhoneVerification verified(PhoneNumber phone) {
-        PhoneVerification verification = PhoneVerification.send(phone, CODE, NOW);
-        verification.confirm(CODE, NOW);
+        PhoneVerification verification = PhoneVerification.start(phone);
+        verification.confirm(CodeCheck.PASSED);
         return verification;
     }
 

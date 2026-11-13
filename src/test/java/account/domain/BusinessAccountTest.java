@@ -1,6 +1,5 @@
 package account.domain;
 
-import static account.support.AccountFixtures.CODE;
 import static account.support.AccountFixtures.NOW;
 import static account.support.AccountFixtures.PHONE;
 import static account.support.AccountFixtures.business;
@@ -29,7 +28,7 @@ class BusinessAccountTest {
 
     @Test
     void aBusinessCannotRegisterWithAPhoneNumberThatIsNotVerified() {
-        assertThatThrownBy(() -> BusinessAccount.register(PhoneVerification.send(PHONE, CODE, NOW), Language.MALAY))
+        assertThatThrownBy(() -> BusinessAccount.register(PhoneVerification.start(PHONE), Language.MALAY))
                 .isInstanceOf(PhoneNotVerifiedException.class);
     }
 

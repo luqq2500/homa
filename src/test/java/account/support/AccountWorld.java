@@ -3,6 +3,7 @@ package account.support;
 import static account.support.AccountFixtures.CODE;
 import static account.support.AccountFixtures.NOW;
 
+import account.domain.CodeCheck;
 import account.domain.PhoneNumber;
 import account.usecase.GuestConfirmPhoneCode;
 import account.usecase.GuestRegisterBusiness;
@@ -13,8 +14,7 @@ import account.usecase.dto.RegisterBusinessRequest;
 import account.usecase.dto.RegisterCustomerRequest;
 import account.usecase.dto.RequestPhoneCodeRequest;
 import account.usecase.port.out.CityLocator;
-import account.usecase.port.out.CodeGenerator;
-import account.usecase.port.out.SmsSender;
+import account.usecase.port.out.PhoneVerifier;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -31,18 +31,30 @@ public final class AccountWorld {
     public final InMemoryDataRequestRepository dataRequests = new InMemoryDataRequestRepository();
     public final RecordingAccountIEPublisher publisher = new RecordingAccountIEPublisher();
     public final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-    public final CodeGenerator codes = () -> CODE;
-    public final List<String> sentSms = new ArrayList<>();
-    public final SmsSender sms = (phone, code) -> sentSms.add(phone.value() + " " + code);
+    /** The phone numbers the SMS provider was asked to send a code to. */
+    public final List<String> codesSentTo = new ArrayList<>();
+    /** What the SMS provider answers for a code other than the right one. */
+    public CodeCheck answerForOtherCodes = CodeCheck.WRONG;
+    public final PhoneVerifier verifier = new PhoneVerifier() {
+        @Override
+        public void sendCode(PhoneNumber phone) {
+            codesSentTo.add(phone.value());
+        }
+
+        @Override
+        public CodeCheck checkCode(PhoneNumber phone, String code) {
+            return CODE.equals(code) ? CodeCheck.PASSED : answerForOtherCodes;
+        }
+    };
     /** Where the geoservice finds every pin; empty when the pin is outside Homa's cities. */
     public Optional<City> cityOfPins = Optional.of(City.CYBERJAYA);
     public final CityLocator cities = pin -> cityOfPins;
 
     /** A phone number whose SMS code was requested and confirmed. Returns the verification's id. */
     public String verifiedPhone(String phone) {
-        String verificationId = new GuestRequestPhoneCode(verifications, codes, sms, clock)
+        String verificationId = new GuestRequestPhoneCode(verifications, verifier)
                 .request(new RequestPhoneCodeRequest(phone)).verificationId();
-        new GuestConfirmPhoneCode(verifications, customers, businesses, clock)
+        new GuestConfirmPhoneCode(verifications, customers, businesses, verifier)
                 .confirm(new ConfirmPhoneCodeRequest(verificationId, CODE));
         return verificationId;
     }

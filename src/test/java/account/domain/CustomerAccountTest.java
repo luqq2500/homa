@@ -1,6 +1,5 @@
 package account.domain;
 
-import static account.support.AccountFixtures.CODE;
 import static account.support.AccountFixtures.HOME;
 import static account.support.AccountFixtures.NOW;
 import static account.support.AccountFixtures.PHONE;
@@ -38,7 +37,7 @@ class CustomerAccountTest {
 
     @Test
     void aCustomerCannotRegisterWithAPhoneNumberThatIsNotVerified() {
-        PhoneVerification unconfirmed = PhoneVerification.send(PHONE, CODE, NOW);
+        PhoneVerification unconfirmed = PhoneVerification.start(PHONE);
 
         assertThatThrownBy(() -> CustomerAccount.register(unconfirmed, "Aisyah", HOME, Language.ENGLISH))
                 .isInstanceOf(PhoneNotVerifiedException.class);

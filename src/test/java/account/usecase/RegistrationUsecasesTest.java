@@ -79,7 +79,7 @@ class RegistrationUsecasesTest {
 
     @Test
     void aCustomerCannotRegisterWithoutConfirmingTheCode() {
-        String unconfirmed = new GuestRequestPhoneCode(world.verifications, world.codes, world.sms, world.clock)
+        String unconfirmed = new GuestRequestPhoneCode(world.verifications, world.verifier)
                 .request(new RequestPhoneCodeRequest("0123456789")).verificationId();
 
         assertThatThrownBy(() -> customerRegistrator.register(customerRequest(unconfirmed)))
