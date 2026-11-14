@@ -119,6 +119,10 @@ Homa sells **a provider's time**. The customer chooses what they want done and f
 6. **Job day:** you can see who is coming. At the door, every person who came verifies their face, the team does the job, and the provider marks it completed with photo or video evidence.
 7. **Payout:** after the dispute window ends without a report, Homa releases the payment to the provider.
 
+### A provider's offering
+
+What a provider offers customers is their **offering**: the jobs they offer and the tools they bring, the cities they cover, the range of helpers per booking and when a supervisor is sent, the hourly rate per helper and how the travel fee works, the range of hours, the cancellation policy, the acceptance policy, and any liability insurance. It is shown under the provider's profile name and picture. Each provider has one offering. It is **live** when customers can find and reserve it, **paused** while it takes no new requests, and **offline** until the provider goes live again. Homa calls it the provider's **offering** everywhere, in the apps, the admin console and the code, never a listing.
+
 ### Time
 
 start times are in 15-minute steps. A start time must be at least the **minimum notice** from now and no later than the **booking horizon**. Duration is in whole hours, from 1 to 6 hours, within the provider's own minimum and maximum. A request must fit both Homa's duration range and the provider's own hours. Bookable times come from each provider's own calendar.
@@ -473,14 +477,14 @@ Every chat belongs to one reservation.
 
 ## Provider App
 
-Homa has a separate app that helps providers manage their reservations, calendar and offerings, and monitor their income.
+Homa has a separate app that helps providers manage their reservations, calendar and offering, and monitor their income.
 
 ### Onboarding
 
 1. **Register the business** with a phone number.
 2. **Verify:** complete KYB on the KYC provider's pages: the business's SSM registration and the owner's or director's KYC, in one flow.
 3. **Set up your team:** a business starts with no team members, and can add them once its KYB has passed. Add helpers and supervisors with the person beside you: choose the role and take their profile photo, they verify on the spot with the KYC provider on your phone, scanning their own document and taking their own selfie, and once verified you confirm they are lawfully employed by or engaged with you. They join your team then.
-4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
+4. **Set up the profile and offering:** profile name and picture, and the offering, including when a supervisor is sent.
 5. **Add a payout account:** a business bank account.
 6. **Go live** once everything is set up.
 
@@ -494,7 +498,7 @@ A provider adds helpers and supervisors and manages the team in Homa. Only peopl
 
 - **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
-- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Offering:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
 - **Verification:** see when the business and each team member are next due for re-verification, and run each re-verification on the spot with the person present.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
