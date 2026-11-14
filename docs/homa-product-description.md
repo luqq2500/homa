@@ -95,7 +95,7 @@ The admins review these monthly in the admin console. First targets are set from
 - Providers accept Homa's fixed policies and fines in return for the customers Homa brings.
 - Enough providers choose Instant book to make knowing at once the normal experience.
 - Three neighbouring cities have enough demand and supply to start.
-- Providers accept a 12% platform fee from their payouts in return for the customers and protection Homa brings, rather than finding customers directly.
+- Providers accept a 10% platform fee from their payouts in return for the customers and protection Homa brings, rather than finding customers directly.
 
 # Part 2: Product rules
 
@@ -159,7 +159,7 @@ A provider offers at least one job and covers at least one city. Bringing no too
 
 The **hours fee** is the hourly rate per helper × the number of helpers × the hours. Supervisors are not charged; their cost is part of the provider's hourly rate. The **provider price** is the hours fee plus the travel fee when it is charged separately.
 
-Homa earns a **platform fee** of 12% of what the provider earns, taken from the provider's payout. It is not charged to the customer as a separate fee: the **total** the customer pays is the provider price, and the customer never sees a Homa fee, whether on the provider page, the review page, at payment, in their payments and refunds, or on a receipt. The provider sees it: next to their hourly rate, the provider app shows what they receive after Homa's platform fee, and each payout statement shows it. The provider's **payout** is what they earn from a reservation, less Homa's platform fee and any fine deducted.
+Homa earns a **platform fee** of 10% of what the provider earns, taken from the provider's payout. It is not charged to the customer as a separate fee: the **total** the customer pays is the provider price, and the customer never sees a Homa fee, whether on the provider page, the review page, at payment, in their payments and refunds, or on a receipt. The provider sees it: next to their hourly rate, the provider app shows what they receive after Homa's platform fee, and each payout statement shows it. The provider's **payout** is what they earn from a reservation, less Homa's platform fee and any fine deducted.
 
 There are no quotes. Choosing fewer jobs within a booking does not change the price, because you are buying the provider's time. Providers bring their own tools.
 
@@ -200,7 +200,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - A customer no-show fee is released when the **no-show report window** ends without the customer reporting it, and the customer's refund of the rest is paid at the same time. If the customer reports it, Homa investigates and decides whether to release the fee or refund the customer, and both parts are paid after the decision.
 - Released payments are paid out to the provider per reservation.
 - **Refunds** always go back to the original payment method. They take as long as the bank needs; for FPX this can be a week or more, so the app shows the customer the refund status and the expected timing.
-- Homa's platform fee follows what the provider finally earns from the reservation: 12% of the provider price for a completed job, of a cancellation fee, or of a customer no-show fee, and nothing when the customer is refunded in full. It comes off the provider's payout; the customer's refund never pays it.
+- Homa's platform fee follows what the provider finally earns from the reservation: 10% of the provider price for a completed job, of a cancellation fee, or of a customer no-show fee, and nothing when the customer is refunded in full. It comes off the provider's payout; the customer's refund never pays it.
 - **Chargebacks:** a customer who disputes a card payment with their bank after the job opens a case for Homa. Homa answers the bank with the reservation's evidence. If Homa decides the provider is responsible, the amount is recovered from the provider's next payouts the same way as a fine (see Provider Cancellation Fines); otherwise the provider keeps their payout and Homa contests the chargeback.
 - **Processing fees:** Homa pays the payment provider's fees out of its platform fee, including on refunds. Customers and providers never pay them.
 - **Receipts:** the customer gets a receipt for each payment and refund, and the provider a statement for each payout, showing what they earned, Homa's platform fee, any fine deducted and what they receive. The customer's receipt shows the total paid, with no Homa fee. **Before launch, an accountant confirms the service tax and e-invoicing rules for Homa's platform fee.**
@@ -401,7 +401,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 | Value | Used by | Setting |
 |---|---|---|
-| **Platform fee** | Pricing | 12% of what the provider earns from a reservation, taken from their payout; never a separate fee for the customer |
+| **Platform fee** | Pricing | 10% of what the provider earns from a reservation, taken from their payout; never a separate fee for the customer |
 | **Duration range** | How Homa Works | 1 to 6 hours; each provider sets their own minimum and maximum within it |
 | **Minimum notice** | How Homa Works | The start time must be at least 2 hours from now |
 | **Booking horizon** | How Homa Works | Up to 30 days ahead |
