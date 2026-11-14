@@ -37,7 +37,7 @@ Homeowners who don't have the time to finish their home chores, and homecare bus
 
 ### Where Homa puts its effort
 
-Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. Identity verification is done by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself.
+Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. One time password is done by OTP provider, identity verification is done by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself.
 
 ### Safety principle
 
@@ -125,7 +125,7 @@ start times are in 15-minute steps. A start time must be at least the **minimum 
 
 ### Jobs and tools
 
-Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can rename a job or tool, and move a job to another group; providers keep it, and only what is shown changes. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool comes off every provider's listing, and the provider is told; a provider left with no job is taken offline until they offer another one and go live again. Replacing a job is retiring it and adding a new one, which providers pick themselves. Requests and reservations already made keep the job. A featured search searches only for jobs providers can offer; a retired job comes off the featured searches, and one left with no job is no longer shown. A retired job or tool is never deleted, and its code is never used for anything else.
+Homa sets the **job list** and its groups, such as kitchen or living room, and the **tool list**, the same way it sets the policies and the policy options. Each provider chooses which jobs they offer and which tools they bring from these lists. Because every provider uses the same lists, search can match jobs exactly, and the provider page can show which tools from the list a provider does not bring. Homa can rename a job or tool, and move a job to another group; providers keep it, and only what is shown changes. Homa can retire a job or tool so providers can no longer pick it. A retired job or tool comes off every provider's offering, and the provider is told; a provider left with no job is taken offline until they offer another one and go live again. Replacing a job is retiring it and adding a new one, which providers pick themselves. Requests and reservations already made keep the job. A featured search searches only for jobs providers can offer; a retired job comes off the featured searches, and one left with no job is no longer shown. A retired job or tool is never deleted, and its code is never used for anything else.
 
 ### Teams, helpers and supervisors
 
@@ -314,7 +314,7 @@ Until the person joins, the provider app shows them as **waiting for verificatio
 - Customers and businesses register with their phone number, verified by an SMS code; customers also give their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
 - A business whose KYB is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team, can no longer be named for jobs, and comes off every upcoming job they were named on.
 - **Re-verification:** the KYC provider re-verifies every business **every year**, and every team member **every year and when their identity document expires**, and reminds the provider before each is due. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present. A pass moves the verified-until date out; a failed attempt changes nothing.
-- **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and they come off every upcoming job they were named on. A lapsed business has its listing **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
+- **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and they come off every upcoming job they were named on. A lapsed business has its offering **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
 - **Ongoing monitoring:** between re-verifications, the KYC provider monitors every business and team member, and tells Homa:
   - **Re-verification needed by a date:** for example after a change of director, owner, name or address in the business's registration, or before a team member's document expires. The business or person keeps working, and their verified-until date moves to that date if it is sooner. If they don't pass in time, they lapse.
   - **A serious flag:** for example the business is struck off, wound up or dissolved, or it or a team member matches a sanctions or watchlist check. The KYC provider reports only flags it has confirmed. The business or person lapses at once.
@@ -522,7 +522,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Settings
 
-- **Catalogue and curation:** manage the job list and its groups, the tool list, and the homepage showcase: feature, rename, move and remove searches. Each featured search has its own place in the showcase. Retiring a job or tool needs a reason, because it changes providers' listings.
+- **Catalogue and curation:** manage the job list and its groups, the tool list, and the homepage showcase: feature, rename, move and remove searches. Each featured search has its own place in the showcase. Retiring a job or tool needs a reason, because it changes providers' offerings.
 - **Homa-set values:** view and change the values used by the policies, one at a time and with a reason. A change applies to new reservations only.
 - **Data requests:** handle requests to see, correct, copy or delete personal data, and record each one.
 
