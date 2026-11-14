@@ -11,7 +11,6 @@ Our backend architecture is built on three unyielding pillars:
 - **Domain-Centric Design:** Every module follows Clean Architecture, SOLID, and Domain-Driven Design (DDD). Business logic is the center of the system; frameworks and delivery mechanisms are details at the edge.
 - **Strict Encapsulation:** Each bounded context is a black box. It exposes behavior only through defined gateways (usecase ports inward, integration events outward).
 - **Inward-Only Dependency Flow:** Dependencies point strictly inward, from infrastructure toward the domain. The domain depends on nothing except the shared kernel.
-- **Spec-Driven, in the Business's Language:** Every module implements the product spec it refers to, and nothing it doesn't. Its objects, methods and tests are named in the bounded context's ubiquitous language, taken from that spec (Sections 7 and 8).
 
 ---
 
@@ -44,27 +43,6 @@ Each bounded context is a self-contained module with exactly three layers:
 - `usecase`: The orchestration of domain objects to fulfil specific business intents.
 - `infra`: The technical implementation of persistence, transport, security, and events.
 
-### Deciding What Belongs Where
-
-Placement follows Robert C. Martin's (Uncle Bob's) Clean Architecture. Policy sits at the centre and details at the edge: the **domain** holds the enterprise business rules, the **usecase** layer holds the application business rules, and **infra** holds the interface adapters, frameworks and drivers. The database, the web, the event broker, the runtime and every vendor are details: the business must not know they exist.
-
-Assess every rule, object and method before writing it, and place it by these questions:
-
-| Layer | It belongs here when | It does not belong here |
-| --- | --- | --- |
-| `domain` (enterprise business rules) | It would still be true if the business ran on paper, with no software: what may happen, in which state, by whom, by when, for how much. States and their transitions, invariants, eligibility, time and money calculations, how the business's own values apply | Storage, ids from a database, the system clock (time is passed in as `Instant now`), transport, DTOs, integration events, who is signed in, translations and display formats, retries, framework annotations |
-| `usecase` (application business rules) | It exists because software carries the business out: one intent of one actor, end to end. It loads what it needs through out ports, checks the record belongs to the acting actor, asks the domain, saves, publishes the integration event and records what happened | Any business decision: a branch on a business value, a calculation, a state check or a policy value belongs to the domain. HTTP, JSON, SQL, vendor SDKs, threads and retries belong to infra. Calling another usecase or another bounded context |
-| `infra` (interface adapters, frameworks and drivers) | It translates between the outside world and the ports: controllers, persistence and the rebuilding of aggregates, event publishers, listeners and the outbox, security and claims mapping, scheduler triggers, webhook checks, and vendor clients | Any business or application rule. Infra is a **humble object**: it maps data in, calls a port and maps the answer out, so the logic it would otherwise hide is in the layers that are tested without it |
-
-**Assessment rules**
-
-- **Who would ask for the change?** A module is responsible to one actor (the Single Responsibility Principle): a change the business asks for lands in the domain; a change to how a person or system uses Homa lands in a usecase; a change of vendor, database, framework or runtime lands in infra only.
-- **Business decisions only in the domain.** A usecase with an `if` on a business value, or a controller doing more than mapping and calling a port, is holding a rule: move the rule into the domain object it is about, with its domain test.
-- **Domain tests need no mocks.** A domain test that needs a fake, a framework or a clock means the domain is reaching outward: pass the value in instead.
-- **Details are decided late.** Domain and usecase are written and tested before infra exists (Section 8), so no infra choice can shape a business rule.
-- **The structure screams the business.** Bounded contexts, packages and classes are named for what Homa does (`reservation`, `CustomerRequestReservation`), never for the framework or the layer's technique.
-- **Nothing outside the spec.** A rule the spec doesn't state is not invented in any layer: it is raised with the product owner, and the spec is updated first (Section 8).
-
 ---
 
 ## 3. The Co-location Discipline
@@ -85,8 +63,7 @@ Files that change together live together. Everything a layer needs (exceptions, 
 │   │   └── out/                      # Outbound interfaces (repository, IE publisher)
 │   ├── dto/                          # Dedicated request/response DTOs per usecase
 │   ├── exception/                    # Usecase-level exceptions
-│   ├── ie/                           # All IE handler usecase implementations
-│   └── <UsecaseImpl>.java            # Usecase implementations
+│   └── <UsecaseImpl>.java            # Usecase and IE handler implementations
 └── infra/
     ├── persistent/                   # Repository, database, caching
     ├── transport/
@@ -103,15 +80,13 @@ Files that change together live together. Everything a layer needs (exceptions, 
 - Contains an `/exception` module that stores **all** domain-level exceptions.
 - Is kept agnostic from every outside module: `usecase`, `infra`, any other shared module, and any framework. The only exception is the shared kernel, `kernel/`.
 - Each domain object enforces its own business rules.
-- Objects, methods and their tests are named in the bounded context's ubiquitous language (Section 7).
+- Object naming follows the bounded context's business (ubiquitous) language.
 
 ### Usecase Layer
 
 - Exists once the only thing missing in the domain is a **business logic orchestrator** that coordinates domain objects to perform a bounded-context-specific usecase.
-- Directory layout: `/port` (with `/in` and `/out`), `/exception`, `/dto`, `/ie`.
-- `/ie` holds **all** IE handler usecases: every `Handle<Event>` implementation of the bounded context lives there, and nowhere else. Their interfaces stay in `/port/in`, the bounded context's only entry point (Section 4). The ordinary usecase implementations sit directly in `usecase/`.
+- Directory layout: `/port` (with `/in` and `/out`), `/exception`, `/dto`.
 - Owns its own usecase-level exceptions in `/exception`.
-- Usecases, ports, DTOs, methods and their tests are named in the bounded context's ubiquitous language (Section 7).
 - Depends only on domain and shared modules.
 
 ### Infra Layer
@@ -148,9 +123,8 @@ reservation/
 │   │   ├── SubmitReservationRequest.java
 │   │   └── SubmitReservationResponse.java
 │   ├── exception/
-│   ├── ie/
-│   │   └── HandleReservationSubmittedIE.java
-│   └── SubmitReservation.java
+│   ├── SubmitReservation.java
+│   └── HandleReservationSubmittedIE.java
 └── infra/
     ├── persistent/
     ├── transport/controller/ReservationController.java
@@ -229,22 +203,11 @@ Exceptions are owned by the layer that raises them:
 ### Domain Object Discipline
 
 - Each domain object enforces its own business rule; rules are not pushed out to usecases or controllers.
-- Naming follows the bounded context's ubiquitous language (Section 7).
+- Naming follows the bounded context's business naming convention.
 
 ---
 
 ## 7. Domain-Driven Design Practices
-
-### Ubiquitous Language Naming
-
-Each bounded context speaks the ubiquitous language of the spec it implements. Its domain and usecase objects, methods and tests are named in that language, so a person who knows the business can read the code, and a word in the code means what it means in the spec.
-
-- **Taken from the spec.** Names of aggregates, entities, value objects, enums and their values, domain exceptions, methods, usecases, ports, DTOs, integration events, test classes and test methods use the spec's words for that bounded context. A concept the spec has no word for is named with the product owner, and the word is added to the spec.
-- **One word per concept, one concept per word.** A concept keeps the same word in every layer, the spec and the apps. Synonyms are not used (a provider's *offering* is never also a *listing*), and a word that means something different in another bounded context is meant only as its own context defines it.
-- **Methods say the business act.** A domain method is the act the business names (`accept`, `nameTeam`, `checkIn`), never a technical verb such as `process`, `handle`, `update`, `execute` or `setStatus`. A usecase is named for its actor and act (Section 6).
-- **No technical names in domain and usecase.** Generic suffixes and words such as `Manager`, `Service`, `Processor`, `Util`, `Data`, `Info` or `Dto` (outside `dto/`) are not used for business concepts. Infra may use technical names, prefixed by its technology (`SpringReservationIEPublisher`).
-- **Tests say the business outcome.** Test classes are named for the feature, and test methods are sentences of the outcome in the ubiquitous language (`aRequestExpiresWhenTheProviderDoesNotRespondInTime`), never for the class or method under test, and never starting with `test` or `should`.
-- **The language moves with the spec.** When the spec renames a concept, the code, events and tests are renamed with it, in the same change. A name kept from before is a defect.
 
 ### Entity Identity
 
@@ -261,7 +224,7 @@ Cross-bounded-context communication uses a shared integration event (IE) module,
 | Publisher interface | `usecase/port/out` | `ReservationIEPublisher` |
 | Publisher implementation | `infra/event/` | `SpringReservationIEPublisher implements ReservationIEPublisher` |
 | Usecase handler interface | `usecase/port/in` | `ReservationSubmittedIEHandler` |
-| Usecase handler implementation | `usecase/ie/` | `HandleReservationSubmittedIE implements ReservationSubmittedIEHandler` |
+| Usecase handler implementation | `usecase/` | `HandleReservationSubmittedIE implements ReservationSubmittedIEHandler` |
 | Listener (interface & implementation) | `infra/event/` | `SpringReservationIEListener` |
 
 #### Event Rules
@@ -269,24 +232,13 @@ Cross-bounded-context communication uses a shared integration event (IE) module,
 - **Single Publisher:** Exactly one IE publisher component per bounded context, exposing `.publish()` that takes the IE interface from `ie/port`.
 - **Listener Wiring:** The listener injects the IE usecase handler *interface*, never the implementation.
 - **One Handler per Event:** Each event has its own usecase handler. A single god-like handler is prohibited.
-- **Handlers in `usecase/ie/`:** Every IE handler implementation lives in its bounded context's `usecase/ie/`, so a context's reactions to other contexts are found in one place.
 - **Framework Delegation:** Both publisher and listener use the infra framework's event dispatching and transaction management, e.g. Spring's `ApplicationEventPublisher`, `@TransactionalEventListener`, and `@EventListener`.
 
 ---
 
 ## 8. Development Workflow
 
-### Understand the Spec First
-
-Every module implements a referred spec: the product description, and the plan written from it. Before any layer is written:
-
-- **Read the referred spec carefully and completely,** not only the part for the module: rules in one section often change another (a policy, a Homa-set value, an exception for one actor).
-- **Trace every rule to the spec.** Each rule a module enforces points to the spec's words, and each rule in the spec that the module owns is enforced and tested. A rule missing from the spec is not invented: it is raised with the product owner and the spec is updated first.
-- **Take the words from the spec.** The bounded context's ubiquitous language is the spec's language (Section 7).
-- **Resolve conflicts in the spec, not in code.** When the spec, a plan and the code disagree, the spec wins; a conflict in the spec itself is decided by the product owner before the code changes.
-- **Assess placement before writing.** Each rule is placed in the domain, usecase or infra by Section 2's *Deciding What Belongs Where*.
-
-Module development is then ordered by priority, always:
+Module development is ordered by priority, always:
 
 1. **Domain first:** model the business objects and their rules.
 2. **Usecase second:** add the orchestrators, ports, and DTOs.
@@ -304,7 +256,6 @@ Testing is a core architectural invariant, and quality is verified deterministic
 
 - **Mandatory Prerequisite:** Robust, intent-focused unit tests must exist before any other gate is evaluated.
 - **Behavioral Focus:** Tests validate business intent and input/output contracts, not implementation details.
-- **Named in the Ubiquitous Language:** Domain and usecase test classes and methods are named for the business feature and outcome, in the bounded context's ubiquitous language (Section 7).
 - **Framework-Free Domain Tests:** Because the domain is framework-agnostic, domain tests run with no infrastructure framework.
 - **Kernel Tests:** `kernel/` has its own unit tests and passes the same quality gates as any domain module.
 - **Layer-Appropriate Tooling:** Use language-level and infra-level testing frameworks and analysis packages for each layer.

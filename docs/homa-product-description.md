@@ -37,7 +37,7 @@ Homeowners who don't have the time to finish their home chores, and homecare bus
 
 ### Where Homa puts its effort
 
-Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. Signing in with Google or Apple is done by Google and Apple, one-time SMS codes by an OTP provider, identity verification by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself, and keeps no passwords.
+Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. One time password is done by OTP provider, identity verification is done by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself.
 
 ### Safety principle
 
@@ -118,10 +118,6 @@ Homa sells **a provider's time**. The customer chooses what they want done and f
 5. **Reserve:** tap **Reserve**. With a provider who uses **Instant book**, the reservation is confirmed as soon as your payment goes through. With a provider who uses **Request and accept**, it is a reservation request: the provider accepts or declines it by the **response deadline**, and you can edit it until then. You pay by card or online banking (FPX). A card is authorised and charged only when the reservation is accepted; FPX is paid upfront. If the provider declines or doesn't respond, a card authorisation is released and an upfront payment is refunded in full.
 6. **Job day:** you can see who is coming. At the door, every person who came verifies their face, the team does the job, and the provider marks it completed with photo or video evidence.
 7. **Payout:** after the dispute window ends without a report, Homa releases the payment to the provider.
-
-### A provider's offering
-
-Everything a provider sets up to be found and reserved is their **offering**: the jobs they offer and the tools they bring, the cities they cover, the minimum and maximum helpers per booking and when a supervisor is sent, the hourly rate per helper and how the travel fee works, the minimum and maximum hours, the cancellation policy, the acceptance policy, and any liability insurance. It is shown under the provider's profile name and picture. Each provider has one offering. It is **live** when customers can find and reserve it, **paused** while it takes no new requests, and **offline** until the provider goes live again. Homa calls it the provider's **offering** everywhere, in the apps, the admin console and the code, and never a listing.
 
 ### Time
 
@@ -315,7 +311,7 @@ Until the person joins, the provider app shows them as **waiting for verificatio
 
 **Lawful employment.** Homa verifies who people are, not whether they may work: checking work permits is outside Homa's scope, so team members verify only their identity with the KYC provider. Each time the provider adds a team member, they confirm, after the person is verified and named, that this person is lawfully employed by or engaged with them and allowed to work in Malaysia (for a document from another country, that they hold a valid work pass to work for this provider), and that they are responsible for it. Each confirmation is recorded with the person, its time and the version of the terms. Team members can be Malaysian or foreign, and are 18 or older. **Before launch, a lawyer confirms the minimum age.** Homa removes a team member if it learns they are not allowed to work, and records what happened. **Before foreign team members are enabled, a lawyer confirms the terms of this confirmation.**
 
-- Customers and businesses register with their phone number, verified by an SMS code, whether they sign up with Google, Apple or the phone number itself (see **Signing up and signing in**); customers also give their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
+- Customers and businesses register with their phone number, verified by an SMS code; customers also give their name. The phone number is a Malaysian mobile number. The SMS code is 6 digits and valid for 5 minutes; after 5 wrong codes the customer needs a new code.
 - A business whose KYB is rejected is told to redo it, and can be verified on a later attempt. The provider can remove a team member at any time. A removed person is no longer on the team, can no longer be named for jobs, and comes off every upcoming job they were named on.
 - **Re-verification:** the KYC provider re-verifies every business **every year**, and every team member **every year and when their identity document expires**, and reminds the provider before each is due. Re-verification is done on the spot on the provider's phone, the same way as adding a member, with the person present. A pass moves the verified-until date out; a failed attempt changes nothing.
 - **Missing a re-verification:** the KYC provider reports it, and the business or person **lapses**. A lapsed team member leaves the team until they pass: they can't be named for new jobs, and they come off every upcoming job they were named on. A lapsed business has its offering **paused**: it takes no new requests until it passes. Reservations already accepted still go ahead, unless the business was seriously flagged.
@@ -339,8 +335,8 @@ Until the person joins, the provider app shows them as **waiting for verificatio
 Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 2024.
 
 - **What Homa collects and why:**
-  - Customers: name, phone number, address with its map pin, and access notes, and, if they sign in with Google or Apple, the account id and email address it shares, to sign in, show providers who the booking is for, match providers by city and locate check-in.
-  - Businesses: the phone number and, if the owner or director signs in with Google or Apple, the account id and email address it shares, to sign in; the SSM registration number and registered business name from the KYC provider's KYB, for Homa's records; payout details, handled by Stripe.
+  - Customers: name, phone number, address with its map pin, and access notes, to sign in, show providers who the booking is for, match providers by city and locate check-in.
+  - Businesses: the SSM registration number and registered business name from the KYC provider's KYB, for Homa's records; payout details, handled by Stripe.
   - Team members: the registered name, the verified-until and last verification dates, the profile photo, and face check results at check-in (result and time only, never the selfie), to show customers who is coming. Identity documents and face data are collected and held by the KYC provider, used only to verify a person against their own documents.
   - Ratings: customers' ratings of providers and helpers, shown to other customers as overall and category averages, and customers' written feedback about the provider. Team members agree to being rated as part of their consent on the KYC provider's screen.
   - Location: only the device's location at the moment of check-in, never continuously.
@@ -428,18 +424,9 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 ## Key Experiences
 
-### Signing up and signing in
-
-Customers and providers sign up and sign in the same way: **Continue with Google**, **Continue with Apple**, or their phone number with an SMS code. Homa keeps no passwords.
-- Every account has a verified Malaysian mobile number. Signing up with Google or Apple asks for the phone number once, verified by an SMS code; after that, Google or Apple signs the person in with no code.
-- The phone number is always a way in, so losing a Google or Apple account never locks anyone out. In their account, a person can add or remove Google or Apple sign-in at any time.
-- A Google or Apple account signs in to at most one customer account and one business account, the same as a phone number. If it is already used for another account of that kind, the person is asked to sign in to that account instead.
-- From Google or Apple, Homa takes only the account id and the email address it shares, which can be Apple's private relay address, and uses them only to sign the person in. A customer's name can be filled in from it, and changed, before they register.
-- A business account is signed in to by its owner or director. Team members have no accounts.
-
 ### Account
 
-Customers register with Google, Apple or their phone number, and give their name and their address. They can change their name and address in their account at any time. A new address is used for new searches and requests; requests and reservations already made keep the address they were made with. Customers search and browse as guests, and sign up the first time they reserve or chat. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in. The customer confirms the address with a pin on the map, so an address the geoservice can't find is still placed correctly. The account also keeps **access notes** for the team, up to 500 characters. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
+Customers register with their phone number, their name and their address. They can change their name and address in their account at any time. A new address is used for new searches and requests; requests and reservations already made keep the address they were made with. Customers search and browse as guests, and sign up the first time they reserve or chat. Providers see the customer's name on the reservation; Homa uses the address to match providers by city and to locate check-in. The customer confirms the address with a pin on the map, so an address the geoservice can't find is still placed correctly. The account also keeps **access notes** for the team, up to 500 characters. A phone number has at most one customer account and one business account; the same person can have one of each. The account shows the customer's payments and refunds with their status.
 
 ### Homepage
 
@@ -486,14 +473,14 @@ Every chat belongs to one reservation.
 
 ## Provider App
 
-Homa has a separate app that helps providers manage their reservations, calendar and offering, and monitor their income.
+Homa has a separate app that helps providers manage their reservations, calendar and offerings, and monitor their income.
 
 ### Onboarding
 
-1. **Register the business** with Google, Apple or a phone number; the phone number is verified by an SMS code either way.
+1. **Register the business** with a phone number.
 2. **Verify:** complete KYB on the KYC provider's pages: the business's SSM registration and the owner's or director's KYC, in one flow.
 3. **Set up your team:** a business starts with no team members, and can add them once its KYB has passed. Add helpers and supervisors with the person beside you: choose the role and take their profile photo, they verify on the spot with the KYC provider on your phone, scanning their own document and taking their own selfie, and once verified you confirm they are lawfully employed by or engaged with you. They join your team then.
-4. **Set up the profile and offering:** profile name and picture, and the offering, including when a supervisor is sent.
+4. **Set up the profile:** profile name, picture and offerings, including when a supervisor is sent.
 5. **Add a payout account:** a business bank account.
 6. **Go live** once everything is set up.
 
@@ -507,7 +494,7 @@ A provider adds helpers and supervisors and manages the team in Homa. Only peopl
 
 - **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
-- **Offering:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Offerings:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
 - **Verification:** see when the business and each team member are next due for re-verification, and run each re-verification on the spot with the person present.
 - **Income:** monitor earnings, payouts and any fines being deducted.
 
@@ -550,7 +537,6 @@ These are deliberately left out of the MVP:
 - Rescheduling a reserved booking
 - Recurring bookings, and asking for the same team again. They are the first step after launch, toward the 9-star experience; until then, **Book again** copies a past booking in one tap.
 - Accounts for helpers and supervisors
-- Passwords: people sign in with Google, Apple or an SMS code
 - Showing nationality
 - Checking work permits (the provider confirms lawful employment and is responsible for it)
 - Independent providers: every provider is a registered business
@@ -559,7 +545,7 @@ These are deliberately left out of the MVP:
 
 ## External Services Homa Will Use and Not Develop
 
-Homa will use outside services for these instead of developing them, so its own work goes into value for homeowners and homecare providers. Stripe Connect is chosen for payments, and Google and Apple for signing in; the others are still to be chosen. Homa's rules do not depend on which KYC provider is used.
+Homa will use outside services for these instead of developing them, so its own work goes into value for homeowners and homecare providers. Stripe Connect is chosen for payments; the others are still to be chosen. Homa's rules do not depend on which KYC provider is used.
 
 | Capability | What it does for Homa |
 |---|---|
@@ -567,6 +553,5 @@ Homa will use outside services for these instead of developing them, so its own 
 | **Payment provider (Stripe Connect)** | Authorises and charges cards, takes upfront FPX payments, holds payments until release, onboards providers for payouts, pays out to providers and processes refunds to the original method |
 | **Push notification service (to be chosen)** | Sends reminders and alerts to customers and providers, such as new requests, check-in, completion and reports |
 | **Geoservice (open source)** | Handles addresses, locations and distance, including the location check at check-in |
-| **Sign-in providers (Google and Apple)** | Sign customers and providers in with their Google or Apple account, so Homa keeps no passwords; share only the account id and an email address |
-| **OTP provider (to be chosen)** | Sends the one-time SMS codes that verify phone numbers when customers and businesses register, and that sign people in by phone number |
+| **SMS provider (to be chosen)** | Sends phone verification codes when customers and businesses register |
 | **Calendar services** | Google Calendar and Apple Calendar sync for provider availability |
