@@ -41,7 +41,7 @@ Homa builds what brings value to homeowners and homecare providers: finding the 
 
 ### Safety principle
 
-**Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider is a registered business, and every business and team member is verified by Homa's KYC provider to join (a business through KYB, which includes its owner's or director's KYC), is re-verified regularly, is shown to the customer before the job, and has their face checked at the door. Homa verifies who people are through its KYC provider; it does not inspect how they work, which is judged through ratings and disputes.
+**Only verified people enter a customer's home, and the customer knows who they are before they arrive.** Every provider is a verified & registered business, and every business and team member must be verified, is re-verified regularly, is shown to the customer before the job, and has their face checked at the door. Homa verifies who people are through its KYC provider; it does not inspect how they work, which is judged through ratings and disputes.
 
 ## The 7-Star Experience
 
