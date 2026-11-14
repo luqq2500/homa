@@ -95,7 +95,7 @@ The admins review these monthly in the admin console. First targets are set from
 - Providers accept Homa's fixed policies and fines in return for the customers Homa brings.
 - Enough providers choose Instant book to make knowing at once the normal experience.
 - Three neighbouring cities have enough demand and supply to start.
-- Customers pay a 15% service fee for Homa's protection rather than booking providers directly.
+- Providers accept a 15% commission from their payouts in return for the customers and protection Homa brings, rather than finding customers directly.
 
 # Part 2: Product rules
 
@@ -159,11 +159,11 @@ A provider offers at least one job and covers at least one city. Bringing no too
 
 The **hours fee** is the hourly rate per helper × the number of helpers × the hours. Supervisors are not charged; their cost is part of the provider's hourly rate. The **provider price** is the hours fee plus the travel fee when it is charged separately.
 
-Homa adds a **service fee** of 15% of the provider price, paid by the customer. The **total** the customer pays is the provider price plus the service fee. The provider receives the full provider price, and the service fee is how Homa earns.
+Homa earns a **commission** of 15% of what the provider earns, taken from the provider's payout. It is not a separate fee: the **total** the customer pays is the provider price, and the customer never sees a Homa fee, whether on the provider page, the review page, at payment, in their payments and refunds, or on a receipt. The provider sees it: next to their hourly rate, the provider app shows what they receive after Homa's commission, and each payout statement shows it. The provider's **payout** is what they earn from a reservation, less Homa's commission and any fine deducted.
 
 There are no quotes. Choosing fewer jobs within a booking does not change the price, because you are buying the provider's time. Providers bring their own tools.
 
-Percentages are rounded half up to the nearest sen. When a payment is split between the provider, Homa and the customer, the customer's refund is worked out last, so the parts always add up to exactly what the customer paid.
+Percentages are rounded half up to the nearest sen. When a payment is split, the customer is refunded what they paid less what the provider earns, and what the provider earns is split between Homa's commission and the provider's payout, with the payout worked out last, so the parts always add up to exactly what the customer paid.
 
 ## Reservation Lifecycle
 
@@ -200,10 +200,10 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - A customer no-show fee is released when the **no-show report window** ends without the customer reporting it, and the customer's refund of the rest is paid at the same time. If the customer reports it, Homa investigates and decides whether to release the fee or refund the customer, and both parts are paid after the decision.
 - Released payments are paid out to the provider per reservation.
 - **Refunds** always go back to the original payment method. They take as long as the bank needs; for FPX this can be a week or more, so the app shows the customer the refund status and the expected timing.
-- The service fee follows what the customer finally pays the provider: it is 15% of that amount. A full refund refunds the whole service fee; a partial refund refunds the matching share.
+- Homa's commission follows what the provider finally earns from the reservation: 15% of the provider price for a completed job, of a cancellation fee, or of a customer no-show fee, and nothing when the customer is refunded in full. It comes off the provider's payout; the customer's refund never pays it.
 - **Chargebacks:** a customer who disputes a card payment with their bank after the job opens a case for Homa. Homa answers the bank with the reservation's evidence. If Homa decides the provider is responsible, the amount is recovered from the provider's next payouts the same way as a fine (see Provider Cancellation Fines); otherwise the provider keeps their payout and Homa contests the chargeback.
-- **Processing fees:** Homa pays the payment provider's fees out of its service fee, including on refunds. Customers and providers never pay them.
-- **Receipts:** the customer gets a receipt for each payment and refund, and the provider a statement for each payout, with any fine deducted. **Before launch, an accountant confirms the service tax and e-invoicing rules for Homa's service fee.**
+- **Processing fees:** Homa pays the payment provider's fees out of its commission, including on refunds. Customers and providers never pay them.
+- **Receipts:** the customer gets a receipt for each payment and refund, and the provider a statement for each payout, showing what they earned, Homa's commission, any fine deducted and what they receive. The customer's receipt shows the total paid, with no Homa fee. **Before launch, an accountant confirms the service tax and e-invoicing rules for Homa's commission.**
 - All payments for a reservation must stay on Homa.
 
 ### Request Policy
@@ -211,7 +211,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - The customer can edit a request (jobs, date and time, duration or helpers) until the provider accepts it. The address can't be changed on a request: to use another address, the customer cancels the request for free and requests again. For a card, a new authorisation for the new total replaces the old one, which is released. For FPX, the customer pays any increase before the edit is sent, and any decrease is refunded. After an edit that raises the total, the provider can accept only once the new total is authorised or paid; if that payment fails, the request ends.
 - A request expires if the provider does not respond within the **request expiry time**, and never later than the **response deadline** before the booked start, so the customer always knows in time. The provider can accept or decline up to that moment; at the expiry time the request has expired.
 - Editing a request does not restart its expiry. It still expires the request expiry time after it was first submitted, or at the response deadline if the edit moves the start earlier than that.
-- A declined or expired request costs the customer nothing: the card authorisation is released, or an upfront payment is refunded in full, including the service fee.
+- A declined or expired request costs the customer nothing: the card authorisation is released, or an upfront payment is refunded in full.
 - Requests don't hold the provider's time; only an accepted reservation does. When the provider accepts a request, any other open request of theirs that can no longer be accepted, because its time now clashes with the accepted booking or the buffer between jobs around it, is declined at once. The customer is told, and the request costs them nothing. These automatic declines don't count against the provider's response or acceptance rates.
 - The customer can cancel a request for free at any time before the provider responds.
 - If the provider cancels a reserved booking, the customer is refunded in full and the provider may pay a fine (see Provider Cancellation Fines).
@@ -261,7 +261,7 @@ Homa owns the policies that protect both customers and providers. Providers do n
 - A report is one of three types: a problem during the job (for example a missing helper or missing tools), a problem with the finished work, or **safety, damage or loss** (for example harassment, an injury, something broken or something missing from the home).
 - A safety, damage or loss report goes to the top of Homa's queue. Homa still doesn't compensate damage (see Damage Policy): the report records what happened, lets Homa help, for example with a police report, and can lead Homa to ask the KYC provider for an early re-check. The money outcome is decided the same way as any report.
 - Homa aims to decide every case within **3 days (72 hours)** of it opening; every day counts, weekends and public holidays included. The customer and the provider see the exact date and time it is due.
-- A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund. A partial refund gives the provider any amount from RM0 up to what was at stake: the provider price for a job, or the customer no-show fee for a challenged no-show. The service fee follows what the provider receives.
+- A report moves the reservation to **Disputed**. Homa reviews it and decides on a release, a partial refund or a full refund. A partial refund gives the provider any amount from RM0 up to what was at stake: the provider price for a job, or the customer no-show fee for a challenged no-show. Homa's commission is taken from what the provider receives.
 
 ### Conduct Policy
 
@@ -388,7 +388,7 @@ Homa follows Malaysia's Personal Data Protection Act 2010 (PDPA), as amended in 
 - A provider who does not check in by the booked start plus the check-in period, who cancels after the booked start, or who cancels after checking in, pays Homa a fine of **30% of the hours fee**. This is the highest provider fine, so not showing up is never cheaper than cancelling late, and Homa keeps it that way when changing either fine.
 - The fines are the same for every provider. They do not depend on the cancellation tier the provider chose.
 - When the travel fee is included in the price, the percentage applies to the full provider price.
-- Homa deducts an unpaid fine from the payouts of the provider's next successful reservations until the fine is cleared. Each deduction is at most the **fine deduction cap** of that payout, so the provider always takes home part of every job. Fines come off payouts for completed jobs only, not off payouts of a cancellation fee or a customer no-show fee. When there are several fines, the oldest is deducted first. The cap is rounded in the provider's favour.
+- Homa deducts an unpaid fine from the payouts of the provider's next successful reservations until the fine is cleared. Each deduction is at most the **fine deduction cap** of that payout, after Homa's commission, so the provider always takes home part of every job. Fines come off payouts for completed jobs only, not off payouts of a cancellation fee or a customer no-show fee. When there are several fines, the oldest is deducted first. The cap is rounded in the provider's favour.
 - Homa can waive a fine after review, for example for a genuine emergency or when the customer caused the problem. A waiver covers what is left of the fine, is recorded with a reason, and is given once. A fine already fully deducted has nothing left to waive. A waiver covers only the money: the late cancellation or no-show still counts in the provider's cancellation count and stays on their record.
 - Homa shows each provider's cancellation count on their provider page (see Provider page).
 - There is no suspension in the MVP. Homa tracks each provider's late cancellations and no-shows in the admin console only.
@@ -401,7 +401,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 
 | Value | Used by | Setting |
 |---|---|---|
-| **Service fee** | Pricing | 15% of the provider price, paid by the customer |
+| **Commission** | Pricing | 15% of what the provider earns from a reservation, taken from their payout; never a separate fee for the customer |
 | **Duration range** | How Homa Works | 1 to 6 hours; each provider sets their own minimum and maximum within it |
 | **Minimum notice** | How Homa Works | The start time must be at least 2 hours from now |
 | **Booking horizon** | How Homa Works | Up to 30 days ahead |
@@ -422,7 +422,7 @@ When Homa changes a value, the change applies to new reservations only. Each res
 | **Cancellation tiers** | Cancellation Policy | Flexible: free cancellation. Standard: 10% of the hours fee within the fee window. Firm: 20% of the hours fee within the fee window |
 | **Provider late cancellation fine** | Provider Cancellation Fines | 20% of the hours fee, when the provider cancels within the fee window before the booked start |
 | **Provider no-show fine** | Provider Cancellation Fines | 30% of the hours fee, for no check-in, or a cancellation after the booked start or after check-in |
-| **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout |
+| **Fine deduction cap** | Provider Cancellation Fines | 50% of each payout, after Homa's commission |
 | **Rating window** | Rating Policy | 14 days after the reservation becomes Completed |
 | **Minimum ratings to show** | Rating Policy | 3 ratings before average stars are shown |
 
@@ -507,9 +507,9 @@ A provider adds helpers and supervisors and manages the team in Homa. Only peopl
 
 - **Reservations:** accept or decline requests, name the helpers and any supervisor for each reservation, run the face checks at check-in, check in on the job day, and mark jobs completed with photo or video evidence.
 - **Calendar:** manage availability, set a buffer between jobs, and sync with Google Calendar or Apple Calendar.
-- **Offering:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper, how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
+- **Offering:** manage the jobs they offer (from Homa's job list), the tools they bring (from Homa's tool list), the minimum and maximum helpers per booking, when a supervisor is sent, the hourly rate per helper (shown with what they receive after Homa's commission), how the travel fee works (separate or included in the price), minimum and maximum hours, cities covered, cancellation policy, acceptance policy (Request and accept or Instant book) and any liability insurance. A change applies to new requests only; a request already made keeps the offering it was made with.
 - **Verification:** see when the business and each team member are next due for re-verification, and run each re-verification on the spot with the person present.
-- **Income:** monitor earnings, payouts and any fines being deducted.
+- **Income:** monitor earnings, Homa's commission, payouts and any fines being deducted.
 
 ## Homa Admin
 
@@ -525,7 +525,7 @@ Homa has an internal admin console used only by the founders for now. It has two
 
 ### Tracking
 
-- **Overview:** the measures in Goals and Measures, with reservations, total booking value, service fee earned, cancellation and no-show rates, the share of bookings made by Instant book, and how quickly providers respond to requests.
+- **Overview:** the measures in Goals and Measures, with reservations, total booking value, commission earned, cancellation and no-show rates, the share of bookings made by Instant book, and how quickly providers respond to requests.
 - **Reservations:** search and view any enquiry or reservation with its full history: status changes, payment states, check-in time and location result, and completion evidence.
 - **Payments:** authorisations, customer payments, held payments, releases, payouts and refunds, including failed payments, refunds and payouts.
 - **Providers:** KYB results (SSM number and registered business name), lawful-employment confirmations for each team member with their time and terms version, verification status of providers, their team members and anyone waiting for verification, face check failures, upcoming and lapsed re-verifications, and the option to ask the KYC provider for an early re-check with a reason, offerings, cancellation tier, cancellation count, fines and the record of late cancellations and no-shows.
