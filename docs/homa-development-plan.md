@@ -26,25 +26,29 @@ When this plan and the spec disagree, the spec wins (discipline, Section 8). Whe
 
 ### Build layout
 
-One Maven reactor with a module per shared module and per bounded context, so the compiler enforces context isolation; the layers inside a context are packages, checked by ArchUnit.
+One Maven project with one source tree. Each shared module and each bounded context is a top-level package, and its tests sit in the same package under `src/test/java`. ArchUnit enforces both context isolation and the layer direction.
 
 ```text
-pom.xml                      parent: Java 21, JUnit 5, AssertJ, ArchUnit, JaCoCo, PIT
-kernel/                      depends on nothing
-ie/                          depends on kernel
-policy/  catalogue/  account/  provider/  offering/  availability/
-reservation/  payment/  resolution/  conversation/  feedback/  discovery/  notification/
+pom.xml                      Java 21, JUnit 5, AssertJ, ArchUnit, JaCoCo, PIT
+src/main/java/
+  kernel/                    depends on nothing
+  ie/                        depends on kernel
+  policy/  catalogue/  account/  provider/  offering/  availability/
+  reservation/  payment/  resolution/  conversation/  feedback/  discovery/  notification/
                              each depends on kernel and ie only
-app/                         later (Phase 4): the only module that depends on every context
+  app/                       later (Phase 4): the only package that depends on every context
+src/test/java/
+  kernel/  ie/  policy/  ...  the same packages, one test class per feature, plus a
+                             test-support package per context for builders and fixtures
 ```
 
-Inside each context module: `<context>.domain`, `<context>.usecase`, and later `<context>.infra`, laid out as in the discipline's blueprint (Section 3).
+Inside each context: `<context>.domain`, `<context>.usecase`, and later `<context>.infra`, laid out as in the discipline's blueprint (Section 3). For example `src/main/java/reservation/domain/Reservation.java` and `src/test/java/reservation/domain/RequestExpiryTest.java`.
 
 ### Quality gates (discipline, Section 9)
 
 | Gate | How |
 |---|---|
-| Dependency rule | ArchUnit test per context: `domain` imports only itself, `kernel` and `java..`; `usecase` imports only its own `domain`, `kernel`, `ie` and `java..`; no framework type in either. Maven module dependencies already stop cross-context imports |
+| Dependency rule | ArchUnit test per context: `domain` imports only itself, `kernel` and `java..`; `usecase` imports only its own `domain`, `kernel`, `ie` and `java..`; no framework type in either; no context imports another context's package; `kernel` imports only `java..`, and `ie` only `kernel` and `java..` |
 | Unit tests | JUnit 5, named in the ubiquitous language; one test-support package per context for builders and fixtures |
 | CRAP | Below 6 per method, from JaCoCo coverage and cyclomatic complexity |
 | Mutation | PIT per layer: at least 90% for `kernel` and each `domain`, at least 80% for each `usecase`; report test strength too |
@@ -364,6 +368,7 @@ Money events carry the platform fee percentage captured with the reservation's H
 | Risk | How it is handled |
 |---|---|
 | `reservation` grows too large to reason about | Built in nine slices, each with its own tests; time and money rules in small value objects (`DisputeWindow`, `CheckInPeriod`, `Price`, `CancellationOutcome`) rather than in `Reservation` itself |
+| A context imports another by mistake, since all share one source tree | The ArchUnit context-isolation test runs with every build and fails it |
 | Two acceptances take the same time | `ProviderBookings` per provider is the aggregate that accepts, with a version checked when saved |
 | Contexts drift on the same fact | Only the owning context changes a fact; every other context holds a copy updated by its IE handler, and events carry whole snapshots where a copy is kept (offering, Homa-set values, availability) |
 | A value changes between request and decision | Each reservation captures the Homa-set values version and the offering terms at request; events carry what was captured |
@@ -373,28 +378,26 @@ Money events carry the platform fee percentage captured with the reservation's H
 
 ## 9. Open questions for the product owner
 
-Each one blocks the context named. The answer goes into the spec first.
+Each one blocks the context named. Each has a **suggested answer** with the reason behind it, mostly from the spec's own product principles. A suggestion is not a decision: the product owner decides, the answer goes into the spec first, and only then into code.
 
-| # | Question | Blocks |
-|---|---|---|
-| Q1 | Are the three cities fixed in the product (a code change to add one), or a Homa-set list the admins change? Can a customer register an address outside them? | kernel, account, discovery |
-| Q2 | The spec says the SMS code is 6 digits, valid 5 minutes, and needs renewing after 5 wrong codes, and also that the OTP provider handles codes. Are these requirements on the OTP provider (nothing for Homa to enforce)? | account |
-| Q3 | With Instant book, if the time is no longer free when the payment is secured, the request "ends": is its status Declined or Cancelled? | reservation R3 |
-| Q4 | If charging an authorised card fails at acceptance, what happens to the reservation? | reservation R3, payment |
-| Q5 | When an offering is paused or goes offline, or the business's verified-until date moves earlier than a request's end, do open requests end at once (principle 3), or stay until they expire? | reservation R2, R3 |
-| Q6 | When two bookings were accepted with different buffers, which buffer must the gap between them respect: the existing booking's, the new one's, or the larger? | reservation R3, discovery |
-| Q7 | For a close match by time, which start is suggested when several are free within 2 hours: the nearest, and on a tie the earlier? Does each provider appear at most once? | discovery |
-| Q8 | How are search results ordered? | discovery |
-| Q9 | "Including its last minute": for a 10:15 limit, is 10:15:59 still in time? Is "up to 30 days ahead" a start no later than exactly 30 × 24 hours from now, or any time on the 30th day? | reservation, discovery, feedback |
-| Q10 | Which moment is the recorded check-in time: the location check, or the first named person passing the face check? | reservation R5 |
-| Q11 | Can the provider submit completion while a reservation is Disputed for a serious flag? | reservation R8, R9 |
-| Q12 | A paused offering of a lapsed business: does it go live again on its own once the business passes re-verification? | offering |
-| Q13 | A card chargeback case is "decided with a release, a partial refund or a full refund": how does each map to "the provider is responsible" (recovered from payouts) or "Homa contests"? What if the payout was already paid out? | resolution, payment |
-| Q14 | Do payouts from a Homa decision (release or partial refund) count as "completed jobs" that fines can be deducted from? | payment |
-| Q15 | Can the customer rate a named helper who failed the face check and didn't work? | feedback |
-| Q16 | "First-time searchers who make a first reservation within 7 days" needs to link a search to a customer, but searches keep nothing that identifies the customer. How should this measure be taken? | discovery, admin tracking |
-
----
+| # | Question | Blocks | Suggested answer | Why |
+|---|---|---|---|---|
+| Q1 | Are the three cities fixed in the product (a code change to add one), or a Homa-set list the admins change? Can a customer register an address outside them? | kernel, account, discovery | Fixed in the product for the MVP. A customer's address must be in one of the three cities; outside them, the app says Homa isn't there yet, and the person can still browse as a guest by picking a city | Opening a city is a launch decision (recruiting providers, testing demand), not a setting to flip. Principle 3: an account at an address no provider covers would only ever search and find nobody |
+| Q2 | The spec says the SMS code is 6 digits, valid 5 minutes, and needs renewing after 5 wrong codes, and also that the OTP provider handles codes. Are these requirements on the OTP provider (nothing for Homa to enforce)? | account | Yes. Move them to the OTP provider's requirements under External Services. Homa only records that the phone number was verified | "Homa uses their results and does not build those checks itself" (Where Homa puts its effort) |
+| Q3 | With Instant book, if the time is no longer free when the payment is secured, the request "ends": is its status Declined or Cancelled? | reservation R3 | **Declined**, and the meaning of Declined widens to "or the time was no longer free when Instant book checked it". Like other automatic declines, it doesn't count against the provider's rates | Cancelled means someone chose to end it, or the customer's payment failed. Here the provider couldn't take the time, which is what Declined already means ("accepted another booking that takes the same time") |
+| Q4 | If charging an authorised card fails at acceptance, what happens to the reservation? | reservation R3, payment | A request becomes Reserved only once the charge goes through. If the charge fails, the request ends **Cancelled** as a failed payment: nothing is charged, the customer is told and can request again, and no other request was declined for it, because clashing requests are declined only once the reservation is Reserved | Same rule as any failed payment (Payment Protection). Principle 2: the system sorts it out and tells people. And the provider's other customers never lose a request to a booking that didn't happen |
+| Q5 | When an offering is paused or goes offline, or the business's verified-until date moves earlier than a request's end, do open requests end at once (principle 3), or stay until they expire? | reservation R2, R3 | One rule: **a request ends at once, Declined, when it can no longer be accepted**: the business lapsed or was seriously flagged, or the job now ends after its verified-until date. These don't count against the provider's rates. Going paused or offline otherwise doesn't touch open requests: they keep their captured terms, and the provider can still accept or decline them until they expire | Principle 3: nobody waits on something that can't happen. Principle 5: one clear rule. A request already made keeps the offering it was made with (Provider App, Offering), so a provider who goes offline can still honour customers who already paid |
+| Q6 | When two bookings were accepted with different buffers, which buffer must the gap between them respect: the existing booking's, the new one's, or the larger? | reservation R3, discovery | **The larger.** Each accepted reservation keeps its own buffer free around itself: the existing one with the buffer it was accepted with, the new one with the buffer in force now | The buffer exists so the team arrives on time (the 5-star line). "Changing it does not affect bookings already accepted" protects the old booking's buffer; the new booking's buffer protects the new one |
+| Q7 | For a close match by time, which start is suggested when several are free within 2 hours: the nearest, and on a tie the earlier? Does each provider appear at most once? | discovery | Each provider appears **once**: as an exact match if they are one, otherwise as one close match. For a time close match, suggest the start **nearest** the chosen time; on a tie, the **earlier** one | The customer chose a time, so the nearest start is the least change. One card per provider keeps results focused (Wroblewski). Earlier on a tie is arbitrary but fixed (principle 5) |
+| Q8 | How are search results ordered? | discovery | Exact matches before close matches. Within each group: **Instant book first**, then by shown average stars, highest first, then providers still "New", then by lower provider price. Close matches by time before close matches by jobs. Treated as an assumption, checked against the share of searches that lead to a reservation | "Customers know at once" is a Homa goal, and Instant book is how it happens. Stars rank only where they are honestly shown (principle 4). A time-shifted match still does every chosen job. Risk to watch: new providers sit low; revisit with launch data |
+| Q9 | "Including its last minute": for a 10:15 limit, is 10:15:59 still in time? Is "up to 30 days ahead" a start no later than exactly 30 × 24 hours from now, or any time on the 30th day? | reservation, discovery, feedback | A limit given as a minute includes that **whole minute**: 10:15:59 is still in time. The booking horizon is by **calendar date in Malaysia**: any start on a date up to 30 days after today | People read times to the minute, and the spec's own example says "up to and including 10:15". A date picker that shows the next 30 days is easier to understand than a cut-off at the current time of day |
+| Q10 | Which moment is the recorded check-in time: the location check, or the first named person passing the face check? | reservation R5 | The moment the **first named person passes the face check**, or the location check when the face check is unavailable. The check-in deadline is judged on that same moment | "Check-in counts once the first named person passes." The safety principle is about verified people at the door, not a phone near it. Check-in opens 15 minutes before the start, so a provider has 30 minutes to finish it |
+| Q11 | Can the provider submit completion while a reservation is Disputed for a serious flag? | reservation R8, R9 | **No.** The team has stopped, and the reservation ends either cancelled with a full refund or, before the booked start only, restored. A report and evidence filed before the flag stay with it | Principle 1: only verified people work, even if a booking is lost. Once the start has passed, a flagged reservation can't be restored, so a completion would have nothing to complete |
+| Q12 | A paused offering of a lapsed business: does it go live again on its own once the business passes re-verification? | offering | **Yes**, if it was live when it was paused and still meets every go-live condition; otherwise it goes offline and the provider sees what is missing. Either way the provider is told | Principle 2: the system adjusts and tells people. Paused means "takes no new requests until it passes", so passing is the end of the pause |
+| Q13 | A card chargeback case is "decided with a release, a partial refund or a full refund": how does each map to "the provider is responsible" (recovered from payouts) or "Homa contests"? What if the payout was already paid out? | resolution, payment | A chargeback decision sets **what the provider finally earns**, like any case. **Release:** the provider isn't responsible and keeps their payout, and Homa contests the chargeback. **Partial refund:** the provider is responsible for part. **Full refund:** the provider is responsible for all of it. Whatever the provider was paid above what they now earn is recovered from their next payouts the same way as a fine, so it doesn't matter whether the payout was already paid. Homa's platform fee follows what they finally earn, and Homa bears the rest, including a chargeback it loses after contesting | It reuses the queue's one decision type (principle 5) and the existing rules: "the platform fee follows what the provider finally earns", and recovery "the same way as a fine" |
+| Q14 | Do payouts from a Homa decision (release or partial refund) count as "completed jobs" that fines can be deducted from? | payment | **Yes**, when the provider is paid more than RM0. The reservation is Completed and it counts in jobs done, so it is a completed job for fine deductions too. A full refund pays nothing, so there is nothing to deduct | One meaning of "completed job" everywhere (principle 5), matching the provider page's "jobs done" |
+| Q15 | Can the customer rate a named helper who failed the face check and didn't work? | feedback | **No.** The customer can rate only people who worked: named on the job and passed the face check, or checked in with the face check unavailable. A missing or replaced person is reported, not rated | Principle 4: honest records. A rating of someone who wasn't there would be about something else; "ratings and reports are separate" |
+| Q16 | "First-time searchers who make a first reservation within 7 days" needs to link a search to a customer, but searches keep nothing that identifies the customer. How should this measure be taken? | discovery, admin tracking | Keep searches anonymous. The app knows whether it has made a search before, so each search record also says whether it was the **first search on that device**, which gives the number of first-time searchers. The app keeps the date of that first search on the device, and sends it with that customer's **first request**, which gives how many booked within 7 days. Nothing links a search record to a person. It is a device-based estimate, and is labelled that way in the admin console | It meets the goal without breaking the Privacy Policy ("nothing that identifies the customer"). An approximate honest measure is better than an exact one that collects personal data |
 
 ## 10. What comes after this plan
 
