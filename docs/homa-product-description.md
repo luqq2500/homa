@@ -37,7 +37,7 @@ Homeowners who don't have the time to finish their home chores, and homecare bus
 
 ### Where Homa puts its effort
 
-Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. Identity verification is done by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself.
+Homa builds what brings value to homeowners and homecare providers: finding the best provider, booking with a clear price, a safe job day, fair payments and disputes, and honest ratings. One time password is done by OTP provider, identity verification is done by a KYC provider, and payments by a payment provider. Homa uses their results and does not build those checks itself.
 
 ### Safety principle
 
