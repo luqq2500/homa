@@ -15,18 +15,22 @@ The Notion pages are the source of truth; the copies in `docs/` were ingested on
 ## Layout
 
 ```text
-pom.xml                          one Maven project: Java 21, Spring Boot, JUnit 5, ArchUnit, JaCoCo, PIT
+pom.xml                          one Maven project: Java 21, Spring Boot, Spring JDBC + Flyway, Testcontainers, ArchUnit, JaCoCo, PIT
 src/main/java/com/homa/
   kernel/                        Money, Percentage, TimeInterval, BusinessCalendar (JDK only)
   ie/port, ie/events/            integration event contracts
   reservation/ payment/ provider/ listing/ customer/ support/ rating/ conversation/ notification/
                                  one package root per bounded context, each with domain/, usecase/, infra/
   app/                           HomaApplication: the one deployable and composition root
+  app/outbox/                    transactional outbox and relay: cross-context delivery, at least once, ordered per aggregate
 src/test/java/com/homa/
   architecture/ArchitectureTest  the boundary rules (plan, "Source layout"), enforced on every build
   fixtures/HomaFixtures          §0 example setup: Aisyah, Kemas Home, the RM200 reservation
   <context>/...                  tests mirror the main packages; at least one test per rule ID, named in Homa's
                                  terms (camelCase), with the rule ID in @Tag and its case in @DisplayName
+src/main/resources/db/migration Flyway migrations (PostgreSQL)
+docs/decisions/                  ADRs: runtime (ECS/Fargate), persistence (Spring JDBC), outbox and idempotency
+deploy/ecs/                      how the container runs on ECS/Fargate; Dockerfile at the root
 tools/quality_gates.py           CRAP gate, per-layer mutation gate and ratchet
 quality/ratchet.json             last passing mutation score per layer
 ```
@@ -36,7 +40,7 @@ CI (`.github/workflows/ci.yml`) runs both commands below on every push.
 ## Running the gates
 
 ```bash
-mvn verify                          # unit tests, ArchUnit boundaries, mutation >= 80% overall (PIT)
+mvn verify                          # unit tests, ArchUnit boundaries, Postgres ITs (needs Docker), mutation >= 80% overall (PIT)
 python3 tools/quality_gates.py      # CRAP < 6; mutation >= 90% for kernel and each domain, >= 80% per usecase; ratchet
 python3 tools/quality_gates.py --update   # after a pass: raise the ratchet
 ```
@@ -47,7 +51,7 @@ Vertical slices from the plan; inside each slice: domain, then usecase, then inf
 
 | Slice | Contexts | Rules | Status |
 | --- | --- | --- | --- |
-| 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done, except the outbox, `ProcessedMessageStore` and the runtime choice |
+| 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done: outbox, `ProcessedMessageStore`, ECS/Fargate packaging ([ADRs](docs/decisions/)) |
 | 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | Domain layer done (all five contexts, 100% mutation); usecase and infra next |
 | 2. Requests and edits | Reservation, Payment | REQ-1–9 | Not started |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Not started |
