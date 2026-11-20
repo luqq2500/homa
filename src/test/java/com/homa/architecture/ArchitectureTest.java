@@ -32,6 +32,22 @@ class ArchitectureTest {
             .that().resideInAPackage("com.homa.ie..")
             .should().onlyDependOnClassesThat().resideInAnyPackage("com.homa.ie..", "com.homa.kernel..", "java..");
 
+    /** Rule 2: an event is an immutable record named *IE that implements its publisher's interface. */
+    @ArchTest
+    static final ArchRule eventsAreRecordsImplementingAPort = classes()
+            .that().resideInAPackage("com.homa.ie.events..").and().areNotAnonymousClasses()
+            .and().doNotHaveSimpleName("package-info")
+            .should().beRecords()
+            .andShould().haveSimpleNameEndingWith("IE")
+            .andShould().implement(resideInAPackage("com.homa.ie.port.."));
+
+    /** Rule 2: the ports are interfaces named after their publishing context. */
+    @ArchTest
+    static final ArchRule portsAreInterfaces = classes()
+            .that().resideInAPackage("com.homa.ie.port..").and().doNotHaveSimpleName("package-info")
+            .should().beInterfaces()
+            .andShould().haveSimpleNameEndingWith("IE");
+
     /** Rule 3: the domain imports nothing outside the domain layer, and no framework. */
     @ArchTest
     static final ArchRule domainIsPure = noClasses()
