@@ -1,6 +1,6 @@
 # Homa Business Rule Development Plan
 
-> Ingested from Notion on 2026-11-20: https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
+> Ingested from Notion on 2026-11-20 (page edited 17:50 UTC): https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
 > The Notion page is the source of truth; refresh this copy when it changes.
 
 Development plan for the [Homa Business Rule](homa-business-rule.md) page, as of 21 Nov 2026.
@@ -19,6 +19,13 @@ The decisions that shape everything else:
 6. **Reports live in Support; effects live where the state is.** Support owns a report's lifecycle and Support's confirmation. Reservation applies the money effect when it receives `ProviderNoShowConfirmed` or a similar event. Roster Member Left goes the other way: Reservation records the fact first (it changes the roster and the money), and Support creates the report automatically so it can be disputed (ROS-10, RPT-10).
 7. **Time-driven rules enter through schedulers.** `infra/transport/messaging` triggers call ordinary usecase ports: expire requests, lock the roster at check-in, remind about completion, release payouts, close rating windows. All times are Asia/Kuala_Lumpur through an injected `Clock`.
 8. **The rule cases are the test suite.** Each rule ID gets one intent-named test built from the §0 fixture (Aisyah, Kemas Home, the RM200 reservation). The §10 table becomes one parameterised settlement test.
+
+### Delivery, idempotency and consistency
+
+- **Cross-context events go through a transactional outbox.** Delivery is at-least-once and ordered per aggregate. Handling an event in the publisher's transaction is allowed only inside one context, so a Payment failure can never roll back a Reservation.
+- **Every IE handler is idempotent.** A `ProcessedMessageStore` port records (eventId, handler) in the handler's own transaction, and a repeat is a no-op. Gateway webhooks are de-duplicated by the gateway's event id. Every refund, compensation and payout call carries an idempotency key equal to its settlement line id, so a replayed `ReservationCancelledIE` can't refund twice.
+- **Accepted exception: checkout writes three aggregates in one transaction.** `Reservation`, `ProviderSchedule` and `CustomerSchedule` are saved together so double booking is impossible (RES-9, RES-10). Everywhere else, one transaction changes one aggregate. This is deliberate; don't "fix" it.
+- **Calendar rules use a business calendar.** Instants are stored. Rules counted in days or months (MON-1, HLP-3, ROS-4, RTG-2) use `LocalDate` in Asia/Kuala_Lumpur through the kernel's `BusinessCalendar`, so a 90-day or 6-month rule never drifts at a day edge.
 
 ## Bounded contexts and context map
 
@@ -57,6 +64,8 @@ flowchart LR
   Reservation -- lifecycle events --> Notification
 ```
 
+Only two event streams flow back into Reservation: `PaymentHeldIE` and the no-show confirmations. Provider also listens to Reservation events to count open reservations for PRV-5.
+
 ## Source layout
 
 Homa is one Maven project (one pom.xml) with a single `src/main/java`. Each bounded context is a package root with the skill's `domain`, `usecase` and `infra` layers inside it. The compiler won't stop a wrong import, so ArchUnit tests do: they are written in slice 0, before any domain code, and a failing rule blocks the merge.
@@ -90,7 +99,7 @@ The rules that replace module boundaries:
 | 1 | `kernel` depends only on `java..` | kernel is JDK-only |
 | 2 | `ie` depends only on `kernel` and `java..` | events carry primitives and kernel types |
 | 3 | `*.domain` depends only on its own context's domain, `kernel` and `java..` | domain imports nothing else, no framework |
-| 4 | `*.usecase` never depends on `*.infra`, Spring, Jakarta or a cloud SDK | usecase reaches the outside only through `port/out` |
+| 4 | `*.usecase` depends only on its own context's usecase and domain, `ie`, `kernel` and `java..`, so never on `*.infra`, Spring, Jakarta or a cloud SDK | usecase reaches the outside only through `port/out` |
 | 5 | Contexts don't depend on each other; only `kernel`, `ie` and `app` are shared, and only `app` may see every context | contexts talk only through `ie` events |
 | 6 | `infra.transport.controller` doesn't depend on `domain` or on use case implementations, only on `usecase.port.in` and `usecase.dto` | domain objects never cross transport |
 | 7 | Implementations of `*IEHandler` live in `usecase.ie`, and only `infra.event` calls them | one handler per event, listener injects the interface |
@@ -107,16 +116,17 @@ class ArchitectureTest {
       .that().resideInAPackage("com.homa.ie..")
       .should().onlyDependOnClassesThat().resideInAnyPackage("com.homa.ie..", "com.homa.kernel..", "java..");
 
-  @ArchTest static final ArchRule domainIsPure = noClasses()
+  // allowlist: domain sees only domain, kernel and the JDK (rule 5 then pins it to its own context)
+  @ArchTest static final ArchRule domainIsPure = classes()
       .that().resideInAPackage("com.homa.*.domain..")
-      .should().dependOnClassesThat().resideInAnyPackage(
-          "..usecase..", "..infra..", "com.homa.ie..", "com.homa.app..",
-          "org.springframework..", "jakarta..", "com.fasterxml..");
+      .should().onlyDependOnClassesThat().resideInAnyPackage(
+          "com.homa.*.domain..", "com.homa.kernel..", "java..");
 
-  @ArchTest static final ArchRule usecaseHasNoInfra = noClasses()
+  // allowlist: usecase sees only inner layers, ie, kernel and the JDK
+  @ArchTest static final ArchRule usecaseUsesInnerLayersOnly = classes()
       .that().resideInAPackage("com.homa.*.usecase..")
-      .should().dependOnClassesThat().resideInAnyPackage(
-          "..infra..", "com.homa.app..", "org.springframework..", "jakarta..", "software.amazon..");
+      .should().onlyDependOnClassesThat().resideInAnyPackage(
+          "com.homa.*.usecase..", "com.homa.*.domain..", "com.homa.ie..", "com.homa.kernel..", "java..");
 
   @ArchTest static final ArchRule contextsAreIsolated = slices()
       .matching("com.homa.(*)..").namingSlices("$1")
@@ -138,17 +148,15 @@ Rule 3 as written stops a domain from reaching out of the domain layer. Rule 5 s
 
 ## Kernel and integration events
 
-`kernel/` gets only three types. Each one is used by two or more contexts, has no Homa-specific rule, and needs only the JDK.
-
-Only two event streams flow back into Reservation: `PaymentHeldIE` and the no-show confirmations. Provider also listens to Reservation events to count open reservations for PRV-5.
+`kernel/` gets only four types. Each one is used by two or more contexts, has no Homa-specific rule, and needs only the JDK.
 
 | Type | Shape | Used by | Notes |
 | --- | --- | --- | --- |
-| `Money` | `BigDecimal`  • currency (MYR) | Reservation, Payment, Listing, Support | Arithmetic stays exact. `roundedToSen()` rounds HALF_UP to 2 dp, and only when a settlement line is produced (PAY-8: 39.375 becomes RM39.38). |
+| `Money` | `BigDecimal` plus currency (MYR) | Reservation, Payment, Listing, Support | Arithmetic stays exact. `roundedToSen()` rounds HALF_UP to 2 dp, and only when a settlement line is produced (PAY-8: 39.375 becomes RM39.38). |
 | `Percentage` | `BigDecimal` from 0 to 100 | Reservation, Payment, Listing | `of(Money)` and `complement()` (1 − p, for the discount) |
 | `TimeInterval` | `Instant start`, `Instant end` | Reservation, Listing, Rating, Support | `overlaps`, `contains`, `duration`, `extendEnd(Duration)` |
 
-Not admitted to the kernel: quarter-hour rounding (only Reservation needs it), city codes (Homa presets carry business meaning), and IDs (each context wraps its own, and events carry Strings).
+The fourth, `BusinessCalendar` (the fixed Asia/Kuala_Lumpur zone with `dateOf(Instant)`, `plusDays` and `plusMonths`), serves the calendar rules in Reservation, Provider and Rating. Not admitted to the kernel: quarter-hour rounding (only Reservation needs it), city codes (Homa presets carry business meaning), and IDs (each context wraps its own, and events carry Strings).
 
 ### Integration event catalog
 
@@ -161,7 +169,7 @@ The `ie/port` interfaces are `CustomerIE`, `ProviderIE`, `ListingIE`, `Reservati
 | `ProviderWentLiveIE` | Provider | Listing, Reservation, Payment | providerId, businessRegistrationNo |
 | `ProviderClosedIE` | Provider | Listing, Reservation, Payment (fine becomes debt, PAY-9) | providerId, businessRegistrationNo |
 | `ProviderSuspendedIE`, `ProviderReactivatedIE` | Provider | Listing, Reservation (SUS-1–3) | providerId, cause = MISSED_REVERIFICATION or MONITORING_FLAG, at |
-| `ProviderBookabilityChangedIE` | Provider | Listing, Reservation, Notification (PRV-6) | providerId, bookable, reason = NO_ACTIVE_HELPERS |
+| `ProviderBookabilityChangedIE` | Provider | Listing, Reservation, Notification (PRV-6) | providerId, bookable, reason = NO_ACTIVE_HELPERS or CLOSING |
 | `InsuranceCoverageChangedIE` | Provider | Listing, Support (RPT-7) | providerId, covered, validUntil |
 | `TeamMemberActivatedIE`, `TeamMemberDeactivatedIE`, `TeamMemberPermitUpdatedIE` | Provider | Reservation, Listing (default max helpers) | memberId, providerId, role, citizen/foreign, permitExpiry |
 | `TeamMemberSuspendedIE`, `TeamMemberReactivatedIE` | Provider | Reservation (ROS-5, ROS-9, ROS-10) | memberId, cause, at |
@@ -178,7 +186,7 @@ The `ie/port` interfaces are `CustomerIE`, `ProviderIE`, `ListingIE`, `Reservati
 | `ReservationCancelledIE` | Reservation | Payment, Rating (RTG-10; voids and removes ratings for NSH-6), Conversation (CHT-5), Notification, Provider | cause, settlement lines, protectionWindowEnd |
 | `RosterMemberLeftIE` | Reservation | Support (auto-report), Rating, Payment, Notification | memberId, leftAt, reason, refund |
 | `SettlementAdjustedIE` | Reservation | Payment | reservationId, adjustment lines (ROS-8, RPT-10 dispute) |
-| `ReservationCompletedIE` | Reservation | Payment, Rating (opens the window, RTG-2), Notification (JOB-4) | payout gross, protectionWindowEnd, completedAt |
+| `ReservationCompletedIE` | Reservation | Payment, Rating (opens the window, RTG-2), Support (completion photos as evidence, JOB-6, NSH-6), Notification (JOB-4) | payout gross, protectionWindowEnd, completedAt, completion photo refs |
 | `PaymentHeldIE`, `PaymentFailedIE` | Payment | Reservation | checkoutId, amount, paidAt |
 | `TopUpHeldIE`, `TopUpFailedIE` | Payment | Reservation | reservationId, editId, paidAt |
 | `RefundPaidIE`, `PayoutReleasedIE` | Payment | Notification | amounts |
@@ -299,7 +307,7 @@ reservation/domain/
 
 | Object | Kind | Rules | Behaviour and invariants |
 | --- | --- | --- | --- |
-| `Provider` | AR | PRV-1, PRV-2, PRV-4–6, MON-1–4, PAY-9 | `register` refuses while the business registration has debt, or has payouts still pending and an unpaid fine (PAY-9, PAY-11); `goLive(activeHelperCount)` needs at least 1; `bookabilityFor(activeHelperCount)` turns false at 0 (PRV-6); `close(openReservations)` needs 0; `suspend(cause)`; `reverify(at)`; `reactivate` is automatic after MON-3 (fines don't block it) and needs Support after MON-4 |
+| `Provider` | AR | PRV-1, PRV-2, PRV-4–6, MON-1–4, PAY-9 | `register` refuses while the business registration has debt, or has payouts still pending and an unpaid fine (PAY-9, PAY-11); `goLive(activeHelperCount)` needs at least 1; `bookabilityFor(activeHelperCount)` turns false at 0 (PRV-6); `close(openReservations)` needs 0 and runs in two steps: `startClosing()` first turns bookability off, so no request can slip in while the replica catches up (PRV-5); `suspend(cause)`; `reverify(at)`; `reactivate` is automatic after MON-3 (fines don't block it) and needs Support after MON-4 |
 | `TeamMember` | AR (one per person) | HLP-1–8, MON-1–4 | role HELPER or SUPERVISOR; `Eligibility` is `Citizen` or `ForeignWorker(permitExpiry, employmentConfirmed)`; `isActive()` = verified, not suspended and not deactivated; `reactivate` needs valid verification |
 | `VerificationCycle` | VO | MON-1, MON-2 | `dueAt` = date passed + 6 months; reminders from due − 60 days; monitoring deadline = flag + 14 days |
 | `AgeRequirement`, `PermitRequirement` | VO | HLP-1, HLP-3 | at least 18 years old; permit at least 90 days from verification |
@@ -333,7 +341,7 @@ reservation/domain/
 - A no-show report must come after check-in ends (NSH-2, NSH-4).
 - Customer No Show needs `ArrivalEvidence`: a photo and a location (NSH-4).
 
-States are OPEN, then CONFIRMED, REJECTED or RESOLVED. Roster Member Left is auto-resolved when the protection window ends, unless the customer disputes it before then (RPT-10). A Provider No Show report is still accepted after the job was marked Completed (NSH-6). `ReservationWindow` is a replica holding the parties, check-in, job time and protection window.
+States are OPEN, then CONFIRMED, REJECTED or RESOLVED. Roster Member Left is auto-resolved when the protection window ends, unless the customer disputes it before then (RPT-10). A Provider No Show report is still accepted after the job was marked Completed (NSH-6). `ReservationWindow` is a replica holding the parties, check-in, job time, protection window and the completion photo refs, filled from `ReservationCompletedIE` (JOB-6, NSH-6).
 
 ### Rating
 
@@ -349,7 +357,7 @@ States are OPEN, then CONFIRMED, REJECTED or RESOLVED. Roster Member Left is aut
 
 A use case loads aggregates through `port/out`, calls domain behaviour, saves, and publishes one event. It also owns application policy: who may act, and what happens next. It never computes a fee and never compares times itself; it asks `JobTime`, a policy or an aggregate.
 
-Naming follows the skill: the interface is the actor (`ReservationAccepter`), the implementation is the action (`ProviderAcceptReservation`). Each use case has its own `dto/` request and response. Transactions wrap use cases through a decorator wired in `app/`, so `usecase/` carries no Spring annotation.
+Naming follows the skill: the interface is the actor (`ReservationAccepter`), the implementation is the action (`ProviderAcceptReservation`). Each use case has its own `dto/` request and response. Transactions wrap use cases through a decorator wired in `app/`, so `usecase/` carries no Spring annotation. Every port is one interface with one implementation. Event handler interfaces are named `<Event>IEHandler` in `port/in` (`PaymentHeldIEHandler`), each implemented by exactly one `Handle<Event>IE` in `usecase/ie`.
 
 ### Reservation
 
@@ -417,7 +425,7 @@ Event handlers (`usecase/ie/`, one per event):
 | `HandleReservationCheckoutRejectedIE` | event | full refund at once (RES-12) |
 | `HandleReservationEditedIE`, `HandleReservationEditDroppedIE` | event | refunds a lower price at once (REQ-1); closes an unpaid top-up (REQ-6) or refunds a late one (REQ-8, REQ-9) |
 | `HandleReservationDeclinedIE`, `HandleReservationExpiredIE` | event | full refund now (PAY-7) |
-| `HandleReservationCancelledIE` | event | refund now; Homa pays compensation and keeps the fine's remainder (PAY-4); fine added to `ProviderFineAccount`; FEE `Payout` held until the window ends (PAY-6) |
+| `HandleReservationCancelledIE` | event | first voids any unreleased JOB payout (NSH-6 after Completed); refund now; Homa pays compensation and keeps the fine's remainder (PAY-4); fine added to `ProviderFineAccount`; FEE `Payout` held until the window ends (PAY-6) |
 | `HandleRosterMemberLeftIE`, `HandleSettlementAdjustedIE` | event | partial refund |
 | `HandleReservationCompletedIE` | event | JOB `Payout` with the window end set |
 | `HandleReportOpenedIE`, `HandleReportResolvedIE` | event | holds and frees the payout (RPT-6) |
@@ -433,10 +441,10 @@ Event handlers (`usecase/ie/`, one per event):
 | --- | --- | --- |
 | `ProviderRegistrator` → `ProviderRegisterBusiness` | API | PRV-1, PAY-9, PAY-11 (no debt, and no unpaid fine while payouts are pending) |
 | `TeamMemberAdder` → `ProviderAddTeamMember` | API | HLP-1–4 |
-| `TeamMemberDeactivator` / `TeamMemberReactivator` | API | HLP-5–8; re-checks bookability and publishes `ProviderBookabilityChangedIE` (PRV-6) |
+| `TeamMemberDeactivator` → `ProviderDeactivateTeamMember`; `TeamMemberReactivator` → `ProviderReactivateTeamMember` | API | HLP-5–8; re-checks bookability and publishes `ProviderBookabilityChangedIE` (PRV-6) |
 | `ProviderLauncher` → `ProviderGoLive` | API | PRV-2, PRV-3 |
 | `ProviderAccountCloser` → `ProviderCloseAccount` | API | PRV-5 |
-| `InsurancePolicySubmitter`, `InsurancePolicyConfirmer` (Support) | API | PRV-4 |
+| `InsurancePolicySubmitter` → `ProviderSubmitInsurancePolicy`; `InsurancePolicyConfirmer` → `SupportConfirmInsurancePolicy` (Support) | API | PRV-4 |
 | `InsuranceExpiryApplier` → `ExpireInsuranceCoverage` | scheduler, daily | PRV-4 |
 | `Reverifier` → `SubmitReverification` | API + KYC callback | MON-1, MON-2 |
 | `ReverificationReminder` → `RemindDueReverifications` | scheduler, daily | MON-1, MON-2 |
@@ -456,17 +464,17 @@ Event handlers (`usecase/ie/`, one per event):
 | `PricingTermsSetter` → `ProviderSetPricingTerms` (rate, travel fee, discount) | API | OFR-2–4 |
 | `BookingRulesSetter` → `ProviderSetBookingRules` (bounds, notice, buffer, policy, tier) | API | OFR-5, OFR-6 (auto-raise to 2 h on switching to Request, with a notice to the provider), OFR-9, OFR-10 |
 | `ProofPhotoAdder` → `ProviderAddProofPhoto` | API | OFR-7 |
-| `AvailabilitySetter`, `ExternalCalendarConnector` | API | OFR-8 |
+| `AvailabilitySetter` → `ProviderSetAvailability`; `ExternalCalendarConnector` → `ProviderConnectExternalCalendar` | API | OFR-8 |
 | `ExternalCalendarSyncer` → `SyncExternalCalendars` | scheduler or webhook | OFR-8 |
-| `ProviderSearcher` → `SearchProvidersByCity`, `ProviderPageViewer` | API query | RES-1, PRV-4 tag, RTG-6, RTG-10 |
-| `PresetManager` (Homa admin) | API | OFR-1 |
+| `ProviderSearcher` → `SearchProvidersByCity`, `ProviderPageViewer` → `ViewProviderPage` | API query | RES-1, PRV-4 tag, RTG-6, RTG-10 |
+| `PresetManager` → `AdminManagePresets` (Homa admin) | API | OFR-1 |
 | Handlers for Provider, TeamMember, Insurance and Rating events | event | listing visibility, active helper count, page badges |
 
 `port/out`: `ListingRepository`, `AvailabilityRepository`, `PresetRepository`, `CalendarClient`, `ListingIEPublisher`.
 
 ### Customer
 
-`CustomerRegistrator` → `CustomerRegisterAccount` (CUS-1, CUS-2; the OTP check goes through the `PhoneVerificationClient` port). Also `CustomerProfileUpdater`, `CustomerSuspender` → `SupportSuspendCustomer` (CUS-4), and `CustomerReactivator` → `SupportReactivateCustomer` (CUS-6). Only the Support role may call the last two, an application policy checked in the use case.
+`CustomerRegistrator` → `CustomerRegisterAccount` (CUS-1, CUS-2; the OTP check goes through the `PhoneVerificationClient` port). Also `CustomerProfileUpdater` → `CustomerUpdateProfile`, `CustomerSuspender` → `SupportSuspendCustomer` (CUS-4), and `CustomerReactivator` → `SupportReactivateCustomer` (CUS-6). Only the Support role may call the last two, an application policy checked in the use case.
 
 ### Support
 
@@ -474,7 +482,7 @@ Event handlers (`usecase/ie/`, one per event):
 | --- | --- | --- |
 | `ReportFiler` → `PartyFileReport` | API | RPT-1–3, NSH-2, NSH-4, NSH-6 |
 | `NoShowEvidenceResponder` → `ProviderRespondToNoShow` | API | NSH-2 |
-| `NoShowAdjudicator` → `SupportConfirmNoShow`, `SupportRejectNoShow` | API (Support) | NSH-2, NSH-4, NSH-6, RPT-4 |
+| `NoShowConfirmer` → `SupportConfirmNoShow`; `NoShowRejecter` → `SupportRejectNoShow` | API (Support) | NSH-2, NSH-4, NSH-6, RPT-4 |
 | `ReportResolver` → `SupportResolveReport` | API (Support) | RPT-5, RPT-7 |
 | `MemberLeftDisputer` → `CustomerDisputeMemberLeft` | API | RPT-10 |
 | `MemberLeftDisputeResolver` → `SupportResolveMemberLeftDispute` | API (Support) | RPT-10, CHT-4 |
@@ -534,11 +542,11 @@ Build in vertical slices, and keep the skill's order inside every slice: domain 
 
 | Slice | Contexts touched | Rules delivered | Done when |
 | --- | --- | --- | --- |
-| 0. Skeleton | `kernel`, `ie`, `app` | PAY-8 (in `Money`) | `Money`, `Percentage` and `TimeInterval` pass at 90%+ mutation score; ArchUnit rules 1–6 exist and gate CI before any domain code is written |
-| 1. Book and get paid | Customer, Listing (minimal), Reservation, Payment | CUS-1–3, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | flow A passes end to end |
+| 0. Skeleton | `kernel`, `ie`, `app` | PAY-8 (in `Money`) | `Money`, `Percentage` and `TimeInterval` pass at 90%+ mutation score; ArchUnit rules 1–6 exist and gate CI before any domain code is written; the CRAP script and PIT ratchet run in CI; the outbox and `ProcessedMessageStore` are in place; the runtime is decided (Lambda with SnapStart, or ECS/Fargate) |
+| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | flow A passes end to end |
 | 2. Requests and edits | Reservation, Payment | REQ-1–9 (with top-up) | expiry scheduler works; edits re-quote with frozen terms |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | the §10 table passes as one parameterised test; flow B passes |
-| 4. Team and roster | Provider, Reservation | PRV-1–3, PRV-6, HLP-1–8, ROS-1–8, NRS-1–3 | check-in lock and no roster work |
+| 4. Team and roster | Provider, Reservation | PRV-6, HLP-5–8, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | check-in lock and no roster work |
 | 5. Reports and no-shows | Support, Reservation, Payment | RPT-1–11, NSH-1–6, CHT-4 | flow C passes, including a no-show after Completed |
 | 6. Compliance, suspensions and debt | Provider, Customer, Reservation, Payment | MON-1–4, PRV-4, PRV-5, CUS-4–6, SUS-1–3, ROS-9, ROS-10, PAY-9–11 | flow D passes; a debtor can't rejoin; paying the fine directly allows rejoining with payouts pending |
 | 7. Ratings and reliability | Rating, Listing | RTG-1–11 | ratings only for Completed; double-blind reveal; 12-month counts |
@@ -552,7 +560,7 @@ Inside each context the order is fixed:
 
 ### Testing strategy
 
-- **One test per rule ID, named after it.** For example, `CCX_6_customer_pays_base_fee_after_standard_cutoff()`. The rule's case column is the scenario. The rule ID in the test name makes the spec-to-code trace a grep.
+- **One test per rule ID, named in the ubiquitous language and tagged with it.** For example, `customerPaysBaseCancellationFeeAfterStandardCutoff()`. The rule's case column is the scenario. Test classes are named for the domain object or use case they specify (`ReservationCancellationTest`, `CustomerCancelReservationTest`). Methods are camelCase sentences in Homa's own terms, subject then behaviour then condition, with no `test` prefix and no underscores (`reservationExpiresWhenProviderMissesAcceptanceDeadline`, `refundRoundsHalfUpToTheSen`). The rule ID goes in `@Tag("CCX-6")` and the rule's case sentence in `@DisplayName`, so the spec-to-code trace is still a grep.
 - **The §0 setup is a shared fixture.** `HomaFixtures.kemasHome()`, `.aisyah()` and `.standardReservation()` live in `src/test/java/com/homa/fixtures` so every context uses the same numbers.
 - **The §10 table is one parameterised test** on the settlement policies. It is the money regression gate.
 - **Boundary tests at every time edge:** 21:44 against 21:45 for the tier cut-off, the 12:00 against 12:05 rounding step, deadline ±1 minute, the 15-minute REQ-7 window, and permit expiry minus exactly 90 days.
@@ -561,7 +569,28 @@ Inside each context the order is fixed:
 
 ### Deployment
 
-The plan ships one deployable (`app/`) holding all contexts and an in-process event bus with a transactional outbox. It starts as a single source tree (see Source layout). Splitting out Payment first is the most likely change, for PCI scope and fault isolation; once its package has moved into its own module, that switch touches only `infra/event`, `app/` and `deploy/`. Schedulers run as EventBridge rules calling `transport/messaging` handlers, which call ordinary use case ports. That fits the skill's Lambda target.
+The plan ships one deployable (`app/`) holding all contexts and an in-process event bus with a transactional outbox. It starts as a single source tree (see Source layout). Splitting out Payment first is the most likely change, for PCI scope and fault isolation; once its package has moved into its own module, that switch touches only `infra/event`, `app/` and `deploy/`. Schedulers run as EventBridge rules calling `transport/messaging` handlers, which call ordinary use case ports. That fits the skill's Lambda target, but Spring Boot's cold start puts the skill's startup gate at risk, so slice 0 decides between Lambda with SnapStart and ECS/Fargate.
+
+## Pre-kickoff review
+
+A final review against the backend-module-discipline skill (21 Nov 2026) found the plan ready to start once the fixes below were made. All of them are now applied in this plan.
+
+| # | Finding | Fix applied | Slice |
+| --- | --- | --- | --- |
+| 1 | Slice 1 couldn't pass flow A: it needs a live provider and a roster, which sat in slice 4 | Minimal Provider (PRV-1–3, HLP-1–4) and roster (ROS-1–3, ROS-6) moved into slice 1 | 1 |
+| 2 | No idempotency, though an outbox and webhooks deliver at least once | `ProcessedMessageStore` per handler; idempotency key = settlement line id on every money call; webhooks de-duplicated | 0 |
+| 3 | Event delivery mode was ambiguous | Outbox for every cross-context event; same-transaction handling only inside a context | 0 |
+| 4 | ArchUnit rules 3 and 4 were denylists | Rewritten as `onlyDependOnClassesThat()` allowlists | 0 |
+| 5 | No CRAP tool for Maven; PIT has no ratchet | CRAP computed from JaCoCo XML; last PIT score committed and enforced in CI | 0 |
+| 6 | Spring Boot cold start against the startup gate | Runtime chosen in slice 0: Lambda with SnapStart, or ECS/Fargate | 0 |
+| 7 | Day and month rules at risk of drifting at day edges | Kernel `BusinessCalendar` in Asia/Kuala_Lumpur | 1 |
+| 8 | Some ports had two implementations; handler interfaces were unnamed | One interface per implementation; `<Event>IEHandler` naming | all |
+| 9 | Support couldn't see completion photos (JOB-6, NSH-6) | Photo refs on `ReservationCompletedIE`; Support consumes it | 5 |
+| 10 | NSH-6 after Completed left a JOB payout in place | Payment voids any unreleased JOB payout first | 5 |
+| 11 | PRV-5 checked a replica, so a request could slip in during closing | Two-step close: `startClosing()` turns bookability off first | 6 |
+| 12 | Test naming used snake_case with rule IDs | camelCase ubiquitous-language names; rule ID in `@Tag`, case in `@DisplayName` | all |
+
+One deliberate exception is recorded under Delivery, idempotency and consistency: checkout writes three aggregates in one transaction.
 
 ## Rule gaps and how they were resolved
 
