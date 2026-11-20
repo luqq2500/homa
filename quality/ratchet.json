@@ -1,5 +1,21 @@
 {
+  "customer.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "kernel": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "listing.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "payment.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "provider.domain": {
     "score": 100.0,
     "strength": 100.0
   }
