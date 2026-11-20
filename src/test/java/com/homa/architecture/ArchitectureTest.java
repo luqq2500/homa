@@ -4,14 +4,25 @@ import static com.tngtech.archunit.base.DescribedPredicate.alwaysTrue;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
+import static com.tngtech.archunit.lang.conditions.ArchConditions.haveSimpleName;
+import static com.tngtech.archunit.lang.conditions.ArchConditions.haveSimpleNameEndingWith;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
-import com.tngtech.archunit.core.importer.ImportOption;
+import com.homa.ie.port.IntegrationEvent;
+import com.homa.ie.port.RelayedIE;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -43,11 +54,17 @@ class ArchitectureTest {
             .andShould().haveSimpleNameEndingWith("IE")
             .andShould().implement(resideInAPackage("com.homa.ie.port.."));
 
-    /** Rule 2: the ports are interfaces named after their publishing context. */
+    /** Rule 2: the ports are interfaces named *IE, beside the IntegrationEvent contract they all share. */
     private static final ArchRule portsAreInterfaces = classes()
             .that().resideInAPackage("com.homa.ie.port..").and().doNotHaveSimpleName("package-info")
             .should().beInterfaces()
-            .andShould().haveSimpleNameEndingWith("IE");
+            .andShould(haveSimpleNameEndingWith("IE").or(haveSimpleName("IntegrationEvent")));
+
+    /** Rule 2: every event is an IntegrationEvent, so the outbox can store, order and relay it. */
+    private static final ArchRule eventsAreIntegrationEvents = classes()
+            .that().resideInAPackage("com.homa.ie.events..").and().areNotAnonymousClasses()
+            .and().doNotHaveSimpleName("package-info")
+            .should().beAssignableTo(IntegrationEvent.class);
 
     /** Rule 3 (allowlist): a domain sees only domain code, kernel and the JDK; rule 5 pins it to its own context. */
     private static final ArchRule domainIsPure = classes()
@@ -95,6 +112,48 @@ class ArchitectureTest {
             .should().onlyBeAccessed().byClassesThat().resideInAnyPackage(
                     "com.homa.*.infra.event..", "com.homa.*.usecase.port.in..", "com.homa.*.usecase.ie..", "com.homa.app..");
 
+    private static final String EVENT_LISTENER = "org.springframework.context.event.EventListener";
+    private static final String TRANSACTIONAL_EVENT_LISTENER =
+            "org.springframework.transaction.event.TransactionalEventListener";
+    private static final String ASYNC = "org.springframework.scheduling.annotation.Async";
+
+    private static final DescribedPredicate<JavaMethod> eventListenersInInfraEvent = DescribedPredicate.describe(
+            "are event listeners in a context's infra.event",
+            method -> method.getOwner().getPackageName().matches("com\\.homa\\.[^.]+\\.infra\\.event(\\..*)?")
+                    && (method.isAnnotatedWith(EVENT_LISTENER) || method.isAnnotatedWith(TRANSACTIONAL_EVENT_LISTENER)));
+
+    /**
+     * Rule 8: a listener on a bare event runs in the publisher's transaction, so only the publishing context may
+     * listen to its own bare events. Every other context listens for RelayedIE, synchronously, so the outbox relay
+     * marks a row published only after the handler returned (docs/decisions/0002).
+     */
+    private static final ArchRule eventListenersRespectTheOutbox = methods()
+            .that(eventListenersInInfraEvent)
+            .should(new ArchCondition<JavaMethod>("take only their own context's bare events, and RelayedIE synchronously") {
+                @Override
+                public void check(JavaMethod method, ConditionEvents events) {
+                    String ownPort = ownPortOf(method.getOwner());
+                    for (JavaClass parameter : method.getRawParameterTypes()) {
+                        if (parameter.isAssignableTo(IntegrationEvent.class) && !parameter.isAssignableTo(ownPort)) {
+                            events.add(SimpleConditionEvent.violated(method, method.getFullName() + " handles "
+                                    + parameter.getSimpleName() + " in its publisher's transaction; another context "
+                                    + "must listen for RelayedIE<" + parameter.getSimpleName() + "> instead"));
+                        }
+                        if (parameter.isEquivalentTo(RelayedIE.class)
+                                && (method.isAnnotatedWith(TRANSACTIONAL_EVENT_LISTENER) || method.isAnnotatedWith(ASYNC))) {
+                            events.add(SimpleConditionEvent.violated(method, method.getFullName()
+                                    + " must handle RelayedIE synchronously with @EventListener"));
+                        }
+                    }
+                }
+            });
+
+    /** customer to com.homa.ie.port.CustomerIE: the port a context publishes. */
+    private static String ownPortOf(JavaClass listener) {
+        String context = listener.getPackageName().split("\\.")[2];
+        return "com.homa.ie.port." + Character.toUpperCase(context.charAt(0)) + context.substring(1) + "IE";
+    }
+
     @Test
     void kernelIsJdkOnly() {
         kernelIsJdkOnly.check(PRODUCTION_CLASSES);
@@ -113,6 +172,11 @@ class ArchitectureTest {
     @Test
     void portsAreInterfaces() {
         portsAreInterfaces.check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void eventsAreIntegrationEvents() {
+        eventsAreIntegrationEvents.check(PRODUCTION_CLASSES);
     }
 
     @Test
@@ -148,5 +212,10 @@ class ArchitectureTest {
     @Test
     void onlyInfraEventCallsIeHandlers() {
         onlyInfraEventCallsIeHandlers.check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void eventListenersRespectTheOutbox() {
+        eventListenersRespectTheOutbox.check(PRODUCTION_CLASSES);
     }
 }

@@ -1,0 +1,64 @@
+# Every environment-specific value comes from the environment (deploy/ecs/README.md). Nothing secret is committed:
+# the defaults below only suit a local Postgres, and the password has none.
+spring:
+  application:
+    name: homa
+  datasource:
+    url: ${HOMA_DB_URL:jdbc:postgresql://localhost:5432/homa}
+    username: ${HOMA_DB_USERNAME:homa}
+    password: ${HOMA_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${HOMA_DB_POOL_SIZE:10}
+  flyway:
+    locations: classpath:db/migration
+  lifecycle:
+    # ECS sends SIGTERM and waits stopTimeout (30s by default) before SIGKILL; finish in-flight work before that.
+    timeout-per-shutdown-phase: ${HOMA_SHUTDOWN_TIMEOUT:20s}
+  task:
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: ${HOMA_SHUTDOWN_TIMEOUT:20s}
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        # The load balancer's target health check: stop routing when the database is unreachable or while
+        # shutting down.
+        readiness:
+          include: readinessState,db
+        # The container health check: restart only when the process itself is broken, never for the database.
+        liveness:
+          include: livenessState
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  structured:
+    format:
+      # One JSON record per line on stdout (Elastic Common Schema), collected by the awslogs driver.
+      console: ${HOMA_LOG_FORMAT:ecs}
+    ecs:
+      service:
+        name: homa
+
+homa:
+  outbox:
+    relay:
+      enabled: ${HOMA_OUTBOX_RELAY_ENABLED:true}
+      fixed-delay: ${HOMA_OUTBOX_RELAY_FIXED_DELAY:PT1S}
+      batch-size: ${HOMA_OUTBOX_RELAY_BATCH_SIZE:100}
