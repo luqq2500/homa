@@ -48,7 +48,7 @@ Vertical slices from the plan; inside each slice: domain, then usecase, then inf
 | Slice | Contexts | Rules | Status |
 | --- | --- | --- | --- |
 | 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done, except the outbox, `ProcessedMessageStore` and the runtime choice |
-| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | In progress: domain layer; event contracts done |
+| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | Domain layer done (all five contexts, 100% mutation); usecase and infra next |
 | 2. Requests and edits | Reservation, Payment | REQ-1–9 | Not started |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Not started |
 | 4. Team and roster | Provider, Reservation | PRV-6, HLP-5–8, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | Not started |

@@ -18,5 +18,9 @@
   "provider.domain": {
     "score": 100.0,
     "strength": 100.0
+  },
+  "reservation.domain": {
+    "score": 100.0,
+    "strength": 100.0
   }
 }

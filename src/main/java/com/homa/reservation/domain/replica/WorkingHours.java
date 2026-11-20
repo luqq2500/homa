@@ -1,5 +1,6 @@
 package com.homa.reservation.domain.replica;
 
+import com.homa.kernel.BusinessCalendar;
 import com.homa.kernel.TimeInterval;
 import com.homa.reservation.domain.QuarterHourDuration;
 import java.time.DayOfWeek;
