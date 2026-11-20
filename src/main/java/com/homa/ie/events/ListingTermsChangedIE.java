@@ -22,6 +22,7 @@ import java.util.Map;
  * @param noticeRaised   true when switching to Request raised the minimum notice to 2 hours (OFR-6)
  */
 public record ListingTermsChangedIE(
+        String eventId,
         String providerId,
         List<String> cities,
         List<String> jobCodes,

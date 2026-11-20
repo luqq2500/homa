@@ -6,6 +6,7 @@ import java.time.Instant;
 
 /** A customer started paying; the provider's time is held for 15 minutes (RES-11). Payment opens a pending hold. */
 public record ReservationCheckoutStartedIE(
+        String eventId,
         String checkoutId, String customerId, String providerId, Money total, Instant holdExpiresAt, Instant occurredAt)
         implements ReservationIE {
 }

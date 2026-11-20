@@ -10,7 +10,9 @@ import java.util.List;
  * @param weeklyHours one entry per working period, each "DAY HH:MM-HH:MM", e.g. "SATURDAY 08:00-18:00",
  *                    in Asia/Kuala_Lumpur local time
  */
-public record AvailabilityChangedIE(String providerId, List<String> weeklyHours, Instant occurredAt)
+public record AvailabilityChangedIE(
+        String eventId,
+        String providerId, List<String> weeklyHours, Instant occurredAt)
         implements ListingIE {
 
     public AvailabilityChangedIE {

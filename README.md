@@ -17,7 +17,7 @@ The Notion pages are the source of truth; the copies in `docs/` were ingested on
 ```text
 pom.xml                          one Maven project: Java 21, Spring Boot, JUnit 5, ArchUnit, JaCoCo, PIT
 src/main/java/com/homa/
-  kernel/                        Money, Percentage, TimeInterval (JDK only)
+  kernel/                        Money, Percentage, TimeInterval, BusinessCalendar (JDK only)
   ie/port, ie/events/            integration event contracts
   reservation/ payment/ provider/ listing/ customer/ support/ rating/ conversation/ notification/
                                  one package root per bounded context, each with domain/, usecase/, infra/
@@ -25,10 +25,13 @@ src/main/java/com/homa/
 src/test/java/com/homa/
   architecture/ArchitectureTest  the boundary rules (plan, "Source layout"), enforced on every build
   fixtures/HomaFixtures          §0 example setup: Aisyah, Kemas Home, the RM200 reservation
-  <context>/...                  tests mirror the main packages; one intent-named test per rule ID
+  <context>/...                  tests mirror the main packages; at least one test per rule ID, named in Homa's
+                                 terms (camelCase), with the rule ID in @Tag and its case in @DisplayName
 tools/quality_gates.py           CRAP gate, per-layer mutation gate and ratchet
 quality/ratchet.json             last passing mutation score per layer
 ```
+
+CI (`.github/workflows/ci.yml`) runs both commands below on every push.
 
 ## Running the gates
 
@@ -44,11 +47,11 @@ Vertical slices from the plan; inside each slice: domain, then usecase, then inf
 
 | Slice | Contexts | Rules | Status |
 | --- | --- | --- | --- |
-| 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done |
-| 1. Book and get paid | Customer, Listing (minimal), Reservation, Payment | CUS-1–3, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | In progress: domain layer |
+| 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done, except the outbox, `ProcessedMessageStore` and the runtime choice |
+| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | In progress: domain layer; event contracts done |
 | 2. Requests and edits | Reservation, Payment | REQ-1–9 | Not started |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Not started |
-| 4. Team and roster | Provider, Reservation | PRV-1–3, PRV-6, HLP-1–8, ROS-1–8, NRS-1–3 | Not started |
+| 4. Team and roster | Provider, Reservation | PRV-6, HLP-5–8, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | Not started |
 | 5. Reports and no-shows | Support, Reservation, Payment | RPT-1–11, NSH-1–6, CHT-4 | Not started |
 | 6. Compliance, suspensions and debt | Provider, Customer, Reservation, Payment | MON-1–4, PRV-4, PRV-5, CUS-4–6, SUS-1–3, ROS-9, ROS-10, PAY-9–11 | Not started |
 | 7. Ratings and reliability | Rating, Listing | RTG-1–11 | Not started |

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.Currency;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class MoneyTest {
@@ -12,7 +14,9 @@ class MoneyTest {
     private static final Currency SGD = Currency.getInstance("SGD");
 
     @Test
-    void PAY_8_arithmetic_stays_exact_until_a_line_is_rounded() {
+    @Tag("PAY-8")
+    @DisplayName("Nurul leaves at 12:05: the refund is 1.75 × 22.50 = RM39.375, rounded once to RM39.38.")
+    void arithmeticStaysExactUntilALineIsRounded() {
         Money refund = Money.myr("22.50").times(new BigDecimal("1.75"));
 
         assertThat(refund.amount()).isEqualByComparingTo("39.375");
@@ -21,14 +25,18 @@ class MoneyTest {
     }
 
     @Test
-    void PAY_8_rounds_half_up_to_the_sen() {
+    @Tag("PAY-8")
+    @DisplayName("Each money line is rounded once to the nearest sen, half up.")
+    void lineRoundsHalfUpToTheSen() {
         assertThat(Money.myr("10.005").roundedToSen().amount()).isEqualByComparingTo("10.01");
         assertThat(Money.myr("10.004").roundedToSen().amount()).isEqualByComparingTo("10.00");
         assertThat(Money.myr("-10.005").roundedToSen().amount()).isEqualByComparingTo("-10.01");
     }
 
     @Test
-    void PAY_8_refund_is_paid_minus_the_rounded_fee_so_lines_add_up() {
+    @Tag("PAY-8")
+    @DisplayName("The reservation total becomes RM200 − RM39.38 = RM160.62, so the lines always add up.")
+    void refundIsAmountPaidMinusTheRoundedFee() {
         Money paid = Money.myr(200);
         Money fee = Money.myr("39.375").roundedToSen();
 
@@ -37,7 +45,9 @@ class MoneyTest {
     }
 
     @Test
-    void hours_fee_of_the_standard_reservation_is_180() {
+    @Tag("RES-6")
+    @DisplayName("25 × 4 hours × 2 helpers × (1 − 10%) = RM180, plus RM20 travel = RM200.")
+    void standardReservationHoursFeeIs180AndTotalIs200() {
         Money hoursFee = Money.myr(25).times(4).times(2).times(new BigDecimal("0.9"));
 
         assertThat(hoursFee).isEqualTo(Money.myr(180));
@@ -45,7 +55,8 @@ class MoneyTest {
     }
 
     @Test
-    void equal_amounts_are_equal_whatever_their_scale() {
+    @DisplayName("RM45 equals RM45.00.")
+    void equalAmountsAreEqualWhateverTheirScale() {
         assertThat(Money.myr("45")).isEqualTo(Money.myr("45.00"));
         assertThat(Money.myr("45")).hasSameHashCodeAs(Money.myr("45.00"));
         assertThat(Money.myr("45").hashCode()).isNotEqualTo(Money.myr("46").hashCode());
@@ -55,7 +66,8 @@ class MoneyTest {
     }
 
     @Test
-    void factories_give_the_same_value() {
+    @DisplayName("Every way of writing RM45 gives the same amount.")
+    void factoriesGiveTheSameValue() {
         assertThat(Money.myr(45)).isEqualTo(Money.myr("45"));
         assertThat(Money.of(new BigDecimal("45"), Money.MYR)).isEqualTo(Money.myr(45));
         assertThat(Money.zero(Money.MYR)).isEqualTo(Money.myr(0));
@@ -63,7 +75,8 @@ class MoneyTest {
     }
 
     @Test
-    void signs_are_reported() {
+    @DisplayName("An amount knows whether it is zero, negative or positive.")
+    void amountReportsItsSign() {
         assertThat(Money.myr(0).isZero()).isTrue();
         assertThat(Money.myr(1).isZero()).isFalse();
         assertThat(Money.myr(-1).isNegative()).isTrue();
@@ -73,7 +86,8 @@ class MoneyTest {
     }
 
     @Test
-    void amounts_compare_by_value() {
+    @DisplayName("RM200 is more than RM45.")
+    void amountsCompareByValue() {
         Money small = Money.myr(45);
         Money large = Money.myr(200);
 
@@ -87,7 +101,9 @@ class MoneyTest {
     }
 
     @Test
-    void CAN_2_a_fee_is_capped_with_min() {
+    @Tag("CAN-2")
+    @DisplayName("All fees and fines are capped at 100% of the Total Reservation Fee.")
+    void feeIsCappedAtTheTotalWithMin() {
         assertThat(Money.myr(250).min(Money.myr(200))).isEqualTo(Money.myr(200));
         assertThat(Money.myr(45).min(Money.myr(200))).isEqualTo(Money.myr(45));
         assertThat(Money.myr(45).max(Money.myr(200))).isEqualTo(Money.myr(200));
@@ -95,7 +111,8 @@ class MoneyTest {
     }
 
     @Test
-    void min_and_max_of_equal_amounts_keep_the_receiver() {
+    @DisplayName("Capping an amount at an equal amount leaves it unchanged.")
+    void minAndMaxOfEqualAmountsKeepTheReceiver() {
         Money a = Money.myr("45");
         Money b = Money.myr("45.00");
 
@@ -104,7 +121,8 @@ class MoneyTest {
     }
 
     @Test
-    void currencies_cannot_be_mixed() {
+    @DisplayName("Ringgit cannot be added to another currency.")
+    void currenciesCannotBeMixed() {
         Money sgd = Money.of(BigDecimal.ONE, SGD);
 
         assertThatThrownBy(() -> Money.myr(1).plus(sgd)).isInstanceOf(IllegalArgumentException.class);
@@ -114,7 +132,8 @@ class MoneyTest {
     }
 
     @Test
-    void nulls_are_refused() {
+    @DisplayName("An amount needs a value and a currency.")
+    void missingValuesAreRefused() {
         assertThatThrownBy(() -> Money.of(null, Money.MYR)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Money.of(BigDecimal.ONE, null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Money.myr(1).plus(null)).isInstanceOf(NullPointerException.class);
@@ -122,7 +141,8 @@ class MoneyTest {
     }
 
     @Test
-    void prints_currency_and_plain_amount() {
+    @DisplayName("RM39.38 prints as MYR 39.38.")
+    void amountPrintsCurrencyAndPlainValue() {
         assertThat(Money.myr("39.38")).hasToString("MYR 39.38");
         assertThat(Money.myr("1E+2").toString()).isEqualTo("MYR 100");
     }

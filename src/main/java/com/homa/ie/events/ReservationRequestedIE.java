@@ -6,6 +6,7 @@ import java.time.Instant;
 
 /** The customer has paid and the payment is held (RES-7, PAY-1). */
 public record ReservationRequestedIE(
+        String eventId,
         String reservationId,
         String checkoutId,
         String customerId,

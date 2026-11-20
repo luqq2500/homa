@@ -49,23 +49,19 @@ class ArchitectureTest {
             .should().beInterfaces()
             .andShould().haveSimpleNameEndingWith("IE");
 
-    /** Rule 3: the domain imports nothing outside the domain layer, and no framework. */
-    private static final ArchRule domainIsPure = noClasses()
-            .that().resideInAPackage("com.homa.*.domain..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "..usecase..", "..infra..", "com.homa.ie..", "com.homa.app..",
-                    "org.springframework..", "jakarta..", "com.fasterxml..");
-
-    /** Rule 3, closed list: a domain depends only on domain code, kernel and the JDK (rule 5 keeps it to its own context). */
-    private static final ArchRule domainDependsOnlyOnDomainKernelAndJdk = classes()
+    /** Rule 3 (allowlist): a domain sees only domain code, kernel and the JDK; rule 5 pins it to its own context. */
+    private static final ArchRule domainIsPure = classes()
             .that().resideInAPackage("com.homa.*.domain..")
             .should().onlyDependOnClassesThat().resideInAnyPackage("com.homa.*.domain..", "com.homa.kernel..", "java..");
 
-    /** Rule 4: a usecase reaches the outside only through port/out. */
-    private static final ArchRule usecaseHasNoInfra = noClasses()
+    /**
+     * Rule 4 (allowlist): a usecase sees only inner layers, ie, kernel and the JDK, so it reaches the outside only
+     * through port/out; rule 5 pins it to its own context.
+     */
+    private static final ArchRule usecaseUsesInnerLayersOnly = classes()
             .that().resideInAPackage("com.homa.*.usecase..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "..infra..", "com.homa.app..", "org.springframework..", "jakarta..", "software.amazon..");
+            .should().onlyDependOnClassesThat().resideInAnyPackage(
+                    "com.homa.*.usecase..", "com.homa.*.domain..", "com.homa.ie..", "com.homa.kernel..", "java..");
 
     /** Rule 5: contexts talk only through ie events; only kernel, ie and app are shared, and only app sees every context. */
     private static final ArchRule contextsAreIsolated = slices()
@@ -125,13 +121,8 @@ class ArchitectureTest {
     }
 
     @Test
-    void domainDependsOnlyOnDomainKernelAndJdk() {
-        domainDependsOnlyOnDomainKernelAndJdk.check(PRODUCTION_CLASSES);
-    }
-
-    @Test
-    void usecaseHasNoInfra() {
-        usecaseHasNoInfra.check(PRODUCTION_CLASSES);
+    void usecaseUsesInnerLayersOnly() {
+        usecaseUsesInnerLayersOnly.check(PRODUCTION_CLASSES);
     }
 
     @Test

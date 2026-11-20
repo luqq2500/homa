@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Unit tests, ArchUnit boundary rules and the PIT mutation floor.
+      - run: mvn -B verify
+      # CRAP < 6 per method; mutation >= 90% for kernel and each domain, >= 80% per usecase; never below the ratchet.
+      - run: python3 tools/quality_gates.py

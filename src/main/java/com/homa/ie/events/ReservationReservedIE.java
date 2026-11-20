@@ -6,6 +6,7 @@ import java.time.Instant;
 
 /** The reservation is confirmed, instantly (ACC-1) or by the provider's acceptance (ACC-2). */
 public record ReservationReservedIE(
+        String eventId,
         String reservationId,
         String customerId,
         String providerId,
