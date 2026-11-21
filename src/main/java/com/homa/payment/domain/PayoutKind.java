@@ -1,9 +1,9 @@
 package com.homa.payment.domain;
 
-/** What a payout pays the provider for. The platform fee applies only to a JOB payout (PAY-3). */
+/** What a payout pays the provider for. The platform fee applies to both kinds (PAY-3). */
 public enum PayoutKind {
-    /** The provider's earnings for a job marked Completed. */
+    /** The provider's earnings for the job, opened when the reservation is Reserved and owed once it is marked Completed. */
     JOB,
-    /** A cancellation, last-minute or no-show fee the customer paid the provider (PAY-6). */
+    /** A cancellation, last-minute or no-show fee the customer paid the provider; it needs no completion (PAY-6). */
     FEE
 }

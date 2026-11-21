@@ -2,20 +2,22 @@ package com.homa.payment.domain;
 
 import com.homa.kernel.Money;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
-import com.homa.payment.domain.exception.PaymentNotPendingException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * The customer's payment for one checkout, held by Homa. It is opened PENDING when the checkout starts, becomes HELD
- * when the gateway secures the payment (PAY-1), and every refund comes out of it, never more than is still held
- * (PAY-4). Payment never decides an amount: the total comes from the checkout and refunds from a Settlement.
+ * The customer's payment for one checkout, held by Homa. It is opened PENDING when the checkout starts and may see
+ * several payment attempts: a failed attempt changes nothing and the customer can retry. The first confirmed payment
+ * counts and the whole total is held from then on (P1, PAY-1); any later confirmed payment for the same checkout is
+ * refunded in full at once and never held (RES-12).
  *
- * <p>Room is kept for later slices: a top-up (REQ-1, REQ-6) adds to what is held, and applying a Settlement
- * (PAY-4, PAY-7) refunds its refund line. Each refund will carry the settlement line's id as its idempotency key; the
- * use case layer passes it through to the gateway.
+ * <p>Every refund comes out of what is held, never more than is still held (PAY-4), and is a value returned at once
+ * for the gateway to pay now (PAY-7). Payment never decides an amount: the total comes from the checkout and refunds
+ * from a Settlement.
  */
 public final class PaymentHold {
 
@@ -23,7 +25,9 @@ public final class PaymentHold {
     private final CheckoutId checkoutId;
     private final CustomerId customerId;
     private final Money total;
+    private final Set<PaymentAttemptId> confirmedAttempts = new HashSet<>();
     private PaymentHoldStatus status;
+    private PaymentAttemptId countedAttempt;
     private Instant heldSince;
     private Money held;
 
@@ -42,18 +46,28 @@ public final class PaymentHold {
         return new PaymentHold(id, checkoutId, customerId, total);
     }
 
-    /** The gateway secured the payment: the whole total is held from then on, and the provider can't receive it (PAY-1). */
-    public void hold(Instant paidAt) {
-        Objects.requireNonNull(paidAt, "paidAt");
-        if (status != PaymentHoldStatus.PENDING) {
-            throw new PaymentNotPendingException(id, status);
+    /**
+     * The gateway confirmed one of the checkout's payment attempts, each made for the checkout total. The first
+     * confirmed payment counts and is held (PAY-1); a later one is refunded in full at once and never held (RES-12).
+     * The same attempt confirmed again changes nothing.
+     */
+    public PaymentConfirmation recordConfirmation(PaymentAttemptId attemptId, Instant confirmedAt) {
+        Objects.requireNonNull(attemptId, "attemptId");
+        Objects.requireNonNull(confirmedAt, "confirmedAt");
+        if (!confirmedAttempts.add(attemptId)) {
+            return new PaymentConfirmation.AlreadyRecorded(attemptId);
         }
+        if (countedAttempt != null) {
+            return new PaymentConfirmation.RefundedInFull(new Refund(id, customerId, attemptId, total));
+        }
+        countedAttempt = attemptId;
         status = PaymentHoldStatus.HELD;
-        heldSince = paidAt;
+        heldSince = confirmedAt;
         held = total;
+        return new PaymentConfirmation.Counted(attemptId, total, confirmedAt);
     }
 
-    /** Returns part or all of what is held to the customer; never more than is still held. */
+    /** Returns part or all of what is held to the customer, at once (PAY-7); never more than is still held (PAY-4). */
     public Refund refund(Money amount) {
         Amounts.requirePayable(amount, "A refund");
         requireHeld();
@@ -64,12 +78,12 @@ public final class PaymentHold {
         if (held.isZero()) {
             status = PaymentHoldStatus.REFUNDED;
         }
-        return new Refund(id, customerId, amount);
+        return new Refund(id, customerId, countedAttempt, amount);
     }
 
     /**
-     * The payment landed after the checkout hold expired and the reservation could not be made: everything still
-     * held is refunded at once (RES-12).
+     * The confirmed payment could not become a reservation: another customer's payment took the time first, or a
+     * booking rule no longer passes. Everything held is refunded in full at once (RES-11).
      */
     public Refund refundRejectedCheckout() {
         requireHeld();
@@ -94,12 +108,12 @@ public final class PaymentHold {
         return customerId;
     }
 
-    /** What the customer pays for the checkout. */
+    /** What the customer pays for the checkout, on each attempt. */
     public Money total() {
         return total;
     }
 
-    /** What Homa still holds for the customer: nothing until the payment is secured, less every refund after. */
+    /** What Homa still holds for the customer: nothing until a payment is confirmed, less every refund after. */
     public Money held() {
         return held;
     }
@@ -108,7 +122,12 @@ public final class PaymentHold {
         return status;
     }
 
-    /** When the payment was secured, once it has been. */
+    /** The payment attempt that counts: the first one confirmed (RES-12). */
+    public Optional<PaymentAttemptId> countedAttempt() {
+        return Optional.ofNullable(countedAttempt);
+    }
+
+    /** When the payment that counts was confirmed, once one has been. */
     public Optional<Instant> heldSince() {
         return Optional.ofNullable(heldSince);
     }

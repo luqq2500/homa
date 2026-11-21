@@ -2,27 +2,30 @@ package com.homa.payment.domain;
 
 import com.homa.kernel.Money;
 import com.homa.kernel.Percentage;
+import java.time.Instant;
+import java.util.Objects;
 
 /**
- * Homa's platform fee: 15.5% of the provider's released payout for a reservation (PAY-3). A business constant, not
- * configuration: changing it is a change to the Homa Business Rule.
+ * Homa's platform fee on every payout to a provider, including cancellation, last-minute and no-show fees (PAY-3).
+ * The rate is a reservation value (§11): it comes from {@link PaymentValues}, in the version in force when the
+ * reservation was Requested (P3).
  */
-public final class PlatformFeeRate {
+public record PlatformFeeRate(Percentage percentage) {
 
-    /** The one rate Homa charges. */
-    public static final PlatformFeeRate HOMA = new PlatformFeeRate(Percentage.of("15.5"));
-
-    private final Percentage percentage;
-
-    private PlatformFeeRate(Percentage percentage) {
-        this.percentage = percentage;
+    public PlatformFeeRate {
+        Objects.requireNonNull(percentage, "percentage");
     }
 
-    public Percentage percentage() {
-        return percentage;
+    /** The rate for a reservation Requested at {@code requestedAt}. */
+    public static PlatformFeeRate asOf(Instant requestedAt) {
+        return of(PaymentValues.asOf(requestedAt));
     }
 
-    /** The platform fee on a payout, a money line rounded once to the sen, half up (PAY-8): RM200 gives RM31. */
+    static PlatformFeeRate of(PaymentValues.Version version) {
+        return new PlatformFeeRate(version.platformFeeRate());
+    }
+
+    /** The platform fee on a payout, a money line rounded once to the sen, half up (PAY-8): RM45 gives RM6.98. */
     public Money feeOn(Money payout) {
         return percentage.of(payout).roundedToSen();
     }

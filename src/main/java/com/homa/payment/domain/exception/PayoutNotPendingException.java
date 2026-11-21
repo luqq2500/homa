@@ -4,8 +4,8 @@ import com.homa.payment.domain.PayoutId;
 import com.homa.payment.domain.PayoutStatus;
 
 /**
- * Only a payout still waiting to be released can be held by a report (RPT-6) or voided (NSH-6): once released the
- * money has left Homa, and a void payout will never be released.
+ * Only a payout still waiting to be released can be held by a report (RPT-6), reduced by a refund, changed or
+ * voided (NSH-6): once released the money has left Homa, and a void payout will never be released.
  */
 public class PayoutNotPendingException extends PaymentRuleViolationException {
 

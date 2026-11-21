@@ -5,11 +5,12 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * The money lines of a released payout: the gross the Settlement gave the provider, Homa's platform fee taken from it
- * (PAY-3), and what remains after the platform fee. Payout RM200: fee RM31, RM169 after the fee.
+ * The money lines of a released payout: what the provider is owed, Homa's platform fee taken from every payout
+ * (PAY-3), and what remains after the platform fee. Payout RM200: fee RM31, RM169 after the fee. A RM45 cancellation
+ * fee: fee RM6.98, RM38.02 after the fee.
  *
- * <p>A fine deduction (PAY-5, slice 3) slots in after the platform fee: it takes at most 20% of
- * {@link #afterPlatformFee()}, and becomes a further line here with the amount sent to the provider.
+ * <p>A fine deduction (PAY-5, slice 3) slots in after the platform fee: it takes at most the fine deduction cap in
+ * {@link PaymentValues} of {@link #afterPlatformFee()}, and becomes a further line here with the amount sent.
  */
 public record PayoutRelease(PayoutId payoutId, ProviderId providerId, PayoutKind kind, Money gross,
         Money platformFee, Instant releasedAt) {
