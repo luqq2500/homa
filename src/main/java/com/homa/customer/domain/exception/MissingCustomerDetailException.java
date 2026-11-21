@@ -1,8 +1,8 @@
 package com.homa.customer.domain.exception;
 
 /**
- * CUS-1: a customer must have a verified phone number, a user name, a home address with city, and an arrival note.
- * Raised when one of them is missing or blank, at registration or on a later profile change.
+ * CUS-1: a customer must have a name, a home address with city, and an arrival note. Raised when one of them is
+ * missing or blank, at registration or on a later profile change.
  */
 public class MissingCustomerDetailException extends RuntimeException {
 
@@ -13,7 +13,7 @@ public class MissingCustomerDetailException extends RuntimeException {
         this.detail = detail;
     }
 
-    /** The missing detail, for example "a user name". */
+    /** The missing detail, for example "a name". */
     public String detail() {
         return detail;
     }

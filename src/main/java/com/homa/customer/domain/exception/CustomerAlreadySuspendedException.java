@@ -1,6 +1,6 @@
 package com.homa.customer.domain.exception;
 
-/** CUS-4: Support suspends an active customer; a customer who is already suspended can't be suspended again. */
+/** CUS-4: Support suspends a customer who isn't suspended; one whose suspension is in force can't be suspended again. */
 public class CustomerAlreadySuspendedException extends RuntimeException {
 
     public CustomerAlreadySuspendedException(String customerId) {
