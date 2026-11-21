@@ -9,7 +9,7 @@ import java.util.Objects;
  */
 public record MinimumNotice(Duration duration) {
 
-    public static final MinimumNotice DEFAULT = new MinimumNotice(Duration.ofHours(2));
+    public static final MinimumNotice DEFAULT = new MinimumNotice(ListingValues.DEFAULT_MINIMUM_NOTICE);
 
     public MinimumNotice {
         Objects.requireNonNull(duration, "duration");
