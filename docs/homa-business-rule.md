@@ -1,11 +1,23 @@
 # Homa Business Rule
 
-> Ingested from Notion on 2026-11-20: https://app.notion.com/p/41e8436ade4081e3b127ca594a99f2d9
+> Ingested from Notion on 2026-11-21 (page edited 08:28 UTC): https://app.notion.com/p/41e8436ade4081e3b127ca594a99f2d9
 > The Notion page is the source of truth; refresh this copy when it changes.
 
 Homa is a marketplace that helps homeowners get the best homecare service providers.
 
 Each rule has an ID so it can be referenced in specs, tests and support decisions. "Must" is mandatory, "can" is allowed, and "is" states a fact or value. Every rule has a **case**: a short story showing the rule in action, using the example setup below.
+
+---
+
+## Principles
+
+Every rule below follows these three principles. When a new question comes up, answer it from the principles first.
+
+| # | Principle | What it means |
+| --- | --- | --- |
+| P1 | **Paid is committed.** | Nothing changes until the money is confirmed. The first confirmed payment wins, and any other payment is refunded at once. |
+| P2 | **A change is a new booking.** | Reservations can't be edited. To change one, the customer withdraws a Requested reservation (free) or cancels a Reserved one (§6.2), then makes a new reservation under the terms and rules in force at that moment. |
+| P3 | **A reservation keeps what it was booked with.** | A reservation keeps the provider's terms and Homa's reservation values (§11) from when it was Requested. Account values apply at once. |
 
 ---
 
@@ -52,8 +64,7 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | **Active** | A provider, helper or supervisor that is verified, not suspended by Homa, and (for helpers and supervisors) not deactivated by the provider. |
 | **Requested** | The customer has paid and the payment is held. |
 | **Reserved** | The reservation is confirmed, instantly or by provider acceptance. |
-| **Reservation statuses** | Requested → Reserved → Completed. A reservation can also end as Declined, Expired or Cancelled (any cancellation, no roster, no show or suspension). A Completed reservation becomes Cancelled if a Provider No Show is later confirmed (NSH-6). |
-| **Checkout hold** | A short hold on a provider's time while the customer pays. It is not a reservation status. |
+| **Reservation statuses** | Requested → Reserved → Completed. A reservation can also end as Withdrawn (by the customer while Requested), Declined, Expired or Cancelled (any cancellation, no roster, no show or suspension). A Completed reservation becomes Cancelled if a Provider No Show is later confirmed (NSH-6). |
 | **Enquiry** | A chat a customer starts with a provider before making a reservation. |
 | **Job time** | The booked period from job start time to job end time. Billing counts from the job start time. |
 | **Check-in Period** | The 15 minutes before the job start time, in which the rostered team arrives at the customer's address. It is an agreed arrival time; there is no check-in step in the app. |
@@ -71,12 +82,15 @@ All cases use these people and numbers unless the case says otherwise. Names and
 
 | ID | Rule | Case |
 | --- | --- | --- |
-| CUS-1 | A customer must register with a verified phone number, a user name, a home address with city, and an arrival note. | Aisyah verifies her phone by code, enters "Aisyah", her Salak Tinggi address, and the arrival note "Guardhouse: say unit B-12-3". Her account is created. |
+| CUS-1 | A customer registers with a name, a home address with city, and an arrival note. No phone number is required. | Aisyah enters "Aisyah", her Salak Tinggi address, and the arrival note "Guardhouse: say unit B-12-3". Her account is created. |
 | CUS-2 | A customer must agree to the Terms of Service to register. | Aisyah fills in every field but doesn't tick the Terms of Service. She can't finish registering until she does. |
 | CUS-3 | Only registered customers can make reservations. | Aisyah's husband browses Kemas Home without an account. When he taps Reserve, he's asked to register first. |
-| CUS-4 | Support can suspend a customer, for example after a confirmed Safety & Misconduct report or repeated confirmed no-shows. | Kemas Home reports that a customer, Daniel, shouted at and threatened its helpers. Support confirms the report and suspends Daniel. |
+| CUS-4 | Support can suspend a customer for a set period: 7 days, 30 days, or until Support lifts it. Reasons include a confirmed Safety & Misconduct report or repeated confirmed no-shows. | Kemas Home reports that a customer, Daniel, shouted at and threatened its helpers. Support confirms the report and suspends Daniel for 30 days. |
 | CUS-5 | A suspended customer can't make reservations or start enquiries. Their Requested and Reserved reservations whose Check-in Period hasn't started are cancelled with a full refund. No fees or fines apply. A reservation whose Check-in Period has started continues, and the suspension takes effect after the job ends. | Daniel had a Requested reservation with another provider for next week. It's cancelled and he gets a full refund. A job of his already running when he's suspended finishes as booked. |
-| CUS-6 | Reactivating a suspended customer requires Support confirmation. | A month later Support reviews Daniel's appeal and reactivates his account. |
+| CUS-6 | A suspension for 7 or 30 days ends automatically when the period runs out. A suspension until lifted ends only when Support confirms it. | Daniel's 30-day suspension ends on its own, and he can book again. A customer suspended until lifted must wait for Support to review an appeal. |
+| CUS-7 | A customer signs in through an identity provider (for example Google or Apple), which confirms the account belongs to them. One identity-provider account can hold only one Homa customer account. A new account starts with no ratings and no reliability counts. | Aisyah signs in with her Google account. While suspended, Daniel can't open a second Homa account with the same Google account. A customer who signs up with a different Google account starts with no ratings or counts. |
+| CUS-8 | A customer can deactivate their account in the app only when they have no Requested or Reserved reservations, no open reports, and no reservation still within its Protection Window. Otherwise they're told what's blocking it. A deactivated customer can reactivate by signing in again. A suspended customer can't deactivate. | Aisyah taps Deactivate on Saturday at 15:00. It's blocked until Sunday 14:00, when her last Protection Window ends. A month later she signs in again and her account is reactivated. |
+| CUS-9 | A customer can ask Support to delete their personal data, under the same conditions as deactivation (CUS-8). Homa keeps only the records it needs for completed payments, reports and legal obligations, and deletes or anonymises the rest. Ratings the customer wrote stay, shown as from a former customer. A suspended customer's identity-provider account stays blocked until the suspension ends, even after deletion. | Aisyah asks Support to delete her data. Her bookings' payment records are kept; her name and address are removed, and her rating of Kemas Home now shows as from a former customer. Daniel, suspended until lifted, can't use deletion to sign up again with the same Google account. |
 
 ---
 
@@ -122,13 +136,14 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | OFR-1 | A provider chooses jobs, tools and cities covered from Homa presets. | Kemas Home picks "Kitchen cleaning", "Laundry folding" and "Bathroom cleaning", the tool "HEPA vacuum", and the cities Salak Tinggi, Cyberjaya and Putrajaya. |
 | OFR-2 | A provider sets a per-helper hourly rate. Pricing is per helper per hour only. | Kemas Home sets RM25 per helper per hour. A 2-hour job with 2 helpers is priced 25 × 2 × 2 = RM100 before travel. |
 | OFR-3 | A provider sets a travel fee: none, flat, or by city. | Kemas Home sets RM20 flat. Another provider sets RM10 for Salak Tinggi and RM25 for Putrajaya. |
-| OFR-4 | A provider can set a discount rate that applies when a reservation meets a minimum number of hours and helpers. Default: no discount. | Kemas Home sets 10% for at least 3 hours and 2 helpers. Aisyah's 4-hour, 2-helper booking gets 10% off; a 2-hour, 2-helper booking doesn't. |
+| OFR-4 | A provider can set a discount rate of up to 99% that applies when a reservation meets a minimum number of hours and helpers. Default: no discount. The discount must respect the minimum rate (OFR-11). | Kemas Home sets 10% for at least 3 hours and 2 helpers. Aisyah's 4-hour, 2-helper booking gets 10% off; a 2-hour, 2-helper booking doesn't. |
 | OFR-5 | A provider sets minimum and maximum hours (default minimum 1 hour, default maximum 8 hours) and minimum and maximum helpers (default minimum 1, default maximum: number of active helpers). | Kemas Home sets 2 to 6 hours and leaves helpers on default. With 3 active helpers, customers can book 1 to 3 helpers. A provider that doesn't change hours can be booked for 1 to 8 hours. |
 | OFR-6 | A provider sets a minimum notice. Default: 2 hours. The lowest allowed is 1 hour with the Instant policy and 2 hours with the Request policy, so a Request provider always has at least 1 hour to respond (ACC-3). If a provider switches to Request with a notice under 2 hours, the notice is raised to 2 hours automatically and the provider is told. | Kemas Home (Request) keeps the 2-hour default and can't go lower. An Instant provider sets 1 hour; when it later switches to Request, its notice becomes 2 hours and it's notified. A larger team sets 24 hours because it plans the day before. |
 | OFR-7 | A provider can add proof-of-work photos from past jobs. | Kemas Home uploads before-and-after photos of a kitchen it cleaned, shown on its provider page. |
 | OFR-8 | A provider manages availability (working days and hours) and can sync external calendars. | Kemas Home works Monday–Saturday, 8:00–18:00, and syncs its Google Calendar. A private appointment on Tuesday 14:00–16:00 makes that slot unavailable on Homa. |
 | OFR-9 | A provider chooses exactly one Reservation Acceptance Policy (§4.3) and one Customer Cancellation Tier (§6.2). | Kemas Home chooses Request and Standard. These are shown on its page before a customer reserves. |
 | OFR-10 | A provider sets a buffer between jobs for travel and rest. Default: 30 minutes. | Kemas Home keeps the 30-minute default. A provider covering a wider area sets 60 minutes. |
+| OFR-11 | The per-helper hourly rate after any discount can't be below Homa's minimum rate of RM20. Any rate or discount setting that would break it is rejected. | Kemas Home charges RM25, so its largest possible discount is 20% (RM25 × 0.8 = RM20). Its 10% discount gives RM22.50, which is allowed. A provider charging RM40 could offer up to 50%. |
 
 ---
 
@@ -145,25 +160,21 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | RES-5 | Minimum duration is 1 hour. Duration increases in 15-minute steps. | With a provider whose minimum is 1 hour, Aisyah can book 1h, 1h 15m, 1h 30m and so on, but not 50 minutes or 1h 10m. With Kemas Home (minimum 2 hours, OFR-5) she starts at 2h. |
 | RES-6 | Total Reservation Fee = (per-helper hourly rate × hours × helpers) × (1 − discount rate, if a discount applies) + travel fee. | Standard reservation: 25 × 4 × 2 × 0.9 + 20 = RM200. |
 | RES-7 | When payment is secured, the reservation is Requested and the payment is held. | Aisyah pays RM200 on Monday 20:00. The reservation is Requested and Homa holds the RM200. |
-| RES-8 | A reservation keeps the provider's terms from when it was Requested: rate, travel fee, discount, acceptance policy and cancellation tier. Later changes by the provider apply only to new reservations. | On Wednesday Kemas Home raises its rate to RM30 and switches to Firm. Aisyah's Saturday reservation stays at RM200 under Standard. |
-| RES-9 | A provider can have only one reservation at a time. A Requested or Reserved reservation blocks the provider's calendar from the start of its Check-in Period until the job end time plus the provider's buffer (OFR-10), until it is Declined, Expired, Cancelled or Completed. | Aisyah's request for Saturday 10:00–14:00 blocks Kemas Home from 9:45 to 14:30, starting Monday 20:00. Another customer can't book Kemas Home at 11:00 on Saturday, even for 1 helper; the earliest start after Aisyah's job is 14:45. If Kemas Home declines Aisyah, or doesn't respond by Tuesday 20:00, the time opens again. |
+| RES-8 | A reservation keeps the provider's terms from when it was Requested: rate, travel fee, discount, acceptance policy and cancellation tier. It also keeps Homa's reservation values (§11) and the customer's address from then. Later changes to the provider's settings, Homa's reservation values or the customer's profile apply only to new reservations (P3). | On Wednesday Kemas Home raises its rate to RM30 and switches to Firm. Aisyah's Saturday reservation stays at RM200 under Standard. When Aisyah updates her profile address on Thursday, Saturday's team still goes to the original address. |
+| RES-9 | A provider can have only one reservation at a time. A Requested or Reserved reservation blocks the provider's calendar from the start of its Check-in Period until the job end time plus the provider's buffer (OFR-10), until it is Withdrawn, Declined, Expired, Cancelled or Completed. | Aisyah's request for Saturday 10:00–14:00 blocks Kemas Home from 9:45 to 14:30, starting Monday 20:00. Another customer can't book Kemas Home at 11:00 on Saturday, even for 1 helper; the earliest start after Aisyah's job is 14:45. If Kemas Home declines Aisyah, or doesn't respond by Tuesday 20:00, the time opens again. |
 | RES-10 | A customer can't have two Requested or Reserved reservations with overlapping job times. | Aisyah has requested Kemas Home for Saturday 10:00–14:00. She can't also request another provider for Saturday 12:00. She can book Sunday. |
-| RES-11 | While a customer pays, the provider's time is held for up to 15 minutes (checkout hold). If payment isn't secured within 15 minutes, or fails, the hold is released. | Aisyah taps Pay at 19:58 and the slot is held until 20:13. Her online banking payment succeeds at 20:00, and the reservation is Requested. Had the payment failed, another customer could book the slot from then. |
-| RES-12 | If a payment succeeds after the checkout hold has expired, the reservation is made only if the time is still free and every booking rule still passes. Otherwise the payment is refunded in full at once and the customer is told. | Aisyah's online banking confirms at 20:20, after the hold ended at 20:13. The slot is still free, so her reservation is Requested. Had another customer booked it at 20:15, Aisyah would get RM200 back straight away. |
+| RES-11 | If more than one customer pays for the same provider time, the first payment to be confirmed wins and that reservation is Requested. Any other confirmed payment for that time is refunded in full at once, and the customer is told. | Aisyah and Mei both pay for Kemas Home on Saturday at 10:00. Aisyah's payment confirms at 20:01 and Mei's at 20:02. Aisyah's reservation is Requested; Mei gets her RM200 back straight away and is told the slot was taken. |
+| RES-12 | If the same customer's payment is confirmed twice for one checkout (for example, a slow first attempt confirms after a retry), the first confirmed payment counts and the other is refunded in full at once. | Aisyah's card retry confirms at 20:04, then her slow online banking payment confirms at 20:06. The 20:06 payment is refunded in full straight away. |
 
 ### 4.2 While Requested
 
 | ID | Rule | Case |
 | --- | --- | --- |
-| REQ-1 | A customer can edit a Requested reservation. The original terms are kept (RES-8) and the price is recalculated with them. A higher price needs a top-up payment before the edit applies (REQ-6); a lower price is refunded at once. The acceptance deadline is recalculated from the time of the edit (ACC-3), and the edited time must still meet the provider's minimum notice. | On Monday 21:00 Aisyah changes 4 hours to 3 hours: the price becomes 25 × 3 × 2 × 0.9 + 20 = RM155, RM45 is refunded at once, and Kemas Home now has until Tuesday 21:00 to respond. Had she changed to 5 hours (25 × 5 × 2 × 0.9 + 20 = RM245), she'd pay a RM45 top-up before the edit applied. In a different booking, Aisyah requests on Saturday 7:00 for a 10:00 job. At 7:30 she tries to move the start to 9:00, but the Check-in Period would start at 8:45, only 1h 15m away, so the edit is blocked. |
-| REQ-2 | A customer can cancel a Requested reservation for free. | Aisyah cancels on Monday 21:00 before Kemas Home responds. She gets the full RM200 back. |
+| REQ-1 | A customer can't edit a reservation, whether Requested or Reserved (P2). To change a Requested reservation, the customer withdraws it (REQ-2) and makes a new request. To change a Reserved one, the customer cancels it under §6.2 and makes a new reservation. | On Monday 21:00 Aisyah wants 3 hours instead of 4. She withdraws her request, gets RM200 back, and requests 3 hours for RM155. It's a new request with a new acceptance deadline, Tuesday 21:00, and the slot isn't held in between: if another customer's payment for Saturday is confirmed first, the time is theirs (P1, RES-11). If Kemas Home had already accepted and Aisyah wanted Sunday instead of Saturday, she would cancel on Wednesday, free under Standard, and book Sunday as a new reservation. |
+| REQ-2 | A customer can withdraw a Requested reservation at any time before the provider accepts it, for free. It becomes Withdrawn, the customer gets a full refund, and the time opens again. A withdrawal isn't a cancellation: no fee applies and it doesn't count in reliability (RTG-10). | Aisyah withdraws on Monday 21:00 before Kemas Home responds. She gets the full RM200 back, and Saturday 10:00–14:00 opens for other customers. |
 | REQ-3 | A provider can decline a Requested reservation. The customer gets a full refund. | Kemas Home declines because two helpers are on leave. Aisyah gets RM200 back. |
 | REQ-4 | A Request that isn't accepted by the acceptance deadline expires. The customer gets a full refund. | Kemas Home doesn't respond by Tuesday 20:00. The request expires, Aisyah gets RM200 back, and Saturday 10:00–14:00 opens for other customers. |
-| REQ-5 | A Reserved reservation can't be edited. To change it, the customer cancels (under §6.2) and makes a new reservation. | After Kemas Home accepts, Aisyah wants Sunday instead of Saturday. She cancels on Wednesday, free under Standard, and books Sunday as a new reservation. |
-| REQ-6 | While a top-up is pending (REQ-1), for at most 15 minutes: the original time stays blocked; a changed time, if any, is also held; and the provider can't accept or decline. If the top-up isn't paid within 15 minutes, or fails, the edit is dropped, the reservation stays as it was, and the customer is told. | Aisyah changes 4 hours to 5 at 21:00 and owes a RM45 top-up. Until 21:15 Kemas Home sees the request as being edited and can't respond. Aisyah doesn't pay, so at 21:15 the request stays at 4 hours for RM200 and she's notified. |
-| REQ-7 | An edit that raises the price can't be made in the last 15 minutes before the acceptance deadline. Edits that lower the price are always allowed. | Aisyah requests at 7:00 for a 10:00 job, so the deadline is 8:45. At 8:35 she tries to add an hour and is blocked; she can still reduce the hours. |
-| REQ-8 | If a top-up succeeds after its 15 minutes, the edit applies only if the reservation is still Requested and every rule still passes, including REQ-7 at that moment. Otherwise the top-up is refunded in full at once. When the edit applies, the acceptance deadline is recalculated from that moment (ACC-3). | Aisyah's RM45 top-up confirms at 21:20 on Monday, after the edit was dropped at 21:15. The request is still Requested and 5 hours is still free, so the edit applies, and Kemas Home now has until Tuesday 21:20 to respond. Had Kemas Home accepted the original at 21:16, her RM45 would be refunded straight away. |
-| REQ-9 | If the customer cancels while a top-up is pending, the cancellation is free (REQ-2), the pending edit is dropped, and any top-up that arrives later is refunded at once. | Aisyah cancels at 21:05 with a top-up pending. She gets RM200 back, and when her RM45 top-up confirms at 21:10 it's refunded too. |
+| REQ-5 | If the customer withdraws and the provider accepts at nearly the same moment, whichever is recorded first wins (P1). If acceptance is recorded first, the reservation is Reserved and the customer can cancel under §6.2. | Kemas Home's acceptance is recorded at 21:02:10 and Aisyah's withdrawal at 21:02:12. The reservation is Reserved, so Aisyah is told she can cancel instead. Reserved on Monday, she's within the Grace Period (CCX-1), so cancelling is still free. |
 
 ### 4.3 Acceptance policies
 
@@ -196,13 +207,13 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | CHT-2 | Within a reservation, both the customer and the provider can send messages from when it's Requested until its Protection Window ends, except as limited by CHT-5. | On Saturday at 9:40 Kemas Home messages Aisyah: "We're at the guardhouse." On Sunday morning Aisyah messages about a missed corner, before the Protection Window ends at 14:00. |
 | CHT-3 | Every chat shows that payments and arrangements made outside Homa are not covered by Homa's protection. | Kemas Home offers a cash discount for next time. The chat reminder shows that a cash job wouldn't be covered by Homa. |
 | CHT-4 | Support can read the chat of a reservation as evidence when resolving a report. | For Aisyah's Roster Member Left disagreement, Support reads the Saturday messages to see when Nurul left. |
-| CHT-5 | After the Protection Window ends, a reservation's chat becomes read-only. It becomes read-only straight away if the reservation is Declined, Expires, or is cancelled before the Check-in Period starts. Anything new goes through a new Enquiry. | On Monday Aisyah can read Saturday's chat but can't reply in it. To ask about next week, she starts a new Enquiry with Kemas Home. Had she cancelled on Wednesday, the chat would have become read-only on Wednesday. If she cancels at 9:50 on Saturday, it stays open until Sunday 14:00. |
+| CHT-5 | After the Protection Window ends, a reservation's chat becomes read-only. It becomes read-only straight away if the reservation is Withdrawn, Declined or Expired, or is cancelled before the Check-in Period starts. Anything new goes through a new Enquiry. | On Monday Aisyah can read Saturday's chat but can't reply in it. To ask about next week, she starts a new Enquiry with Kemas Home. Had she cancelled on Wednesday, the chat would have become read-only on Wednesday. If she cancels at 9:50 on Saturday, it stays open until Sunday 14:00. |
 
 ### 4.6 Arrival and job time
 
 | ID | Rule | Case |
 | --- | --- | --- |
-| JOB-1 | The rostered team arrives at the customer's address during the Check-in Period, so the job can start at the job start time. There is no check-in step; arrival problems are handled through reports (§7). | The team arrives at Aisyah's home at 9:52 and starts at 10:00. Had they arrived at 10:05, Aisyah could choose to let them start, or report a Provider No Show. |
+| JOB-1 | The rostered team arrives at the customer's address during the Check-in Period, so the job can start at the job start time. There is no check-in step; arrival problems are handled through reports (§7, §8). | The team arrives at Aisyah's home at 9:52 and starts at 10:00. Had they arrived at 10:05, Aisyah could choose to let them start, or report a Provider No Show. |
 | JOB-2 | The team works the full booked hours. Billing is for the booked hours, even if the team finishes early. | The team finishes the jobs at 13:30. Aisyah still pays for 4 hours. |
 | JOB-3 | The provider marks the job Completed with at least one after-photo, only after the job end time. No customer confirmation is needed. | At 13:30 the Completed button isn't available yet. At 14:00 Kemas Home uploads a photo of the clean kitchen and marks the job Completed. |
 | JOB-4 | The customer is notified when the job is marked Completed. | Aisyah gets a notification at 14:01 with the after-photo. |
@@ -217,15 +228,15 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | --- | --- | --- |
 | PAY-1 | The customer's payment is held from the moment the reservation is Requested. | Aisyah's RM200 is held from Monday 20:00. Kemas Home can't receive it yet. |
 | PAY-2 | The provider's payout is released when the job is marked Completed, the Protection Window has ended, and any report is resolved. | The job is marked Completed on Saturday, no report is filed, and the Protection Window ends Sunday 14:00. The payout is released then. |
-| PAY-3 | The platform fee is 15.5% of the provider's released payout for a reservation. It does not apply to cancellation or no-show fees paid to the provider. | Payout RM200: platform fee RM31, Kemas Home receives RM169. If Aisyah had paid a RM45 cancellation fee instead, Kemas Home would receive the full RM45. |
+| PAY-3 | The platform fee is 15.5% of every payout to a provider, including cancellation, last-minute and no-show fees. | Payout RM200: platform fee RM31, Kemas Home receives RM169. If Aisyah had paid a RM45 cancellation fee instead, the platform fee would be RM6.98 and Kemas Home would receive RM38.02. |
 | PAY-4 | Refunds are returned to the customer from the held payment. Compensation (the extra % on top of a full refund) is paid by Homa and recovered through the provider's fine. The rest of the fine is kept by Homa. | Kemas Home doesn't show up. Aisyah gets RM200 back from the held payment, plus RM20 compensation from Homa. Kemas Home's RM105 fine repays the RM20, and Homa keeps RM85. |
 | PAY-5 | Provider fines are not charged directly. They are deducted from the provider's next payouts after the platform fee, at most 20% of each payout, carried over until cleared. This applies to every payout, including cancellation and no-show fee payouts. | Kemas Home owes a RM105 fine. Its next job payout is RM300, or RM253.50 after the 15.5% platform fee, so RM50.70 is deducted. The remaining RM54.30 comes off the following payouts. |
-| PAY-6 | Customer cancellation, last-minute and no-show fees are released to the provider when the Protection Window ends and any report is resolved, the same as a completed job's payout. The Protection Window is based on the booked job time, even if the reservation was cancelled. | Aisyah cancels on Friday 22:00 and pays RM45. Kemas Home receives the RM45 on Sunday at 14:00, when the Protection Window for the booked Saturday job ends, provided no report is open. |
-| PAY-7 | Refunds are paid to the customer as soon as the outcome is decided: at cancellation, decline, expiry, or when Support resolves a report. | Aisyah cancels on Friday 22:00. Her RM155 refund is sent straight away; Kemas Home's RM45 fee waits until the Protection Window ends (PAY-6). |
+| PAY-6 | Customer cancellation, last-minute and no-show fees are released to the provider when the Protection Window ends and any report is resolved, the same as a completed job's payout. The Protection Window is based on the booked job time, even if the reservation was cancelled. | Aisyah cancels on Friday 22:00 and pays RM45. Kemas Home receives RM38.02 (after the platform fee) on Sunday at 14:00, when the Protection Window for the booked Saturday job ends, provided no report is open. |
+| PAY-7 | Every refund, full or partial, is paid to the customer as soon as its outcome is decided: for example at withdrawal, cancellation, decline or expiry, when a smaller roster lowers the price (ROS-8), when a roster member leaves (RPT-9), when a job stops (SUS-3), or when Support resolves a report. | Aisyah cancels on Friday 22:00. Her RM155 refund is sent straight away; Kemas Home's RM45 fee waits until the Protection Window ends (PAY-6). When Nurul leaves at 12:00, Aisyah's RM45 partial refund is sent at once. |
 | PAY-8 | Amounts are calculated exactly, and each money line is rounded once to the nearest sen (half up). A refund is the amount paid minus the rounded fee, so the lines always add up. | Nurul leaves at 12:05 (RPT-9): the refund is 1.75 × 22.50 = RM39.375, rounded once to RM39.38. The reservation total becomes RM200 − RM39.38 = RM160.62, before the platform fee. |
-| PAY-9 | When a provider closes its account, payouts still pending are released when due, and any fine not yet cleared is deducted from them in full (the 20% cap doesn't apply). Whatever is still owed becomes a debt. A provider with debt can't rejoin Homa under the same business registration until the debt is paid. During a suspension, fines are not debt; they stay as a balance and are deducted from payouts after reactivation (PAY-5). | Kemas Home closes its account owing a RM54.30 fine, with a RM45 cancellation-fee payout still pending. When that payout is released, all RM45 goes to the fine, and the remaining RM9.30 becomes a debt. A year later it tries to rejoin with the same company registration and must pay the RM9.30 first. Had it only been suspended for missed re-verification, it would reactivate on re-verifying and the RM54.30 would come off its next payouts. |
-| PAY-10 | Debt is paid by a direct payment to Homa. Direct payment is used only to clear debt, or an outstanding fine under PAY-11. | To rejoin, Kemas Home pays the RM9.30 by online banking. |
-| PAY-11 | A closed provider can't rejoin while any of its payouts is still pending, because its final debt isn't known yet. It can rejoin straight away by paying its whole outstanding fine directly; its pending payouts are then released in full when due. | Kemas Home closed owing a RM54.30 fine, and its RM45 payout is held by an open report. It can't rejoin until the report is resolved, or it can pay the RM54.30 now and rejoin; the RM45 is then released to it in full when the report closes. |
+| PAY-9 | When a provider closes its account, payouts still pending are released when due, and any fine not yet cleared is deducted from them in full (the 20% cap doesn't apply). Whatever is still owed becomes a debt. A provider with debt can't rejoin Homa under the same business registration until the debt is paid. During a suspension, fines are not debt; they stay as a balance and are deducted from payouts after reactivation (PAY-5). | Kemas Home closes its account owing a RM54.30 fine, with a RM45 cancellation-fee payout still pending. When that payout is released, all RM38.02 left after the platform fee goes to the fine, and the remaining RM16.28 becomes a debt. A year later it tries to rejoin with the same company registration and must pay the RM16.28 first. Had it only been suspended for missed re-verification, it would reactivate on re-verifying and the RM54.30 would come off its next payouts. |
+| PAY-10 | Debt is paid by a direct payment to Homa. Direct payment is used only to clear debt, or an outstanding fine under PAY-11. | To rejoin, Kemas Home pays the RM16.28 by online banking. |
+| PAY-11 | A closed provider can't rejoin while any of its payouts is still pending, because its final debt isn't known yet. It can rejoin straight away by paying its whole outstanding fine directly; its pending payouts are then released when due, less the platform fee, with nothing taken for the fine. | Kemas Home closed owing a RM54.30 fine, and its RM45 payout is held by an open report. It can't rejoin until the report is resolved, or it can pay the RM54.30 now and rejoin; it then receives RM38.02 when the report closes. |
 
 ---
 
@@ -305,7 +316,7 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | RPT-3 | A report must have one category and a description. Media attachments are optional. | Aisyah writes "Vase in the living room cracked during cleaning" and attaches a photo. She can't submit with the description empty. |
 | RPT-4 | No-show reports are resolved under the No Show rules (§7). | Support confirms Aisyah's Provider No Show report, and NSH-3 applies. |
 | RPT-5 | Property Damage, Safety & Misconduct and Other are resolved by Support case by case. | Support reviews Aisyah's vase report, the after-photos and Kemas Home's reply, and decides the outcome. |
-| RPT-6 | The provider's payout is held until every report on the reservation is resolved. | Aisyah's report is open on Sunday 14:00, when the Protection Window ends. Kemas Home's payout waits until Support resolves it. |
+| RPT-6 | The provider's payout is held until every report on the reservation is resolved, including reports made before the job is marked Completed. | Aisyah's report is open on Sunday 14:00, when the Protection Window ends. Kemas Home's payout waits until Support resolves it. |
 | RPT-7 | Homa doesn't compensate for property damage. Support helps the customer and provider settle it, and refers to the provider's insurance if the provider is Insurance Covered. | Kemas Home is Insurance Covered. Support points Aisyah to Kemas Home's public liability insurance for the vase. |
 | RPT-8 | From the start of the Check-in Period until the job end time, the provider can report **Roster Member Left** when a rostered member has to leave, with a reason: Illness, Emergency or Other. | Nurul feels unwell at 12:00. Kemas Home reports "Roster Member Left: Illness". |
 | RPT-9 | The rest of the team continues. The customer is notified that the member left, without the reason. Hours the helper already worked are paid; their worked time is rounded up to the next started 15-minute step, and only the remaining time is refunded automatically. Supervisors aren't billed, so a supervisor leaving gives no refund. | Nurul leaves at 12:00: her 2 worked hours are paid and Aisyah is refunded the remaining 2 hours, 2 × 25 × 0.9 = RM45. If Nurul left at 12:05, the 12:00–12:15 step counts as worked, so Aisyah is refunded 1h 45m = RM39.38. |
@@ -327,7 +338,7 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | RTG-7 | Categories when the customer rates the provider: **Quality of work**, **Punctuality**, **Professionalism**. | Aisyah gives Quality 5, Punctuality 4 (the team arrived at 9:58) and Professionalism 5. |
 | RTG-8 | Categories when the provider rates the customer: **Accurate request**, **Access and readiness**, **Respect**. | Kemas Home gives Accurate request 5, Access and readiness 3 (the arrival note was missing the guardhouse code) and Respect 5. |
 | RTG-9 | Ratings open only for Completed reservations. Cancellations and no-shows are shown through reliability counts (RTG-10) instead. | Aisyah doesn't answer the door and a Customer No Show is confirmed, so no ratings open; the no-show appears in her reliability counts. When the job is Completed, ratings open as usual. |
-| RTG-10 | Instead of ratings, reliability is shown as counts over the last 12 months. Customers see a provider's cancellations, no-rosters, no-shows and roster members who left during a job. Providers see a customer's cancellations with a fee and no-shows. Free cancellations aren't counted. | Kemas Home's page shows "Cancellations: 1, No-rosters: 0, No-shows: 0". Aisyah's free cancellation on Monday isn't counted, but her Friday 22:00 cancellation with a RM45 fee is, and providers can see it. |
+| RTG-10 | Instead of ratings, reliability is shown as counts over the last 12 months. Customers see a provider's cancellations, no-rosters, no-shows and roster members who left during a job. Providers see a customer's cancellations with a fee and no-shows. Withdrawals and free cancellations aren't counted. | Kemas Home's page shows "Cancellations: 1, No-rosters: 0, No-shows: 0". Aisyah's free cancellation on Monday isn't counted, but her Friday 22:00 cancellation with a RM45 fee is, and providers can see it. |
 | RTG-11 | Support can remove a rating that contains abusive content or personal contact or address details. | Kemas Home's rating of a customer includes the customer's phone number. Support removes it. |
 
 ---
@@ -338,7 +349,8 @@ Example amounts use the standard reservation (Total RM200, Base RM45).
 
 | Case | Customer pays | Provider fine | Customer receives | Example |
 | --- | --- | --- | --- | --- |
-| Cancels a Requested reservation | — | — | Full refund | Gets RM200 |
+| Another customer's payment for the same time confirmed first | — | — | Full refund | Gets RM200 |
+| Customer withdraws a request | — | — | Full refund | Gets RM200 |
 | Provider declines, or request expires | — | — | Full refund | Gets RM200 |
 | Customer cancels within Grace Period | — | — | Full refund | Gets RM200 |
 | Customer cancels before tier cut-off | — | — | Full refund | Gets RM200 |
@@ -361,6 +373,49 @@ Example amounts use the standard reservation (Total RM200, Base RM45).
 
 ---
 
-## 11. Open items
+## 11. Homa-set values
+
+Every value Homa sets, in one place. Changing a value here changes it in every rule listed.
+
+**Reservation values** are fixed when a reservation is Requested (P3, RES-8): minimum rate, maximum discount, minimum notice, duration, partial-time charging, Check-in Period, acceptance deadline, Grace Period, cancellation tiers, customer cancellation fee, provider fines, customer compensation, customer no-show fee, fee and fine cap, Protection Window, completion reminders, platform fee, fine deduction cap, money rounding and Rating Window.
+
+**Account values** apply at once to everyone: minimum helper age, work permit buffer, re-verification cycles, customer suspension lengths, default hours, default helpers, buffer between jobs, rating stars and categories, and the reliability count period.
+
+| Value | Amount | Rules |
+| --- | --- | --- |
+| Minimum helper age | 18 | HLP-1 |
+| Work permit buffer | 90 days before expiry | HLP-3, ROS-4 |
+| Re-verification cycle | Every 6 months, reminders from 60 days before | MON-1 |
+| Re-verification when flagged | Within 14 days | MON-2 |
+| Customer suspension lengths | 7 days, 30 days, or until lifted | CUS-4, CUS-6 |
+| Minimum rate | RM20 per helper hour, after discount | OFR-11 |
+| Maximum discount | 99% | OFR-4 |
+| Default hours | Minimum 1 hour, maximum 8 hours | OFR-5 |
+| Default helpers | Minimum 1, maximum = active helpers | OFR-5 |
+| Minimum notice | Default 2 hours; lowest 1 hour (Instant), 2 hours (Request) | OFR-6, RES-4 |
+| Buffer between jobs | Default 30 minutes | OFR-10, RES-9 |
+| Duration | Minimum 1 hour, in 15-minute steps | RES-5 |
+| Partial-time charging | 15-minute steps, rounded up | LMC-2, RPT-9, SUS-3 |
+| Check-in Period | 15 minutes before the job start time | Definitions, JOB-1 |
+| Acceptance deadline | 24 hours after the request, or 1 hour before the Check-in Period, whichever is first | ACC-3 |
+| Grace Period | 4 hours after Reserved, if Reserved at least 24 hours before the Check-in Period | CCX-1 |
+| Cancellation tiers | Flexible 4 hours, Standard 12 hours, Firm 24 hours before the Check-in Period | CCX-3 to CCX-5 |
+| Customer cancellation fee | Base Cancellation Fee | CCX-6, LMC-1 |
+| Provider fines | Base; Base + 10% (within 24 hours); + 12% (no roster); + 20% (last minute); + 30% (no show) | PCX-1, PCX-2, NRS-2, LMC-3, NSH-3 |
+| Customer compensation | 3%, 4%, 7%, 10% | PCX-2, NRS-3, LMC-3, NSH-3 |
+| Customer no-show fee | Base + 30% of the Hours Fee after the first hour + travel fee | NSH-5 |
+| Fee and fine cap | 100% of the Total Reservation Fee | CAN-2 |
+| Protection Window | Until 24 hours after the job end time | Definitions, RPT-1, PAY-2, PAY-6 |
+| Completion reminders | At the job end time and 2 hours later | JOB-5 |
+| Platform fee | 15.5% of every payout to a provider | PAY-3 |
+| Fine deduction cap | 20% of each payout | PAY-5 |
+| Money rounding | Once per line, to the nearest sen, half up | PAY-8 |
+| Rating Window | Closes 7 days after the Protection Window ends | RTG-2 |
+| Ratings | 1–5 stars; up to 3 categories per side | RTG-4, RTG-7, RTG-8 |
+| Reliability counts | Last 12 months | RTG-10 |
+
+---
+
+## 12. Open items
 
 None at the moment.

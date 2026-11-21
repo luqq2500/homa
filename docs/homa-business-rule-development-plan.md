@@ -1,6 +1,6 @@
 # Homa Business Rule Development Plan
 
-> Ingested from Notion on 2026-11-20 (page edited 17:50 UTC): https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
+> Ingested from Notion on 2026-11-21 (page edited 08:35 UTC): https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
 > The Notion page is the source of truth; refresh this copy when it changes.
 
 Development plan for the [Homa Business Rule](homa-business-rule.md) page, as of 21 Nov 2026.
@@ -12,19 +12,29 @@ Homa splits into **8 bounded contexts**. **Reservation** is the core domain and 
 The decisions that shape everything else:
 
 1. **Money rules live in the Reservation domain.** Fees, fines, refunds and compensation (RES-6, §6, §7, RPT-9, ROS-8, SUS-3) are worked out by `SettlementPolicy` objects. The result is a `Settlement` value object that carries the CAN-2 cap and the PAY-8 rounding rule: each line is rounded once, and the refund is the amount paid minus the rounded fee. Payment executes the `Settlement` it receives in an event and never re-derives it.
-2. **Terms are snapshotted.** A `ReservationTerms` value object is frozen when the reservation is Requested (RES-8). Policies read only the snapshot, never the live listing. Edits re-price with the same snapshot, and the booking discount survives a smaller roster (REQ-1, ROS-8).
+2. **Terms are snapshotted.** A `ReservationTerms` value object is frozen when the reservation is Requested (RES-8). Policies read only the snapshot, never the live listing. The customer's address is snapshotted the same way, so a later profile change never moves a booked job. Reservations are never edited, so a snapshot never changes; a different booking is a new reservation with a new snapshot (P2, REQ-1). The booking discount survives a smaller roster (ROS-8).
 3. **Calendar exclusivity is its own aggregate.** `ProviderSchedule` (RES-9, with buffer) and `CustomerSchedule` (RES-10, without buffer) hold the active blocks. Optimistic locking prevents double booking. A database exclusion constraint is only a safety net; the rule stays in the domain.
-4. **Phases come from time, not status.** Stored statuses follow the rules exactly: Requested, Reserved, Completed, Declined, Expired, Cancelled. Completed is not final: a Provider No Show confirmed inside the protection window turns it into Cancelled (NSH-6). The checkout hold (RES-11) is a schedule hold, not a status. `ReservationPhase` (BeforeCheckIn, CheckIn, InJob, PostJob, Closed) is computed from `JobTime` and a `Clock`. Every time-based rule asks the phase.
+4. **Phases come from time, not status.** Stored statuses follow the rules exactly: Requested, Reserved, Completed, Withdrawn, Declined, Expired, Cancelled. Withdrawn is a status of its own, not a `CancellationCause`, because a withdrawal isn't a cancellation: no fee and no reliability count (REQ-2, RTG-10). Completed is not final: a Provider No Show confirmed inside the protection window turns it into Cancelled (NSH-6). There is no checkout hold: the first confirmed payment for a time wins (RES-11). `ReservationPhase` (BeforeCheckIn, CheckIn, InJob, PostJob, Closed) is computed from `JobTime` and a `Clock`. Every time-based rule asks the phase.
 5. **Cancellation reason is a value, not a status.** `Cancelled` carries a `CancellationCause` (CustomerCancelled, ProviderCancelled, NoRoster, ProviderNoShow, CustomerNoShow, CustomerSuspended, ProviderSuspended, LastMinute…). Reliability counts (RTG-10) and settlement read the cause.
 6. **Reports live in Support; effects live where the state is.** Support owns a report's lifecycle and Support's confirmation. Reservation applies the money effect when it receives `ProviderNoShowConfirmed` or a similar event. Roster Member Left goes the other way: Reservation records the fact first (it changes the roster and the money), and Support creates the report automatically so it can be disputed (ROS-10, RPT-10).
 7. **Time-driven rules enter through schedulers.** `infra/transport/messaging` triggers call ordinary usecase ports: expire requests, lock the roster at check-in, remind about completion, release payouts, close rating windows. All times are Asia/Kuala_Lumpur through an injected `Clock`.
 8. **The rule cases are the test suite.** Each rule ID gets one intent-named test built from the §0 fixture (Aisyah, Kemas Home, the RM200 reservation). The §10 table becomes one parameterised settlement test.
 
+### Rule principles (P1–P3)
+
+The rules page now opens with three principles, and every new question is answered from them first. Each one maps to a single place in the design.
+
+| Principle | Where the design enforces it |
+| --- | --- |
+| P1 Paid is committed | Schedules are blocked only when a payment confirms (RES-11). Payment refunds any losing, duplicate or unusable payment at once (RES-11, RES-12). A withdrawal and an acceptance change the same Reservation version, so whichever commits first wins (REQ-5) |
+| P2 A change is a new booking | `Reservation` has no `edit()`. A Requested reservation can only be withdrawn (`withdraw()`) and a Reserved one cancelled (`cancelByCustomer()`); the new booking goes through `request()` under the terms and values in force then |
+| P3 A reservation keeps what it was booked with | `ReservationTerms` and `ServiceAddress` snapshots; Homa's reservation values are read with `asOf(requestedAt)` in their owning context, while account values apply at once (see Homa-set values) |
+
 ### Delivery, idempotency and consistency
 
 - **Cross-context events go through a transactional outbox.** Delivery is at-least-once and ordered per aggregate. Handling an event in the publisher's transaction is allowed only inside one context, so a Payment failure can never roll back a Reservation.
 - **Every IE handler is idempotent.** A `ProcessedMessageStore` port records (eventId, handler) in the handler's own transaction, and a repeat is a no-op. Gateway webhooks are de-duplicated by the gateway's event id. Every refund, compensation and payout call carries an idempotency key equal to its settlement line id, so a replayed `ReservationCancelledIE` can't refund twice.
-- **Accepted exception: checkout writes three aggregates in one transaction.** `Reservation`, `ProviderSchedule` and `CustomerSchedule` are saved together so double booking is impossible (RES-9, RES-10). Everywhere else, one transaction changes one aggregate. This is deliberate; don't "fix" it.
+- **Accepted exception: checkout writes three aggregates in one transaction.** `Reservation`, `ProviderSchedule` and `CustomerSchedule` are saved together when a payment is confirmed, so the first confirmed payment wins and double booking is impossible (RES-9, RES-10, RES-11). Everywhere else, one transaction changes one aggregate. This is deliberate; don't "fix" it.
 - **Calendar rules use a business calendar.** Instants are stored. Rules counted in days or months (MON-1, HLP-3, ROS-4, RTG-2) use `LocalDate` in Asia/Kuala_Lumpur through the kernel's `BusinessCalendar`, so a 90-day or 6-month rule never drifts at a day edge.
 
 ## Bounded contexts and context map
@@ -33,16 +43,16 @@ Every rule ID has exactly one owning context. Where a rule touches two contexts,
 
 | Context | Subdomain | Owns rules | Aggregates (roots) | Package root |
 | --- | --- | --- | --- | --- |
-| Reservation | Core | RES-1–12, REQ-1–9, ACC-1–3, ROS-1–10, JOB-1–6, CAN-1–3, CCX-1–6, PCX-1–2, NRS-1–3, LMC-1–3, SUS-1–3, NSH-3, NSH-5, NSH-6, CUS-5 (effect) | Reservation, ProviderSchedule, CustomerSchedule | `com.homa.reservation` |
+| Reservation | Core | RES-1–12, REQ-1–5, ACC-1–3, ROS-1–10, JOB-1–6, CAN-1–3, CCX-1–6, PCX-1–2, NRS-1–3, LMC-1–3, SUS-1–3, NSH-3, NSH-5, NSH-6, CUS-5 (effect) | Reservation, ProviderSchedule, CustomerSchedule | `com.homa.reservation` |
 | Payment | Supporting | PAY-1–11 | PaymentHold, Payout, ProviderFineAccount, Ledger | `com.homa.payment` |
 | Provider | Supporting | PRV-1–6, HLP-1–8, MON-1–4 | Provider, TeamMember | `com.homa.provider` |
-| Listing | Supporting | OFR-1–10 | ProviderListing, AvailabilitySchedule, Preset | `com.homa.listing` |
-| Customer | Supporting | CUS-1–4, CUS-6 | Customer | `com.homa.customer` |
+| Listing | Supporting | OFR-1–11 | ProviderListing, AvailabilitySchedule, Preset | `com.homa.listing` |
+| Customer | Supporting | CUS-1–4, CUS-6–9 | Customer | `com.homa.customer` |
 | Support | Supporting | RPT-1–11, NSH-1, NSH-2, NSH-4 | Report | `com.homa.support` |
 | Rating | Supporting | RTG-1–11 | RatingSession, ReliabilityRecord | `com.homa.rating` |
 | Conversation | Supporting | CHT-1–5 | Conversation | `com.homa.conversation` |
 | Notification | Generic | Notify on events (ROS-1, JOB-4, NRS-1, reminders) | none (routing only) | `com.homa.notification` |
-| Identity | Generic | Phone OTP, roles (customer, provider staff, Support) | buy: Cognito or similar | `infra.security` in each context + `com.homa.app` |
+| Identity | Generic | Sign-in through an identity provider such as Google or Apple; one identity-provider account per Homa customer account (CUS-7), roles (customer, provider staff, Support) | buy: Cognito or similar | `infra.security` in each context + `com.homa.app` |
 
 Why these boundaries:
 
@@ -156,7 +166,7 @@ Rule 3 as written stops a domain from reaching out of the domain layer. Rule 5 s
 | `Percentage` | `BigDecimal` from 0 to 100 | Reservation, Payment, Listing | `of(Money)` and `complement()` (1 − p, for the discount) |
 | `TimeInterval` | `Instant start`, `Instant end` | Reservation, Listing, Rating, Support | `overlaps`, `contains`, `duration`, `extendEnd(Duration)` |
 
-The fourth, `BusinessCalendar` (the fixed Asia/Kuala_Lumpur zone with `dateOf(Instant)`, `plusDays` and `plusMonths`), serves the calendar rules in Reservation, Provider and Rating. Not admitted to the kernel: quarter-hour rounding (only Reservation needs it), city codes (Homa presets carry business meaning), and IDs (each context wraps its own, and events carry Strings).
+The fourth, `BusinessCalendar` (the fixed Asia/Kuala_Lumpur zone with `dateOf(Instant)`, `plusDays` and `plusMonths`), serves the calendar rules in Reservation, Provider, Rating and Customer (CUS-4 suspension periods). Not admitted to the kernel: quarter-hour rounding (only Reservation needs it), city codes (Homa presets carry business meaning), and IDs (each context wraps its own, and events carry Strings).
 
 ### Integration event catalog
 
@@ -165,36 +175,63 @@ The `ie/port` interfaces are `CustomerIE`, `ProviderIE`, `ListingIE`, `Reservati
 | Event (`ie/events`) | Publisher | Consumers | Key payload |
 | --- | --- | --- | --- |
 | `CustomerRegisteredIE`, `CustomerAddressChangedIE` | Customer | Reservation, Conversation | customerId, city, status |
-| `CustomerSuspendedIE`, `CustomerReactivatedIE` | Customer | Reservation (CUS-5), Conversation | customerId, at |
+| `CustomerSuspendedIE`, `CustomerReactivatedIE` | Customer | Reservation (CUS-5), Conversation | customerId, at, endsAt (empty when until lifted, CUS-4, CUS-6) |
+| `CustomerDeactivatedIE` | Customer | Reservation, Conversation (CUS-8) | customerId; reactivation on sign-in reuses `CustomerReactivatedIE` |
+| `CustomerDataErasedIE` | Customer | Reservation, Conversation, Support, Rating (each anonymises its own copies, CUS-9) | customerId, erasedAt |
 | `ProviderWentLiveIE` | Provider | Listing, Reservation, Payment | providerId, businessRegistrationNo |
 | `ProviderClosedIE` | Provider | Listing, Reservation, Payment (fine becomes debt, PAY-9) | providerId, businessRegistrationNo |
 | `ProviderSuspendedIE`, `ProviderReactivatedIE` | Provider | Listing, Reservation (SUS-1–3) | providerId, cause = MISSED_REVERIFICATION or MONITORING_FLAG, at |
 | `ProviderBookabilityChangedIE` | Provider | Listing, Reservation, Notification (PRV-6) | providerId, bookable, reason = NO_ACTIVE_HELPERS or CLOSING |
 | `InsuranceCoverageChangedIE` | Provider | Listing, Support (RPT-7) | providerId, covered, validUntil |
-| `TeamMemberActivatedIE`, `TeamMemberDeactivatedIE`, `TeamMemberPermitUpdatedIE` | Provider | Reservation, Listing (default max helpers) | memberId, providerId, role, citizen/foreign, permitExpiry |
+| `TeamMemberActivatedIE`, `TeamMemberDeactivatedIE`, `TeamMemberPermitUpdatedIE` | Provider | Reservation, Listing (default max helpers) | memberId, providerId, role, citizen/foreign, rosterableUntil (permit expiry minus Provider's 90-day buffer, HLP-3, ROS-4) |
 | `TeamMemberSuspendedIE`, `TeamMemberReactivatedIE` | Provider | Reservation (ROS-5, ROS-9, ROS-10) | memberId, cause, at |
 | `ListingTermsChangedIE` | Listing | Reservation, Notification (OFR-6 notice raised) | full snapshot: cities, jobs, rate, travel fee, discount, bounds, notice, buffer, policy, tier; noticeRaised |
 | `AvailabilityChangedIE`, `ExternalBusyTimeSyncedIE` | Listing | Reservation | providerId, weekly hours, busy intervals |
-| `ReservationCheckoutStartedIE` | Reservation | Payment | checkoutId, customerId, total, holdExpiresAt (RES-11) |
-| `ReservationCheckoutRejectedIE` | Reservation | Payment (full refund at once), Notification | checkoutId, reason (RES-12) |
-| `ReservationRequestedIE`, `ReservationReservedIE` | Reservation | Payment, Conversation, Notification, Provider (PRV-5 open count) | reservationId, parties, jobTime, total, protectionWindowEnd |
-| `ReservationTopUpRequestedIE` | Reservation | Payment | reservationId, editId, top-up amount, expiresAt (REQ-1, REQ-6) |
-| `ReservationEditedIE` | Reservation | Payment (refunds a lower price at once), Notification | reservationId, new total, difference |
-| `ReservationEditDroppedIE` | Reservation | Payment (closes the top-up, or refunds one that arrived late, REQ-8, REQ-9), Notification (REQ-6) | reservationId, editId |
-| `ReservationDeclinedIE`, `ReservationExpiredIE` | Reservation | Payment (full refund), Conversation (read-only, CHT-5), Notification, Provider | reservationId |
+| `ReservationCheckoutStartedIE` | Reservation | Payment | checkoutId, customerId, total (no time is held, RES-11) |
+| `ReservationCheckoutRejectedIE` | Reservation | Payment (full refund at once), Notification | checkoutId, reason = TIME_TAKEN or RULE_FAILED (RES-11) |
+| `ReservationRequestedIE`, `ReservationReservedIE` | Reservation | Payment, Conversation, Notification, Provider (PRV-5 open count), Customer (CUS-8 activity) | reservationId, parties, jobTime, total, protectionWindowEnd, requestedAt (P3) |
+| `ReservationWithdrawnIE` | Reservation | Payment (full refund at once, PAY-7), Conversation (read-only, CHT-5), Notification, Provider (PRV-5 open count), Customer (CUS-8). Rating doesn't consume it, so withdrawals never count (RTG-10) | reservationId, withdrawnAt, requestedAt |
+| `ReservationDeclinedIE`, `ReservationExpiredIE` | Reservation | Payment (full refund), Conversation (read-only, CHT-5), Notification, Provider, Customer (CUS-8) | reservationId |
 | `RosterChangedIE` | Reservation | Notification (ROS-1), Support | reservationId, member ids |
-| `ReservationCancelledIE` | Reservation | Payment, Rating (RTG-10; voids and removes ratings for NSH-6), Conversation (CHT-5), Notification, Provider | cause, settlement lines, protectionWindowEnd |
+| `ReservationCancelledIE` | Reservation | Payment, Rating (RTG-10; voids and removes ratings for NSH-6), Conversation (CHT-5), Notification, Provider, Customer (CUS-8) | cause, settlement lines, protectionWindowEnd |
 | `RosterMemberLeftIE` | Reservation | Support (auto-report), Rating, Payment, Notification | memberId, leftAt, reason, refund |
 | `SettlementAdjustedIE` | Reservation | Payment | reservationId, adjustment lines (ROS-8, RPT-10 dispute) |
-| `ReservationCompletedIE` | Reservation | Payment, Rating (opens the window, RTG-2), Support (completion photos as evidence, JOB-6, NSH-6), Notification (JOB-4) | payout gross, protectionWindowEnd, completedAt, completion photo refs |
+| `ReservationCompletedIE` | Reservation | Payment, Rating (opens the window, RTG-2), Support (completion photos as evidence, JOB-6, NSH-6), Notification (JOB-4), Customer (CUS-8 window end) | payout gross, protectionWindowEnd, completedAt, completion photo refs |
 | `PaymentHeldIE`, `PaymentFailedIE` | Payment | Reservation | checkoutId, amount, paidAt |
-| `TopUpHeldIE`, `TopUpFailedIE` | Payment | Reservation | reservationId, editId, paidAt |
 | `RefundPaidIE`, `PayoutReleasedIE` | Payment | Notification | amounts |
 | `ProviderDebtChangedIE` | Payment | Provider (PAY-9) | businessRegistrationNo, outstanding debt, outstanding fine, pending payout count (PAY-9, PAY-11) |
-| `ReportOpenedIE`, `ReportResolvedIE` | Support | Payment (RPT-6 hold) | reportId, reservationId |
+| `ReportOpenedIE`, `ReportResolvedIE` | Support | Payment (RPT-6 hold), Customer (CUS-8), Reservation (a refund Support decided, RPT-5, PAY-7) | reportId, reservationId, decidedRefund (optional) |
 | `ProviderNoShowConfirmedIE`, `CustomerNoShowConfirmedIE` | Support | Reservation (NSH-3, NSH-5, NSH-6) | reservationId, confirmedAt |
 | `RosterMemberLeftDisputeResolvedIE` | Support | Reservation | reservationId, memberId, corrected leftAt |
 | `ProviderRatingRevealedIE`, `ReliabilityChangedIE` | Rating | Listing (provider page) | averages, counts |
+
+## Homa-set values
+
+The rules page lists every value Homa sets in one table (§11). The plan gives each value exactly one owner: a named constant in one context's domain. Other contexts never copy the number; they receive the computed result in an event, such as a `protectionWindowEnd`, a `rosterableUntil` or a bounds snapshot. Changing a value is then a one-line change in one place, reviewed like a contract change.
+
+Each owning context keeps its values in one final class in its domain package, for example `ReservationValues` or `ProviderValues`. `HomaSetValuesTest` checks every row of §11 against its constant, so the rules page and the code can't drift apart silently. The rules split the values in two (P3). Reservation values (minimum rate and discount, notice, duration, partial-time charging, Check-in Period, acceptance deadline, Grace Period, tiers, fees, fines, compensation, cap, Protection Window, completion reminders, platform fee, fine deduction cap, rounding and Rating Window) are fixed when a reservation is Requested. A change never edits the number in place: it adds a new dated version to the owner's values class, and every owner reads the version in force at the reservation's `requestedAt` through `asOf(requestedAt)`. Payment does this for the platform fee and deduction cap, Rating for the Rating Window, and Reservation for its own; Listing's values are already frozen into the terms snapshot. Account values (helper age, permit buffer, re-verification, suspension lengths, default hours and helpers, buffer, rating stars and categories, reliability period) have one current version and apply at once. `HomaSetValuesTest` also checks that a reservation Requested before a change keeps the old version.
+
+| Value (§11) | Owner | Domain type | Other contexts get it as |
+| --- | --- | --- | --- |
+| Minimum helper age 18 | Provider | `AgeRequirement` | — |
+| Work permit buffer 90 days | Provider | `PermitRequirement` | `rosterableUntil` on team-member events (ROS-4) |
+| Re-verification every 6 months, reminders 60 days before; 14 days when flagged | Provider | `VerificationCycle` | — |
+| Customer suspension lengths | Customer | `Suspension` | `endsAt` on `CustomerSuspendedIE` |
+| Minimum rate RM20; maximum discount 99% | Listing | `MinimumRate`, `DiscountRule` | already applied in the terms snapshot |
+| Default hours and helpers; duration minimum 1 h in 15-min steps | Listing | `BookingBounds` | bounds in `ListingTermsChangedIE` |
+| Minimum notice: default and floors | Listing | `MinimumNotice` | notice in `ListingTermsChangedIE` |
+| Buffer between jobs | Listing | `JobBuffer` | buffer in `ListingTermsChangedIE` |
+| Check-in Period 15 min; Protection Window end + 24 h | Reservation | `JobTime` | `checkInStart`, `protectionWindowEnd` on reservation events |
+| Acceptance deadline | Reservation | `AcceptanceDeadline` | — |
+| Grace Period; tier cut-offs | Reservation | `GracePeriod`, `CancellationTier` | — |
+| Customer fees, provider fines, compensation, 100% cap | Reservation | settlement policies, `Settlement` | settlement lines on events |
+| Partial-time charging in 15-min steps | Reservation | `BillableTime` | refund lines |
+| Completion reminders | Reservation | `CompletionReminders` | — |
+| Platform fee 15.5%; fine deduction cap 20% | Payment | `PlatformFeeRate`, `FineDeductionCap` (reservation values, read with `asOf(requestedAt)`, P3) | — |
+| Money rounding | kernel | `Money` | — |
+| Rating Window 7 days; stars and categories; reliability over 12 months | Rating | `RatingWindow`, `Rating`, `ReliabilityRecord` | — |
+
+Two places used to compute a value twice and now take it from its owner. Reservation compared jobs against permit expiry minus 90 days itself; it now receives `rosterableUntil` from Provider. The 1-hour, 15-minute duration floor now lives only in Listing's `BookingBounds`, and Reservation's `JobDuration` checks against the bounds in the terms snapshot.
 
 ## Domain model per context
 
@@ -206,13 +243,13 @@ The domain layer holds every rule that would still be true if the app's screens 
 reservation/domain/
 ├── Reservation.java              AR
 ├── ReservationId.java
-├── ReservationStatus.java        REQUESTED, RESERVED, COMPLETED, DECLINED, EXPIRED, CANCELLED
+├── ReservationStatus.java        REQUESTED, RESERVED, COMPLETED, WITHDRAWN, DECLINED, EXPIRED, CANCELLED
 ├── CancellationCause.java
 ├── ReservationPhase.java         derived from JobTime + now
-├── JobTime.java                  start + QuarterHourDuration
-├── QuarterHourDuration.java      RES-5
+├── JobTime.java                  start + JobDuration
+├── JobDuration.java      RES-5
 ├── BillableTime.java             worked time rounded up to 15-min steps
-├── ServiceAddress.java           address, city, arrival note (snapshot)
+├── ServiceAddress.java           address, city, arrival note, as at request (RES-8)
 ├── JobSelection.java             non-empty set of job codes
 ├── terms/
 │   ├── ReservationTerms.java     frozen snapshot (RES-8)
@@ -254,14 +291,11 @@ reservation/domain/
 
 | Method | Allowed when | Rules | Result |
 | --- | --- | --- | --- |
-| `ProviderSchedule.hold(checkoutId, block, now)` | provider admits the request; no overlapping block or live hold | RES-1–5, RES-9, RES-10, RES-11, ACC-3 | hold that expires after 15 min |
-| `request(...)` (factory, on payment held) | hold still live; or hold expired but the time is still free and every booking rule still passes | RES-7, RES-12, ACC-1, ACC-3 | REQUESTED with terms snapshot and quote, RESERVED at once when INSTANT; otherwise rejected with a full refund |
-| `edit(...)` | REQUESTED, no pending edit; new time meets notice; same terms snapshot; a price rise is refused in the last 15 min before the deadline (REQ-7) | REQ-1, REQ-5 | lower price: applied at once with a refund line. Higher price: a `PendingEdit` for at most 15 min, which keeps the original time blocked and holds any changed time (REQ-6) |
-| `applyTopUp(editId, now)` | pending edit with the top-up held within 15 min; or a late top-up while still REQUESTED and every rule passes (REQ-8), otherwise it is refunded | REQ-1, REQ-6 | edit applied; deadline recomputed from now |
-| `dropPendingEdit(now)` | 15 min passed, or the top-up failed | REQ-6 | reservation unchanged; extra hold released |
-| `accept(now)` | REQUESTED, no pending edit, now before the deadline | ACC-2, REQ-6 | RESERVED, `reservedAt` set |
-| `decline()`, `expire(now)` | REQUESTED, no pending edit for decline; expire only after the deadline | REQ-3, REQ-4, REQ-6 | DECLINED or EXPIRED, full refund |
-| `cancelByCustomer(now)` | REQUESTED (free; drops any pending edit and refunds a late top-up, REQ-9), or RESERVED before job end | REQ-2, CCX-1–6, LMC-1, LMC-2 | CANCELLED + `Settlement` |
+| `request(...)` (factory, on payment held) | payment confirmed, and at that moment the time is still free and every booking rule still passes; `ProviderSchedule.block` and `CustomerSchedule.block` run in the same transaction, so the first confirmed payment wins | RES-1–5, RES-7, RES-9–11, ACC-1, ACC-3 | REQUESTED with terms snapshot and quote, RESERVED at once when INSTANT; otherwise rejected with a full refund |
+| `withdraw(now)` | REQUESTED and not yet accepted. It changes the same Reservation version as `accept()`, so whichever commits first wins; if acceptance won, the customer is told the reservation is Reserved and can cancel under §6.2 (REQ-5) | REQ-1, REQ-2, REQ-5, P2 | WITHDRAWN, full refund, both schedule blocks released in the same transaction; no fee and no reliability count (RTG-10) |
+| `accept(now)` | REQUESTED, now before the deadline, and no withdrawal committed first (REQ-5) | ACC-2, REQ-5 | RESERVED, `reservedAt` set |
+| `decline()`, `expire(now)` | REQUESTED; expire only after the deadline | REQ-3, REQ-4 | DECLINED or EXPIRED, full refund |
+| `cancelByCustomer(now)` | RESERVED before job end (a Requested reservation is withdrawn instead, REQ-1, REQ-2) | REQ-1, CCX-1–6, LMC-1, LMC-2 | CANCELLED + `Settlement` |
 | `cancelByProvider(now)` | RESERVED, before job end | PCX-1, PCX-2, LMC-3, RPT-11 | CANCELLED + `Settlement` |
 | `assignRoster(members, now)` | BeforeCheckIn; members rosterable; helpers = booked count | ROS-1–4, ROS-6 | roster change, customer notified |
 | `proposeSmallerRoster`, `acceptProposal` | BeforeCheckIn | ROS-8 | re-quoted keeping the booking discount; difference refunded |
@@ -273,7 +307,7 @@ reservation/domain/
 | `cancelForCustomerSuspension(now)` | phase is BeforeCheckIn | CUS-5 | CANCELLED, full refund, no fine |
 | `cancelForProviderSuspension(now, cause)` | BeforeCheckIn: MISSED_REVERIFICATION is a provider cancellation by timing; MONITORING_FLAG is a full refund, no fine. In job: MISSED_REVERIFICATION defers, MONITORING_FLAG stops | SUS-1–3 | CANCELLED or job stopped + `Settlement` |
 
-**Settlement policies.** Each policy is a small strategy that returns a `Settlement`. `Settlement` is a value object with these lines: customerFee, customerRefund, compensation, providerFine, providerPayoutGross. Its constructor applies CAN-2: the fee and the fine are each capped at the Total Reservation Fee, and refund + fee equals the amount held. Every line is computed exactly and rounded once to the sen, half up, and the refund is derived as paid minus the rounded fee (PAY-8).
+**Settlement policies.** Each policy is a small strategy that returns a `Settlement`. `Settlement` is a value object with these lines: customerFee, customerRefund, compensation, providerFine, providerPayoutGross. Its constructor applies CAN-2: the fee and the fine are each capped at the Total Reservation Fee, and refund + fee equals the amount held. Every line is computed exactly and rounded once to the sen, half up, and the refund is derived as paid minus the rounded fee (PAY-8). A refund that Support decides when resolving a report becomes a `SupportRefundPolicy` settlement, capped at what is still held (RPT-5, PAY-7).
 
 | Policy | Rules | Formula on the standard reservation |
 | --- | --- | --- |
@@ -289,19 +323,19 @@ reservation/domain/
 | `MemberLeftPolicy` | RPT-9, ROS-10 | refund = that helper's unbilled time × discounted per-helper rate; 0 for a supervisor |
 | `SmallerRosterPolicy` | ROS-8 | re-quote keeping the booking discount: 25 × 4 × 1 × 0.9 + 20 = 110, refund 90 |
 
-**Schedules.** `ProviderSchedule.block(reservationId, interval)` rejects any overlap with an active block (RES-9). `CustomerSchedule.block(...)` checks job time only (RES-10). Blocks are released on Declined, Expired, Cancelled and Completed. A checkout hold is a block with a 15-minute expiry (RES-11); an expired hold no longer counts as an overlap, so no cleanup job is needed for correctness. A payment that lands after expiry re-runs the overlap check and every booking rule before the reservation is made (RES-12).
+**Schedules.** `ProviderSchedule.block(reservationId, interval)` rejects any overlap with an active block (RES-9). `CustomerSchedule.block(...)` checks job time only (RES-10). Blocks are released on Withdrawn, Declined, Expired, Cancelled and Completed. There is no checkout hold. Blocks are placed only when a payment is confirmed: the first confirmed payment for a time wins, and any later confirmed payment for that time is rejected and refunded in full at once (RES-11). Order is decided by which transaction commits first; optimistic locking on `ProviderSchedule` makes the loser retry and see the block.
 
-**Replicas.** `BookableProvider.admits(request, now)` checks bookability (PRV-6), city coverage, hour and helper bounds (max helpers is the smaller of the setting and the active helper count), notice, job time inside working hours (check-in and buffer may fall outside, RES-3) and external busy time. `RosterableMember.canWorkOn(jobEnd)` checks active status and the permit rule, job end ≤ permit expiry − 90 days (ROS-3, ROS-4).
+**Replicas.** `BookableProvider.admits(request, now)` checks bookability (PRV-6), city coverage, hour and helper bounds (max helpers is the smaller of the setting and the active helper count), notice, job time inside working hours (check-in and buffer may fall outside, RES-3) and external busy time. `RosterableMember.canWorkOn(jobEnd)` checks active status and the permit rule, job end ≤ `rosterableUntil`, which Provider computes from the permit expiry and its 90-day buffer and publishes (ROS-3, ROS-4); Reservation never holds the 90 days itself.
 
 ### Payment
 
 | Object | Kind | Rules | Behaviour |
 | --- | --- | --- | --- |
-| `PaymentHold` | AR per reservation | PAY-1, PAY-4, PAY-7, REQ-1, RES-12 | `hold`, `topUp(amount)`, `refund(amount)` (never more than held), `refundRejectedCheckout()`, `applySettlement` |
-| `Payout` | AR per reservation | PAY-2, PAY-3, PAY-6, RPT-6 | kind JOB or FEE; `markCompleted`, `reportOpened` and `reportResolved`; `releasableAt(now)`; platform fee 15.5% on JOB only |
+| `PaymentHold` | AR per reservation | PAY-1, PAY-4, PAY-7, RES-12 | `hold`, `refund(amount)` (never more than held; every refund line, full or partial, is paid the moment its event arrives, PAY-7), several payment attempts per checkout; `recordConfirmation()` keeps the first confirmed payment and refunds any later one for the same checkout in full at once (RES-12), `refundRejectedCheckout()`, `applySettlement` |
+| `Payout` | AR per reservation | PAY-2, PAY-3, PAY-6, RPT-6 | opened when the reservation is Reserved, so reports made before completion already hold it (RPT-6); kind JOB or FEE; its gross drops by every partial refund; `markCompleted`, `reportOpened` and `reportResolved`; `releasableAt(now)`; platform fee 15.5% on every payout, JOB and FEE (PAY-3) |
 | `ProviderFineAccount` | AR per business registration number | PAY-4, PAY-5, PAY-9–11 | fines oldest first; `deductFrom(payoutAfterPlatformFee)` takes at most 20%, on every payout kind; a suspension leaves the balance as a fine; `closeAccount()` lifts the 20% cap so pending payouts clear the fine in full; what is left after the last pending payout becomes `Debt`; `settleDebt(directPayment)` and `settleFineToRejoin(directPayment)`, for a closed provider rejoining while payouts are pending (PAY-11), are the only direct charges |
 | `Ledger`, `LedgerEntry` | AR, double entry | PAY-4 | accounts: customer held, provider payable, Homa revenue (platform fee + fine minus compensation), Homa compensation expense, fine receivable |
-| `PlatformFeeRate` | VO, 15.5% | PAY-3 | business constant, not configuration |
+| `PlatformFeeRate` | VO, 15.5% | PAY-3 | business constant, not configuration (§11 Homa-set values; `FineDeductionCap` 20% sits beside it) |
 
 ### Provider
 
@@ -318,10 +352,10 @@ reservation/domain/
 
 | Object | Kind | Rules | Behaviour and invariants |
 | --- | --- | --- | --- |
-| `ProviderListing` | AR | OFR-1–7, OFR-9, OFR-10 | jobs, tools and cities only from presets; rate > 0; exactly one policy and one tier; notice never below the policy's floor; `choosePolicy(REQUEST)` raises a notice under 2 h to 2 h and flags it for a notification (OFR-6); any change publishes a full terms snapshot |
+| `ProviderListing` | AR | OFR-1–7, OFR-9–11 | jobs, tools and cities only from presets; rate × (1 − discount) never below `MinimumRate` (RM20, a business constant), so any rate or discount change that breaks it is rejected (OFR-11); exactly one policy and one tier; notice never below the policy's floor; `choosePolicy(REQUEST)` raises a notice under 2 h to 2 h and flags it for a notification (OFR-6); any change publishes a full terms snapshot |
 | `TravelFeePolicy` | VO | OFR-3 | None, Flat, or ByCity (must price every covered city) |
-| `DiscountRule` | VO | OFR-4 | rate, min hours, min helpers; none by default |
-| `BookingBounds` | VO | OFR-5 | hours 1–8 by default in 15-min steps; helpers from 1 to the active helper count by default |
+| `DiscountRule` | VO | OFR-4 | rate up to 99%, min hours, min helpers; none by default |
+| `BookingBounds` | VO | OFR-5 | every provider's bounds sit on Homa's floor of 1 h in 15-min steps (RES-5), and this is the only place that floor is defined; hours 1–8 by default; helpers from 1 to the active helper count by default |
 | `MinimumNotice` | VO | OFR-6 | 2 h by default; floor 1 h for Instant, 2 h for Request |
 | `JobBuffer` | VO | OFR-10 | 30 min by default |
 | `AvailabilitySchedule` | AR | OFR-8 | weekly hours + busy intervals synced from external calendars |
@@ -329,7 +363,13 @@ reservation/domain/
 
 ### Customer
 
-`Customer` (AR) is built only through `register(verifiedPhone, userName, HomeAddress, arrivalNote, termsAcceptance)`. Every argument is required (CUS-1, CUS-2). `suspend(reason)` and `reactivate()` cover CUS-4 and CUS-6. `HomeAddress` carries the city code that Reservation copies for RES-1.
+`Customer` (AR) is built only through `register(signInId, name, HomeAddress, arrivalNote, termsAcceptance)`; no phone number is needed (CUS-1, CUS-2). One identity-provider account (issuer + subject, for example a Google or Apple account) holds one Homa account (CUS-7). The rule is the domain's, but it spans every Customer, so the use case looks the sign-in up through `CustomerRepository` and `register()` refuses a taken one; a unique index on the sign-in column backs it up when two sign-ups race. A new account starts with no ratings or reliability counts, because Rating keys everything by customerId.
+
+- `Suspension` (VO) is SEVEN_DAYS, THIRTY_DAYS or UNTIL_LIFTED, with `endsAt` from `BusinessCalendar` (CUS-4). `suspend(period, reason, now)` and `isSuspendedAt(now)`: a timed suspension ends by itself when `endsAt` passes, and only Support can lift UNTIL_LIFTED (CUS-6).
+- `deactivate(activity, now)` refuses while the customer is suspended, or while `CustomerActivity` shows any Requested or Reserved reservation, open report, or protection window not yet ended, and names each blocker (CUS-8). `reactivateOnSignIn()` reverses it.
+- `erasePersonalData(now)` replaces name, address and arrival note with an anonymous marker and keeps only the id (CUS-9). It is allowed only under CUS-8's conditions and closes the account for good. If the customer is suspended, an `ErasedIdentityBlock` keeps a one-way hash of the identity-provider account, and `register()` refuses that account until the suspension would have ended, or until Support lifts an until-lifted one (CUS-9).
+- `CustomerActivity` is a replica of open reservations, open reports and the latest protection window end, kept from Reservation and Support events.
+- `HomeAddress` carries the city code that Reservation copies for RES-1.
 
 ### Support
 
@@ -345,13 +385,13 @@ States are OPEN, then CONFIRMED, REJECTED or RESOLVED. Roster Member Left is aut
 
 ### Rating
 
-`RatingSession` (AR per reservation) exists only for Completed reservations (RTG-9). It opens when the job is marked Completed and closes 7 days after the protection window ends (RTG-2). `submit(Rating)` checks direction-specific categories (RTG-7, RTG-8) and allows media only from customer to provider (RTG-5). `revealedAt` is the moment both ratings are in or the window closes (RTG-3). `voidForProviderNoShow()` covers NSH-6 and `remove(ratingId)` covers RTG-11.
+`RatingSession` (AR per reservation) exists only for Completed reservations (RTG-9). It opens when the job is marked Completed and closes 7 days after the protection window ends (RTG-2). `submit(Rating)` checks direction-specific categories (RTG-7, RTG-8) and allows media only from customer to provider (RTG-5). `revealedAt` is the moment both ratings are in or the window closes (RTG-3). `voidForProviderNoShow()` covers NSH-6 and `remove(ratingId)` covers RTG-11. A rating whose author's data was erased stays, shown as from a former customer (CUS-9).
 
 `ReliabilityRecord` (AR per party) stores dated incidents and returns counts over the trailing 12 months, filtered by which causes count (RTG-10).
 
 ### Conversation
 
-`Conversation` (AR) is either an `ENQUIRY` or a `RESERVATION` conversation. `startEnquiry` accepts only a customer in good standing (CHT-1, CUS-5). Reservation chat accepts messages from both sides from Requested until the protection window ends (CHT-2). It turns read-only then, or at once when the reservation is Declined, Expired or cancelled before check-in starts; anything new goes through a new Enquiry (CHT-5). Writability is computed from a `ReservationChatWindow` replica (status + window end) and the clock, so no scheduler is needed. The off-platform warning (CHT-3) is UI copy, not a domain rule.
+`Conversation` (AR) is either an `ENQUIRY` or a `RESERVATION` conversation. `startEnquiry` accepts only a customer in good standing (CHT-1, CUS-5). Reservation chat accepts messages from both sides from Requested until the protection window ends (CHT-2). It turns read-only then, or at once when the reservation is Withdrawn, Declined, Expired or cancelled before check-in starts; anything new goes through a new Enquiry (CHT-5). Writability is computed from a `ReservationChatWindow` replica (status + window end) and the clock, so no scheduler is needed. The off-platform warning (CHT-3) is UI copy, not a domain rule.
 
 ## Use cases per context
 
@@ -369,7 +409,7 @@ reservation/usecase/
 │                 RosterableMemberRepository, CustomerStandingRepository,
 │                 CompletionPhotoStore, ReservationIEPublisher, TimeSource
 ├── dto/          one request/response pair per use case
-├── exception/    ReservationNotFound, NotReservationParty, CheckoutExpired
+├── exception/    ReservationNotFound, NotReservationParty, TimeAlreadyTaken
 ├── ie/           Handle*IE implementations
 └── *.java        use case implementations
 ```
@@ -378,14 +418,13 @@ reservation/usecase/
 | --- | --- | --- | --- |
 | `AvailableStartFinder` | `FindAvailableStartTimes` | API query | RES-3, RES-4, RES-5, RES-9, OFR-6 |
 | `ReservationQuoter` | `QuoteReservation` | API query | RES-6, OFR-4 |
-| `ReservationCheckoutStarter` | `CustomerStartReservationCheckout` | API | RES-1–5, RES-10, RES-11, ACC-3 |
-| `ReservationEditor` | `CustomerEditReservation` | API | REQ-1, REQ-5, REQ-6, REQ-7; publishes `ReservationEditedIE` (lower price) or `ReservationTopUpRequestedIE` (higher price) |
-| `UnpaidEditDropper` | `DropUnpaidEdits` | scheduler, every minute | REQ-6; publishes `ReservationEditDroppedIE` |
-| `ReservationAccepter` | `ProviderAcceptReservation` | API | ACC-2, REQ-6 (blocked while a top-up is pending) |
-| `ReservationDecliner` | `ProviderDeclineReservation` | API | REQ-3, REQ-6 |
+| `ReservationCheckoutStarter` | `CustomerStartReservationCheckout` | API | RES-1–5, RES-9, RES-10, ACC-3; checks the time is free now but holds nothing (RES-11) |
+| `ReservationWithdrawer` | `CustomerWithdrawReservation` | API | REQ-1, REQ-2, REQ-5; on an optimistic-lock conflict it reloads, and if the reservation is now Reserved it returns `ReservationAlreadyAccepted` so the app offers cancellation; publishes `ReservationWithdrawnIE` |
+| `ReservationAccepter` | `ProviderAcceptReservation` | API | ACC-2; loses to a withdrawal committed first (REQ-5) |
+| `ReservationDecliner` | `ProviderDeclineReservation` | API | REQ-3 |
 | `OverdueRequestExpirer` | `ExpireOverdueRequests` | scheduler, every minute | REQ-4 |
 | `CustomerCancellationPreviewer` | `PreviewCustomerCancellation` | API query (shows the fee before confirming) | CCX-1–6, LMC-1 |
-| `CustomerReservationCanceller` | `CustomerCancelReservation` | API | REQ-2, REQ-9, CCX, LMC-1, LMC-2 |
+| `CustomerReservationCanceller` | `CustomerCancelReservation` | API | REQ-1, CCX, LMC-1, LMC-2 |
 | `ProviderReservationCanceller` | `ProviderCancelReservation` | API | PCX-1, PCX-2, LMC-3 |
 | `RosterAssigner` | `ProviderAssignRoster` | API | ROS-1–6 |
 | `SmallerRosterProposer` | `ProviderProposeSmallerRoster` | API | ROS-8 |
@@ -400,37 +439,34 @@ Event handlers (`usecase/ie/`, one per event):
 
 | Handler implementation | Reacts to | Effect |
 | --- | --- | --- |
-| `HandlePaymentHeldIE` | `PaymentHeldIE` | live hold: REQUESTED (RES-7), RESERVED if Instant (ACC-1). Expired hold: re-checks the slot and every booking rule; passes become REQUESTED, failures publish `ReservationCheckoutRejectedIE` (RES-12) |
-| `HandlePaymentFailedIE` | `PaymentFailedIE` | releases the checkout hold (RES-11) |
-| `HandleTopUpHeldIE`, `HandleTopUpFailedIE` | Payment | applies the pending edit, or drops it and notifies (REQ-6). A late top-up re-checks every rule and applies the edit, or publishes `ReservationEditDroppedIE` so Payment refunds it (REQ-8); after a cancellation it is always refunded (REQ-9) |
+| `HandlePaymentHeldIE` | `PaymentHeldIE` | re-checks the time and every booking rule and blocks both schedules in one transaction: the first confirmed payment wins and becomes REQUESTED (RES-7), RESERVED if Instant (ACC-1); a payment that loses publishes `ReservationCheckoutRejectedIE` so Payment refunds it at once (RES-11) |
+| `HandlePaymentFailedIE` | `PaymentFailedIE` | nothing to release: no time is blocked until a payment is confirmed, and the customer can retry (RES-11) |
 | `HandleListingTermsChangedIE`, `HandleAvailabilityChangedIE`, `HandleExternalBusyTimeSyncedIE` | Listing events | update `BookableProvider` only; existing reservations keep their terms (RES-8) |
 | `HandleProviderWentLiveIE`, `HandleProviderClosedIE`, `HandleProviderBookabilityChangedIE` | Provider events | bookable on or off (PRV-6) |
-| `HandleProviderSuspendedIE` | `ProviderSuspendedIE` | SUS-1: before check-in, missed re-verification is a provider cancellation and a flag is a free refund. SUS-2 defers; SUS-3 stops the job |
+| `HandleProviderSuspendedIE` | `ProviderSuspendedIE` | SUS-1: before check-in, missed re-verification is a provider cancellation and a flag is a free refund. SUS-2 defers; SUS-3 stops the job and publishes `SettlementAdjustedIE` so the unworked time is refunded at once (PAY-7) |
 | `HandleTeamMemberSuspendedIE` | `TeamMemberSuspendedIE` | ROS-5 flags rosters to fix; ROS-9 defers; ROS-10 records the member as left |
 | `HandleTeamMemberDeactivatedIE`, `...ActivatedIE`, `...PermitUpdatedIE`, `...ReactivatedIE` | Provider events | `RosterableMember` replica; ROS-5 when rostered |
-| `HandleCustomerSuspendedIE` | `CustomerSuspendedIE` | CUS-5 cancels before check-in; in-job reservations continue |
+| `HandleCustomerSuspendedIE` | `CustomerSuspendedIE` | CUS-5 cancels before check-in; in-job reservations continue. `HandleCustomerDeactivatedIE` and `HandleCustomerDataErasedIE` update the replica and anonymise address snapshots (CUS-8, CUS-9) |
 | `HandleCustomerRegisteredIE`, `HandleCustomerReactivatedIE`, `HandleCustomerAddressChangedIE` | Customer events | `CustomerStanding` replica |
 | `HandleProviderNoShowConfirmedIE` | Support | NSH-3 settlement, including from COMPLETED (NSH-6) |
 | `HandleCustomerNoShowConfirmedIE` | Support | NSH-5 settlement |
-| `HandleRosterMemberLeftDisputeResolvedIE` | Support | recomputes the RPT-9 refund and publishes `SettlementAdjustedIE` |
+| `HandleRosterMemberLeftDisputeResolvedIE` | Support | recomputes the RPT-9 refund and publishes `SettlementAdjustedIE`; `HandleReportResolvedIE` does the same for a refund Support decided (RPT-5, PAY-7). Both publish `SettlementAdjustedIE` |
 
 ### Payment
 
 | Use case (interface → implementation) | Trigger | Rules |
 | --- | --- | --- |
-| `ReservationPayer` → `CustomerPayForReservation` | API (returns the gateway session) | PAY-1, RES-11 |
-| `TopUpPayer` → `CustomerPayTopUp` | API | REQ-1, REQ-6 |
-| `GatewayPaymentConfirmer` → `ConfirmGatewayPayment` | gateway webhook via `transport/messaging` | publishes `PaymentHeldIE`/`PaymentFailedIE` or `TopUpHeldIE`/`TopUpFailedIE`, with `paidAt` |
-| `HandleReservationCheckoutStartedIE`, `HandleReservationTopUpRequestedIE` | event | opens a pending hold or top-up |
-| `HandleReservationCheckoutRejectedIE` | event | full refund at once (RES-12) |
-| `HandleReservationEditedIE`, `HandleReservationEditDroppedIE` | event | refunds a lower price at once (REQ-1); closes an unpaid top-up (REQ-6) or refunds a late one (REQ-8, REQ-9) |
-| `HandleReservationDeclinedIE`, `HandleReservationExpiredIE` | event | full refund now (PAY-7) |
+| `ReservationPayer` → `CustomerPayForReservation` | API (returns the gateway session) | PAY-1, RES-12 (only the first confirmed payment per checkout is published; a later one is refunded at once) |
+| `GatewayPaymentConfirmer` → `ConfirmGatewayPayment` | gateway webhook via `transport/messaging` | publishes `PaymentHeldIE`/`PaymentFailedIE`, with `paidAt` |
+| `HandleReservationCheckoutStartedIE` | event | opens a pending hold |
+| `HandleReservationCheckoutRejectedIE` | event | full refund at once when another customer's payment took the time first (RES-11) |
+| `HandleReservationDeclinedIE`, `HandleReservationExpiredIE` | event | full refund now (PAY-7); `HandleReservationWithdrawnIE` does the same for a withdrawal (REQ-2) |
 | `HandleReservationCancelledIE` | event | first voids any unreleased JOB payout (NSH-6 after Completed); refund now; Homa pays compensation and keeps the fine's remainder (PAY-4); fine added to `ProviderFineAccount`; FEE `Payout` held until the window ends (PAY-6) |
-| `HandleRosterMemberLeftIE`, `HandleSettlementAdjustedIE` | event | partial refund |
-| `HandleReservationCompletedIE` | event | JOB `Payout` with the window end set |
+| `HandleRosterMemberLeftIE`, `HandleSettlementAdjustedIE` | event | partial refund, paid at once (PAY-7) |
+| `HandleReservationCompletedIE` | event | JOB `Payout` marked completed with the window end set; `HandleReservationReservedIE` opened it earlier so reports from before completion count (RPT-6) |
 | `HandleReportOpenedIE`, `HandleReportResolvedIE` | event | holds and frees the payout (RPT-6) |
 | `HandleProviderClosedIE` | event | closed mode: pending payouts still release when due and clear the fine in full (no 20% cap); once none are left, the remainder becomes debt and it publishes `ProviderDebtChangedIE` (PAY-9). A suspension changes nothing here |
-| `DebtSettler` → `ProviderSettleDebt` | API | PAY-10, PAY-11: clears debt, or a closed provider's whole outstanding fine so it can rejoin while payouts are pending (those payouts then release in full); the only direct charges |
+| `DebtSettler` → `ProviderSettleDebt` | API | PAY-10, PAY-11: clears debt, or a closed provider's whole outstanding fine so it can rejoin while payouts are pending (those payouts then release less the platform fee, with nothing taken for the fine); the only direct charges |
 | `DuePayoutReleaser` → `ReleaseDuePayouts` | scheduler | PAY-2, PAY-3, PAY-5, PAY-8 |
 
 `port/out`: `PaymentGateway`, `PayoutGateway`, `PaymentHoldRepository`, `PayoutRepository`, `FineAccountRepository`, `LedgerRepository`, `PaymentIEPublisher`, `TimeSource`.
@@ -461,7 +497,7 @@ Event handlers (`usecase/ie/`, one per event):
 | Use case (interface → implementation) | Trigger | Rules |
 | --- | --- | --- |
 | `OfferingUpdater` → `ProviderUpdateOfferings` | API | OFR-1 |
-| `PricingTermsSetter` → `ProviderSetPricingTerms` (rate, travel fee, discount) | API | OFR-2–4 |
+| `PricingTermsSetter` → `ProviderSetPricingTerms` (rate, travel fee, discount) | API | OFR-2–4, OFR-11 (rejects a rate or discount that falls below RM20 after discount) |
 | `BookingRulesSetter` → `ProviderSetBookingRules` (bounds, notice, buffer, policy, tier) | API | OFR-5, OFR-6 (auto-raise to 2 h on switching to Request, with a notice to the provider), OFR-9, OFR-10 |
 | `ProofPhotoAdder` → `ProviderAddProofPhoto` | API | OFR-7 |
 | `AvailabilitySetter` → `ProviderSetAvailability`; `ExternalCalendarConnector` → `ProviderConnectExternalCalendar` | API | OFR-8 |
@@ -474,7 +510,19 @@ Event handlers (`usecase/ie/`, one per event):
 
 ### Customer
 
-`CustomerRegistrator` → `CustomerRegisterAccount` (CUS-1, CUS-2; the OTP check goes through the `PhoneVerificationClient` port). Also `CustomerProfileUpdater` → `CustomerUpdateProfile`, `CustomerSuspender` → `SupportSuspendCustomer` (CUS-4), and `CustomerReactivator` → `SupportReactivateCustomer` (CUS-6). Only the Support role may call the last two, an application policy checked in the use case.
+| Use case (interface → implementation) | Trigger | Rules |
+| --- | --- | --- |
+| `CustomerRegistrator` → `CustomerRegisterAccount` | API | CUS-1, CUS-2, CUS-7 |
+| `CustomerProfileUpdater` → `CustomerUpdateProfile` | API | CUS-1 |
+| `CustomerSuspender` → `SupportSuspendCustomer` | API (Support) | CUS-4; publishes `CustomerSuspendedIE` with `endsAt` |
+| `ExpiredSuspensionEnder` → `EndExpiredSuspensions` | scheduler | CUS-6; publishes `CustomerReactivatedIE` |
+| `SuspensionLifter` → `SupportLiftSuspension` | API (Support) | CUS-6 (until lifted) |
+| `AccountDeactivator` → `CustomerDeactivateAccount` | API | CUS-8; publishes `CustomerDeactivatedIE` |
+| `SignInReactivator` → `CustomerReactivateOnSignIn` | sign-in | CUS-8 |
+| `PersonalDataEraser` → `SupportEraseCustomerData` | API (Support) | CUS-8 conditions, CUS-9; publishes `CustomerDataErasedIE` |
+| Handlers for Reservation and Support events | event | `CustomerActivity` replica (CUS-8) |
+
+Only the Support role may call the Support use cases, an application policy checked in the use case. Every other context handles `CustomerDataErasedIE` by anonymising its own copies: Reservation's address snapshots, Conversation messages, report descriptions not needed as evidence, and rating authors, who then show as a former customer. Payment keeps its records, and outbox rows older than the retention period are purged (CUS-9).
 
 ### Support
 
@@ -483,7 +531,7 @@ Event handlers (`usecase/ie/`, one per event):
 | `ReportFiler` → `PartyFileReport` | API | RPT-1–3, NSH-2, NSH-4, NSH-6 |
 | `NoShowEvidenceResponder` → `ProviderRespondToNoShow` | API | NSH-2 |
 | `NoShowConfirmer` → `SupportConfirmNoShow`; `NoShowRejecter` → `SupportRejectNoShow` | API (Support) | NSH-2, NSH-4, NSH-6, RPT-4 |
-| `ReportResolver` → `SupportResolveReport` | API (Support) | RPT-5, RPT-7 |
+| `ReportResolver` → `SupportResolveReport` | API (Support) | RPT-5, RPT-7; a refund Support decides travels on `ReportResolvedIE` to Reservation, which settles it (PAY-7) |
 | `MemberLeftDisputer` → `CustomerDisputeMemberLeft` | API | RPT-10 |
 | `MemberLeftDisputeResolver` → `SupportResolveMemberLeftDispute` | API (Support) | RPT-10, CHT-4 |
 | `UndisputedReportCloser` → `AutoResolveMemberLeftReports` | scheduler at window end | RPT-10 |
@@ -492,11 +540,11 @@ Event handlers (`usecase/ie/`, one per event):
 
 ### Rating
 
-`HandleReservationCompletedIE` opens a session, and `HandleProviderNoShowConfirmedIE` voids it (NSH-6). `RatingSubmitter` → `PartySubmitRating` covers RTG-1, RTG-4, RTG-5, RTG-7 and RTG-8. `ClosedWindowRevealer` → `RevealClosedRatingWindows` is a scheduler for RTG-3. `RatingRemover` → `SupportRemoveRating` covers RTG-11. `HandleReservationCancelledIE`, `HandleRosterMemberLeftIE` and the no-show handlers feed `ReliabilityRecord` (RTG-10).
+`HandleReservationCompletedIE` opens a session, and `HandleProviderNoShowConfirmedIE` voids it (NSH-6). `RatingSubmitter` → `PartySubmitRating` covers RTG-1, RTG-4, RTG-5, RTG-7 and RTG-8. `ClosedWindowRevealer` → `RevealClosedRatingWindows` is a scheduler for RTG-3. `RatingRemover` → `SupportRemoveRating` covers RTG-11. `HandleReservationCancelledIE`, `HandleRosterMemberLeftIE` and the no-show handlers feed `ReliabilityRecord` (RTG-10). Rating has no Withdrawn handler, so withdrawals are never counted.
 
 ### Conversation
 
-`EnquiryStarter` → `CustomerStartEnquiry` (CHT-1), `MessageSender` → `PartySendMessage` (CHT-2), and `ConversationViewer` → `ViewConversation`, which Support may call for evidence (CHT-4). `HandleReservationRequestedIE` opens the reservation thread, and the Declined, Expired and Cancelled handlers make it read-only at once, the last only when the cancellation came before check-in (CHT-5). Status and suspension handlers keep the replicas current.
+`EnquiryStarter` → `CustomerStartEnquiry` (CHT-1), `MessageSender` → `PartySendMessage` (CHT-2), and `ConversationViewer` → `ViewConversation`, which Support may call for evidence (CHT-4). `HandleReservationRequestedIE` opens the reservation thread, and the Withdrawn, Declined, Expired and Cancelled handlers make it read-only at once, the last only when the cancellation came before check-in (CHT-5). Status and suspension handlers keep the replicas current.
 
 ## Key end-to-end flows
 
@@ -505,9 +553,9 @@ These four flows use the §0 example and cross every context boundary. Each one 
 ### A. Happy path: request, accept, complete, payout
 
 1. Aisyah calls `FindAvailableStartTimes` and `QuoteReservation`, which returns RM200.
-2. `CustomerStartReservationCheckout` asks `BookableProvider.admits(...)`, then places 15-minute checkout holds (RES-11): `ProviderSchedule` for Sat 9:45–14:30 and `CustomerSchedule` for 10:00–14:00. It publishes `ReservationCheckoutStartedIE`.
-3. Payment opens a pending `PaymentHold`. `CustomerPayForReservation` hands off to the gateway, and its webhook leads to `ConfirmGatewayPayment`, which publishes `PaymentHeldIE`.
-4. `HandlePaymentHeldIE` checks that the hold is still live, then calls `Reservation.request(...)`: the reservation is REQUESTED with deadline Tue 20:00, and the holds become firm blocks. It publishes `ReservationRequestedIE`: Conversation opens the thread, Provider counts an open reservation, and Notification tells Kemas Home.
+2. `CustomerStartReservationCheckout` asks `BookableProvider.admits(...)`, and checks the time is free now, without holding it (RES-11): nothing blocks `ProviderSchedule` for Sat 9:45–14:30 and `CustomerSchedule` for 10:00–14:00. It publishes `ReservationCheckoutStartedIE`.
+3. Payment opens a pending `PaymentHold`. `CustomerPayForReservation` hands off to the gateway. If an attempt fails, Aisyah can retry; the successful attempt's webhook leads to `ConfirmGatewayPayment`, which publishes `PaymentHeldIE`.
+4. `HandlePaymentHeldIE` re-checks the time and every booking rule, then calls `Reservation.request(...)`: the reservation is REQUESTED with deadline Tue 20:00, and both schedules are blocked in the same transaction, so another customer's payment for the same time would now be rejected and refunded (RES-11). It publishes `ReservationRequestedIE`: Conversation opens the thread, Provider counts an open reservation, and Notification tells Kemas Home.
 5. At Mon 22:00 `ProviderAcceptReservation` makes it RESERVED. The grace period runs until Tue 02:00 (CCX-1).
 6. On Friday `ProviderAssignRoster` rosters Siti and Nurul, and Aisyah is notified (ROS-1).
 7. At Sat 9:45 `LockRostersAtCheckIn` locks the roster.
@@ -519,7 +567,7 @@ These four flows use the §0 example and cross every context boundary. Each one 
 
 1. `PreviewCustomerCancellation` shows a RM45 fee. The Standard cut-off was Fri 21:45 and there is no grace period.
 2. `CustomerCancelReservation` calls `cancelByCustomer`. `LateCustomerCancellationPolicy` returns fee 45 and refund 155. Both schedule blocks are released.
-3. `ReservationCancelledIE` (cause CUSTOMER_CANCELLED_WITH_FEE) reaches Payment, which refunds RM155 now (PAY-7) and holds a FEE payout of RM45 until Sun 14:00 with no platform fee (PAY-3, PAY-6). Rating logs a customer cancellation with a fee (RTG-10). Conversation makes the chat read-only at once, because the cancellation came before check-in (CHT-5).
+3. `ReservationCancelledIE` (cause CUSTOMER_CANCELLED_WITH_FEE) reaches Payment, which refunds RM155 now (PAY-7) and holds a FEE payout of RM45 until Sun 14:00. On release the 15.5% platform fee (RM6.98) is taken and Kemas Home receives RM38.02 (PAY-3, PAY-6, PAY-8). Rating logs a customer cancellation with a fee (RTG-10). Conversation makes the chat read-only at once, because the cancellation came before check-in (CHT-5).
 
 ### C. Provider no show
 
@@ -543,12 +591,12 @@ Build in vertical slices, and keep the skill's order inside every slice: domain 
 | Slice | Contexts touched | Rules delivered | Done when |
 | --- | --- | --- | --- |
 | 0. Skeleton | `kernel`, `ie`, `app` | PAY-8 (in `Money`) | `Money`, `Percentage` and `TimeInterval` pass at 90%+ mutation score; ArchUnit rules 1–6 exist and gate CI before any domain code is written; the CRAP script and PIT ratchet run in CI; the outbox and `ProcessedMessageStore` are in place; the runtime is decided (Lambda with SnapStart, or ECS/Fargate) |
-| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9, OFR-10, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | flow A passes end to end |
-| 2. Requests and edits | Reservation, Payment | REQ-1–9 (with top-up) | expiry scheduler works; edits re-quote with frozen terms |
+| 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, CUS-7, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9–11, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | flow A passes end to end |
+| 2. Requests and withdrawals | Reservation, Payment | REQ-1–5 | expiry scheduler works; a withdrawal racing an acceptance resolves to whichever commits first (REQ-5) |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | the §10 table passes as one parameterised test; flow B passes |
 | 4. Team and roster | Provider, Reservation | PRV-6, HLP-5–8, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | check-in lock and no roster work |
 | 5. Reports and no-shows | Support, Reservation, Payment | RPT-1–11, NSH-1–6, CHT-4 | flow C passes, including a no-show after Completed |
-| 6. Compliance, suspensions and debt | Provider, Customer, Reservation, Payment | MON-1–4, PRV-4, PRV-5, CUS-4–6, SUS-1–3, ROS-9, ROS-10, PAY-9–11 | flow D passes; a debtor can't rejoin; paying the fine directly allows rejoining with payouts pending |
+| 6. Compliance, suspensions and debt | Provider, Customer, Reservation, Payment | MON-1–4, PRV-4, PRV-5, CUS-4–6, CUS-8, CUS-9, SUS-1–3, ROS-9, ROS-10, PAY-9–11 | flow D passes; a debtor can't rejoin; paying the fine directly allows rejoining with payouts pending |
 | 7. Ratings and reliability | Rating, Listing | RTG-1–11 | ratings only for Completed; double-blind reveal; 12-month counts |
 | 8. Chat and calendar sync | Conversation, Listing | CHT-1–3, CHT-5, OFR-7, OFR-8 | enquiries work; external busy time blocks slots |
 
@@ -563,7 +611,7 @@ Inside each context the order is fixed:
 - **One test per rule ID, named in the ubiquitous language and tagged with it.** For example, `customerPaysBaseCancellationFeeAfterStandardCutoff()`. The rule's case column is the scenario. Test classes are named for the domain object or use case they specify (`ReservationCancellationTest`, `CustomerCancelReservationTest`). Methods are camelCase sentences in Homa's own terms, subject then behaviour then condition, with no `test` prefix and no underscores (`reservationExpiresWhenProviderMissesAcceptanceDeadline`, `refundRoundsHalfUpToTheSen`). The rule ID goes in `@Tag("CCX-6")` and the rule's case sentence in `@DisplayName`, so the spec-to-code trace is still a grep.
 - **The §0 setup is a shared fixture.** `HomaFixtures.kemasHome()`, `.aisyah()` and `.standardReservation()` live in `src/test/java/com/homa/fixtures` so every context uses the same numbers.
 - **The §10 table is one parameterised test** on the settlement policies. It is the money regression gate.
-- **Boundary tests at every time edge:** 21:44 against 21:45 for the tier cut-off, the 12:00 against 12:05 rounding step, deadline ±1 minute, the 15-minute REQ-7 window, and permit expiry minus exactly 90 days.
+- **Boundary tests at every time edge:** 21:44 against 21:45 for the tier cut-off, the 12:00 against 12:05 rounding step, deadline ±1 minute, a withdrawal recorded two seconds after an acceptance (REQ-5), and permit expiry minus exactly 90 days.
 - **Quality gates from the skill:** CRAP index below 6. Mutation score at least 90% for kernel and domain and at least 80% for use cases, enforced with PIT plus a ratchet. ArchUnit checks that domain imports only `kernel` and that no context imports another context's packages.
 - **Infra tests use real dependencies:** persistence and outbox through Testcontainers; the gateway and KYC clients through WireMock contract tests.
 
@@ -594,7 +642,7 @@ One deliberate exception is recorded under Delivery, idempotency and consistency
 
 ## Rule gaps and how they were resolved
 
-Four rounds of rule updates have closed all 32 gaps found while planning, and nothing is open. Each table keeps what was proposed next to what the rules decided at that round; later rounds can refine an earlier answer (for example, round 2 narrowed round 1's #6).
+Four rounds of rule updates closed the 32 gaps found during planning. Six later rule changes on 21 Nov are logged as rounds 5 to 10. Round 10 removes edits altogether, which closes Y; nothing is left open. Each table keeps what was proposed next to what the rules decided at that round; later rounds can refine an earlier answer (for example, round 2 narrowed round 1's #6).
 
 ### Round 1: the original 16 gaps
 
@@ -648,6 +696,98 @@ Four rounds of rule updates have closed all 32 gaps found while planning, and no
 | O | A closed provider rejoins while a payout is still pending | Block rejoining until every pending payout settles; treat the uncleared fine as the debt meanwhile | PAY-11: blocked while any payout is pending, unless it pays its whole outstanding fine directly; pending payouts then release in full | Same, plus the pay-now option |
 | P | Deadline when a late top-up applies | From when it applies, with REQ-7 re-checked then | REQ-8: the same | Same |
 
+### Round 5: rule changes on 21 Nov
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| CUS-7 (new) | One phone number holds one customer account; a suspended customer's number can't register again | Customer owns it; `register()` refuses a taken number, backed by a unique index; phone changes re-check it |
+| RES-11 | A failed payment no longer ends the hold; the customer can retry until it expires, and leaving checkout releases it | New `CustomerLeaveCheckout` use case and `ReservationCheckoutLeftIE`; `HandlePaymentFailedIE` keeps the hold; `PaymentHold` allows several attempts |
+| RPT-6 | Reports made before the job is marked Completed also hold the payout | Payment opens the `Payout` at Reserved instead of at Completed, so earlier reports are counted |
+
+### Round 6: rule changes on 21 Nov (morning)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| RES-11, RES-12 | No checkout hold. The first confirmed payment for a time wins; any other is refunded at once. One checkout confirmed twice keeps the first payment and refunds the other | Schedules are blocked only when a payment is confirmed, in one transaction. `CustomerLeaveCheckout` and `ReservationCheckoutLeftIE` are removed. Payment refunds a second confirmation for the same checkout |
+| REQ-6 | A changed time is no longer held during a top-up; if another customer's payment takes it first, the edit is dropped and the top-up refunded | `applyTopUp` re-checks the schedule when the top-up lands |
+| CUS-1, CUS-7 | No phone number; one verified sign-in per account; a new account starts with no ratings or counts | Customer keyed by `signInId` with a unique index; the phone port is removed |
+| CUS-4, CUS-6 | Suspensions last 7 days, 30 days or until lifted; timed ones end on their own | `Suspension` value object; `EndExpiredSuspensions` scheduler |
+| CUS-8 (new) | Customers can deactivate when nothing is open, and reactivate by signing in | `deactivate()` checks a `CustomerActivity` replica fed by Reservation and Support |
+| CUS-9 (new) | Customers can ask Support to erase their personal data | `SupportEraseCustomerData` publishes `CustomerDataErasedIE`; each context anonymises its copies; Payment keeps its records |
+| OFR-4, OFR-11 (new) | Discount up to 99%; the rate after discount can't go below RM20 | `ProviderListing` rejects any rate or discount that breaks `MinimumRate` |
+
+Round 5's questions, answered by round 6:
+
+| # | Question | Proposed | Rule decided | Outcome |
+| --- | --- | --- | --- | --- |
+| Q | What counts as leaving checkout | Explicit Cancel or Back; otherwise let 15 minutes run out | RES-11: there is no hold to leave | No longer applies |
+| R | Two payment attempts both succeed | Keep the first, refund the later one at once | RES-12: the same | Same |
+| S | Can a customer close their account | No self-closure; Support handles it | CUS-8 and CUS-9: self-deactivation and data erasure on request | **Differs** |
+
+### Round 7: rule changes on 21 Nov (08:30)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| CUS-7 | Customers sign in through an identity provider (Google, Apple); one identity-provider account per Homa account | Customer keyed by issuer + subject; Identity row updated |
+| CUS-9 | Erasure only under CUS-8's conditions; a suspended customer's identity-provider account stays blocked after erasure | `erasePersonalData()` checks CUS-8's conditions; `ErasedIdentityBlock` keeps a one-way hash until the suspension ends |
+| RES-8 | The reservation also keeps the customer's address from when it was made | The `ServiceAddress` snapshot already in the plan now cites RES-8; an edit can't change it |
+| PAY-7 | Every refund, full or partial, is paid at once | Payment pays each refund line on arrival. Two missing paths added: a SUS-3 job stop and a refund Support decides both publish `SettlementAdjustedIE` |
+| §11 (new) | One table of every Homa-set value | New Homa-set values section: one owner per value, computed results shared through events, `HomaSetValuesTest`. The permit buffer is now published as `rosterableUntil`, and the duration floor lives only in Listing |
+
+Round 6's questions, answered by round 7:
+
+| # | Question | Proposed | Rule decided | Outcome |
+| --- | --- | --- | --- | --- |
+| T | Erasure while things are still open | Only under CUS-8's conditions; erasure deactivates | CUS-9: the same conditions as deactivation | Same |
+| U | Does erasure free the sign-in | A one-way hash stays blocked until the suspension ends | CUS-9: the identity-provider account stays blocked until the suspension ends | Same |
+
+### Round 8: rule changes on 21 Nov (15:40)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| REQ-6 | A price-raising edit applies only once its top-up is confirmed; until then the request stays as it is and the provider can still accept or decline it | `PendingEdit` no longer locks the request or holds time. The 15-minute top-up window and the `DropUnpaidEdits` scheduler are removed |
+| REQ-7 (rewritten) | The top-up is refunded at once if, before it confirms, the provider accepts or declines, another customer's payment takes the edited time, or a booking rule fails | `applyTopUp()` re-checks all three; otherwise `ReservationEditDroppedIE` triggers the refund and tells the customer |
+| REQ-8 (rewritten), REQ-9 (removed) | Cancelling before the top-up confirms is free, drops the edit and refunds a late top-up (the old REQ-9, renumbered) | References renumbered throughout the plan |
+| PAY-3, with PAY-6 and PAY-9 to PAY-11 examples | The 15.5% platform fee applies to every payout, including cancellation, last-minute and no-show fees | FEE payouts now pay the platform fee (RM45 becomes RM38.02). A closed provider's pending payouts release less the fee |
+| §11 | Top-up window row removed; platform fee covers every payout | Homa-set values table updated |
+
+### Round 9: rule changes on 21 Nov (16:00)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| Principles P1–P3 (new) | Paid is committed; an edit is a new booking check; a reservation keeps what it was booked with | New Rule principles table under the summary maps each principle to the objects that enforce it |
+| REQ-1 | Edits can change date, time, hours, helpers, jobs or address; every booking rule is checked again with the original terms; the deadline is recalculated when an edit applies | `edit()` runs the same `admits()` and schedule checks as `request()`; the address snapshot is replaced on edit; the terms snapshot keeps the whole travel-fee table |
+| REQ-6 | A lower price applies at once with a refund; a higher price waits for its top-up | Same-or-lower-price edits apply at once and move the schedules in one transaction |
+| REQ-7 | A customer cancelling before the top-up confirms joins the refund cases (the old REQ-8 merged in) | References renumbered |
+| REQ-8 (new meaning) | No second edit while a top-up is unconfirmed | `edit()` refuses while a top-up is unconfirmed |
+| RES-8, P3, §11 | Homa's reservation values are fixed at Requested; account values apply at once | Owners keep dated versions read with `asOf(requestedAt)`; reservation events carry `requestedAt` |
+| PAY-7 | The lower-price refund now cites REQ-6 | Reference updated |
+
+Round 8's questions, answered by round 9:
+
+| # | Question | Proposed | Rule decided | Outcome |
+| --- | --- | --- | --- | --- |
+| V | Can an edit change the address | No; cancel and book again | REQ-1: yes, if the provider covers the new city | **Differs** |
+| W | Do Requested reservations keep the old §11 values | Settlement money and time values fixed; compliance values apply at once | P3 and RES-8: reservation values fixed at Requested, account values at once, each listed in full | Same, with the rules' fuller list |
+| X | A second edit while a top-up is unconfirmed | The newest edit replaces the earlier one | REQ-8: no second edit until the top-up is confirmed or refunded | **Differs** |
+
+### Round 10: rule changes on 21 Nov (16:30)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| P2 | Now "A change is a new booking": reservations can't be edited; withdraw or cancel, then book again under the terms in force | `edit()`, `applyTopUp()`, `dropPendingEdit()`, `PendingEdit`, `ReservationEditor` and `TopUpPayer` removed |
+| REQ-1 | No edits, whether Requested or Reserved (absorbs the old REQ-5) | Customer cancellation covers Reserved only |
+| REQ-2 | Withdrawing a Requested reservation: free, full refund, time reopens; not a cancellation and not counted | New `WITHDRAWN` status, `withdraw()`, `ReservationWithdrawer` and `ReservationWithdrawnIE` |
+| REQ-5 (new meaning) | Withdrawal and acceptance at nearly the same moment: whichever is recorded first wins | Both change the same Reservation version under optimistic locking; the loser reloads and gets a clear outcome |
+| REQ-6, REQ-7, REQ-8 | Removed (top-ups and edit refunds) | Five top-up and edit events and their handlers removed; `PaymentHold.topUp` removed |
+| RES-8, RES-9, CHT-5, RTG-10, PAY-7, status glossary, §10 | Withdrawn added; the edit exception in RES-8 removed | Schedules release on Withdrawn; chat goes read-only; Rating ignores withdrawals; Payment refunds at once |
+
+Round 9's open question, answered by round 10:
+
+| # | Question | Proposed | Rule decided | Outcome |
+| --- | --- | --- | --- | --- |
+| Y | An edited address in a city the provider added after Requested | Refuse the edit; book a new reservation | P2 and REQ-1: no edits at all; every change is a new reservation | Same in spirit, applied to every change |
+
 ### Still open
 
-None. Every rule ID in the Homa Business Rule page maps to an owning context, an aggregate or policy, and a use case above.
+None. Every gap raised so far has a rule decision.

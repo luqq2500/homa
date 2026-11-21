@@ -4,9 +4,12 @@ import com.homa.ie.port.ReservationIE;
 import com.homa.kernel.Money;
 import java.time.Instant;
 
-/** A customer started paying; the provider's time is held for 15 minutes (RES-11). Payment opens a pending hold. */
+/**
+ * A customer started paying. The time was free when checked, but nothing is held: the first confirmed payment for a
+ * time wins (P1, RES-11). Payment opens a pending hold, which may see several payment attempts.
+ */
 public record ReservationCheckoutStartedIE(
         String eventId,
-        String checkoutId, String customerId, String providerId, Money total, Instant holdExpiresAt, Instant occurredAt)
+        String checkoutId, String customerId, String providerId, Money total, Instant occurredAt)
         implements ReservationIE {
 }

@@ -4,7 +4,11 @@ import com.homa.ie.port.PaymentIE;
 import com.homa.kernel.Money;
 import java.time.Instant;
 
-/** The gateway confirmed the customer's payment; it is now held (PAY-1). Reservation makes it Requested (RES-7). */
+/**
+ * The first confirmed payment for a checkout; it is now held (PAY-1). A later confirmation for the same checkout is
+ * refunded by Payment and never published (RES-12). Reservation makes it Requested if the time is still free (RES-7,
+ * RES-11).
+ */
 public record PaymentHeldIE(
         String eventId,
         String checkoutId, Money amount, Instant paidAt, Instant occurredAt) implements PaymentIE {
