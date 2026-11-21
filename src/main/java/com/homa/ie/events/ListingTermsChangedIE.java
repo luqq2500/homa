@@ -19,6 +19,8 @@ import java.util.Map;
  * @param discountRate   null when the listing has no discount (OFR-4)
  * @param acceptancePolicy INSTANT or REQUEST
  * @param cancellationTier FLEXIBLE, STANDARD or FIRM
+ * @param bookingStep    the step booked hours move in, from Listing's BookingBounds (RES-5); Reservation checks
+ *                       the job's duration against it and never holds the 15 minutes itself (§11)
  * @param noticeRaised   true when switching to Request raised the minimum notice to 2 hours (OFR-6)
  */
 public record ListingTermsChangedIE(
@@ -35,6 +37,7 @@ public record ListingTermsChangedIE(
         int discountMinHelpers,
         Duration minBookingHours,
         Duration maxBookingHours,
+        Duration bookingStep,
         int minHelpers,
         int maxHelpers,
         Duration minimumNotice,

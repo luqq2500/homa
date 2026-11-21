@@ -30,7 +30,7 @@ class IntegrationEventContractTest {
                 HomaFixtures.KEMAS_HOME_PROVIDER_ID, cities, List.of("HOUSE_CLEANING"),
                 HomaFixtures.HOURLY_RATE_PER_HELPER, "FLAT", HomaFixtures.FLAT_TRAVEL_FEE, byCity,
                 HomaFixtures.DISCOUNT_RATE, HomaFixtures.DISCOUNT_MIN_HOURS, HomaFixtures.DISCOUNT_MIN_HELPERS,
-                Duration.ofHours(1), Duration.ofHours(8), 1, 3, HomaFixtures.MINIMUM_NOTICE, HomaFixtures.JOB_BUFFER,
+                Duration.ofHours(1), Duration.ofHours(8), Duration.ofMinutes(15), 1, 3, HomaFixtures.MINIMUM_NOTICE, HomaFixtures.JOB_BUFFER,
                 HomaFixtures.ACCEPTANCE_POLICY, HomaFixtures.CANCELLATION_TIER, false, HomaFixtures.REQUESTED_AT);
 
         cities.add("PUCHONG");
