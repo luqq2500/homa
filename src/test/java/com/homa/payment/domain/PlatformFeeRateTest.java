@@ -1,5 +1,6 @@
 package com.homa.payment.domain;
 
+import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.fixtures.HomaFixtures;
@@ -12,20 +13,24 @@ class PlatformFeeRateTest {
 
     @Test
     @Tag("PAY-3")
-    @DisplayName("The platform fee is 15.5% of the provider's released payout for a reservation.")
-    void platformFeeRateIsFifteenAndAHalfPercent() {
-        assertThat(PlatformFeeRate.HOMA.percentage()).isEqualTo(HomaFixtures.PLATFORM_FEE_RATE);
+    @DisplayName("The platform fee is 15.5% of every payout to a provider.")
+    void platformFeeRateIsReadFromPaymentValues() {
+        assertThat(PlatformFeeRate.asOf(REQUESTED_AT).percentage()).isEqualTo(HomaFixtures.PLATFORM_FEE_RATE);
+        assertThat(PlatformFeeRate.asOf(REQUESTED_AT).percentage())
+                .isEqualTo(PaymentValues.asOf(REQUESTED_AT).platformFeeRate());
     }
 
     @Test
     @Tag("PAY-3")
     @Tag("PAY-8")
-    @DisplayName("Payout RM200: platform fee RM31. Payout RM160.62: platform fee RM24.90, rounded once to the sen.")
+    @DisplayName("Payout RM200: platform fee RM31. A RM45 fee: RM6.975, rounded once to RM6.98.")
     void platformFeeOnAPayoutIsRoundedOnceToTheSen() {
-        assertThat(PlatformFeeRate.HOMA.feeOn(Money.myr(200))).isEqualTo(Money.myr(31));
-        Money fee = PlatformFeeRate.HOMA.feeOn(Money.myr("160.62"));
+        PlatformFeeRate rate = PlatformFeeRate.asOf(REQUESTED_AT);
 
-        assertThat(fee.amount()).isEqualByComparingTo("24.90");
+        assertThat(rate.feeOn(Money.myr(200))).isEqualTo(Money.myr(31));
+        Money fee = rate.feeOn(Money.myr(45));
+
+        assertThat(fee.amount()).isEqualByComparingTo("6.98");
         assertThat(fee.amount().scale()).isEqualTo(2);
     }
 }

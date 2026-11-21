@@ -16,6 +16,7 @@ class PaymentIdsTest {
         return Stream.of(
                 Arguments.of("PaymentHoldId", (Function<String, Object>) PaymentHoldId::new),
                 Arguments.of("PayoutId", (Function<String, Object>) PayoutId::new),
+                Arguments.of("PaymentAttemptId", (Function<String, Object>) PaymentAttemptId::new),
                 Arguments.of("CheckoutId", (Function<String, Object>) CheckoutId::new),
                 Arguments.of("CustomerId", (Function<String, Object>) CustomerId::new),
                 Arguments.of("ProviderId", (Function<String, Object>) ProviderId::new),
@@ -40,6 +41,14 @@ class PaymentIdsTest {
 
         assertThat(first.value()).isNotBlank();
         assertThat(first).isNotEqualTo(PaymentHoldId.generate());
+    }
+
+    @Test
+    void generatedPaymentAttemptIdsAreUnique() {
+        PaymentAttemptId first = PaymentAttemptId.generate();
+
+        assertThat(first.value()).isNotBlank();
+        assertThat(first).isNotEqualTo(PaymentAttemptId.generate());
     }
 
     @Test

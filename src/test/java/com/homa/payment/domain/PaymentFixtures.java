@@ -5,12 +5,13 @@ import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.fixtures.HomaFixtures.PROTECTION_WINDOW;
 import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.TOTAL_RESERVATION_FEE;
+import static com.homa.fixtures.HomaFixtures.at;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.kernel.Money;
 import java.time.Instant;
 
-/** The §0 example setup as Payment sees it: Aisyah's RM200 payment and Kemas Home's payouts. */
+/** The §0 example setup as Payment sees it: Aisyah's RM200 payment and Kemas Home's payout. */
 final class PaymentFixtures {
 
     private PaymentFixtures() {
@@ -25,38 +26,63 @@ final class PaymentFixtures {
     static final ReportId VASE_REPORT = new ReportId("report-cracked-vase");
     static final ReportId BATHROOM_REPORT = new ReportId("report-bathroom-not-cleaned");
 
+    /** Aisyah's online banking payment for the standard checkout. */
+    static final PaymentAttemptId AISYAHS_ONLINE_BANKING = new PaymentAttemptId("attempt-aisyah-online-banking");
+    /** Aisyah's card payment, retried after her first card attempt failed (RES-12). */
+    static final PaymentAttemptId AISYAHS_CARD_RETRY = new PaymentAttemptId("attempt-aisyah-card-retry");
+
     /** Aisyah's online banking payment succeeds: Monday 20:00, when the reservation is Requested. */
     static final Instant PAID_AT = REQUESTED_AT;
+    /** RES-12: Aisyah's card retry confirms at Monday 20:04. */
+    static final Instant CARD_RETRY_CONFIRMED_AT = at(2026, 11, 30, 20, 4);
+    /** RES-12: her slow online banking payment confirms after it, at Monday 20:06. */
+    static final Instant SLOW_ONLINE_BANKING_CONFIRMED_AT = at(2026, 11, 30, 20, 6);
+    /** Kemas Home accepts on Monday 22:00 and the reservation is Reserved (ACC-2). */
+    static final Instant RESERVED_AT = at(2026, 11, 30, 22, 0);
+    /** Aisyah cancels on Friday 22:00, after Standard's 21:45 cut-off (CCX-6). */
+    static final Instant CANCELLED_AT = at(2026, 12, 4, 22, 0);
     /** Kemas Home marks the job Completed at the job end time, Saturday 14:00. */
     static final Instant MARKED_COMPLETED_AT = HomaFixtures.JOB_END;
     /** The Protection Window ends Sunday 14:00. */
     static final Instant PROTECTION_WINDOW_END = PROTECTION_WINDOW.end();
 
-    /** Aisyah has tapped Pay; the gateway has not confirmed yet. */
+    /** Aisyah has tapped Pay; the gateway has not confirmed any attempt yet. */
     static PaymentHold aisyahsCheckoutAwaitingPayment() {
         return PaymentHold.openForCheckout(AISYAHS_HOLD, STANDARD_CHECKOUT, AISYAH, TOTAL_RESERVATION_FEE);
     }
 
-    /** Aisyah's RM200, held since Monday 20:00 (PAY-1). */
+    /** Aisyah's RM200, paid by online banking and held since Monday 20:00 (PAY-1). */
     static PaymentHold aisyahsHeldPayment() {
         PaymentHold hold = aisyahsCheckoutAwaitingPayment();
-        hold.hold(PAID_AT);
+        hold.recordConfirmation(AISYAHS_ONLINE_BANKING, PAID_AT);
         return hold;
     }
 
-    /** Kemas Home's RM200 payout for the standard job, marked Completed on Saturday. */
+    /** Kemas Home's RM200 payout, opened when the reservation was Reserved on Monday; the job isn't done yet. */
+    static Payout kemasHomesPayoutAtReserved() {
+        return payoutAtReservedOf(TOTAL_RESERVATION_FEE, REQUESTED_AT);
+    }
+
+    static Payout payoutAtReservedOf(Money total, Instant requestedAt) {
+        return Payout.openForReservation(KEMAS_HOMES_PAYOUT, STANDARD_RESERVATION, KEMAS_HOME, total, requestedAt,
+                PROTECTION_WINDOW_END);
+    }
+
+    /** Kemas Home's RM200 job payout, the job marked Completed on Saturday 14:00. */
     static Payout kemasHomesJobPayout() {
         return jobPayoutOf(TOTAL_RESERVATION_FEE);
     }
 
     static Payout jobPayoutOf(Money gross) {
-        return Payout.forCompletedJob(KEMAS_HOMES_PAYOUT, STANDARD_RESERVATION, KEMAS_HOME, gross,
-                PROTECTION_WINDOW_END);
+        Payout payout = payoutAtReservedOf(gross, REQUESTED_AT);
+        payout.markCompleted(MARKED_COMPLETED_AT);
+        return payout;
     }
 
-    /** The RM45 cancellation fee Aisyah paid Kemas Home, had she cancelled on Friday 22:00 (PAY-3, PAY-6). */
+    /** Aisyah cancelled on Friday 22:00 and pays Kemas Home the RM45 Base Cancellation Fee (CCX-6, PAY-6). */
     static Payout kemasHomesCancellationFeePayout() {
-        return Payout.forFee(KEMAS_HOMES_PAYOUT, STANDARD_RESERVATION, KEMAS_HOME,
-                HomaFixtures.BASE_CANCELLATION_FEE, PROTECTION_WINDOW_END);
+        Payout payout = kemasHomesPayoutAtReserved();
+        payout.payFeeInstead(HomaFixtures.BASE_CANCELLATION_FEE);
+        return payout;
     }
 }
