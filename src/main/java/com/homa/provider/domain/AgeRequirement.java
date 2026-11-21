@@ -15,7 +15,7 @@ public record AgeRequirement(int minimumAge) {
     private static final int MONTHS_PER_YEAR = 12;
 
     /** The requirement for every helper and supervisor: 18 years. */
-    public static final AgeRequirement TEAM_MEMBER = new AgeRequirement(18);
+    public static final AgeRequirement TEAM_MEMBER = new AgeRequirement(ProviderValues.MINIMUM_HELPER_AGE_YEARS);
 
     /** True when someone born on {@code dateOfBirth} is at least {@link #minimumAge()} at {@code verifiedAt}. */
     public boolean isMetBy(LocalDate dateOfBirth, Instant verifiedAt) {

@@ -18,7 +18,7 @@ import java.util.Optional;
 public final class Provider {
 
     /** PRV-2: a provider needs at least this many active helpers to go live. */
-    public static final int MINIMUM_ACTIVE_HELPERS = 1;
+    public static final int MINIMUM_ACTIVE_HELPERS = ProviderValues.MINIMUM_ACTIVE_HELPERS;
 
     private final ProviderId id;
     private final BusinessRegistration registration;

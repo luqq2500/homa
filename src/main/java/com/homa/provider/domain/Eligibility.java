@@ -5,6 +5,7 @@ import com.homa.provider.domain.exception.WorkPermitExpiresTooSoonException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Why a helper or supervisor may work in the country: as a citizen (HLP-2), or as a foreign worker with a work
@@ -23,6 +24,13 @@ public sealed interface Eligibility {
      */
     void requireAllowedToWorkAt(Instant verifiedAt, TeamMemberId memberId);
 
+    /**
+     * The last Kuala Lumpur date a rostered job may end on: the work permit's expiry minus the 90-day buffer (ROS-4).
+     * Empty for a citizen, who has no such limit. Published as {@code rosterableUntil}, so Reservation never holds the
+     * 90 days itself.
+     */
+    Optional<LocalDate> rosterableUntil();
+
     /** Verified as a citizen of the country (HLP-2). */
     record Citizen() implements Eligibility {
 
@@ -34,6 +42,11 @@ public sealed interface Eligibility {
         @Override
         public void requireAllowedToWorkAt(Instant verifiedAt, TeamMemberId memberId) {
             // HLP-2 is met by the identity verification itself.
+        }
+
+        @Override
+        public Optional<LocalDate> rosterableUntil() {
+            return Optional.empty();
         }
     }
 
@@ -60,6 +73,11 @@ public sealed interface Eligibility {
             if (!PermitRequirement.FOREIGN_TEAM_MEMBER.isMetBy(permitExpiry, verifiedAt)) {
                 throw new WorkPermitExpiresTooSoonException(memberId.value());
             }
+        }
+
+        @Override
+        public Optional<LocalDate> rosterableUntil() {
+            return Optional.of(permitExpiry.minusDays(ProviderValues.WORK_PERMIT_BUFFER_DAYS));
         }
     }
 }

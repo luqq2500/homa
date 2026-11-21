@@ -13,7 +13,7 @@ import java.util.Objects;
 public record PermitRequirement(int minimumDaysLeft) {
 
     /** The requirement for every foreign helper and supervisor: 90 days. */
-    public static final PermitRequirement FOREIGN_TEAM_MEMBER = new PermitRequirement(90);
+    public static final PermitRequirement FOREIGN_TEAM_MEMBER = new PermitRequirement(ProviderValues.WORK_PERMIT_BUFFER_DAYS);
 
     /** True when a permit expiring on {@code permitExpiry} has enough days left at {@code verifiedAt}. */
     public boolean isMetBy(LocalDate permitExpiry, Instant verifiedAt) {

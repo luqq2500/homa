@@ -3,7 +3,9 @@ package com.homa.provider.domain;
 import com.homa.provider.domain.exception.MemberNotVerifiedException;
 import com.homa.provider.domain.exception.MemberUnderageException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A helper or supervisor of one provider: one aggregate per person. A member exists only once they have passed
@@ -79,6 +81,11 @@ public final class TeamMember {
 
     public Eligibility eligibility() {
         return eligibility;
+    }
+
+    /** The last Kuala Lumpur date a job this member is rostered on may end (ROS-4); empty for a citizen. */
+    public Optional<LocalDate> rosterableUntil() {
+        return eligibility.rosterableUntil();
     }
 
     /** When the member last passed verification. */
