@@ -3,23 +3,28 @@ package com.homa.reservation.domain;
 import static com.homa.fixtures.HomaFixtures.ACCEPTANCE_DEADLINE;
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
 import static com.homa.fixtures.HomaFixtures.HOURLY_RATE_PER_HELPER;
+import static com.homa.fixtures.HomaFixtures.JOB_TIME;
+import static com.homa.fixtures.HomaFixtures.PROTECTION_WINDOW;
 import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.TOTAL_RESERVATION_FEE;
-import static com.homa.reservation.domain.ReservationFixtures.ANOTHER_PROVIDER_ID;
 import static com.homa.reservation.domain.ReservationFixtures.TAPPED_PAY_AT;
+import static com.homa.reservation.domain.ReservationFixtures.aisyahAddress;
 import static com.homa.reservation.domain.ReservationFixtures.anotherCustomerBooking;
 import static com.homa.reservation.domain.ReservationFixtures.assertRefused;
 import static com.homa.reservation.domain.ReservationFixtures.kemasHomeProvider;
-import static com.homa.reservation.domain.ReservationFixtures.monday;
 import static com.homa.reservation.domain.ReservationFixtures.saturday;
 import static com.homa.reservation.domain.ReservationFixtures.standardBooking;
 import static com.homa.reservation.domain.ReservationFixtures.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.kernel.Money;
 import com.homa.kernel.TimeInterval;
 import com.homa.reservation.domain.ReservationFixtures.Marketplace;
+import com.homa.reservation.domain.exception.BookingRefusedException;
+import com.homa.reservation.domain.replica.CustomerStanding;
+import com.homa.reservation.domain.schedule.ScheduleBlock;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.AcceptancePolicy;
 import com.homa.reservation.domain.terms.CancellationTier;
@@ -38,33 +43,46 @@ class ReservationRequestTest {
     @Test
     @Tag("RES-7")
     @DisplayName("Aisyah pays RM200 on Monday 20:00. The reservation is Requested and Homa holds the RM200.")
-    void paidCheckoutBecomesARequestedReservationWithThePaymentHeld() {
+    void confirmedPaymentMakesARequestedReservationWithThePaymentHeld() {
         Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
 
         Reservation reservation = market.pay(checkout, REQUESTED_AT);
 
         assertThat(reservation.id()).isNotNull();
+        assertThat(reservation.checkoutId()).isEqualTo(checkout.id());
         assertThat(reservation.status()).isEqualTo(ReservationStatus.REQUESTED);
         assertThat(reservation.requestedAt()).isEqualTo(REQUESTED_AT);
         assertThat(reservation.quote().total()).isEqualTo(TOTAL_RESERVATION_FEE);
         assertThat(reservation.booking()).isEqualTo(standardBooking());
         assertThat(reservation.reservedAt()).isEmpty();
+        assertThat(reservation.withdrawnAt()).isEmpty();
         assertThat(reservation.roster()).isEmpty();
         assertThat(reservation.completedAt()).isEmpty();
         assertThat(reservation.completionPhotos()).isEmpty();
     }
 
     @Test
-    @Tag("RES-9")
-    @DisplayName("From Monday 20:00 the checkout holds are the reservation's blocks, and they no longer expire at 20:13.")
-    void requestTurnsTheCheckoutHoldsIntoBlocks() {
-        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        market.pay(checkout, REQUESTED_AT);
+    @Tag("RES-7")
+    @DisplayName("The Requested reservation tells its events when it was Requested, that its Check-in Period starts Saturday 9:45 and that its Protection Window ends Sunday 14:00.")
+    void requestedReservationGivesItsEventsTheirTimes() {
+        Reservation reservation = market.requestStandard();
 
-        assertThat(market.providerSchedule().isHolding(checkout.id(), REQUESTED_AT)).isFalse();
-        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).isHolding(checkout.id(), REQUESTED_AT)).isFalse();
-        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK, monday(20, 13))).isFalse();
-        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).isFree(HomaFixtures.JOB_TIME, monday(20, 13))).isFalse();
+        assertThat(reservation.requestedAt()).isEqualTo(REQUESTED_AT);
+        assertThat(reservation.checkInStart()).isEqualTo(saturday(9, 45));
+        assertThat(reservation.protectionWindowEnd()).isEqualTo(PROTECTION_WINDOW.end());
+        assertThat(reservation.values()).isEqualTo(ReservationValues.asOf(REQUESTED_AT));
+    }
+
+    @Test
+    @Tag("RES-9")
+    @DisplayName("From Monday 20:00 Kemas Home is blocked 9:45–14:30 and Aisyah 10:00–14:00, by her reservation.")
+    void requestBlocksBothSchedules() {
+        Reservation reservation = market.requestStandard();
+
+        assertThat(market.providerSchedule().blocks())
+                .containsExactly(new ScheduleBlock(reservation.id(), STANDARD_BLOCK));
+        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).blocks())
+                .containsExactly(new ScheduleBlock(reservation.id(), JOB_TIME));
     }
 
     @Test
@@ -78,71 +96,94 @@ class ReservationRequestTest {
         assertThat(reservation.terms().hourlyRatePerHelper()).isEqualTo(HOURLY_RATE_PER_HELPER);
         assertThat(reservation.terms().cancellationTier()).isEqualTo(CancellationTier.STANDARD);
         assertThat(reservation.quote().total()).isEqualTo(TOTAL_RESERVATION_FEE);
-        Checkout newBooking = market.checkout(
-                anotherCustomerBooking(HomaFixtures.at(2026, 12, 8, 10, 0), Duration.ofHours(4), 2), tuesday(9, 0));
+        Reservation newBooking = market.book(
+                anotherCustomerBooking(HomaFixtures.at(2026, 12, 8, 10, 0), Duration.ofHours(4), 2),
+                tuesday(9, 0), tuesday(9, 1));
         assertThat(newBooking.quote().total()).isEqualTo(Money.myr(236));
         assertThat(newBooking.terms().cancellationTier()).isEqualTo(CancellationTier.FIRM);
     }
 
     @Test
-    @Tag("RES-12")
-    @DisplayName("Aisyah's online banking confirms at 20:20, after the hold ended at 20:13. The slot is still free, so her reservation is Requested. Had another customer booked it at 20:15, Aisyah would get RM200 back straight away.")
-    void latePaymentIsRequestedOnlyIfTheTimeIsStillFree() {
-        Checkout late = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        Reservation reservation = market.pay(late, monday(20, 20));
+    @Tag("RES-8")
+    @DisplayName("When Aisyah updates her profile address on Thursday, Saturday's team still goes to the original address.")
+    void reservationKeepsTheAddressFromWhenItWasRequested() {
+        Reservation reservation = market.requestStandard();
 
-        assertThat(reservation.status()).isEqualTo(ReservationStatus.REQUESTED);
-        assertThat(reservation.requestedAt()).isEqualTo(monday(20, 20));
-        assertThat(reservation.acceptanceDeadline()).contains(new AcceptanceDeadline(tuesday(20, 20)));
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false,
+                new ServiceAddress("8, Jalan Cyber 2", "CYBERJAYA", "Ring the bell")));
 
-        Marketplace taken = Marketplace.withKemasHome();
-        Checkout aisyahs = taken.checkout(standardBooking(), TAPPED_PAY_AT);
-        taken.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1), monday(20, 15));
-        assertRefused(() -> taken.pay(aisyahs, monday(20, 20)), BookingRefusal.PROVIDER_BUSY);
+        assertThat(reservation.booking().address()).isEqualTo(aisyahAddress());
     }
 
     @Test
-    @Tag("RES-12")
-    @DisplayName("Paid at 20:12 the hold is still live; paid at 20:13 it has expired and another customer who took the slot at 20:13 keeps it.")
-    void holdIsLiveUntilTheMinuteItExpires() {
-        Checkout live = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        assertThat(market.pay(live, monday(20, 12)).status()).isEqualTo(ReservationStatus.REQUESTED);
+    @Tag("RES-8")
+    @DisplayName("The terms and address are frozen when the payment confirms, not when Aisyah tapped Pay: Kemas Home switching to Firm and Aisyah moving within Salak Tinggi at 19:59 both apply to her reservation.")
+    void termsAndAddressAreFrozenWhenTheReservationIsRequested() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        ServiceAddress moved = new ServiceAddress("1, Jalan Salak Tinggi 3", HomaFixtures.AISYAH_CITY, "Side gate");
+        market.providerBecomes(kemasHomeProvider().tier(CancellationTier.FIRM).build());
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false, moved));
 
-        Marketplace taken = Marketplace.withKemasHome();
-        Checkout expired = taken.checkout(standardBooking(), TAPPED_PAY_AT);
-        taken.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1), monday(20, 13));
-        assertRefused(() -> taken.pay(expired, monday(20, 13)), BookingRefusal.PROVIDER_BUSY);
+        Reservation reservation = market.pay(checkout, REQUESTED_AT);
+
+        assertThat(reservation.terms().cancellationTier()).isEqualTo(CancellationTier.FIRM);
+        assertThat(reservation.booking().address()).isEqualTo(moved);
+        assertThat(reservation.quote().total()).isEqualTo(TOTAL_RESERVATION_FEE);
     }
 
     @Test
-    @Tag("RES-12")
-    @DisplayName("A late payment must still pass every booking rule: held at 7:44 for 10:00, paid at 8:00 the 2-hour notice no longer holds; paid at 7:58 the live hold stands.")
-    void latePaymentMustStillPassEveryBookingRule() {
-        Checkout live = market.checkout(standardBooking(), saturday(7, 44));
-        assertThat(market.pay(live, saturday(7, 58)).acceptanceDeadline())
+    @Tag("RES-11")
+    @DisplayName("Kemas Home raises its rate to RM30 while Aisyah pays. Her confirmed RM200 no longer matches the RM236 price, so it is refused as a failed rule and refunded, and nothing is blocked.")
+    void confirmedPaymentIsRefusedWhenThePriceChangedWhileTheCustomerPaid() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        market.providerBecomes(kemasHomeProvider().rate(Money.myr(30)).build());
+
+        assertThatThrownBy(() -> market.pay(checkout, REQUESTED_AT))
+                .isInstanceOfSatisfying(BookingRefusedException.class, refused -> {
+                    assertThat(refused.refusal()).isEqualTo(BookingRefusal.PRICE_CHANGED);
+                    assertThat(refused.rejection()).isEqualTo(CheckoutRejection.RULE_FAILED);
+                });
+        assertThat(market.providerSchedule().blocks()).isEmpty();
+        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).blocks()).isEmpty();
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("A confirmed payment must still pass every booking rule: Aisyah taps Pay at 7:44 for 10:00; confirmed at 7:45 the 2-hour notice still holds, confirmed at 7:46 it no longer does.")
+    void confirmedPaymentMustStillPassEveryBookingRule() {
+        Checkout inTime = market.checkout(standardBooking(), saturday(7, 44));
+        assertThat(market.pay(inTime, saturday(7, 45)).acceptanceDeadline())
                 .contains(new AcceptanceDeadline(saturday(8, 45)));
 
         Marketplace again = Marketplace.withKemasHome();
         Checkout late = again.checkout(standardBooking(), saturday(7, 44));
-        assertRefused(() -> again.pay(late, saturday(8, 0)), BookingRefusal.NOTICE_TOO_SHORT);
+        assertThatThrownBy(() -> again.pay(late, saturday(7, 46)))
+                .isInstanceOfSatisfying(BookingRefusedException.class, refused -> {
+                    assertThat(refused.refusal()).isEqualTo(BookingRefusal.NOTICE_TOO_SHORT);
+                    assertThat(refused.rejection()).isEqualTo(CheckoutRejection.RULE_FAILED);
+                });
+        assertThat(again.providerSchedule().blocks()).isEmpty();
     }
 
     @Test
-    @Tag("RES-12")
-    @DisplayName("Aisyah booked another provider for the same time after her hold expired, so her late payment is refunded and Kemas Home's time stays free.")
-    void refusedLatePaymentLeavesTheProvidersTimeFree() {
-        Checkout kemasCheckout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        Marketplace another = new Marketplace(kemasHomeProvider().id(ANOTHER_PROVIDER_ID).build());
-        Booking sameTime = new Booking(AISYAH_CUSTOMER_ID, ANOTHER_PROVIDER_ID, standardBooking().jobs(),
-                standardBooking().jobTime(), 2, standardBooking().address());
-        Checkout anotherCheckout = Checkout.start(CheckoutId.generate(), sameTime, another.provider(),
-                ReservationFixtures.aisyah(), another.providerSchedule(), market.scheduleOf(AISYAH_CUSTOMER_ID),
-                monday(20, 15));
-        Reservation.request(ReservationId.generate(), anotherCheckout, another.provider(), ReservationFixtures.aisyah(),
-                another.providerSchedule(), market.scheduleOf(AISYAH_CUSTOMER_ID), monday(20, 16));
+    @Tag("RES-11")
+    @DisplayName("Aisyah moves to Shah Alam while she pays. Kemas Home doesn't cover it, so her confirmed payment is refused.")
+    void confirmedPaymentIsRefusedWhenTheHomeAddressMovedOutOfTheProvidersCities() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false,
+                new ServiceAddress("12, Jalan Shah Alam", "SHAH_ALAM", "Ring twice")));
 
-        assertRefused(() -> market.pay(kemasCheckout, monday(20, 20)), BookingRefusal.CUSTOMER_BUSY);
-        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK, monday(20, 20))).isTrue();
+        assertRefused(() -> market.pay(checkout, REQUESTED_AT), BookingRefusal.CITY_NOT_COVERED);
+    }
+
+    @Test
+    @Tag("CUS-5")
+    @DisplayName("Aisyah is suspended while she pays, so her confirmed payment is refused.")
+    void confirmedPaymentIsRefusedWhenTheCustomerWasSuspendedMeanwhile() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, true, aisyahAddress()));
+
+        assertRefused(() -> market.pay(checkout, REQUESTED_AT), BookingRefusal.CUSTOMER_CANNOT_RESERVE);
     }
 
     @Test
@@ -160,8 +201,8 @@ class ReservationRequestTest {
 
     @Test
     @Tag("ACC-1")
-    @DisplayName("An Instant payment that lands while the hold is live must still come before the Check-in Period: 9:44 is Reserved, 9:45 is refused.")
-    void instantPaymentMustLandBeforeCheckIn() {
+    @DisplayName("An Instant payment must be confirmed before the Check-in Period: 9:44 is Reserved, 9:45 is refused.")
+    void instantPaymentMustBeConfirmedBeforeCheckIn() {
         market.providerBecomes(kemasHomeProvider().policy(AcceptancePolicy.INSTANT).minimumNotice(Duration.ZERO).build());
         assertThat(market.book(standardBooking(), saturday(9, 40), saturday(9, 44)).status())
                 .isEqualTo(ReservationStatus.RESERVED);
@@ -187,8 +228,8 @@ class ReservationRequestTest {
 
     @Test
     @Tag("ACC-3")
-    @DisplayName("A Request paid while its hold is live must still be made at least 1 hour before the Check-in Period: 8:45 is in time, 8:46 is refused.")
-    void requestPaymentMustLandAnHourBeforeCheckIn() {
+    @DisplayName("A Request must be confirmed at least 1 hour before the Check-in Period: 8:45 is in time, 8:46 is refused.")
+    void requestPaymentMustBeConfirmedAnHourBeforeCheckIn() {
         market.providerBecomes(kemasHomeProvider().minimumNotice(Duration.ofMinutes(30)).build());
         assertThat(market.book(standardBooking(), saturday(8, 40), saturday(8, 45)).status())
                 .isEqualTo(ReservationStatus.REQUESTED);
@@ -204,11 +245,12 @@ class ReservationRequestTest {
     void acceptanceDeadlineWhenBothLimitsCoincide() {
         JobTime saturdayJob = standardBooking().jobTime();
         Instant requestedAt = saturday(9, 45).minus(Duration.ofHours(25));
+        ReservationValues.Version values = ReservationValues.current();
 
-        assertThat(AcceptanceDeadline.from(requestedAt, saturdayJob).at()).isEqualTo(saturday(8, 45));
-        assertThat(AcceptanceDeadline.from(requestedAt.minusSeconds(60), saturdayJob).at())
+        assertThat(AcceptanceDeadline.from(requestedAt, saturdayJob, values).at()).isEqualTo(saturday(8, 45));
+        assertThat(AcceptanceDeadline.from(requestedAt.minusSeconds(60), saturdayJob, values).at())
                 .isEqualTo(saturday(8, 44));
-        assertThat(AcceptanceDeadline.from(requestedAt.plusSeconds(60), saturdayJob).at())
+        assertThat(AcceptanceDeadline.from(requestedAt.plusSeconds(60), saturdayJob, values).at())
                 .isEqualTo(saturday(8, 45));
     }
 }

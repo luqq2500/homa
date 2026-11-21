@@ -80,7 +80,7 @@ class ReservationCompletionTest {
         assertThat(reservation.awaitsCompletionAt(saturday(13, 59))).isFalse();
         assertThat(reservation.awaitsCompletionAt(saturday(14, 0))).isTrue();
         assertThat(reservation.awaitsCompletionAt(saturday(16, 0))).isTrue();
-        assertThat(reservation.jobTime().completionReminders()).containsExactly(saturday(14, 0), saturday(16, 0));
+        assertThat(reservation.completionReminders()).containsExactly(saturday(14, 0), saturday(16, 0));
 
         reservation.markCompleted(List.of(CLEAN_KITCHEN), monday);
 
@@ -101,6 +101,7 @@ class ReservationCompletionTest {
     }
 
     @Test
+    @Tag("JOB-1")
     @DisplayName("The reservation's phase follows its job time.")
     void reservationPhaseFollowsItsJobTime() {
         assertThat(reservation.phaseAt(tuesday(9, 0))).isEqualTo(ReservationPhase.BEFORE_CHECK_IN);

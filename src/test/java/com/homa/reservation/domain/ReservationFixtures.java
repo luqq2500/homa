@@ -68,8 +68,11 @@ final class ReservationFixtures {
     static final LocalDate SATURDAY = LocalDate.of(2026, 12, 5);
     static final String ANOTHER_CUSTOMER_ID = "customer-another";
     static final String ANOTHER_PROVIDER_ID = "provider-another";
+    static final String MEI_CUSTOMER_ID = "customer-mei";
+    /** Listing's booking step: durations and start times move in 15 minutes (RES-5, OFR-5). */
+    static final Duration BOOKING_STEP = Duration.ofMinutes(15);
 
-    /** 19:58 on Monday: Aisyah taps Pay for the standard reservation (RES-11). */
+    /** 19:58 on Monday: Aisyah taps Pay for the standard reservation. Nothing is held (RES-11). */
     static final Instant TAPPED_PAY_AT = REQUESTED_AT.minus(Duration.ofMinutes(2));
     /** 22:00 on Monday: Kemas Home accepts (ACC-2). */
     static final Instant ACCEPTED_AT = monday(22, 0);
@@ -112,6 +115,15 @@ final class ReservationFixtures {
         return new CustomerStanding(ANOTHER_CUSTOMER_ID, false, anotherCustomerAddress());
     }
 
+    static ServiceAddress meiAddress() {
+        return new ServiceAddress("3A, Presint 9, Putrajaya", "PUTRAJAYA", "Blue gate");
+    }
+
+    /** RES-11 case: Mei pays for the same Saturday time as Aisyah. */
+    static CustomerStanding mei() {
+        return new CustomerStanding(MEI_CUSTOMER_ID, false, meiAddress());
+    }
+
     // Kemas Home
 
     /** Monday to Saturday, 8:00–18:00 (OFR-8). */
@@ -144,7 +156,8 @@ final class ReservationFixtures {
         private AcceptancePolicy policy = AcceptancePolicy.valueOf(HomaFixtures.ACCEPTANCE_POLICY);
         private CancellationTier tier = CancellationTier.valueOf(HomaFixtures.CANCELLATION_TIER);
         /** OFR-5 case: Kemas Home sets 2 to 6 hours and leaves helpers on default. */
-        private BookingBounds bounds = new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), 1, Integer.MAX_VALUE);
+        private BookingBounds bounds =
+                new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), BOOKING_STEP, 1, Integer.MAX_VALUE);
         /** Siti, Nurul and Rina. */
         private int activeHelpers = 3;
         private Duration notice = MINIMUM_NOTICE;
@@ -246,6 +259,12 @@ final class ReservationFixtures {
                 JobTime.of(start, hours), helpers, anotherCustomerAddress());
     }
 
+    /** RES-11 case: Mei books Kemas Home for the same Saturday 10:00–14:00 with 2 helpers. */
+    static Booking meiBooking() {
+        return new Booking(MEI_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID, JobSelection.of(KITCHEN_CLEANING),
+                JobTime.of(JOB_START, STANDARD_HOURS), STANDARD_HELPERS, meiAddress());
+    }
+
     // The team
 
     static RosterableMember siti() {
@@ -258,10 +277,13 @@ final class ReservationFixtures {
                 "photo-nurul", true);
     }
 
-    /** ROS-4 case: Rina's permit expires on 20 March. */
+    /**
+     * ROS-4 case: Rina's permit expires on 20 March 2027, so Provider publishes 20 December 2026 as the last date a
+     * job of hers may end on (its 90-day buffer).
+     */
     static RosterableMember rina() {
-        return new RosterableMember(RINA_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Rina", "photo-rina",
-                true, LocalDate.of(2027, 3, 20));
+        return RosterableMember.foreign(RINA_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Rina",
+                "photo-rina", true, LocalDate.of(2026, 12, 20));
     }
 
     static RosterableMember farid() {
@@ -271,7 +293,7 @@ final class ReservationFixtures {
 
     static RosterableMember deactivated(RosterableMember member) {
         return new RosterableMember(member.memberId(), member.providerId(), member.role(), member.name(),
-                member.photoReference(), false, member.permitExpiry());
+                member.photoReference(), false, member.rosterableUntil());
     }
 
     // The marketplace around one provider
@@ -288,6 +310,7 @@ final class ReservationFixtures {
             this.providerSchedule = new ProviderSchedule(provider.providerId());
             register(aisyah());
             register(anotherCustomer());
+            register(mei());
         }
 
         static Marketplace withKemasHome() {
@@ -332,7 +355,11 @@ final class ReservationFixtures {
             return pay(checkout(booking, checkoutAt), paidAt);
         }
 
-        /** The standard reservation: Aisyah taps Pay at 19:58 and her payment succeeds at 20:00 (RES-11). */
+        CustomerStanding customer(String customerId) {
+            return customers.get(customerId);
+        }
+
+        /** The standard reservation: Aisyah taps Pay at 19:58 and her payment is confirmed at 20:00 (RES-7). */
         Reservation requestStandard() {
             return book(standardBooking(), TAPPED_PAY_AT, REQUESTED_AT);
         }

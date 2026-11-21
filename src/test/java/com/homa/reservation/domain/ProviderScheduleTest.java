@@ -1,11 +1,14 @@
 package com.homa.reservation.domain;
 
+import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
 import static com.homa.fixtures.HomaFixtures.JOB_END;
+import static com.homa.fixtures.HomaFixtures.JOB_TIME;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
-import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
+import static com.homa.reservation.domain.ReservationFixtures.MEI_CUSTOMER_ID;
 import static com.homa.reservation.domain.ReservationFixtures.TAPPED_PAY_AT;
 import static com.homa.reservation.domain.ReservationFixtures.anotherCustomerBooking;
 import static com.homa.reservation.domain.ReservationFixtures.assertRefused;
+import static com.homa.reservation.domain.ReservationFixtures.meiBooking;
 import static com.homa.reservation.domain.ReservationFixtures.monday;
 import static com.homa.reservation.domain.ReservationFixtures.saturday;
 import static com.homa.reservation.domain.ReservationFixtures.standardBooking;
@@ -14,8 +17,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.kernel.TimeInterval;
 import com.homa.reservation.domain.ReservationFixtures.Marketplace;
+import com.homa.reservation.domain.exception.BookingRefusedException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
+import com.homa.reservation.domain.schedule.ScheduleBlock;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -32,17 +37,84 @@ class ProviderScheduleTest {
     @Tag("RES-9")
     @DisplayName("Aisyah's request for Saturday 10:00–14:00 blocks Kemas Home from 9:45 to 14:30. Another customer can't book Kemas Home at 11:00 on Saturday, even for 1 helper; the earliest start after Aisyah's job is 14:45.")
     void providerHasOnlyOneReservationAtATime() {
-        market.requestStandard();
+        Reservation aisyahs = market.requestStandard();
 
-        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK, REQUESTED_AT)).isFalse();
+        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK)).isFalse();
+        assertThat(market.providerSchedule().blocks()).containsExactly(new ScheduleBlock(aisyahs.id(), STANDARD_BLOCK));
         assertRefused(() -> market.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1),
-                monday(21, 0)), BookingRefusal.PROVIDER_BUSY);
+                monday(21, 0)), BookingRefusal.TIME_TAKEN_BY_ANOTHER_RESERVATION);
         assertRefused(() -> market.checkout(anotherCustomerBooking(saturday(14, 30), Duration.ofHours(2), 1),
-                monday(21, 0)), BookingRefusal.PROVIDER_BUSY);
-        Checkout afterAisyah = market.checkout(anotherCustomerBooking(saturday(14, 45), Duration.ofHours(2), 1),
-                monday(21, 0));
-        market.pay(afterAisyah, monday(21, 1));
-        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK, monday(21, 1))).isFalse();
+                monday(21, 0)), BookingRefusal.TIME_TAKEN_BY_ANOTHER_RESERVATION);
+        Reservation afterAisyah = market.book(anotherCustomerBooking(saturday(14, 45), Duration.ofHours(2), 1),
+                monday(21, 0), monday(21, 1));
+        assertThat(afterAisyah.status()).isEqualTo(ReservationStatus.REQUESTED);
+        assertThat(market.providerSchedule().blocks()).hasSize(2);
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("Aisyah and Mei both pay for Kemas Home on Saturday at 10:00. Aisyah's payment confirms at 20:01 and Mei's at 20:02. Aisyah's reservation is Requested; Mei gets her RM200 back straight away and is told the slot was taken.")
+    void firstConfirmedPaymentForATimeWins() {
+        Checkout aisyahsCheckout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        Checkout meisCheckout = market.checkout(meiBooking(), monday(19, 59));
+
+        Reservation aisyahs = market.pay(aisyahsCheckout, monday(20, 1));
+
+        assertThat(aisyahs.status()).isEqualTo(ReservationStatus.REQUESTED);
+        assertThatThrownBy(() -> market.pay(meisCheckout, monday(20, 2)))
+                .isInstanceOfSatisfying(BookingRefusedException.class, refused -> {
+                    assertThat(refused.refusal()).isEqualTo(BookingRefusal.TIME_TAKEN_BY_ANOTHER_RESERVATION);
+                    assertThat(refused.rejection()).isEqualTo(CheckoutRejection.TIME_TAKEN);
+                });
+        assertThat(meisCheckout.quote().total()).isEqualTo(aisyahs.quote().total());
+        assertThat(market.providerSchedule().blocks()).containsExactly(new ScheduleBlock(aisyahs.id(), STANDARD_BLOCK));
+        assertThat(market.scheduleOf(MEI_CUSTOMER_ID).isFree(JOB_TIME)).isTrue();
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("Starting a checkout holds nothing: while Aisyah pays, Kemas Home's Saturday stays free and Mei can start paying for it too.")
+    void checkoutHoldsNothing() {
+        market.checkout(standardBooking(), TAPPED_PAY_AT);
+
+        assertThat(market.providerSchedule().isFree(STANDARD_BLOCK)).isTrue();
+        assertThat(market.providerSchedule().blocks()).isEmpty();
+        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).blocks()).isEmpty();
+        assertThat(market.checkout(meiBooking(), monday(19, 59))).isNotNull();
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("Aisyah's and Mei's payments are confirmed against the same saved schedule at once. Both see the same version, so only the first save may stand; reloaded after Aisyah's, Mei's payment is refused.")
+    void paymentsConfirmedAgainstTheSameVersionAreDecidedByTheFirstSave() {
+        ProviderSchedule saved = new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, List.of(), 3);
+        ProviderSchedule seenByAisyah = new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, saved.blocks(), saved.version());
+        ProviderSchedule seenByMei = new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, saved.blocks(), saved.version());
+
+        ReservationId aisyahs = ReservationId.generate();
+        seenByAisyah.block(aisyahs, STANDARD_BLOCK);
+        seenByMei.block(ReservationId.generate(), STANDARD_BLOCK);
+        assertThat(seenByAisyah.version()).isEqualTo(3).isEqualTo(seenByMei.version());
+
+        ProviderSchedule reloadedForMei =
+                new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, seenByAisyah.blocks(), seenByAisyah.version() + 1);
+        assertThat(reloadedForMei.version()).isEqualTo(4);
+        assertRefused(() -> reloadedForMei.block(ReservationId.generate(), STANDARD_BLOCK),
+                BookingRefusal.TIME_TAKEN_BY_ANOTHER_RESERVATION);
+        assertThat(reloadedForMei.blocks()).containsExactly(new ScheduleBlock(aisyahs, STANDARD_BLOCK));
+    }
+
+    @Test
+    @Tag("RES-9")
+    @DisplayName("A saved schedule never holds two overlapping blocks.")
+    void savedScheduleCannotHoldOverlappingBlocks() {
+        List<ScheduleBlock> overlapping = List.of(new ScheduleBlock(ReservationId.generate(), STANDARD_BLOCK),
+                new ScheduleBlock(ReservationId.generate(), new TimeInterval(saturday(14, 0), saturday(16, 0))));
+
+        assertRefused(() -> new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, overlapping, 1),
+                BookingRefusal.TIME_TAKEN_BY_ANOTHER_RESERVATION);
+        assertThat(new ProviderSchedule(KEMAS_HOME_PROVIDER_ID, overlapping.subList(0, 1), 1).isFree(STANDARD_BLOCK))
+                .isFalse();
     }
 
     @Test
@@ -56,66 +128,32 @@ class ProviderScheduleTest {
 
         reservation.markCompleted(List.of(new CompletionPhoto("photo-kitchen")), JOB_END);
         schedule.release(reservation);
-        market.scheduleOf(reservation.booking().customerId()).release(reservation);
+        market.scheduleOf(AISYAH_CUSTOMER_ID).release(reservation);
 
-        assertThat(schedule.isFree(STANDARD_BLOCK, JOB_END)).isTrue();
-        assertThat(market.scheduleOf(reservation.booking().customerId()).isFree(reservation.jobTime().interval(), JOB_END))
-                .isTrue();
+        assertThat(schedule.isFree(STANDARD_BLOCK)).isTrue();
+        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).isFree(JOB_TIME)).isTrue();
     }
 
     @Test
     @Tag("RES-9")
-    @DisplayName("Releasing one reservation leaves another customer's live checkout hold in place.")
-    void releasingAReservationKeepsOtherHolds() {
-        Reservation reservation = market.reserveStandard();
-        reservation.markCompleted(List.of(new CompletionPhoto("photo-kitchen")), JOB_END);
-        TimeInterval later = new TimeInterval(saturday(15, 0), saturday(16, 0));
-        market.providerSchedule().hold(CheckoutId.generate(), later, JOB_END);
+    @DisplayName("Releasing one reservation leaves another customer's reservation in place.")
+    void releasingAReservationKeepsOtherBlocks() {
+        Reservation aisyahs = market.reserveStandard();
+        Reservation later = market.book(anotherCustomerBooking(saturday(15, 0), Duration.ofHours(2), 1),
+                monday(21, 0), monday(21, 1));
+        aisyahs.markCompleted(List.of(new CompletionPhoto("photo-kitchen")), JOB_END);
 
-        market.providerSchedule().release(reservation);
+        market.providerSchedule().release(aisyahs);
 
-        assertThat(market.providerSchedule().isFree(later, JOB_END)).isFalse();
+        assertThat(market.providerSchedule().blocks()).extracting(ScheduleBlock::reservation)
+                .containsExactly(later.id());
     }
 
     @Test
-    @Tag("RES-11")
-    @DisplayName("Aisyah taps Pay at 19:58 and the slot is held until 20:13.")
-    void checkoutHoldsTheProvidersTimeForFifteenMinutes() {
-        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-
-        assertThat(checkout.holdExpiresAt()).isEqualTo(monday(20, 13));
-        assertThat(market.providerSchedule().isHolding(checkout.id(), monday(20, 12))).isTrue();
-        assertRefused(() -> market.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1),
-                monday(20, 12)), BookingRefusal.PROVIDER_BUSY);
-    }
-
-    @Test
-    @Tag("RES-11")
-    @DisplayName("If payment isn't secured within 15 minutes, the hold is released: at 20:13 another customer can book the slot.")
-    void expiredCheckoutHoldNoLongerCounts() {
-        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-
-        assertThat(market.providerSchedule().isHolding(checkout.id(), monday(20, 13))).isFalse();
-        assertThat(market.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1), monday(20, 13)))
-                .isNotNull();
-    }
-
-    @Test
-    @Tag("RES-11")
-    @DisplayName("Had the payment failed, another customer could book the slot from then.")
-    void failedPaymentReleasesTheHoldAtOnce() {
-        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-
-        market.providerSchedule().releaseHold(checkout.id());
-
-        assertThat(market.providerSchedule().isHolding(checkout.id(), REQUESTED_AT)).isFalse();
-        assertThat(market.checkout(anotherCustomerBooking(saturday(11, 0), Duration.ofHours(2), 1), REQUESTED_AT))
-                .isNotNull();
-    }
-
-    @Test
-    @DisplayName("A provider's schedule belongs to the provider.")
+    @Tag("RES-9")
+    @DisplayName("A provider's schedule belongs to the provider and starts empty at version 0.")
     void scheduleBelongsToItsProvider() {
         assertThat(market.providerSchedule().providerId()).isEqualTo(KEMAS_HOME_PROVIDER_ID);
+        assertThat(market.providerSchedule().version()).isZero();
     }
 }

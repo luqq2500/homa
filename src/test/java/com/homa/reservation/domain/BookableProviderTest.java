@@ -5,6 +5,7 @@ import static com.homa.fixtures.HomaFixtures.JOB_START;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.STANDARD_HOURS;
+import static com.homa.reservation.domain.ReservationFixtures.BOOKING_STEP;
 import static com.homa.reservation.domain.ReservationFixtures.aisyahBooking;
 import static com.homa.reservation.domain.ReservationFixtures.assertRefused;
 import static com.homa.reservation.domain.ReservationFixtures.kemasHome;
@@ -33,6 +34,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class BookableProviderTest {
+
+    private static final ReservationValues.Version VALUES = ReservationValues.current();
 
     private final BookableProvider kemasHome = kemasHome();
 
@@ -118,17 +121,20 @@ class BookableProviderTest {
 
     @Test
     @Tag("RES-5")
-    @DisplayName("With Kemas Home (minimum 2 hours, maximum 6 hours) Aisyah starts at 2h and can't book 1h 45m or 6h 15m.")
+    @DisplayName("With Kemas Home (minimum 2 hours, maximum 6 hours) Aisyah starts at 2h and can't book 1h 45m, 2h 10m or 6h 15m.")
     void durationMustFallWithinTheProvidersHourBounds() {
         assertThat(kemasHome.refusalOf(booking(saturday(10, 0), Duration.ofMinutes(105), 2), REQUESTED_AT))
                 .contains(BookingRefusal.HOURS_OUT_OF_BOUNDS);
         assertThat(kemasHome.admits(booking(saturday(10, 0), Duration.ofHours(2), 2), REQUESTED_AT)).isTrue();
+        assertThat(kemasHome.refusalOf(booking(saturday(10, 0), Duration.ofMinutes(130), 2), REQUESTED_AT))
+                .contains(BookingRefusal.HOURS_OUT_OF_BOUNDS);
         assertThat(kemasHome.admits(booking(saturday(10, 0), Duration.ofHours(6), 2), REQUESTED_AT)).isTrue();
         assertThat(kemasHome.refusalOf(booking(saturday(10, 0), Duration.ofMinutes(375), 2), REQUESTED_AT))
                 .contains(BookingRefusal.HOURS_OUT_OF_BOUNDS);
     }
 
     @Test
+    @Tag("OFR-5")
     @DisplayName("With 3 active helpers, customers can book 1 to 3 helpers; a lower maximum or a higher minimum narrows that.")
     void helpersMustFallWithinTheBoundsAndTheActiveHelpers() {
         assertThat(kemasHome.admits(booking(saturday(10, 0), STANDARD_HOURS, 3), REQUESTED_AT)).isTrue();
@@ -136,18 +142,19 @@ class BookableProviderTest {
                 .contains(BookingRefusal.HELPERS_OUT_OF_BOUNDS);
 
         BookableProvider atMostTwo = kemasHomeProvider()
-                .bounds(new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), 1, 2)).build();
+                .bounds(new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), BOOKING_STEP, 1, 2)).build();
         assertThat(atMostTwo.admits(booking(saturday(10, 0), STANDARD_HOURS, 2), REQUESTED_AT)).isTrue();
         assertThat(atMostTwo.refusalOf(booking(saturday(10, 0), STANDARD_HOURS, 3), REQUESTED_AT))
                 .contains(BookingRefusal.HELPERS_OUT_OF_BOUNDS);
 
         BookableProvider atLeastTwo = kemasHomeProvider()
-                .bounds(new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), 2, 6)).build();
+                .bounds(new BookingBounds(Duration.ofHours(2), Duration.ofHours(6), BOOKING_STEP, 2, 6)).build();
         assertThat(atLeastTwo.refusalOf(booking(saturday(10, 0), STANDARD_HOURS, 1), REQUESTED_AT))
                 .contains(BookingRefusal.HELPERS_OUT_OF_BOUNDS);
     }
 
     @Test
+    @Tag("PRV-6")
     @DisplayName("Siti, Nurul and Rina are all deactivated for a holiday week, so Kemas Home can't be booked.")
     void providerThatIsNotBookableAdmitsNoBooking() {
         BookableProvider onHoliday = kemasHomeProvider().notBookable().build();
@@ -185,13 +192,14 @@ class BookableProviderTest {
     @Tag("RES-9")
     @DisplayName("Kemas Home's 30-minute buffer makes the standard job block 9:45 to 14:30.")
     void calendarBlockUsesTheProvidersBuffer() {
-        assertThat(kemasHome.calendarBlockFor(standardBooking().jobTime()))
+        assertThat(kemasHome.calendarBlockFor(standardBooking().jobTime(), VALUES))
                 .isEqualTo(new TimeInterval(saturday(9, 45), saturday(14, 30)));
-        assertThat(kemasHomeProvider().buffer(Duration.ofHours(1)).build().calendarBlockFor(standardBooking().jobTime()))
+        assertThat(kemasHomeProvider().buffer(Duration.ofHours(1)).build().calendarBlockFor(standardBooking().jobTime(), VALUES))
                 .isEqualTo(new TimeInterval(saturday(9, 45), saturday(15, 0)));
     }
 
     @Test
+    @Tag("RES-3")
     @DisplayName("The replica keeps what Listing and Provider said about Kemas Home.")
     void replicaKeepsTheProvidersSettings() {
         assertThat(kemasHome.providerId()).isEqualTo(KEMAS_HOME_PROVIDER_ID);

@@ -2,8 +2,9 @@ package com.homa.reservation.domain.replica;
 
 import com.homa.kernel.BusinessCalendar;
 import com.homa.kernel.TimeInterval;
-import com.homa.reservation.domain.QuarterHourDuration;
+import com.homa.reservation.domain.JobDuration;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,9 +35,9 @@ public record WorkingHours(Map<DayOfWeek, DailyHours> days) {
                         .orElse(false);
     }
 
-    /** The job start times on that date, in 15-minute steps, at which a job of this length fits the hours. */
-    public List<Instant> startsOn(LocalDate date, QuarterHourDuration duration) {
-        return hoursOn(date.getDayOfWeek()).map(hours -> hours.startsFor(duration)).orElse(List.of()).stream()
+    /** The job start times on that date, in the given steps from opening, at which a job of this length fits. */
+    public List<Instant> startsOn(LocalDate date, JobDuration duration, Duration step) {
+        return hoursOn(date.getDayOfWeek()).map(hours -> hours.startsFor(duration, step)).orElse(List.of()).stream()
                 .map(time -> date.atTime(time).atZone(BusinessCalendar.ZONE).toInstant())
                 .toList();
     }

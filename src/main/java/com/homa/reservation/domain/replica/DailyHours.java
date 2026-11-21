@@ -1,15 +1,14 @@
 package com.homa.reservation.domain.replica;
 
-import com.homa.reservation.domain.QuarterHourDuration;
+import com.homa.reservation.domain.JobDuration;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /** A provider's working hours on one day of the week, for example 8:00–18:00 (OFR-8). */
 public record DailyHours(LocalTime opens, LocalTime closes) {
-
-    private static final int START_STEP_MINUTES = 15;
 
     public DailyHours {
         Objects.requireNonNull(opens, "opens");
@@ -21,13 +20,13 @@ public record DailyHours(LocalTime opens, LocalTime closes) {
         return !jobStart.isBefore(opens) && !jobEnd.isAfter(closes);
     }
 
-    /** Every job start time, in 15-minute steps from opening, whose job ends by closing. */
-    List<LocalTime> startsFor(QuarterHourDuration duration) {
-        int length = (int) duration.length().toMinutes();
-        int closing = closes.toSecondOfDay() / 60;
-        return IntStream.iterate(opens.toSecondOfDay() / 60, start -> start + length <= closing,
-                        start -> start + START_STEP_MINUTES)
-                .mapToObj(start -> LocalTime.ofSecondOfDay(start * 60L))
+    /** Every job start time, in the given steps from opening, whose job ends by closing. */
+    List<LocalTime> startsFor(JobDuration duration, Duration step) {
+        long length = duration.length().toSeconds();
+        long closing = closes.toSecondOfDay();
+        return Stream.iterate((long) opens.toSecondOfDay(), start -> start + length <= closing,
+                        start -> start + step.toSeconds())
+                .map(LocalTime::ofSecondOfDay)
                 .toList();
     }
 }

@@ -1,7 +1,7 @@
 package com.homa.reservation.domain.terms;
 
 import com.homa.kernel.Percentage;
-import com.homa.reservation.domain.QuarterHourDuration;
+import com.homa.reservation.domain.JobDuration;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -19,11 +19,11 @@ public record DiscountRule(Percentage rate, Duration minimumHours, int minimumHe
     }
 
     /** The discount rate for these hours and helpers: the rule's rate when both minimums are met, else 0%. */
-    public Percentage rateFor(QuarterHourDuration hours, int helpers) {
+    public Percentage rateFor(JobDuration hours, int helpers) {
         return qualifies(hours, helpers) ? rate : Percentage.ZERO;
     }
 
-    private boolean qualifies(QuarterHourDuration hours, int helpers) {
+    private boolean qualifies(JobDuration hours, int helpers) {
         return hours.length().compareTo(minimumHours) >= 0 && helpers >= minimumHelpers;
     }
 }

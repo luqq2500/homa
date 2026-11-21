@@ -46,6 +46,7 @@ class ReservationPricingTest {
     }
 
     @Test
+    @Tag("CAN-1")
     @DisplayName("The Base Cancellation Fee is one discounted hour for both helpers: 25 × 2 × 1 × 0.9 = RM45.")
     void baseCancellationFeeIsOneDiscountedHourForAllBookedHelpers() {
         assertThat(quote(240, 2).baseCancellationFee()).isEqualTo(BASE_CANCELLATION_FEE);
@@ -100,12 +101,13 @@ class ReservationPricingTest {
     }
 
     @Test
+    @Tag("OFR-4")
     @DisplayName("No discount by default.")
     void noDiscountByDefault() {
-        assertThat(DiscountRule.NONE.rateFor(QuarterHourDuration.ofMinutes(480), 3)).isEqualTo(Percentage.ZERO);
+        assertThat(DiscountRule.NONE.rateFor(JobDuration.ofMinutes(480), 3)).isEqualTo(Percentage.ZERO);
     }
 
     private static Quote quote(long minutes, int helpers) {
-        return ReservationPricing.quote(KEMAS_TERMS, QuarterHourDuration.ofMinutes(minutes), helpers);
+        return ReservationPricing.quote(KEMAS_TERMS, JobDuration.ofMinutes(minutes), helpers);
     }
 }
