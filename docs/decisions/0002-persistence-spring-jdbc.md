@@ -39,7 +39,7 @@ publisher's transaction                             relay transaction, one per r
 
 ### Not yet done
 
-Published rows are kept. A purge of rows published more than N days ago will be added when an operational retention period is decided.
+Delivered rows and `processed_message` keys carry only ids, so they are technical rows, not business records: `TechnicalRowPurge` deletes those older than 30 days (`homa.technical-rows.retention`, default `P30D`) once a day at 03:17 Kuala Lumpur time (`homa.technical-rows.purge-cron`), as the development plan's "Data retention" section sets. An undelivered row is never purged. Business records follow the rules' §10 (DAT-1 to DAT-10), each owned and purged by the context that stores it.
 
 ## Idempotent handlers: ProcessedMessageStore
 

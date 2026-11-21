@@ -34,4 +34,13 @@ public final class BusinessCalendar {
     public static Instant plusMonths(Instant instant, long months) {
         return instant.atZone(ZONE).plusMonths(months).toInstant();
     }
+
+    /**
+     * The last moment of the Kuala Lumpur calendar year the instant falls in: 31 December, one nanosecond before
+     * midnight. A payment record is kept until the end of its transaction's year plus 7 years (DAT-2).
+     */
+    public static Instant endOfYear(Instant instant) {
+        int year = dateOf(instant).getYear();
+        return LocalDate.of(year + 1, 1, 1).atStartOfDay(ZONE).toInstant().minusNanos(1);
+    }
 }

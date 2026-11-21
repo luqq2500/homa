@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 @Retention(RetentionPolicy.RUNTIME)
 @SpringBootTest(classes = HomaApplication.class, properties = {
         "homa.outbox.relay.enabled=false",
+        "homa.technical-rows.purge.enabled=false",
         "spring.flyway.locations=classpath:db/migration,classpath:db/sample"})
 @Import({PostgresContainer.class, SampleContexts.class})
 public @interface OutboxSampleTest {

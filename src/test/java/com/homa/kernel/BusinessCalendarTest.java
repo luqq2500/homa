@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class BusinessCalendarTest {
@@ -46,5 +47,28 @@ class BusinessCalendarTest {
                 .isEqualTo(kualaLumpur(2027, 2, 28, 9, 0));
         assertThat(BusinessCalendar.plusMonths(kualaLumpur(2026, 12, 5, 9, 0), -6))
                 .isEqualTo(kualaLumpur(2026, 6, 5, 9, 0));
+    }
+
+    @Test
+    @Tag("DAT-2")
+    @DisplayName("Aisyah pays in November 2026, so her payment's year ends at the last moment of 31 December 2026 in"
+            + " Kuala Lumpur; 7 years on, the record is kept until 31 December 2033.")
+    void endOfYearIsTheLastMomentOfTheKualaLumpurYear() {
+        Instant paid = kualaLumpur(2026, 11, 30, 20, 0);
+        Instant endOf2026 = BusinessCalendar.endOfYear(paid);
+
+        assertThat(endOf2026).isEqualTo(kualaLumpur(2027, 1, 1, 0, 0).minusNanos(1));
+        assertThat(BusinessCalendar.plusMonths(endOf2026, 7 * 12))
+                .isEqualTo(kualaLumpur(2034, 1, 1, 0, 0).minusNanos(1));
+    }
+
+    @Test
+    @Tag("DAT-2")
+    @DisplayName("A payment at 00:30 on 1 January in Kuala Lumpur, still 31 December in UTC, belongs to the new year.")
+    void endOfYearCountsTheKualaLumpurDateNotTheUtcDate() {
+        assertThat(BusinessCalendar.endOfYear(kualaLumpur(2027, 1, 1, 0, 30)))
+                .isEqualTo(kualaLumpur(2028, 1, 1, 0, 0).minusNanos(1));
+        assertThat(BusinessCalendar.endOfYear(kualaLumpur(2026, 12, 31, 23, 59)))
+                .isEqualTo(kualaLumpur(2027, 1, 1, 0, 0).minusNanos(1));
     }
 }

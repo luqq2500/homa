@@ -1,6 +1,7 @@
 package com.homa.provider.domain;
 
 import com.homa.provider.domain.exception.BusinessVerificationAlreadyRecordedException;
+import com.homa.provider.domain.exception.BusinessVerificationNotFailedException;
 import com.homa.provider.domain.exception.NoActiveHelperException;
 import com.homa.provider.domain.exception.ProviderAlreadyLiveException;
 import com.homa.provider.domain.exception.ProviderNotVerifiedException;
@@ -21,7 +22,7 @@ public final class Provider {
     public static final int MINIMUM_ACTIVE_HELPERS = ProviderValues.MINIMUM_ACTIVE_HELPERS;
 
     private final ProviderId id;
-    private final BusinessRegistration registration;
+    private BusinessRegistration registration;
     private ProviderStatus status;
     private Instant businessVerifiedAt;
 
@@ -46,7 +47,8 @@ public final class Provider {
 
     /**
      * Accepts the result of the business verification (KYB) that the registration is a legal business entity in the
-     * country (PRV-1). A pass lets the provider continue onboarding; a failure stops it.
+     * country (PRV-1). A pass lets the provider continue onboarding; a failure stops it until the business
+     * resubmits ({@link #resubmitForVerification}).
      */
     public void recordBusinessVerification(VerificationOutcome outcome, Instant verifiedAt) {
         Objects.requireNonNull(outcome, "outcome");
@@ -60,6 +62,19 @@ public final class Provider {
         } else {
             status = ProviderStatus.VERIFICATION_FAILED;
         }
+    }
+
+    /**
+     * A business whose verification failed tries again, with its registration details as they stand now, which may
+     * be corrected (PRV-1). It awaits a new verification result; nothing else about it changes.
+     */
+    public void resubmitForVerification(BusinessRegistration resubmitted) {
+        Objects.requireNonNull(resubmitted, "resubmitted");
+        if (status != ProviderStatus.VERIFICATION_FAILED) {
+            throw new BusinessVerificationNotFailedException(id.value());
+        }
+        registration = resubmitted;
+        status = ProviderStatus.REGISTERED;
     }
 
     /**

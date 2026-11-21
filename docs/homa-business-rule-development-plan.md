@@ -1,6 +1,6 @@
 # Homa Business Rule Development Plan
 
-> Ingested from Notion on 2026-11-21 (page edited 08:35 UTC): https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
+> Ingested from Notion on 2026-11-21 (page edited 10:32 UTC): https://app.notion.com/p/41e8436ade40813b9820f4e604494d7c
 > The Notion page is the source of truth; refresh this copy when it changes.
 
 Development plan for the [Homa Business Rule](homa-business-rule.md) page, as of 21 Nov 2026.
@@ -18,7 +18,7 @@ The decisions that shape everything else:
 5. **Cancellation reason is a value, not a status.** `Cancelled` carries a `CancellationCause` (CustomerCancelled, ProviderCancelled, NoRoster, ProviderNoShow, CustomerNoShow, CustomerSuspended, ProviderSuspended, LastMinute…). Reliability counts (RTG-10) and settlement read the cause.
 6. **Reports live in Support; effects live where the state is.** Support owns a report's lifecycle and Support's confirmation. Reservation applies the money effect when it receives `ProviderNoShowConfirmed` or a similar event. Roster Member Left goes the other way: Reservation records the fact first (it changes the roster and the money), and Support creates the report automatically so it can be disputed (ROS-10, RPT-10).
 7. **Time-driven rules enter through schedulers.** `infra/transport/messaging` triggers call ordinary usecase ports: expire requests, lock the roster at check-in, remind about completion, release payouts, close rating windows. All times are Asia/Kuala_Lumpur through an injected `Clock`.
-8. **The rule cases are the test suite.** Each rule ID gets one intent-named test built from the §0 fixture (Aisyah, Kemas Home, the RM200 reservation). The §10 table becomes one parameterised settlement test.
+8. **The rule cases are the test suite.** Each rule ID gets one intent-named test built from the §0 fixture (Aisyah, Kemas Home, the RM200 reservation). The §12 table becomes one parameterised settlement test.
 
 ### Rule principles (P1–P3)
 
@@ -43,16 +43,16 @@ Every rule ID has exactly one owning context. Where a rule touches two contexts,
 
 | Context | Subdomain | Owns rules | Aggregates (roots) | Package root |
 | --- | --- | --- | --- | --- |
-| Reservation | Core | RES-1–12, REQ-1–5, ACC-1–3, ROS-1–10, JOB-1–6, CAN-1–3, CCX-1–6, PCX-1–2, NRS-1–3, LMC-1–3, SUS-1–3, NSH-3, NSH-5, NSH-6, CUS-5 (effect) | Reservation, ProviderSchedule, CustomerSchedule | `com.homa.reservation` |
-| Payment | Supporting | PAY-1–11 | PaymentHold, Payout, ProviderFineAccount, Ledger | `com.homa.payment` |
-| Provider | Supporting | PRV-1–6, HLP-1–8, MON-1–4 | Provider, TeamMember | `com.homa.provider` |
-| Listing | Supporting | OFR-1–11 | ProviderListing, AvailabilitySchedule, Preset | `com.homa.listing` |
-| Customer | Supporting | CUS-1–4, CUS-6–9 | Customer | `com.homa.customer` |
-| Support | Supporting | RPT-1–11, NSH-1, NSH-2, NSH-4 | Report | `com.homa.support` |
-| Rating | Supporting | RTG-1–11 | RatingSession, ReliabilityRecord | `com.homa.rating` |
-| Conversation | Supporting | CHT-1–5 | Conversation | `com.homa.conversation` |
+| Reservation | Core | RES-1–12, REQ-1–5, ACC-1–3, ROS-1–10, JOB-1–6, CAN-1–3, CCX-1–6, PCX-1–2, NRS-1–3, LMC-1–3, SUS-1–3, NSH-3, NSH-5, NSH-6, CUS-5 (effect), DAT-5 (job media), DAT-8 | Reservation, ProviderSchedule, CustomerSchedule | `com.homa.reservation` |
+| Payment | Supporting | PAY-1–11, DAT-2, DAT-6, EXT-2, EXT-3 | PaymentHold, Payout, ProviderFineAccount, Ledger | `com.homa.payment` |
+| Provider | Supporting | PRV-1–6, HLP-1–8, MON-1–4, EXT-4, EXT-5, DAT-9 | Provider, TeamMember | `com.homa.provider` |
+| Listing | Supporting | OFR-1–11, EXT-7 | ProviderListing, AvailabilitySchedule, Preset | `com.homa.listing` |
+| Customer | Supporting | CUS-1–4, CUS-6–9, DAT-7 | Customer | `com.homa.customer` |
+| Support | Supporting | RPT-1–11, NSH-1, NSH-2, NSH-4, DAT-1 (holds, in a RetentionHold aggregate), DAT-3 | Report | `com.homa.support` |
+| Rating | Supporting | RTG-1–11, DAT-4, DAT-10 | RatingSession, ReliabilityRecord | `com.homa.rating` |
+| Conversation | Supporting | CHT-1–5, DAT-5 (chats and Enquiries) | Conversation | `com.homa.conversation` |
 | Notification | Generic | Notify on events (ROS-1, JOB-4, NRS-1, reminders) | none (routing only) | `com.homa.notification` |
-| Identity | Generic | Sign-in through an identity provider such as Google or Apple; one identity-provider account per Homa customer account (CUS-7), roles (customer, provider staff, Support) | buy: Cognito or similar | `infra.security` in each context + `com.homa.app` |
+| Identity | Generic | Sign-in through an identity provider such as Google or Apple; one identity-provider account per Homa customer account (CUS-7), roles (customer, provider staff, Support); EXT-6 (an outage blocks sign-in only). EXT-1 applies to every context | buy: Cognito or similar | `infra.security` in each context + `com.homa.app` |
 
 Why these boundaries:
 
@@ -177,9 +177,9 @@ The `ie/port` interfaces are `CustomerIE`, `ProviderIE`, `ListingIE`, `Reservati
 | `CustomerRegisteredIE`, `CustomerAddressChangedIE` | Customer | Reservation, Conversation | customerId, city, status |
 | `CustomerSuspendedIE`, `CustomerReactivatedIE` | Customer | Reservation (CUS-5), Conversation | customerId, at, endsAt (empty when until lifted, CUS-4, CUS-6) |
 | `CustomerDeactivatedIE` | Customer | Reservation, Conversation (CUS-8) | customerId; reactivation on sign-in reuses `CustomerReactivatedIE` |
-| `CustomerDataErasedIE` | Customer | Reservation, Conversation, Support, Rating (each anonymises its own copies, CUS-9) | customerId, erasedAt |
-| `ProviderWentLiveIE` | Provider | Listing, Reservation, Payment | providerId, businessRegistrationNo |
-| `ProviderClosedIE` | Provider | Listing, Reservation, Payment (fine becomes debt, PAY-9) | providerId, businessRegistrationNo |
+| `CustomerDataErasedIE` | Customer | Reservation, Conversation, Support, Rating (each deletes or anonymises its own copies at once, keeping only records still within retention, CUS-9, DAT-1) | customerId, erasedAt |
+| `ProviderWentLiveIE` | Provider | Listing, Reservation, Payment, Rating (shows hidden ratings again on rejoin, DAT-10) | providerId, businessRegistrationNo |
+| `ProviderClosedIE` | Provider | Listing, Reservation, Payment (fine becomes debt, PAY-9), Rating (hides ratings, DAT-10) | providerId, businessRegistrationNo |
 | `ProviderSuspendedIE`, `ProviderReactivatedIE` | Provider | Listing, Reservation (SUS-1–3) | providerId, cause = MISSED_REVERIFICATION or MONITORING_FLAG, at |
 | `ProviderBookabilityChangedIE` | Provider | Listing, Reservation, Notification (PRV-6) | providerId, bookable, reason = NO_ACTIVE_HELPERS or CLOSING |
 | `InsuranceCoverageChangedIE` | Provider | Listing, Support (RPT-7) | providerId, covered, validUntil |
@@ -204,14 +204,17 @@ The `ie/port` interfaces are `CustomerIE`, `ProviderIE`, `ListingIE`, `Reservati
 | `ProviderNoShowConfirmedIE`, `CustomerNoShowConfirmedIE` | Support | Reservation (NSH-3, NSH-5, NSH-6) | reservationId, confirmedAt |
 | `RosterMemberLeftDisputeResolvedIE` | Support | Reservation | reservationId, memberId, corrected leftAt |
 | `ProviderRatingRevealedIE`, `ReliabilityChangedIE` | Rating | Listing (provider page) | averages, counts |
+| `RetentionHoldPlacedIE`, `RetentionHoldReleasedIE` | Support | Payment, Reservation, Conversation, Rating, Customer (each keeps a RetentionHolds replica, DAT-1, DAT-3) | holdId, reason = OPEN_REPORT, LEGAL_CLAIM or INVESTIGATION, subject ids, heldUntil (empty while open) |
+| `TransferEscalatedIE` | Payment | Support (opens a case, EXT-3), Notification | transferId, kind = REFUND, COMPENSATION or PAYOUT, party, amount, attempts |
+| `CalendarSyncFailedIE` | Listing | Notification (tells the provider, EXT-7) | providerId, lastSyncedAt |
 
 ## Homa-set values
 
-The rules page lists every value Homa sets in one table (§11). The plan gives each value exactly one owner: a named constant in one context's domain. Other contexts never copy the number; they receive the computed result in an event, such as a `protectionWindowEnd`, a `rosterableUntil` or a bounds snapshot. Changing a value is then a one-line change in one place, reviewed like a contract change.
+The rules page lists every value Homa sets in one table (§13). The plan gives each value exactly one owner: a named constant in one context's domain. Other contexts never copy the number; they receive the computed result in an event, such as a `protectionWindowEnd`, a `rosterableUntil` or a bounds snapshot. Changing a value is then a one-line change in one place, reviewed like a contract change.
 
-Each owning context keeps its values in one final class in its domain package, for example `ReservationValues` or `ProviderValues`. `HomaSetValuesTest` checks every row of §11 against its constant, so the rules page and the code can't drift apart silently. The rules split the values in two (P3). Reservation values (minimum rate and discount, notice, duration, partial-time charging, Check-in Period, acceptance deadline, Grace Period, tiers, fees, fines, compensation, cap, Protection Window, completion reminders, platform fee, fine deduction cap, rounding and Rating Window) are fixed when a reservation is Requested. A change never edits the number in place: it adds a new dated version to the owner's values class, and every owner reads the version in force at the reservation's `requestedAt` through `asOf(requestedAt)`. Payment does this for the platform fee and deduction cap, Rating for the Rating Window, and Reservation for its own; Listing's values are already frozen into the terms snapshot. Account values (helper age, permit buffer, re-verification, suspension lengths, default hours and helpers, buffer, rating stars and categories, reliability period) have one current version and apply at once. `HomaSetValuesTest` also checks that a reservation Requested before a change keeps the old version.
+Each owning context keeps its values in one final class in its domain package, for example `ReservationValues` or `ProviderValues`. `HomaSetValuesTest` checks every row of §13 against its constant, so the rules page and the code can't drift apart silently. The rules split the values in two (P3). Reservation values (minimum rate and discount, notice, duration, partial-time charging, Check-in Period, acceptance deadline, Grace Period, tiers, fees, fines, compensation, cap, Protection Window, completion reminders, platform fee, fine deduction cap, rounding and Rating Window) are fixed when a reservation is Requested. A change never edits the number in place: it adds a new dated version to the owner's values class, and every owner reads the version in force at the reservation's `requestedAt` through `asOf(requestedAt)`. Payment does this for the platform fee and deduction cap, Rating for the Rating Window, and Reservation for its own; Listing's values are already frozen into the terms snapshot. Account values (helper age, permit buffer, re-verification, suspension lengths, default hours and helpers, buffer, rating stars and categories, reliability period, retention periods) have one current version and apply at once. `HomaSetValuesTest` also checks that a reservation Requested before a change keeps the old version.
 
-| Value (§11) | Owner | Domain type | Other contexts get it as |
+| Value (§13) | Owner | Domain type | Other contexts get it as |
 | --- | --- | --- | --- |
 | Minimum helper age 18 | Provider | `AgeRequirement` | — |
 | Work permit buffer 90 days | Provider | `PermitRequirement` | `rosterableUntil` on team-member events (ROS-4) |
@@ -230,8 +233,76 @@ Each owning context keeps its values in one final class in its domain package, f
 | Platform fee 15.5%; fine deduction cap 20% | Payment | `PlatformFeeRate`, `FineDeductionCap` (reservation values, read with `asOf(requestedAt)`, P3) | — |
 | Money rounding | kernel | `Money` | — |
 | Rating Window 7 days; stars and categories; reliability over 12 months | Rating | `RatingWindow`, `Rating`, `ReliabilityRecord` | — |
+| Retention: payment records 7 years from the end of the transaction's calendar year; debt until paid and at least that long | Payment | `PaymentRecordRetention` | — |
+| Retention: damage and safety reports 6 years after resolved; other reports 12 months | Support | `ReportRetention` | heldUntil on RetentionHoldPlacedIE for evidence other contexts store |
+| Retention: reliability records, chats, Enquiries and job media 12 months | Rating, Conversation, Reservation (one constant each, for its own record kind) | ReliabilityPeriod, ChatRetention, JobMediaRetention | — (HomaSetValuesTest checks all three against the one §13 row) |
+| Retention: reservation address and arrival note 12 months after the Protection Window | Reservation | `ReservationRetention` | — |
+| Retention: verification results 12 months after the member leaves or the provider closes | Provider | `VerificationResultRetention` | — |
+| Retention: a closed provider's ratings hidden for 7 years, then deleted | Rating | `RatingRetention` | — |
 
 Two places used to compute a value twice and now take it from its owner. Reservation compared jobs against permit expiry minus 90 days itself; it now receives `rosterableUntil` from Provider. The 1-hour, 15-minute duration floor now lives only in Listing's `BookingBounds`, and Reservation's `JobDuration` checks against the bounds in the terms snapshot.
+
+## Data retention (§10)
+
+Retention is owned by whichever context stores the record. There is no central deletion service, because one would have to reach into every context's tables, which breaks the black-box rule. Each context's domain says how long its own records are kept, a daily purge use case in that context applies it, and infra does the deletes. The periods are account values (§13): one current version, applied at once to records that already exist, on every account whether active, deactivated, closed or deleted (DAT-1).
+
+| Rule | Records | Owner | Domain type | Kept until |
+| --- | --- | --- | --- | --- |
+| DAT-2 | Payments, refunds, payouts, platform fees, fees and fines | Payment | `PaymentRecordRetention` | 31 Dec of the transaction's year plus 7 years, in KL time; identity reduced to the ids the record needs |
+| DAT-6 | A provider's debt record | Payment | `ProviderFineAccount` | the later of the debt being paid and the DAT-2 date of its last transaction |
+| DAT-3 | Property Damage and Safety & Misconduct reports, with their evidence | Support | `ReportRetention` | resolved + 6 years |
+| DAT-3 | Every other report, including no-show and Roster Member Left | Support | `ReportRetention` | resolved + 12 months |
+| DAT-4 | Reliability incidents | Rating | `ReliabilityRecord` | event + 12 months, using the same `ReliabilityPeriod` constant as the counts (RTG-10), so a record leaves the count and the store on the same day |
+| DAT-5 | Reservation chats | Conversation | `ChatRetention` | protectionWindowEnd + 12 months |
+| DAT-5 | Enquiries with no reservation | Conversation | `ChatRetention` | last message + 12 months |
+| DAT-5 | Completion photos and proof of arrival | Reservation | `JobMediaRetention` | protectionWindowEnd + 12 months |
+| DAT-7 | `ErasedIdentityBlock` | Customer | `ErasedIdentityBlock` | the suspension end, or when Support lifts an until-lifted suspension |
+| DAT-8 | The reservation and its settlement | Reservation | `ReservationRetention` | the DAT-2 date of its payment records (31 Dec 2033 for Aisyah's) |
+| DAT-8 | The reservation's address and arrival note | Reservation | `ReservationRetention` | protectionWindowEnd + 12 months, or at once on erasure, unless a DAT-3 hold needs them; the customer's name is anonymised on erasure |
+| DAT-9 | Verification results: pass or fail, check dates, permit expiry | Provider | `VerificationResultRetention` | 12 months after the member leaves (HLP-8) or the provider closes; a DAT-3 report keeps its own copy of a named member's name and verified status |
+| DAT-10 | Ratings of an account | Rating | `RatingRetention` | while the account exists; erasure deletes a customer's at once; a closed provider's are hidden for 7 years, shown again on rejoin under the same business registration, then deleted |
+
+**Holds (DAT-1).** Only Support knows that a report, legal claim or investigation is open, so Support owns a `RetentionHold` aggregate. A hold is placed automatically for every open report; Support agents place and release holds for legal claims and investigations. Support publishes `RetentionHoldPlacedIE` and `RetentionHoldReleasedIE`, naming the subjects by id (reservation, conversation, customer, provider). Each context keeps a `RetentionHolds` replica, and its retention type answers `isDue(now, holds)`: past its own keep-until date and under no open hold. When a damage or safety report is resolved, Support re-issues the hold with `heldUntil` set to resolved + 6 years, covering the evidence other contexts store (the chat in Conversation, the photos in Reservation). That gives DAT-3 its "with their evidence" without Support copying anyone's data. Other reports re-issue the hold with 12 months.
+
+**Purge use cases.** There is one per context, named actor then action: `ExpiredPaymentRecordPurger` → `PurgeExpiredPaymentRecords`, and likewise for reports, reliability incidents, chats, job media and identity blocks. Each one:
+
+- runs daily from `infra/transport/messaging`;
+- loads candidates through a `port/out` query on a stored `keepUntil`, set once its anchor is known (at resolution or at window end, for example);
+- asks the domain `isDue`, then deletes or anonymises through `port/out`, with media files going through a `MediaStore` port backed by the object-storage client;
+- is idempotent, so a rerun after a crash is safe.
+
+Technical rows (delivered outbox rows and ProcessedMessageStore keys) carry only ids and are purged after 30 days by an infra job. That is plumbing, not a business rule.
+
+**Erasure (CUS-9).** On `CustomerDataErasedIE`, each context at once deletes or anonymises whatever has no retention left. Records still within their period are kept until it ends, reduced to the identity details they need. Payment keeps Aisyah's RM200 record until 31 Dec 2033 but drops her address. Reservation keeps the reservation and settlement just as long, removes the address and arrival note at once unless a DAT-3 hold needs them, and anonymises her name (DAT-8). Rating deletes the ratings of her (DAT-10). Conversation keeps a chat still inside its 12 months only until then. The normal purge removes the rest.
+
+**Kernel.** `BusinessCalendar` gains `endOfYear(Instant)` for DAT-2. It is domain-agnostic and already shared, so it passes the kernel test, and it is reviewed as a contract change. No new kernel type is needed: each period is a `java.time.Period` inside its owner's retention type.
+
+**Placement check.** Periods and anchors are domain rules, true whatever the features. The daily sweep and the erasure reactions are use cases. Scheduling, SQL deletes and object-storage deletes are infra, with no decisions in them.
+
+**Named members (DAT-9).** When a report names a roster member, Support copies the member's name and verified status at that moment onto the report, from its team-member replica. The copy lives and dies with the report (DAT-3), so Provider can delete its verification results on time without breaking a 6-year report.
+
+**Closed providers' ratings (DAT-10).** Rating consumes `ProviderClosedIE` and `ProviderWentLiveIE`, which carry the business registration number. On close it hides the provider's ratings and sets their keep-until to 7 years later. On a rejoin under the same registration within that time it shows them again, so a provider can't wash its record by closing and reopening.
+
+## External services (§11)
+
+EXT-1 is the rule the plan already follows: Homa's domain decides every outcome, and an external service only confirms a fact. Each service sits behind one `port/out` in the context that needs the fact. Its infra client translates the vendor's response into that fact and nothing more, and never decides a fee, status or suspension. Code review checks this, because ArchUnit can't.
+
+| Service (by role) | Port (owning context) | Fact the domain receives | When it fails |
+| --- | --- | --- | --- |
+| Payment provider | `PaymentGateway`, `PayoutGateway` (Payment) | payment confirmed or failed, with paidAt; transfer sent or failed | EXT-2: the checkout fails with `PaymentProviderUnavailable`, nothing becomes Requested, no schedule is blocked, and the customer can retry. EXT-3: a failed refund, compensation or payout is retried, then escalated to Support |
+| Verification service | `VerificationClient` (Provider) | pass or fail, check date, permit expiry, monitoring flag | EXT-5: onboarding and re-verification wait; the deadline is extended by the outage; a late flag is applied when it arrives |
+| Identity provider | `infra/security` in each context | that the sign-in belongs to this customer | EXT-6: no sign-in or registration; schedulers and reservations carry on, because none of them needs a signed-in user |
+| Calendar service | `CalendarClient` (Listing) | external busy intervals | EXT-7: keep the last synced busy time and tell the provider |
+
+**Transfers (EXT-3).** Payment models each refund, compensation and payout as a `Transfer` with the states SENT, FAILED, RETRYING and ESCALATED. Homa's rules decide when it is sent, and "sent" is what the customer or provider is told, so `RefundPaidIE` and `PayoutReleasedIE` mean sent, never arrived. A `FailedTransferRetrier` → `RetryFailedTransfers` scheduler retries. When the retries run out, Payment publishes `TransferEscalatedIE`, which Support turns into a case and Notification announces. Each retry reuses the settlement line id as its idempotency key, so a retry never pays twice. How many retries come before Support is open question AC.
+
+**Verification outages (EXT-5).** Provider keeps a `VerificationOutageLog` of outage intervals. `VerificationCycle.deadlineFor(member, outages)` adds each outage's overlap with the window to the MON-1 or MON-2 deadline, so the suspension scheduler never suspends someone who couldn't re-verify. Onboarding (PRV-1, HLP-1–3) and re-verification submitted during an outage stay PENDING and are resubmitted when the service is back. Who declares an outage's start and end is open question AD.
+
+**Results only (EXT-4).** Provider stores a `VerificationResult` (outcome, checkedAt, permitExpiry) and the vendor's reference, never a copy of a document. The `VerificationClient` port has no method that returns document images, so the rule holds by construction.
+
+**Calendar sync (EXT-7).** When `CalendarClient` fails, Listing keeps the last external busy time and publishes `CalendarSyncFailedIE`, so Notification can tell the provider. Reservation keeps using its replica. A booking made against a stale calendar goes through the existing decline (REQ-3) and provider cancellation (§6.3) paths, so Reservation needs nothing new.
+
+**Testing.** Each failure mode has a WireMock scenario: the gateway down at checkout, a payout that bounces and then escalates, a verification outage across a deadline, and a calendar sync failure.
 
 ## Domain model per context
 
@@ -335,7 +406,7 @@ reservation/domain/
 | `Payout` | AR per reservation | PAY-2, PAY-3, PAY-6, RPT-6 | opened when the reservation is Reserved, so reports made before completion already hold it (RPT-6); kind JOB or FEE; its gross drops by every partial refund; `markCompleted`, `reportOpened` and `reportResolved`; `releasableAt(now)`; platform fee 15.5% on every payout, JOB and FEE (PAY-3) |
 | `ProviderFineAccount` | AR per business registration number | PAY-4, PAY-5, PAY-9–11 | fines oldest first; `deductFrom(payoutAfterPlatformFee)` takes at most 20%, on every payout kind; a suspension leaves the balance as a fine; `closeAccount()` lifts the 20% cap so pending payouts clear the fine in full; what is left after the last pending payout becomes `Debt`; `settleDebt(directPayment)` and `settleFineToRejoin(directPayment)`, for a closed provider rejoining while payouts are pending (PAY-11), are the only direct charges |
 | `Ledger`, `LedgerEntry` | AR, double entry | PAY-4 | accounts: customer held, provider payable, Homa revenue (platform fee + fine minus compensation), Homa compensation expense, fine receivable |
-| `PlatformFeeRate` | VO, 15.5% | PAY-3 | business constant, not configuration (§11 Homa-set values; `FineDeductionCap` 20% sits beside it) |
+| `PlatformFeeRate` | VO, 15.5% | PAY-3 | business constant, not configuration (§13 Homa-set values; `FineDeductionCap` 20% sits beside it) |
 
 ### Provider
 
@@ -367,7 +438,7 @@ reservation/domain/
 
 - `Suspension` (VO) is SEVEN_DAYS, THIRTY_DAYS or UNTIL_LIFTED, with `endsAt` from `BusinessCalendar` (CUS-4). `suspend(period, reason, now)` and `isSuspendedAt(now)`: a timed suspension ends by itself when `endsAt` passes, and only Support can lift UNTIL_LIFTED (CUS-6).
 - `deactivate(activity, now)` refuses while the customer is suspended, or while `CustomerActivity` shows any Requested or Reserved reservation, open report, or protection window not yet ended, and names each blocker (CUS-8). `reactivateOnSignIn()` reverses it.
-- `erasePersonalData(now)` replaces name, address and arrival note with an anonymous marker and keeps only the id (CUS-9). It is allowed only under CUS-8's conditions and closes the account for good. If the customer is suspended, an `ErasedIdentityBlock` keeps a one-way hash of the identity-provider account, and `register()` refuses that account until the suspension would have ended, or until Support lifts an until-lifted one (CUS-9).
+- `erasePersonalData(now)` replaces name, address and arrival note with an anonymous marker and keeps only the id (CUS-9). It is allowed only under CUS-8's conditions and closes the account for good. If the customer is suspended, an `ErasedIdentityBlock` keeps a one-way hash of the identity-provider account, and `register()` refuses that account until the suspension would have ended, or until Support lifts an until-lifted one (CUS-9). The block itself is deleted at that moment (DAT-7).
 - `CustomerActivity` is a replica of open reservations, open reports and the latest protection window end, kept from Reservation and Support events.
 - `HomeAddress` carries the city code that Reservation copies for RES-1.
 
@@ -387,7 +458,7 @@ States are OPEN, then CONFIRMED, REJECTED or RESOLVED. Roster Member Left is aut
 
 `RatingSession` (AR per reservation) exists only for Completed reservations (RTG-9). It opens when the job is marked Completed and closes 7 days after the protection window ends (RTG-2). `submit(Rating)` checks direction-specific categories (RTG-7, RTG-8) and allows media only from customer to provider (RTG-5). `revealedAt` is the moment both ratings are in or the window closes (RTG-3). `voidForProviderNoShow()` covers NSH-6 and `remove(ratingId)` covers RTG-11. A rating whose author's data was erased stays, shown as from a former customer (CUS-9).
 
-`ReliabilityRecord` (AR per party) stores dated incidents and returns counts over the trailing 12 months, filtered by which causes count (RTG-10).
+`ReliabilityRecord` (AR per party) stores dated incidents and returns counts over the trailing 12 months, filtered by which causes count (RTG-10). Incidents older than the period are deleted, not just left out of the count (DAT-4).
 
 ### Conversation
 
@@ -522,7 +593,7 @@ Event handlers (`usecase/ie/`, one per event):
 | `PersonalDataEraser` → `SupportEraseCustomerData` | API (Support) | CUS-8 conditions, CUS-9; publishes `CustomerDataErasedIE` |
 | Handlers for Reservation and Support events | event | `CustomerActivity` replica (CUS-8) |
 
-Only the Support role may call the Support use cases, an application policy checked in the use case. Every other context handles `CustomerDataErasedIE` by anonymising its own copies: Reservation's address snapshots, Conversation messages, report descriptions not needed as evidence, and rating authors, who then show as a former customer. Payment keeps its records, and outbox rows older than the retention period are purged (CUS-9).
+Only the Support role may call the Support use cases, an application policy checked in the use case. Every other context handles `CustomerDataErasedIE` by anonymising its own copies: Reservation's address snapshots, Conversation messages, report descriptions not needed as evidence, and rating authors, who then show as a former customer. Records still within their retention period are kept, reduced to the identity details they need, until the period ends (CUS-9, DAT-1–DAT-10; see Data retention).
 
 ### Support
 
@@ -593,12 +664,14 @@ Build in vertical slices, and keep the skill's order inside every slice: domain 
 | 0. Skeleton | `kernel`, `ie`, `app` | PAY-8 (in `Money`) | `Money`, `Percentage` and `TimeInterval` pass at 90%+ mutation score; ArchUnit rules 1–6 exist and gate CI before any domain code is written; the CRAP script and PIT ratchet run in CI; the outbox and `ProcessedMessageStore` are in place; the runtime is decided (Lambda with SnapStart, or ECS/Fargate) |
 | 1. Book and get paid | Customer, Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, CUS-7, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9–11, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | flow A passes end to end |
 | 2. Requests and withdrawals | Reservation, Payment | REQ-1–5 | expiry scheduler works; a withdrawal racing an acceptance resolves to whichever commits first (REQ-5) |
-| 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | the §10 table passes as one parameterised test; flow B passes |
+| 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | the §12 table passes as one parameterised test; flow B passes |
 | 4. Team and roster | Provider, Reservation | PRV-6, HLP-5–8, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | check-in lock and no roster work |
 | 5. Reports and no-shows | Support, Reservation, Payment | RPT-1–11, NSH-1–6, CHT-4 | flow C passes, including a no-show after Completed |
 | 6. Compliance, suspensions and debt | Provider, Customer, Reservation, Payment | MON-1–4, PRV-4, PRV-5, CUS-4–6, CUS-8, CUS-9, SUS-1–3, ROS-9, ROS-10, PAY-9–11 | flow D passes; a debtor can't rejoin; paying the fine directly allows rejoining with payouts pending |
 | 7. Ratings and reliability | Rating, Listing | RTG-1–11 | ratings only for Completed; double-blind reveal; 12-month counts |
 | 8. Chat and calendar sync | Conversation, Listing | CHT-1–3, CHT-5, OFR-7, OFR-8 | enquiries work; external busy time blocks slots |
+| 9. Data retention | Payment, Support, Rating, Conversation, Reservation, Customer | DAT-1–10 | every purge deletes exactly at its KL-time boundary; a held record outlives its date and goes the day after release; an erased customer's payment record stays until 31 Dec 2033 without the address |
+| 10. External service failures | Payment, Provider, Listing, and sign-in in every context | EXT-1–7 | every WireMock failure scenario passes: checkout fails cleanly with nothing Requested; a bounced payout retries then escalates; a deadline moves by the outage; a stale calendar is used and the provider is told |
 
 Inside each context the order is fixed:
 
@@ -610,8 +683,8 @@ Inside each context the order is fixed:
 
 - **One test per rule ID, named in the ubiquitous language and tagged with it.** For example, `customerPaysBaseCancellationFeeAfterStandardCutoff()`. The rule's case column is the scenario. Test classes are named for the domain object or use case they specify (`ReservationCancellationTest`, `CustomerCancelReservationTest`). Methods are camelCase sentences in Homa's own terms, subject then behaviour then condition, with no `test` prefix and no underscores (`reservationExpiresWhenProviderMissesAcceptanceDeadline`, `refundRoundsHalfUpToTheSen`). The rule ID goes in `@Tag("CCX-6")` and the rule's case sentence in `@DisplayName`, so the spec-to-code trace is still a grep.
 - **The §0 setup is a shared fixture.** `HomaFixtures.kemasHome()`, `.aisyah()` and `.standardReservation()` live in `src/test/java/com/homa/fixtures` so every context uses the same numbers.
-- **The §10 table is one parameterised test** on the settlement policies. It is the money regression gate.
-- **Boundary tests at every time edge:** 21:44 against 21:45 for the tier cut-off, the 12:00 against 12:05 rounding step, deadline ±1 minute, a withdrawal recorded two seconds after an acceptance (REQ-5), and permit expiry minus exactly 90 days.
+- **The §12 table is one parameterised test** on the settlement policies. It is the money regression gate.
+- **Boundary tests at every time edge:** 21:44 against 21:45 for the tier cut-off, the 12:00 against 12:05 rounding step, deadline ±1 minute, a withdrawal recorded two seconds after an acceptance (REQ-5), permit expiry minus exactly 90 days, and a payment record at 31 Dec 2033 23:59 against 1 Jan 2034 00:00 in KL time (DAT-2).
 - **Quality gates from the skill:** CRAP index below 6. Mutation score at least 90% for kernel and domain and at least 80% for use cases, enforced with PIT plus a ratchet. ArchUnit checks that domain imports only `kernel` and that no context imports another context's packages.
 - **Infra tests use real dependencies:** persistence and outbox through Testcontainers; the gateway and KYC clients through WireMock contract tests.
 
@@ -642,7 +715,7 @@ One deliberate exception is recorded under Delivery, idempotency and consistency
 
 ## Rule gaps and how they were resolved
 
-Four rounds of rule updates closed the 32 gaps found during planning. Six later rule changes on 21 Nov are logged as rounds 5 to 10. Round 10 removes edits altogether, which closes Y; nothing is left open. Each table keeps what was proposed next to what the rules decided at that round; later rounds can refine an earlier answer (for example, round 2 narrowed round 1's #6).
+Four rounds of rule updates closed the 32 gaps found during planning. Eight later rule changes on 21 Nov are logged as rounds 5 to 12. Round 12 answers Z, AA and AB, adds external services, and leaves two new questions, AC and AD, under Still open. Each table keeps what was proposed next to what the rules decided at that round; later rounds can refine an earlier answer (for example, round 2 narrowed round 1's #6).
 
 ### Round 1: the original 16 gaps
 
@@ -788,6 +861,35 @@ Round 9's open question, answered by round 10:
 | --- | --- | --- | --- | --- |
 | Y | An edited address in a city the provider added after Requested | Refuse the edit; book a new reservation | P2 and REQ-1: no edits at all; every change is a new reservation | Same in spirit, applied to every change |
 
+### Round 11: data retention on 21 Nov (17:15)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| §10 Data retention (new, DAT-1–7) | A retention period per record kind, on every account; records involved in an open report, legal claim or investigation are kept until it closes | New Data retention section: each owning context has a retention type and a daily purge use case; Support owns `RetentionHold` and publishes hold events |
+| CUS-9 | Erasure deletes or anonymises at once, except records still within their retention period, which are kept until it ends | Erasure handlers reduce what is retained to the identity it needs, and the purge removes it later |
+| §11, §12, §13 (renumbered) | Money outcomes are now §11 and Homa-set values §12; retention periods are account values | References renumbered; three retention rows added to the Homa-set values table |
+
+### Round 12: retention and external services on 21 Nov (18:15)
+
+| Rule | Change | Plan impact |
+| --- | --- | --- |
+| DAT-8 (new) | The reservation and its settlement are kept as long as its payment records; the address and arrival note go 12 months after the Protection Window, or at once on erasure, unless a report needs them | `ReservationRetention` added |
+| DAT-9 (new) | Only verification results are kept, while the member is on the team and for 12 months after; a report keeps a named member's name and verified status | `VerificationResultRetention`; Support copies named members onto the report |
+| DAT-10 (new) | Ratings are kept while the account exists; erasure deletes a customer's ratings; a closed provider's are hidden for 7 years and come back on rejoin | `RatingRetention`; Rating consumes `ProviderClosedIE` and `ProviderWentLiveIE` |
+| §11 External services (new, EXT-1–7) | Services confirm facts and Homa decides outcomes; failure behaviour for each service | New External services section: transfer retries and escalation, a verification outage log, a calendar sync failure event, slice 10 |
+| §12, §13, §14 (renumbered) | Money outcomes are now §12 and Homa-set values §13 | References renumbered; three retention rows added to the Homa-set values table |
+
+Round 11's questions, answered by round 12:
+
+| # | Question | Proposed | Rule decided | Outcome |
+| --- | --- | --- | --- | --- |
+| Z | How long the reservation record is kept | As long as its payment records; the address 12 months after the Protection Window | DAT-8: the same, and the address also goes at once on erasure | Same, plus erasure |
+| AA | How long provider compliance records are kept | While on the team, then 12 months | DAT-9: the same period, but Homa keeps only verification results; documents stay with the verification service (EXT-4) | Same period; **differs** on what is kept |
+| AB | How long ratings are kept | While the account exists; removed with it | DAT-10: the same for customers; a closed provider's ratings are hidden for 7 years and come back on rejoin | **Differs** for closed providers |
+
 ### Still open
 
-None. Every gap raised so far has a rule decision.
+| # | Gap | Rules | Proposed default | Slice |
+| --- | --- | --- | --- | --- |
+| AC | How many times, or for how long, a failed transfer is retried before it goes to Support | EXT-3 | Retry with backoff for 24 hours (about 5 attempts), then escalate; make the limit a §13 account value | 10 |
+| AD | Who declares when a verification-service outage starts and ends, which decides how far a deadline moves | EXT-5, MON-1, MON-2 | Record it automatically from failed calls and the service's status endpoint; Support can correct an interval before a suspension runs | 10 |

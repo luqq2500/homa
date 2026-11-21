@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * Checks every row of §11 "Homa-set values" in docs/homa-business-rule.md against the one constant that owns it
+ * Checks every row of §13 "Homa-set values" in docs/homa-business-rule.md against the one constant that owns it
  * (plan, "Homa-set values"), so the rules page and the code can't drift apart silently. The rows are read from the
  * rules page itself: a row added there fails {@link #everyHomaSetValueHasAnOwnerOrIsPending()} until it is checked
  * here or listed as pending.
@@ -39,15 +39,24 @@ class HomaSetValuesTest {
 
     private static final Path RULES = Path.of("docs/homa-business-rule.md");
 
-    /** §11 rows whose owning context is not built yet; each must move into {@link #checks()} with its slice. */
+    /** §13 rows whose owning context is not built yet; each must move into {@link #checks()} with its slice. */
     private static final Set<String> PENDING = Set.of(
             "Rating Window",      // Rating, slice 7 (RTG-2)
             "Ratings",            // Rating, slice 7 (RTG-4, RTG-7, RTG-8)
-            "Reliability counts"  // Rating, slice 7 (RTG-10)
+            "Reliability counts", // Rating, slice 7 (RTG-10)
+            // Retention periods (§10) are account values owned by the context that stores each record; their
+            // retention types arrive with slice 9 (plan, "Data retention").
+            "Retention: payment records",                                        // Payment, DAT-2, DAT-6
+            "Retention: damage and safety reports",                              // Support, DAT-3
+            "Retention: other reports, reliability records, chats and photos",   // Support, Rating, Conversation,
+                                                                                  // Reservation, DAT-3 to DAT-5
+            "Retention: reservation address and arrival note",                   // Reservation, DAT-8
+            "Retention: verification results",                                   // Provider, DAT-9
+            "Retention: closed provider's ratings"                               // Rating, DAT-10
     );
 
     /**
-     * §11 rows that name a formula over the reservation's own terms rather than a Homa-set number: the Customer
+     * §13 rows that name a formula over the reservation's own terms rather than a Homa-set number: the Customer
      * cancellation fee is the Base Cancellation Fee. Their amounts are checked by the settlement policy tests (CCX-6,
      * LMC-1) in slice 3.
      */
@@ -133,8 +142,8 @@ class HomaSetValuesTest {
 
     private static List<String> rowsOfSection11() throws IOException {
         List<String> lines = Files.readAllLines(RULES);
-        int start = lines.indexOf("## 11. Homa-set values");
-        assertThat(start).as("§11 heading in %s", RULES).isNotNegative();
+        int start = lines.indexOf("## 13. Homa-set values");
+        assertThat(start).as("§13 heading in %s", RULES).isNotNegative();
         return lines.subList(start + 1, lines.size()).stream()
                 .takeWhile(line -> !line.startsWith("## "))
                 .filter(line -> line.startsWith("| ") && !line.startsWith("| Value ") && !line.startsWith("| ---"))
@@ -143,20 +152,20 @@ class HomaSetValuesTest {
     }
 
     @Test
-    @DisplayName("Every value in §11 of the rules page is checked against its owner here, or listed as a formula or pending.")
+    @DisplayName("Every value in §13 of the rules page is checked against its owner here, or listed as a formula or pending.")
     void everyHomaSetValueHasAnOwnerOrIsPending() throws IOException {
         List<String> rows = rowsOfSection11();
 
         assertThat(rows).isNotEmpty();
         assertThat(rows).allSatisfy(row -> assertThat(checks().containsKey(row) || PENDING.contains(row) || FORMULAS.contains(row))
-                .as("§11 row '%s' has no owner check and is not pending", row).isTrue());
-        assertThat(checks().keySet()).as("checks for rows no longer in §11").isSubsetOf(rows);
-        assertThat(PENDING).as("pending rows no longer in §11").isSubsetOf(rows);
-        assertThat(FORMULAS).as("formula rows no longer in §11").isSubsetOf(rows);
+                .as("§13 row '%s' has no owner check and is not pending", row).isTrue());
+        assertThat(checks().keySet()).as("checks for rows no longer in §13").isSubsetOf(rows);
+        assertThat(PENDING).as("pending rows no longer in §13").isSubsetOf(rows);
+        assertThat(FORMULAS).as("formula rows no longer in §13").isSubsetOf(rows);
     }
 
     @TestFactory
-    @DisplayName("Each owner's constant matches §11.")
+    @DisplayName("Each owner's constant matches §13.")
     Stream<DynamicTest> eachOwnersConstantMatchesTheRulesPage() {
         return checks().entrySet().stream()
                 .map(check -> DynamicTest.dynamicTest(check.getKey(), check.getValue()::run));

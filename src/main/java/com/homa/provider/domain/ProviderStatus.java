@@ -7,7 +7,7 @@ package com.homa.provider.domain;
 public enum ProviderStatus {
     /** The business registration is submitted and its verification is awaited. */
     REGISTERED,
-    /** The business verification failed, so the provider can't continue onboarding. */
+    /** The business verification failed: the provider can't continue onboarding until it resubmits and passes. */
     VERIFICATION_FAILED,
     /** The business is verified: the provider can add its team and go live. */
     VERIFIED,

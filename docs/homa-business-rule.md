@@ -1,6 +1,6 @@
 # Homa Business Rule
 
-> Ingested from Notion on 2026-11-21 (page edited 08:28 UTC): https://app.notion.com/p/41e8436ade4081e3b127ca594a99f2d9
+> Ingested from Notion on 2026-11-21 (page edited 10:17 UTC): https://app.notion.com/p/41e8436ade4081e3b127ca594a99f2d9
 > The Notion page is the source of truth; refresh this copy when it changes.
 
 Homa is a marketplace that helps homeowners get the best homecare service providers.
@@ -17,7 +17,7 @@ Every rule below follows these three principles. When a new question comes up, a
 | --- | --- | --- |
 | P1 | **Paid is committed.** | Nothing changes until the money is confirmed. The first confirmed payment wins, and any other payment is refunded at once. |
 | P2 | **A change is a new booking.** | Reservations can't be edited. To change one, the customer withdraws a Requested reservation (free) or cancels a Reserved one (§6.2), then makes a new reservation under the terms and rules in force at that moment. |
-| P3 | **A reservation keeps what it was booked with.** | A reservation keeps the provider's terms and Homa's reservation values (§11) from when it was Requested. Account values apply at once. |
+| P3 | **A reservation keeps what it was booked with.** | A reservation keeps the provider's terms and Homa's reservation values (§13) from when it was Requested. Account values apply at once. |
 
 ---
 
@@ -90,7 +90,7 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | CUS-6 | A suspension for 7 or 30 days ends automatically when the period runs out. A suspension until lifted ends only when Support confirms it. | Daniel's 30-day suspension ends on its own, and he can book again. A customer suspended until lifted must wait for Support to review an appeal. |
 | CUS-7 | A customer signs in through an identity provider (for example Google or Apple), which confirms the account belongs to them. One identity-provider account can hold only one Homa customer account. A new account starts with no ratings and no reliability counts. | Aisyah signs in with her Google account. While suspended, Daniel can't open a second Homa account with the same Google account. A customer who signs up with a different Google account starts with no ratings or counts. |
 | CUS-8 | A customer can deactivate their account in the app only when they have no Requested or Reserved reservations, no open reports, and no reservation still within its Protection Window. Otherwise they're told what's blocking it. A deactivated customer can reactivate by signing in again. A suspended customer can't deactivate. | Aisyah taps Deactivate on Saturday at 15:00. It's blocked until Sunday 14:00, when her last Protection Window ends. A month later she signs in again and her account is reactivated. |
-| CUS-9 | A customer can ask Support to delete their personal data, under the same conditions as deactivation (CUS-8). Homa keeps only the records it needs for completed payments, reports and legal obligations, and deletes or anonymises the rest. Ratings the customer wrote stay, shown as from a former customer. A suspended customer's identity-provider account stays blocked until the suspension ends, even after deletion. | Aisyah asks Support to delete her data. Her bookings' payment records are kept; her name and address are removed, and her rating of Kemas Home now shows as from a former customer. Daniel, suspended until lifted, can't use deletion to sign up again with the same Google account. |
+| CUS-9 | A customer can ask Support to delete their personal data, under the same conditions as deactivation (CUS-8). Homa deletes or anonymises the customer's data at once, except records still within their retention period (§10, DAT-1 to DAT-10), which are kept only until it ends. Ratings the customer wrote stay, shown as from a former customer. A suspended customer's identity-provider account stays blocked until the suspension ends, even after deletion. | Aisyah asks Support to delete her data. Her bookings' payment records are kept; her name and address are removed, and her rating of Kemas Home now shows as from a former customer. Daniel, suspended until lifted, can't use deletion to sign up again with the same Google account. |
 
 ---
 
@@ -160,7 +160,7 @@ All cases use these people and numbers unless the case says otherwise. Names and
 | RES-5 | Minimum duration is 1 hour. Duration increases in 15-minute steps. | With a provider whose minimum is 1 hour, Aisyah can book 1h, 1h 15m, 1h 30m and so on, but not 50 minutes or 1h 10m. With Kemas Home (minimum 2 hours, OFR-5) she starts at 2h. |
 | RES-6 | Total Reservation Fee = (per-helper hourly rate × hours × helpers) × (1 − discount rate, if a discount applies) + travel fee. | Standard reservation: 25 × 4 × 2 × 0.9 + 20 = RM200. |
 | RES-7 | When payment is secured, the reservation is Requested and the payment is held. | Aisyah pays RM200 on Monday 20:00. The reservation is Requested and Homa holds the RM200. |
-| RES-8 | A reservation keeps the provider's terms from when it was Requested: rate, travel fee, discount, acceptance policy and cancellation tier. It also keeps Homa's reservation values (§11) and the customer's address from then. Later changes to the provider's settings, Homa's reservation values or the customer's profile apply only to new reservations (P3). | On Wednesday Kemas Home raises its rate to RM30 and switches to Firm. Aisyah's Saturday reservation stays at RM200 under Standard. When Aisyah updates her profile address on Thursday, Saturday's team still goes to the original address. |
+| RES-8 | A reservation keeps the provider's terms from when it was Requested: rate, travel fee, discount, acceptance policy and cancellation tier. It also keeps Homa's reservation values (§13) and the customer's address from then. Later changes to the provider's settings, Homa's reservation values or the customer's profile apply only to new reservations (P3). | On Wednesday Kemas Home raises its rate to RM30 and switches to Firm. Aisyah's Saturday reservation stays at RM200 under Standard. When Aisyah updates her profile address on Thursday, Saturday's team still goes to the original address. |
 | RES-9 | A provider can have only one reservation at a time. A Requested or Reserved reservation blocks the provider's calendar from the start of its Check-in Period until the job end time plus the provider's buffer (OFR-10), until it is Withdrawn, Declined, Expired, Cancelled or Completed. | Aisyah's request for Saturday 10:00–14:00 blocks Kemas Home from 9:45 to 14:30, starting Monday 20:00. Another customer can't book Kemas Home at 11:00 on Saturday, even for 1 helper; the earliest start after Aisyah's job is 14:45. If Kemas Home declines Aisyah, or doesn't respond by Tuesday 20:00, the time opens again. |
 | RES-10 | A customer can't have two Requested or Reserved reservations with overlapping job times. | Aisyah has requested Kemas Home for Saturday 10:00–14:00. She can't also request another provider for Saturday 12:00. She can book Sunday. |
 | RES-11 | If more than one customer pays for the same provider time, the first payment to be confirmed wins and that reservation is Requested. Any other confirmed payment for that time is refunded in full at once, and the customer is told. | Aisyah and Mei both pay for Kemas Home on Saturday at 10:00. Aisyah's payment confirms at 20:01 and Mei's at 20:02. Aisyah's reservation is Requested; Mei gets her RM200 back straight away and is told the slot was taken. |
@@ -343,7 +343,47 @@ All cases use these people and numbers unless the case says otherwise. Names and
 
 ---
 
-## 10. Summary of money outcomes
+## 10. Data retention
+
+| ID | Rule | Case |
+| --- | --- | --- |
+| DAT-1 | Each kind of record is kept for the period set below, then deleted or anonymised. This applies to every account, whether active, deactivated, closed or deleted. If a report, legal claim or Support investigation involving a record is open when its period ends, the record is kept until it closes. | Aisyah's chat with Kemas Home is deleted 12 months after its Protection Window ends, even though her account is still active. A record that Support is using in an open investigation is kept until the case closes. |
+| DAT-2 | Payment records (payments, refunds, payouts, platform fees, fees, fines and debt) are kept for 7 years from the end of the calendar year of the transaction, with only the identity details the record needs. | Aisyah pays RM200 in November 2026. The payment record is kept until 31 December 2033. If she asks for deletion in 2027, her address is removed, but the record of the RM200 stays until then. |
+| DAT-3 | Property Damage and Safety & Misconduct reports, with their evidence (chat, photos, location and media), are kept for 6 years after they're resolved. Other reports, including no-show and Roster Member Left reports, are kept for 12 months after they're resolved. | Aisyah's cracked-vase report is resolved in December 2026, so it's kept with its photos until December 2032. Her Provider No Show report resolved the same month is kept until December 2027. |
+| DAT-4 | Records behind reliability counts (cancellations, no-rosters, no-shows and roster members who left) are kept for 12 months from the event, the same period the counts cover (RTG-10). | Aisyah's fee-paying cancellation on Friday stops counting, and its record is deleted, 12 months later. |
+| DAT-5 | Chats, completion photos and proof of arrival not linked to a report are kept for 12 months after the reservation's Protection Window ends. An Enquiry with no reservation is kept for 12 months after its last message. | The after-photo of Aisyah's kitchen is deleted 12 months after Sunday 14:00. Her Enquiry about a ladder, last answered in March, is deleted the following March. |
+| DAT-6 | A provider's debt record (PAY-9) is kept until the debt is paid, and at least as long as DAT-2. | Kemas Home closes owing RM16.28. The debt record stays until Kemas Home pays it, so a rejoin under the same registration can be checked against it. |
+| DAT-7 | A suspended customer's blocked identity-provider account is kept until the suspension ends, even after deletion (CUS-9). | Daniel, suspended for 30 days, asks for deletion. His Google identity stays blocked until the 30 days end, then it's deleted too. |
+| DAT-8 | A reservation and its settlement (amounts, fees, fines, refunds and outcome) are kept as long as its payment records (DAT-2), because they explain the amounts. The reservation's address and arrival note are deleted 12 months after its Protection Window ends, or at once on a deletion request (CUS-9), unless a report kept under DAT-3 needs them. On deletion, the customer's name on the reservation is anonymised. | Aisyah's Saturday reservation and its RM200 settlement are kept until 31 December 2033. The address on it is deleted 12 months after Sunday 14:00. Had she reported the cracked vase, the address would stay with that report until December 2032. |
+| DAT-9 | For providers, helpers and supervisors, Homa keeps only the results of verification: pass or fail, the check dates, and the work-permit expiry date. These are kept while the member is on the team (or the provider is open), and for 12 months after they leave (HLP-8) or the provider closes. If a report kept under DAT-3 names a member, their name and verified status at the time stay with that report. Identity documents aren't held by Homa (EXT-4). | Rina leaves Kemas Home on 31 January 2027. Her verification results are deleted on 31 January 2028. Had she been named in a Safety & Misconduct report, her name and verified status would stay with that report for its 6 years. |
+| DAT-10 | Ratings of an account are kept while that account exists, unless Support removes them earlier (RTG-11). When a customer's data is deleted (CUS-9), the ratings of that customer are deleted too. When a provider closes its account, its ratings are hidden, not deleted; they come back if it rejoins under the same business registration within 7 years, and are deleted after that. | Kemas Home closes in 2027 with a 3.1-star average and rejoins under the same registration in 2028. Its old ratings are shown again, so it can't start with a clean record. Aisyah deletes her data, and Kemas Home's rating of her is deleted with it. |
+
+---
+
+## 11. External services
+
+Homa relies on outside services for some facts. The rules elsewhere describe only the fact (a payment is confirmed, a verification is passed) and stay the same whichever service provides it. This section states which service each rule relies on, and what happens when a service fails. Services are named by role, not by vendor.
+
+| Service | What it confirms | Rules that rely on it |
+| --- | --- | --- |
+| **Payment provider** | That a payment is confirmed, and that a refund, compensation or payout has been sent | P1, RES-7, RES-11, RES-12, PAY-1 to PAY-11, DAT-2; and every refund or payment from REQ-2, REQ-3, REQ-4, CUS-5, ROS-8, ROS-10, RPT-9, CCX-1 to CCX-6, PCX-1, PCX-2, NRS-3, LMC-1, LMC-3, NSH-3, NSH-5, SUS-1, SUS-3 |
+| **Verification service** | Business registration, identity, age, citizenship and work permit (including its expiry date), re-verification results and monitoring flags | PRV-1, HLP-1, HLP-2, HLP-3, HLP-7, MON-1 to MON-4, ROS-4, DAT-9; and, through MON-3 and MON-4, ROS-9, ROS-10, SUS-1 to SUS-3 |
+| **Identity provider** | That a customer's sign-in belongs to them | CUS-7, CUS-9, DAT-7 |
+| **Calendar service** | The provider's external calendar events | OFR-8, RES-3 |
+
+| ID | Rule | Case |
+| --- | --- | --- |
+| EXT-1 | Homa decides every outcome: fees, fines, refunds, suspensions and statuses. External services only confirm facts. | The verification service flags Farid. Homa suspends him under MON-4, and only Support can reactivate him. |
+| EXT-2 | A payment is confirmed only when the payment provider confirms it. If the payment provider is unavailable, no reservation becomes Requested; the customer is told and can try again. | At 20:00 the payment provider is down. Aisyah's checkout fails, nothing is Requested, and Kemas Home's Saturday stays open. She pays successfully at 20:15. |
+| EXT-3 | Refunds, compensation and payouts are sent through the payment provider at the time the rules set. When the money arrives depends on the payment provider and the receiving bank; the customer or provider is told when it's sent. A transfer that fails is retried, and goes to Support if it still fails. | Aisyah cancels on Friday 22:00. Her RM155 is sent straight away and she's told it's on its way; her bank shows it on Monday. A payout to Kemas Home bounces because its bank details changed, so it's retried and Support contacts Kemas Home. |
+| EXT-4 | Verification checks and monitoring flags come from the verification service. Identity documents are held by the verification service, not by Homa; Homa keeps only the results (DAT-9). | Siti's re-verification is passed through the verification service. Homa stores "passed, 20 November", not a copy of her identity card. |
+| EXT-5 | If the verification service is unavailable, onboarding and re-verification wait. A re-verification deadline (MON-1, MON-2) that falls during an outage is extended by the length of the outage. A monitoring flag (MON-4) is applied when it arrives. | The verification service is down from 17 to 19 November. Nurul's 19 November deadline moves to 21 November, so she isn't suspended while she couldn't re-verify. |
+| EXT-6 | If the identity provider is unavailable, customers can't sign in or register until it's back. Reservations continue as booked. | Google sign-in is down on Saturday morning. Aisyah can't open the app, but the team still arrives at 9:52 and the job goes ahead. |
+| EXT-7 | If calendar sync fails, Homa uses the last synced calendar and tells the provider. A booking made against an out-of-date calendar is the provider's to handle: it can decline a Request (REQ-3), or cancel under §6.3. | Kemas Home's sync fails on Tuesday, so a new private appointment doesn't show on Homa. Aisyah requests that time. Kemas Home declines, and Aisyah gets her full refund. |
+
+---
+
+## 12. Summary of money outcomes
 
 Example amounts use the standard reservation (Total RM200, Base RM45).
 
@@ -373,13 +413,13 @@ Example amounts use the standard reservation (Total RM200, Base RM45).
 
 ---
 
-## 11. Homa-set values
+## 13. Homa-set values
 
 Every value Homa sets, in one place. Changing a value here changes it in every rule listed.
 
 **Reservation values** are fixed when a reservation is Requested (P3, RES-8): minimum rate, maximum discount, minimum notice, duration, partial-time charging, Check-in Period, acceptance deadline, Grace Period, cancellation tiers, customer cancellation fee, provider fines, customer compensation, customer no-show fee, fee and fine cap, Protection Window, completion reminders, platform fee, fine deduction cap, money rounding and Rating Window.
 
-**Account values** apply at once to everyone: minimum helper age, work permit buffer, re-verification cycles, customer suspension lengths, default hours, default helpers, buffer between jobs, rating stars and categories, and the reliability count period.
+**Account values** apply at once to everyone: minimum helper age, work permit buffer, re-verification cycles, customer suspension lengths, default hours, default helpers, buffer between jobs, rating stars and categories, the reliability count period, and retention periods.
 
 | Value | Amount | Rules |
 | --- | --- | --- |
@@ -413,9 +453,15 @@ Every value Homa sets, in one place. Changing a value here changes it in every r
 | Rating Window | Closes 7 days after the Protection Window ends | RTG-2 |
 | Ratings | 1–5 stars; up to 3 categories per side | RTG-4, RTG-7, RTG-8 |
 | Reliability counts | Last 12 months | RTG-10 |
+| Retention: payment records | 7 years from the end of the transaction's calendar year | DAT-2, DAT-6 |
+| Retention: damage and safety reports | 6 years after resolved | DAT-3 |
+| Retention: other reports, reliability records, chats and photos | 12 months | DAT-3 to DAT-5 |
+| Retention: reservation address and arrival note | 12 months after the Protection Window ends | DAT-8 |
+| Retention: verification results | 12 months after the member leaves or the provider closes | DAT-9 |
+| Retention: closed provider's ratings | Hidden for 7 years, then deleted | DAT-10 |
 
 ---
 
-## 12. Open items
+## 14. Open items
 
 None at the moment.
