@@ -2,12 +2,12 @@ package com.homa.reservation.domain.exception;
 
 import java.time.Duration;
 
-/** RES-5: a job lasts at least 1 hour and grows in 15-minute steps. */
+/** A job must last some time. Whether its length is bookable is decided against the provider's bounds (RES-5). */
 public final class InvalidJobDurationException extends ReservationDomainException {
 
     private static final long serialVersionUID = 1L;
 
     public InvalidJobDurationException(Duration length) {
-        super("A job lasts at least 1 hour in 15-minute steps, not " + length);
+        super("A job must last some time, not " + length);
     }
 }

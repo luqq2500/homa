@@ -4,8 +4,9 @@ import com.homa.reservation.domain.exception.IncompleteBookingException;
 import java.util.Objects;
 
 /**
- * The customer's home address as it was when the reservation was made: the address, its city (RES-1) and the
- * arrival note the team reads on arrival (CUS-1).
+ * The customer's home address: the address, its city (RES-1) and the arrival note the team reads on arrival (CUS-1).
+ * A reservation keeps it as it was when the reservation was Requested; a later profile change never moves a booked
+ * job (RES-8).
  */
 public record ServiceAddress(String addressLine, String city, String arrivalNote) {
 

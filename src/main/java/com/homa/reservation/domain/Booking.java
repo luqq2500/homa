@@ -26,4 +26,9 @@ public record Booking(
     public Booking startingAt(Instant start) {
         return new Booking(customerId, providerId, jobs, new JobTime(start, jobTime.duration()), helpers, address);
     }
+
+    /** The same booking at the customer's home address as it is now (RES-2, RES-8). */
+    public Booking at(ServiceAddress homeAddress) {
+        return new Booking(customerId, providerId, jobs, jobTime, helpers, homeAddress);
+    }
 }

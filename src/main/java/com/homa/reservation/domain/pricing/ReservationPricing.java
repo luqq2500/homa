@@ -2,7 +2,7 @@ package com.homa.reservation.domain.pricing;
 
 import com.homa.kernel.Money;
 import com.homa.kernel.Percentage;
-import com.homa.reservation.domain.QuarterHourDuration;
+import com.homa.reservation.domain.JobDuration;
 import com.homa.reservation.domain.terms.ReservationTerms;
 
 /**
@@ -14,7 +14,7 @@ public final class ReservationPricing {
     private ReservationPricing() {
     }
 
-    public static Quote quote(ReservationTerms terms, QuarterHourDuration hours, int helpers) {
+    public static Quote quote(ReservationTerms terms, JobDuration hours, int helpers) {
         Percentage discount = terms.discount().rateFor(hours, helpers);
         Money discountedHour = discount.complement().of(terms.hourlyRatePerHelper().times(helpers));
         Money hoursFee = discountedHour.times(hours.inHours());

@@ -1,47 +1,31 @@
 package com.homa.reservation.domain;
 
-import com.homa.kernel.TimeInterval;
-import com.homa.reservation.domain.exception.BookingRefusedException;
 import com.homa.reservation.domain.pricing.Quote;
 import com.homa.reservation.domain.pricing.ReservationPricing;
 import com.homa.reservation.domain.replica.BookableProvider;
 import com.homa.reservation.domain.replica.CustomerStanding;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
-import com.homa.reservation.domain.terms.ReservationTerms;
 import java.time.Instant;
 import java.util.Objects;
 
 /**
- * A customer paying for a booking (RES-11). It is not a reservation and has no status: it holds the provider's and
- * the customer's time for 15 minutes, and carries the terms and the price the customer is paying.
- *
- * @param providerBlock the provider's time it holds: Check-in Period start to job end plus buffer (RES-9)
- * @param customerBlock the customer's time it holds: the job time (RES-10)
+ * A customer paying for a booking. It is not a reservation, has no status and holds nothing (P1, RES-11): the time
+ * was free when the customer started paying, but the first confirmed payment for a time wins. It carries the booking
+ * and the price the customer pays; the terms are frozen only when the reservation is Requested (RES-8).
  */
-public record Checkout(
-        CheckoutId id,
-        Booking booking,
-        ReservationTerms terms,
-        Quote quote,
-        TimeInterval providerBlock,
-        TimeInterval customerBlock,
-        Instant holdExpiresAt) {
+public record Checkout(CheckoutId id, Booking booking, Quote quote) {
 
     public Checkout {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(booking, "booking");
-        Objects.requireNonNull(terms, "terms");
         Objects.requireNonNull(quote, "quote");
-        Objects.requireNonNull(providerBlock, "providerBlock");
-        Objects.requireNonNull(customerBlock, "customerBlock");
-        Objects.requireNonNull(holdExpiresAt, "holdExpiresAt");
     }
 
     /**
-     * Starts paying for a booking: the customer can reserve, the provider admits the booking (RES-1 to RES-5,
-     * ACC-1, ACC-3), and both the provider's (RES-9) and the customer's (RES-10) time are free and are now held for
-     * 15 minutes (RES-11).
+     * Starts paying for a booking at the customer's home address. It checks, without holding anything, that the
+     * customer can reserve, the provider admits the booking (RES-1 to RES-5, ACC-1, ACC-3) and both the provider's
+     * (RES-9) and the customer's (RES-10) time are free now, and prices it under the provider's terms (RES-6).
      */
     public static Checkout start(
             CheckoutId id,
@@ -51,26 +35,24 @@ public record Checkout(
             ProviderSchedule providerSchedule,
             CustomerSchedule customerSchedule,
             Instant now) {
-        requireBookable(booking, provider, customer, now);
-        TimeInterval providerBlock = provider.calendarBlockFor(booking.jobTime());
-        TimeInterval customerBlock = booking.jobTime().interval();
-        customerSchedule.requireFreeFor(id, customerBlock, now);
-        Instant expiresAt = providerSchedule.hold(id, providerBlock, now);
-        customerSchedule.hold(id, customerBlock, now);
-        ReservationTerms terms = provider.termsFor(booking.address());
-        Quote quote = ReservationPricing.quote(terms, booking.jobTime().duration(), booking.helpers());
-        return new Checkout(id, booking, terms, quote, providerBlock, customerBlock, expiresAt);
+        Booking atHome = booking.at(customer.homeAddress());
+        requireBookable(atHome, provider, customer, providerSchedule, customerSchedule, now);
+        Quote quote = ReservationPricing.quote(
+                provider.termsFor(atHome.address()), atHome.jobTime().duration(), atHome.helpers());
+        return new Checkout(id, atHome, quote);
     }
 
-    static void requireBookable(Booking booking, BookableProvider provider, CustomerStanding customer, Instant now) {
+    /** Every booking rule passes at this moment, and both parties' time is free. */
+    static void requireBookable(
+            Booking booking,
+            BookableProvider provider,
+            CustomerStanding customer,
+            ProviderSchedule providerSchedule,
+            CustomerSchedule customerSchedule,
+            Instant at) {
         customer.requireCanReserve();
-        provider.requireAdmits(booking, now);
-    }
-
-    /** ACC-1, ACC-3 under the terms being paid for: an Instant booking before check-in, a Request 1 hour before. */
-    void requireRequestableAt(Instant paidAt) {
-        if (!terms.acceptancePolicy().permitsNotice(booking.jobTime().noticeFrom(paidAt))) {
-            throw new BookingRefusedException(BookingRefusal.TOO_LATE_FOR_ACCEPTANCE_POLICY);
-        }
+        provider.requireAdmits(booking, at);
+        providerSchedule.requireFree(provider.calendarBlockFor(booking.jobTime(), ReservationValues.asOf(at)));
+        customerSchedule.requireFree(booking.jobTime().interval());
     }
 }

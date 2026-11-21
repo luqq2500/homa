@@ -1,14 +1,16 @@
 package com.homa.reservation.domain;
 
 /**
- * The stored statuses (§1 "Reservation statuses"): Requested → Reserved → Completed, or Declined, Expired or
- * Cancelled. Why a reservation was cancelled is a {@link CancellationCause}, not a status. Completed is not final:
- * a Provider No Show confirmed later makes it Cancelled (NSH-6). A checkout hold is not a status (RES-11).
+ * The stored statuses (§1 "Reservation statuses"): Requested → Reserved → Completed, or Withdrawn, Declined, Expired
+ * or Cancelled. Withdrawn is a status of its own, not a cancellation: no fee and no reliability count (REQ-2,
+ * RTG-10). Why a reservation was cancelled is a {@link CancellationCause}, not a status. Completed is not final: a
+ * Provider No Show confirmed later makes it Cancelled (NSH-6). A checkout is not a status, and holds nothing (RES-11).
  */
 public enum ReservationStatus {
     REQUESTED(true),
     RESERVED(true),
     COMPLETED(false),
+    WITHDRAWN(false),
     DECLINED(false),
     EXPIRED(false),
     CANCELLED(false);
