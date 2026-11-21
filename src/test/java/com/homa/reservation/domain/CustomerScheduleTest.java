@@ -93,6 +93,7 @@ class CustomerScheduleTest {
     }
 
     @Test
+    @Tag("RES-10")
     @DisplayName("A customer's schedule belongs to the customer.")
     void scheduleBelongsToItsCustomer() {
         assertThat(aisyahsSchedule.customerId()).isEqualTo(AISYAH_CUSTOMER_ID);

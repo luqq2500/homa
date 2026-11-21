@@ -150,6 +150,7 @@ class ProviderScheduleTest {
     }
 
     @Test
+    @Tag("RES-9")
     @DisplayName("A provider's schedule belongs to the provider and starts empty at version 0.")
     void scheduleBelongsToItsProvider() {
         assertThat(market.providerSchedule().providerId()).isEqualTo(KEMAS_HOME_PROVIDER_ID);

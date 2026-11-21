@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 class ReservationIdentityTest {
 
     @Test
+    @Tag("RES-7")
     @DisplayName("Every reservation and every checkout gets an identity of its own.")
     void reservationsAndCheckoutsGetDistinctIdentities() {
         assertThat(ReservationId.generate().value()).isNotBlank();

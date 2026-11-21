@@ -60,6 +60,7 @@ class BookingTest {
     }
 
     @Test
+    @Tag("RES-2")
     @DisplayName("Moving the start keeps the jobs, hours, helpers and address.")
     void bookingStartingLaterKeepsEverythingElse() {
         Booking moved = standardBooking().startingAt(saturday(11, 0));

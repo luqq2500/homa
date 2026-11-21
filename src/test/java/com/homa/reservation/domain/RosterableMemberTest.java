@@ -43,6 +43,7 @@ class RosterableMemberTest {
     }
 
     @Test
+    @Tag("ROS-6")
     @DisplayName("A member belongs to its provider and is shown on the roster by name and photo.")
     void memberBelongsToItsProviderAndAppearsOnTheRosterByNameAndPhoto() {
         assertThat(siti().worksFor(KEMAS_HOME_PROVIDER_ID)).isTrue();

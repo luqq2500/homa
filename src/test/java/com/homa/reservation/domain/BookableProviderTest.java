@@ -134,6 +134,7 @@ class BookableProviderTest {
     }
 
     @Test
+    @Tag("OFR-5")
     @DisplayName("With 3 active helpers, customers can book 1 to 3 helpers; a lower maximum or a higher minimum narrows that.")
     void helpersMustFallWithinTheBoundsAndTheActiveHelpers() {
         assertThat(kemasHome.admits(booking(saturday(10, 0), STANDARD_HOURS, 3), REQUESTED_AT)).isTrue();
@@ -153,6 +154,7 @@ class BookableProviderTest {
     }
 
     @Test
+    @Tag("PRV-6")
     @DisplayName("Siti, Nurul and Rina are all deactivated for a holiday week, so Kemas Home can't be booked.")
     void providerThatIsNotBookableAdmitsNoBooking() {
         BookableProvider onHoliday = kemasHomeProvider().notBookable().build();
@@ -197,6 +199,7 @@ class BookableProviderTest {
     }
 
     @Test
+    @Tag("RES-3")
     @DisplayName("The replica keeps what Listing and Provider said about Kemas Home.")
     void replicaKeepsTheProvidersSettings() {
         assertThat(kemasHome.providerId()).isEqualTo(KEMAS_HOME_PROVIDER_ID);
