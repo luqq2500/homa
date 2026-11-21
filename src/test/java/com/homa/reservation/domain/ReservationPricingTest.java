@@ -102,10 +102,10 @@ class ReservationPricingTest {
     @Test
     @DisplayName("No discount by default.")
     void noDiscountByDefault() {
-        assertThat(DiscountRule.NONE.rateFor(QuarterHourDuration.ofMinutes(480), 3)).isEqualTo(Percentage.ZERO);
+        assertThat(DiscountRule.NONE.rateFor(JobDuration.ofMinutes(480), 3)).isEqualTo(Percentage.ZERO);
     }
 
     private static Quote quote(long minutes, int helpers) {
-        return ReservationPricing.quote(KEMAS_TERMS, QuarterHourDuration.ofMinutes(minutes), helpers);
+        return ReservationPricing.quote(KEMAS_TERMS, JobDuration.ofMinutes(minutes), helpers);
     }
 }
