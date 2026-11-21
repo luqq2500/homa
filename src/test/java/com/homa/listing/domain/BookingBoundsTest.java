@@ -53,14 +53,36 @@ class BookingBoundsTest {
     }
 
     @Test
-    @DisplayName("Hours move in 15-minute steps: 1h 15m is allowed, 50 minutes and 1h 10m are not")
-    void hoursMoveInQuarterHourSteps() {
+    @Tag("RES-5")
+    @DisplayName("With a provider whose minimum is 1 hour, Aisyah can book 1h, 1h 15m, 1h 30m and so on, but not "
+            + "50 minutes or 1h 10m. With Kemas Home (minimum 2 hours, OFR-5) she starts at 2h.")
+    void durationStartsAtOneHourAndMovesInQuarterHourSteps() {
         BookingBounds defaults = BookingBounds.defaults();
+        BookingBounds kemasHome = defaults.withHours(TWO_HOURS, SIX_HOURS);
 
+        assertThat(defaults.allowsHours(Duration.ofHours(1))).isTrue();
         assertThat(defaults.allowsHours(Duration.ofMinutes(75))).isTrue();
+        assertThat(defaults.allowsHours(Duration.ofMinutes(90))).isTrue();
         assertThat(defaults.allowsHours(Duration.ofMinutes(50))).isFalse();
         assertThat(defaults.allowsHours(Duration.ofMinutes(70))).isFalse();
         assertThat(defaults.allowsHours(Duration.ofMinutes(75).plusSeconds(1))).isFalse();
+        assertThat(kemasHome.allowsHours(Duration.ofMinutes(105))).isFalse();
+        assertThat(kemasHome.allowsHours(TWO_HOURS)).isTrue();
+        assertThat(kemasHome.allowsHours(Duration.ofMinutes(135))).isTrue();
+    }
+
+    @Test
+    @Tag("RES-5")
+    @DisplayName("No provider can set bounds under Homa's floor: a minimum of 45 minutes, or 1h 10m steps, is refused")
+    void noProvidersBoundsGoBelowHomasDurationFloor() {
+        BookingBounds defaults = BookingBounds.defaults();
+
+        assertThatThrownBy(() -> defaults.withHours(Duration.ofMinutes(45), SIX_HOURS))
+                .isInstanceOf(InvalidBookingBoundsException.class)
+                .hasMessageContaining("PT1H");
+        assertThatThrownBy(() -> defaults.withHours(Duration.ofMinutes(70), SIX_HOURS))
+                .isInstanceOf(InvalidBookingBoundsException.class)
+                .hasMessageContaining("PT15M");
     }
 
     @Test

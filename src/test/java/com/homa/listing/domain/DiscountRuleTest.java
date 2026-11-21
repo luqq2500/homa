@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.kernel.Percentage;
 import com.homa.listing.domain.exception.InvalidDiscountException;
+import com.homa.listing.domain.exception.ListingRuleViolationException;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -52,5 +53,27 @@ class DiscountRuleTest {
         assertThatThrownBy(() -> DiscountRule.of(DISCOUNT_RATE, threeHours, 0)).isInstanceOf(InvalidDiscountException.class);
         assertThatThrownBy(() -> DiscountRule.of(null, threeHours, 2)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> DiscountRule.of(DISCOUNT_RATE, null, 2)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @DisplayName("A provider can set a discount rate of up to 99%: 99% is allowed, 99.01% and 100% are refused")
+    void aDiscountRateIsAtMostNinetyNinePercent() {
+        Duration threeHours = Duration.ofHours(3);
+
+        assertThat(DiscountRule.of(Percentage.of(99), threeHours, 2).rate()).isEqualTo(Percentage.of(99));
+        assertThatThrownBy(() -> DiscountRule.of(Percentage.of("99.01"), threeHours, 2))
+                .isInstanceOf(InvalidDiscountException.class)
+                .hasMessageContaining("99%")
+                .extracting(e -> ((ListingRuleViolationException) e).ruleId()).isEqualTo("OFR-4");
+        assertThatThrownBy(() -> DiscountRule.of(Percentage.HUNDRED_PERCENT, threeHours, 2))
+                .isInstanceOf(InvalidDiscountException.class);
+    }
+
+    @Test
+    @Tag("OFR-11")
+    @DisplayName("The minimum rate is checked against the discount's rate: Kemas Home's 10%, or nothing for no discount")
+    void theRateCheckedAgainstTheMinimumIsTheDiscountsRate() {
+        assertThat(KEMAS_HOME_DISCOUNT.rate()).isEqualTo(DISCOUNT_RATE);
+        assertThat(DiscountRule.none().rate()).isEqualTo(Percentage.ZERO);
     }
 }

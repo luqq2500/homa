@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.kernel.Money;
+import com.homa.kernel.Percentage;
 import com.homa.listing.domain.exception.InvalidHourlyRateException;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
@@ -34,5 +35,13 @@ class HourlyRateTest {
         assertThatThrownBy(() -> new HourlyRate(Money.myr(0))).isInstanceOf(InvalidHourlyRateException.class);
         assertThatThrownBy(() -> new HourlyRate(Money.myr(-25))).isInstanceOf(InvalidHourlyRateException.class);
         assertThatThrownBy(() -> new HourlyRate(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @Tag("OFR-11")
+    @DisplayName("Kemas Home's RM25 after its 10% discount is RM22.50 per helper hour; with no discount it stays RM25")
+    void theRateAfterADiscountIsTheRateLessTheDiscount() {
+        assertThat(KEMAS_HOME_RATE.afterDiscount(Percentage.of(10))).isEqualTo(Money.myr("22.50"));
+        assertThat(KEMAS_HOME_RATE.afterDiscount(Percentage.ZERO)).isEqualTo(Money.myr(25));
     }
 }
