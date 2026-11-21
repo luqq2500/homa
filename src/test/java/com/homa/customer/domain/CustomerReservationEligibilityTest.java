@@ -1,6 +1,7 @@
 package com.homa.customer.domain;
 
 import static com.homa.customer.domain.CustomerFixtures.aisyah;
+import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Modifier;
@@ -16,7 +17,7 @@ class CustomerReservationEligibilityTest {
     @DisplayName("Aisyah's husband browses Kemas Home without an account. When he taps Reserve, he's asked to "
             + "register first.")
     void onlyARegisteredCustomerCanMakeReservations() {
-        assertThat(aisyah().canMakeReservations()).isTrue();
+        assertThat(aisyah().canMakeReservationsAt(REQUESTED_AT)).isTrue();
 
         assertThat(Customer.class.getConstructors()).isEmpty();
         assertThat(Arrays.stream(Customer.class.getDeclaredMethods())
