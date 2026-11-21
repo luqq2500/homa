@@ -140,7 +140,8 @@ class CustomerSuspensionTest {
 
     @Test
     @Tag("CUS-6")
-    @DisplayName("Support can't end Daniel's 30-day suspension early; it ends on its own when the period runs out.")
+    @DisplayName("Support can't end Daniel's suspension for a set period early; it ends on its own when the period "
+            + "runs out.")
     void supportCannotLiftASuspensionForASetPeriod() {
         Customer daniel = danielSuspended(SuspensionPeriod.THIRTY_DAYS);
 
