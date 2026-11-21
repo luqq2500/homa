@@ -186,6 +186,24 @@ class ProviderListingTest {
     }
 
     @Test
+    @Tag("RES-5")
+    @Tag("RES-8")
+    @DisplayName("The terms snapshot carries Kemas Home's 2-to-6-hour bounds, so Reservation checks Aisyah's hours "
+            + "against them: 2h and 2h 15m are allowed, 1h 45m and 2h 10m are not")
+    void theTermsSnapshotCarriesTheBoundsReservationChecksHoursAgainst() {
+        BookingBounds twoToSix = BookingBounds.defaults().withHours(Duration.ofHours(2), Duration.ofHours(6));
+
+        ListingTerms terms = kemasHomeListing().setBookingBounds(twoToSix).terms();
+
+        assertThat(terms.bounds()).isEqualTo(twoToSix);
+        assertThat(terms.bounds().allowsHours(Duration.ofHours(2))).isTrue();
+        assertThat(terms.bounds().allowsHours(Duration.ofMinutes(135))).isTrue();
+        assertThat(terms.bounds().allowsHours(Duration.ofMinutes(105))).isFalse();
+        assertThat(terms.bounds().allowsHours(Duration.ofMinutes(130))).isFalse();
+    }
+
+    @Test
+    @Tag("RES-8")
     @DisplayName("Every change gives the full terms snapshot that Reservation freezes: Kemas Home's §0 terms")
     void everyChangeGivesTheFullTermsSnapshot() {
         ListingTerms terms = kemasHomeListing().setJobBuffer(JobBuffer.DEFAULT).terms();
@@ -204,6 +222,7 @@ class ProviderListingTest {
     }
 
     @Test
+    @Tag("RES-8")
     @DisplayName("A stored listing is rebuilt from its terms snapshot unchanged")
     void aStoredListingIsRebuiltFromItsTerms() {
         ListingTerms stored = kemasHomeListing().terms();
@@ -216,6 +235,7 @@ class ProviderListingTest {
     }
 
     @Test
+    @Tag("OFR-1")
     @DisplayName("A provider id can't be blank")
     void aProviderIdCantBeBlank() {
         assertThatThrownBy(() -> new ProviderId(" ")).isInstanceOf(IllegalArgumentException.class);

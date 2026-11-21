@@ -10,7 +10,7 @@ import java.util.Objects;
  */
 public record JobBuffer(Duration duration) {
 
-    public static final JobBuffer DEFAULT = new JobBuffer(Duration.ofMinutes(30));
+    public static final JobBuffer DEFAULT = new JobBuffer(ListingValues.DEFAULT_JOB_BUFFER);
 
     public JobBuffer {
         Objects.requireNonNull(duration, "duration");

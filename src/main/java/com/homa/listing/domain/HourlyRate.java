@@ -1,6 +1,7 @@
 package com.homa.listing.domain;
 
 import com.homa.kernel.Money;
+import com.homa.kernel.Percentage;
 import com.homa.listing.domain.exception.InvalidHourlyRateException;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -23,5 +24,10 @@ public record HourlyRate(Money perHelperPerHour) {
     public Money priceFor(Duration hours, int helpers) {
         BigDecimal fractionalHours = BigDecimal.valueOf(hours.toMinutes()).divide(MINUTES_PER_HOUR, MathContext.DECIMAL64);
         return perHelperPerHour.times(fractionalHours).times(helpers);
+    }
+
+    /** The per-helper hourly rate after a discount, exact: RM25 after 10% is RM22.50 (OFR-11). */
+    public Money afterDiscount(Percentage discount) {
+        return discount.complement().of(perHelperPerHour);
     }
 }

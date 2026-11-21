@@ -7,8 +7,8 @@ import java.time.Duration;
  * Request needs 2 hours, so a Request provider always has at least 1 hour to respond (ACC-3).
  */
 public enum AcceptancePolicy {
-    INSTANT(Duration.ofHours(1)),
-    REQUEST(Duration.ofHours(2));
+    INSTANT(ListingValues.INSTANT_NOTICE_FLOOR),
+    REQUEST(ListingValues.REQUEST_NOTICE_FLOOR);
 
     private final Duration noticeFloor;
 

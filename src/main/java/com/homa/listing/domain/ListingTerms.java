@@ -75,6 +75,11 @@ public record ListingTerms(
         return new ListingTerms(providerId, offerings, rate, travelFee, changed, bounds, notice, buffer, policy, tier);
     }
 
+    ListingTerms withPricing(HourlyRate changedRate, TravelFeePolicy changedTravelFee, DiscountRule changedDiscount) {
+        return new ListingTerms(providerId, offerings, changedRate, changedTravelFee, changedDiscount, bounds, notice,
+                buffer, policy, tier);
+    }
+
     ListingTerms withBounds(BookingBounds changed) {
         return new ListingTerms(providerId, offerings, rate, travelFee, discount, changed, notice, buffer, policy, tier);
     }
