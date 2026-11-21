@@ -6,9 +6,10 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * The provider marked the job Completed (JOB-3). Payment creates the JOB payout, releasable when the protection
- * window ends (PAY-2); Rating opens its window (RTG-2); Support keeps the completion photo refs as evidence
- * (JOB-6, NSH-6).
+ * The provider marked the job Completed (JOB-3). Payment marks the JOB payout it opened at Reserved as completed,
+ * releasable when the protection window ends and no report is open (PAY-2, RPT-6); Rating opens its window
+ * (RTG-2); Support keeps the completion photo refs as evidence (JOB-6, NSH-6). {@code payoutGross} is informational:
+ * Payment tracks the gross itself, reduced by every partial refund.
  */
 public record ReservationCompletedIE(
         String eventId,
