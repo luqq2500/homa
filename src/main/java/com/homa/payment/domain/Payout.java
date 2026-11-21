@@ -1,6 +1,7 @@
 package com.homa.payment.domain;
 
 import com.homa.kernel.Money;
+import com.homa.payment.domain.exception.PayoutNotAwaitingCompletionException;
 import com.homa.payment.domain.exception.PayoutNotPendingException;
 import com.homa.payment.domain.exception.PayoutNotReleasableException;
 import java.time.Instant;
@@ -10,49 +11,78 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * What a provider is owed for one reservation, waiting to be released. A JOB payout is opened when the job is marked
- * Completed, so the completion condition of PAY-2 holds from its creation (and JOB-5: a job marked Completed late
- * opens a payout that is releasable at once). A FEE payout (PAY-6) needs no completion.
+ * What a provider is owed for one reservation, waiting to be released. It is opened as a JOB payout when the
+ * reservation is Reserved, so a report made before the job is marked Completed already holds it (RPT-6). Its gross
+ * starts at the reservation total and drops by every partial refund (ROS-8, RPT-9, SUS-3, a refund Support decides),
+ * never below zero.
  *
- * <p>It is releasable once the Protection Window has ended and no report on the reservation is open (PAY-2, RPT-6).
- * Releasing takes Homa's 15.5% platform fee from a JOB payout and nothing from a FEE payout (PAY-3), rounded once to
- * the sen (PAY-8). The gross comes from the Settlement; Payment never re-derives it.
+ * <p>A JOB payout is releasable once the job is marked Completed, the Protection Window has ended and no report is
+ * open (PAY-2, JOB-5). If the reservation ends with a cancellation, last-minute or no-show fee for the provider, the
+ * payout pays that fee instead; a FEE payout needs no completion and waits for the booked job's Protection Window
+ * and every report the same way (PAY-6). Releasing takes Homa's platform fee from every payout (PAY-3), at the rate in
+ * force when the reservation was Requested (P3), rounded once to the sen (PAY-8). Amounts come from the Settlement;
+ * Payment never re-derives them.
  */
 public final class Payout {
 
     private final PayoutId id;
     private final ReservationId reservationId;
     private final ProviderId providerId;
-    private final PayoutKind kind;
-    private final Money gross;
+    private final Instant requestedAt;
     private final Instant protectionWindowEnd;
     private final Set<ReportId> openReports = new HashSet<>();
+    private PayoutKind kind = PayoutKind.JOB;
+    private Money gross;
+    private Instant completedAt;
     private PayoutStatus status = PayoutStatus.PENDING;
     private PayoutRelease release;
 
-    private Payout(PayoutId id, ReservationId reservationId, ProviderId providerId, PayoutKind kind, Money gross,
+    private Payout(PayoutId id, ReservationId reservationId, ProviderId providerId, Money gross, Instant requestedAt,
             Instant protectionWindowEnd) {
         this.id = Objects.requireNonNull(id, "id");
         this.reservationId = Objects.requireNonNull(reservationId, "reservationId");
         this.providerId = Objects.requireNonNull(providerId, "providerId");
-        this.kind = kind;
         this.gross = Amounts.requirePayable(gross, "A payout");
+        this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
         this.protectionWindowEnd = Objects.requireNonNull(protectionWindowEnd, "protectionWindowEnd");
     }
 
-    /** The job was marked Completed: the provider's earnings wait for the end of the Protection Window (PAY-2). */
-    public static Payout forCompletedJob(PayoutId id, ReservationId reservationId, ProviderId providerId,
-            Money gross, Instant protectionWindowEnd) {
-        return new Payout(id, reservationId, providerId, PayoutKind.JOB, gross, protectionWindowEnd);
+    /**
+     * The reservation is Reserved: the provider's JOB payout opens for the reservation total, waiting for the job to
+     * be marked Completed and the Protection Window to end (PAY-2). Reports from now on hold it (RPT-6).
+     */
+    public static Payout openForReservation(PayoutId id, ReservationId reservationId, ProviderId providerId,
+            Money total, Instant requestedAt, Instant protectionWindowEnd) {
+        return new Payout(id, reservationId, providerId, total, requestedAt, protectionWindowEnd);
+    }
+
+    /** The provider marked the job Completed (JOB-3). Even marked late, it is releasable once due (JOB-5). */
+    public void markCompleted(Instant completedAt) {
+        Objects.requireNonNull(completedAt, "completedAt");
+        requireAwaitingCompletion();
+        this.completedAt = completedAt;
     }
 
     /**
-     * The customer paid the provider a cancellation, last-minute or no-show fee: it waits for the end of the booked
-     * job's Protection Window, the same as a job payout (PAY-6).
+     * The reservation ended before the job was done, and the customer pays the provider a cancellation, last-minute
+     * or no-show fee: the payout pays that fee instead. It keeps the booked job's Protection Window and every open
+     * report (PAY-6, RPT-6).
      */
-    public static Payout forFee(PayoutId id, ReservationId reservationId, ProviderId providerId, Money fee,
-            Instant protectionWindowEnd) {
-        return new Payout(id, reservationId, providerId, PayoutKind.FEE, fee, protectionWindowEnd);
+    public void payFeeInstead(Money fee) {
+        Amounts.requirePayable(fee, "A fee payout");
+        requireAwaitingCompletion();
+        kind = PayoutKind.FEE;
+        gross = fee;
+    }
+
+    /**
+     * Part of the customer's payment was refunded (ROS-8, RPT-9, SUS-3, or a refund Support decided): the provider is
+     * owed that much less, never below zero.
+     */
+    public void reduceByRefund(Money refund) {
+        Amounts.requirePayable(refund, "A refund");
+        requirePending();
+        gross = gross.minus(refund).max(Money.zero(gross.currency()));
     }
 
     /** A report on the reservation was opened: the payout waits until it is resolved (RPT-6). */
@@ -67,32 +97,52 @@ public final class Payout {
         openReports.remove(Objects.requireNonNull(reportId, "reportId"));
     }
 
-    /** True when the Protection Window has ended, no report is open, and the payout is still waiting (PAY-2). */
+    /**
+     * True while the payout is waiting and nothing holds it any more: the job is marked Completed (or it pays a fee),
+     * the Protection Window has ended and no report is open (PAY-2, PAY-6, RPT-6).
+     */
     public boolean releasableAt(Instant now) {
-        return status == PayoutStatus.PENDING && !now.isBefore(protectionWindowEnd) && openReports.isEmpty();
+        Objects.requireNonNull(now, "now");
+        return status == PayoutStatus.PENDING && isOwed() && !now.isBefore(protectionWindowEnd)
+                && openReports.isEmpty();
+    }
+
+    private boolean isOwed() {
+        return kind == PayoutKind.FEE || completedAt != null;
     }
 
     /**
-     * Releases the payout to the provider: the platform fee comes off a JOB payout only (PAY-3), rounded once to the
-     * sen (PAY-8).
+     * Releases the payout to the provider: the platform fee comes off every payout (PAY-3), at the rate in force when
+     * the reservation was Requested (P3), rounded once to the sen (PAY-8).
      */
     public PayoutRelease release(Instant now) {
+        return release(now, PaymentValues.homa());
+    }
+
+    PayoutRelease release(Instant now, PaymentValues values) {
         if (!releasableAt(now)) {
             throw new PayoutNotReleasableException(id, now);
         }
-        Money platformFee = kind == PayoutKind.JOB ? PlatformFeeRate.HOMA.feeOn(gross) : Money.zero(gross.currency());
+        Money platformFee = PlatformFeeRate.of(values.inForceAt(requestedAt)).feeOn(gross);
         release = new PayoutRelease(id, providerId, kind, gross, platformFee, now);
         status = PayoutStatus.RELEASED;
         return release;
     }
 
     /**
-     * The payout will never be released, for a Provider No Show confirmed after the job was marked Completed (NSH-6,
-     * slice 5). Only a payout still waiting can be voided.
+     * The payout will never be released: the reservation ended with nothing owed to the provider, or a Provider No
+     * Show was confirmed after the job was marked Completed (NSH-6). Only a payout still waiting can be voided.
      */
     public void makeVoid() {
         requirePending();
         status = PayoutStatus.VOID;
+    }
+
+    private void requireAwaitingCompletion() {
+        requirePending();
+        if (kind != PayoutKind.JOB || completedAt != null) {
+            throw new PayoutNotAwaitingCompletionException(id);
+        }
     }
 
     private void requirePending() {
@@ -117,13 +167,23 @@ public final class Payout {
         return kind;
     }
 
-    /** What the Settlement gave the provider, before the platform fee. */
+    /** What the provider is owed before the platform fee: the reservation total less every partial refund, or the fee. */
     public Money gross() {
         return gross;
     }
 
+    /** When the reservation was Requested: the Homa-set values in force then apply to this payout (P3). */
+    public Instant requestedAt() {
+        return requestedAt;
+    }
+
     public Instant protectionWindowEnd() {
         return protectionWindowEnd;
+    }
+
+    /** When the job was marked Completed, once it has been. */
+    public Optional<Instant> completedAt() {
+        return Optional.ofNullable(completedAt);
     }
 
     public PayoutStatus status() {
