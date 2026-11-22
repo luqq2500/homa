@@ -1,8 +1,8 @@
 package com.homa.reservation.domain.exception;
 
 /**
- * ROS-3, ROS-4: only the provider's own active helpers and supervisors can be rostered, and a foreign member only
- * on a job that ends by the last date Provider says they may work on.
+ * ROS-3, ROS-4, ROS-6: only the provider's own active helpers and supervisors with a verified photo (IDN-4) can be
+ * rostered, and a foreign member only on a job that ends by the last date Provider says they may work on.
  */
 public final class MemberNotRosterableException extends ReservationDomainException {
 

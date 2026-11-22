@@ -8,14 +8,18 @@ import static com.homa.reservation.domain.ReservationFixtures.assertRefused;
 import static com.homa.reservation.domain.ReservationFixtures.kemasHomeProvider;
 import static com.homa.reservation.domain.ReservationFixtures.standardBooking;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.reservation.domain.ReservationFixtures.Marketplace;
+import com.homa.reservation.domain.exception.BookingRefusedException;
 import com.homa.reservation.domain.replica.CustomerStanding;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class CheckoutTest {
+
+    private static final String AISYAHS_HUSBAND_ID = "customer-aisyahs-husband";
 
     private final Marketplace market = Marketplace.withKemasHome();
 
@@ -51,12 +55,54 @@ class CheckoutTest {
     }
 
     @Test
-    @Tag("CUS-5")
-    @DisplayName("A suspended customer can't make reservations.")
-    void suspendedCustomerCannotStartACheckout() {
-        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, true, aisyahAddress()));
+    @Tag("CUS-3")
+    @DisplayName("Aisyah's husband registers and asks Kemas Home about a ladder. When he taps Reserve, he's asked to verify first.")
+    void unverifiedCustomerIsAskedToVerifyBeforePaying() {
+        CustomerStanding husband = CustomerStanding.registered(AISYAHS_HUSBAND_ID, aisyahAddress());
+        market.register(husband);
+        Booking booking = new Booking(AISYAHS_HUSBAND_ID, standardBooking().providerId(), standardBooking().jobs(),
+                standardBooking().jobTime(), standardBooking().helpers(), aisyahAddress());
 
-        assertRefused(() -> market.checkout(standardBooking(), TAPPED_PAY_AT), BookingRefusal.CUSTOMER_CANNOT_RESERVE);
+        assertThat(husband.canReserve()).isFalse();
+        assertThatThrownBy(() -> market.checkout(booking, TAPPED_PAY_AT))
+                .isInstanceOfSatisfying(BookingRefusedException.class, refused -> {
+                    assertThat(refused.refusal()).isEqualTo(BookingRefusal.CUSTOMER_NOT_VERIFIED);
+                    assertThat(refused.refusal().asksForVerification()).isTrue();
+                });
+        assertThat(market.providerSchedule().blocks()).isEmpty();
+    }
+
+    @Test
+    @Tag("CUS-3")
+    @DisplayName("Once he verifies, he can reserve.")
+    void verifiedCustomerCanReserve() {
+        CustomerStanding husband = CustomerStanding.registered(AISYAHS_HUSBAND_ID, aisyahAddress()).verified();
+
+        assertThat(husband.identityVerified()).isTrue();
+        assertThat(husband.canReserve()).isTrue();
+        assertThat(husband.refusal()).isEmpty();
+        assertThat(husband.suspended()).isFalse();
+        assertThat(husband.homeAddress()).isEqualTo(aisyahAddress());
         assertThat(ReservationFixtures.aisyah().canReserve()).isTrue();
+    }
+
+    @Test
+    @Tag("CUS-5")
+    @DisplayName("A suspended customer can't reserve.")
+    void suspendedCustomerCannotStartACheckout() {
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, true, true, aisyahAddress()));
+
+        assertRefused(() -> market.checkout(standardBooking(), TAPPED_PAY_AT), BookingRefusal.CUSTOMER_SUSPENDED);
+        assertThat(BookingRefusal.CUSTOMER_SUSPENDED.asksForVerification()).isFalse();
+    }
+
+    @Test
+    @Tag("CUS-5")
+    @DisplayName("A suspended customer who isn't verified is told of the suspension, because verifying wouldn't let them reserve.")
+    void suspensionIsNamedBeforeVerification() {
+        CustomerStanding suspendedUnverified = new CustomerStanding(AISYAHS_HUSBAND_ID, false, true, aisyahAddress());
+
+        assertThat(suspendedUnverified.refusal()).contains(BookingRefusal.CUSTOMER_SUSPENDED);
+        assertThat(suspendedUnverified.verified().refusal()).contains(BookingRefusal.CUSTOMER_SUSPENDED);
     }
 }

@@ -12,6 +12,7 @@ import static com.homa.reservation.domain.ReservationFixtures.nurul;
 import static com.homa.reservation.domain.ReservationFixtures.rina;
 import static com.homa.reservation.domain.ReservationFixtures.saturday;
 import static com.homa.reservation.domain.ReservationFixtures.siti;
+import static com.homa.reservation.domain.ReservationFixtures.withoutVerifiedPhoto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -35,7 +36,7 @@ class ReservationRosterTest {
 
     @Test
     @Tag("ROS-1")
-    @DisplayName("Kemas Home rosters Siti and Nurul on Friday evening. On Saturday at 8:00 it swaps Nurul for Rina. At 9:45 the roster is locked.")
+    @DisplayName("Kemas Home rosters Siti and Nurul on Friday, swaps Nurul for Rina at 8:00 on Saturday, and the roster locks at 9:45.")
     void providerSetsAndChangesTheRosterUntilTheCheckInPeriodStarts() {
         reservation.assignRoster(List.of(siti(), nurul()), friday(19, 0));
         assertThat(memberIds()).containsExactly(SITI_MEMBER_ID, NURUL_MEMBER_ID);
@@ -69,7 +70,7 @@ class ReservationRosterTest {
 
     @Test
     @Tag("ROS-2")
-    @DisplayName("Aisyah booked 2 helpers. Kemas Home rosters Siti and Nurul plus supervisor Farid. Aisyah still pays for 2 helpers. Rostering only Siti and Farid is incomplete, because Farid doesn't count as a helper.")
+    @DisplayName("Aisyah booked 2 helpers. Siti, Nurul and Farid is complete; Siti and Farid isn't.")
     void rosterIncludesTheBookedNumberOfHelpersAndSupervisorsAreExtra() {
         reservation.assignRoster(List.of(siti(), nurul(), farid()), friday(19, 0));
 
@@ -94,7 +95,7 @@ class ReservationRosterTest {
 
     @Test
     @Tag("ROS-3")
-    @DisplayName("Nurul is suspended, so Kemas Home can't select her. It rosters Siti and Rina instead.")
+    @DisplayName("Nurul is suspended, so Kemas Home rosters Siti and Rina.")
     void onlyActiveMembersCanBeRostered() {
         assertThatThrownBy(() -> reservation.assignRoster(List.of(siti(), deactivated(nurul())), friday(19, 0)))
                 .isInstanceOf(MemberNotRosterableException.class);
@@ -107,7 +108,7 @@ class ReservationRosterTest {
     @Tag("ROS-3")
     @DisplayName("Only Kemas Home's own team can be rostered on its reservation.")
     void anotherProvidersMemberCannotBeRostered() {
-        RosterableMember stranger = RosterableMember.citizen("member-stranger", "provider-another", MemberRole.HELPER,
+        RosterableMember stranger = RosterableMember.local("member-stranger", "provider-another", MemberRole.HELPER,
                 "Stranger", "photo-stranger", true);
 
         assertThatThrownBy(() -> reservation.assignRoster(List.of(siti(), stranger), friday(19, 0)))
@@ -116,7 +117,7 @@ class ReservationRosterTest {
 
     @Test
     @Tag("ROS-6")
-    @DisplayName("On Friday evening Aisyah sees the names and photos of Siti, Nurul and supervisor Farid.")
+    @DisplayName("On Friday Aisyah sees Siti, Nurul and Farid.")
     void rosterIsShownWithEachMembersNameAndPhoto() {
         reservation.assignRoster(List.of(siti(), nurul(), farid()), friday(19, 0));
 
@@ -124,6 +125,19 @@ class ReservationRosterTest {
                 new RosterMember(SITI_MEMBER_ID, MemberRole.HELPER, "Siti", "photo-siti"),
                 new RosterMember(NURUL_MEMBER_ID, MemberRole.HELPER, "Nurul", "photo-nurul"),
                 new RosterMember(FARID_MEMBER_ID, MemberRole.SUPERVISOR, "Farid", "photo-farid"));
+    }
+
+    @Test
+    @Tag("ROS-6")
+    @DisplayName("Nurul's photo isn't verified yet, so she can't be rostered until it is: Aisyah must see each rostered member's photo.")
+    void memberWithoutAVerifiedPhotoCannotBeRostered() {
+        assertThatThrownBy(() -> reservation.assignRoster(List.of(siti(), withoutVerifiedPhoto(nurul())), friday(19, 0)))
+                .isInstanceOf(MemberNotRosterableException.class);
+        assertThat(reservation.roster()).isEmpty();
+
+        reservation.assignRoster(List.of(siti(), withoutVerifiedPhoto(nurul()).withVerifiedPhoto("photo-nurul")),
+                friday(19, 0));
+        assertThat(memberIds()).containsExactly(SITI_MEMBER_ID, NURUL_MEMBER_ID);
     }
 
     private List<String> memberIds() {

@@ -109,8 +109,8 @@ class ReservationRequestTest {
     void reservationKeepsTheAddressFromWhenItWasRequested() {
         Reservation reservation = market.requestStandard();
 
-        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false,
-                new ServiceAddress("8, Jalan Cyber 2", "CYBERJAYA", "Ring the bell")));
+        market.register(CustomerStanding.registered(AISYAH_CUSTOMER_ID,
+                new ServiceAddress("8, Jalan Cyber 2", "CYBERJAYA", "Ring the bell")).verified());
 
         assertThat(reservation.booking().address()).isEqualTo(aisyahAddress());
     }
@@ -122,7 +122,7 @@ class ReservationRequestTest {
         Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
         ServiceAddress moved = new ServiceAddress("1, Jalan Salak Tinggi 3", HomaFixtures.AISYAH_CITY, "Side gate");
         market.providerBecomes(kemasHomeProvider().tier(CancellationTier.FIRM).build());
-        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false, moved));
+        market.register(CustomerStanding.registered(AISYAH_CUSTOMER_ID, moved).verified());
 
         Reservation reservation = market.pay(checkout, REQUESTED_AT);
 
@@ -170,8 +170,8 @@ class ReservationRequestTest {
     @DisplayName("Aisyah moves to Shah Alam while she pays. Kemas Home doesn't cover it, so her confirmed payment is refused.")
     void confirmedPaymentIsRefusedWhenTheHomeAddressMovedOutOfTheProvidersCities() {
         Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, false,
-                new ServiceAddress("12, Jalan Shah Alam", "SHAH_ALAM", "Ring twice")));
+        market.register(CustomerStanding.registered(AISYAH_CUSTOMER_ID,
+                new ServiceAddress("12, Jalan Shah Alam", "SHAH_ALAM", "Ring twice")).verified());
 
         assertRefused(() -> market.pay(checkout, REQUESTED_AT), BookingRefusal.CITY_NOT_COVERED);
     }
@@ -181,9 +181,25 @@ class ReservationRequestTest {
     @DisplayName("Aisyah is suspended while she pays, so her confirmed payment is refused.")
     void confirmedPaymentIsRefusedWhenTheCustomerWasSuspendedMeanwhile() {
         Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
-        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, true, aisyahAddress()));
+        market.register(new CustomerStanding(AISYAH_CUSTOMER_ID, true, true, aisyahAddress()));
 
-        assertRefused(() -> market.pay(checkout, REQUESTED_AT), BookingRefusal.CUSTOMER_CANNOT_RESERVE);
+        assertRefused(() -> market.pay(checkout, REQUESTED_AT), BookingRefusal.CUSTOMER_SUSPENDED);
+    }
+
+    @Test
+    @Tag("CUS-3")
+    @DisplayName("Only identity-verified customers can make reservations: a confirmed payment from a customer Reservation doesn't know as verified is refused as a failed rule and refunded, and nothing is blocked.")
+    void confirmedPaymentIsRefusedWhenTheCustomerIsNotVerified() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+        market.register(CustomerStanding.registered(AISYAH_CUSTOMER_ID, aisyahAddress()));
+
+        assertThatThrownBy(() -> market.pay(checkout, REQUESTED_AT))
+                .isInstanceOfSatisfying(BookingRefusedException.class, refused -> {
+                    assertThat(refused.refusal()).isEqualTo(BookingRefusal.CUSTOMER_NOT_VERIFIED);
+                    assertThat(refused.rejection()).isEqualTo(CheckoutRejection.RULE_FAILED);
+                });
+        assertThat(market.providerSchedule().blocks()).isEmpty();
+        assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).blocks()).isEmpty();
     }
 
     @Test
