@@ -2,7 +2,6 @@ package com.homa.values;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.homa.customer.domain.CustomerValues;
 import com.homa.kernel.Money;
 import com.homa.kernel.Percentage;
 import com.homa.listing.domain.ListingValues;
@@ -41,18 +40,21 @@ class HomaSetValuesTest {
 
     /** §13 rows whose owning context is not built yet; each must move into {@link #checks()} with its slice. */
     private static final Set<String> PENDING = Set.of(
+            "Suspension lengths", // Support's SuspensionLength, slice 6 (CUS-4, CUS-6, PRV-12)
             "Rating Window",      // Rating, slice 7 (RTG-2)
             "Ratings",            // Rating, slice 7 (RTG-4, RTG-7, RTG-8)
             "Reliability counts", // Rating, slice 7 (RTG-10)
             // Retention periods (§10) are account values owned by the context that stores each record; their
             // retention types arrive with slice 9 (plan, "Data retention").
-            "Retention: payment records",                                        // Payment, DAT-2, DAT-6
-            "Retention: damage and safety reports",                              // Support, DAT-3
-            "Retention: other reports, reliability records, chats and photos",   // Support, Rating, Conversation,
-                                                                                  // Reservation, DAT-3 to DAT-5
-            "Retention: reservation address and arrival note",                   // Reservation, DAT-8
-            "Retention: verification results",                                   // Provider, DAT-9
-            "Retention: closed provider's ratings"                               // Rating, DAT-10
+            "Retention: payment records and debt",                          // Payment, DAT-2, DAT-6
+            "Retention: damage and safety reports",                         // Support, DAT-3
+            "Retention: other reports, reliability records, chats, photos", // Support, Rating, Conversation,
+                                                                             // Reservation, DAT-3 to DAT-5
+            "Retention: reservation address and arrival note",              // Reservation, DAT-8
+            "Retention: verification results and identity number",         // Verification, DAT-9
+            "Retention: closed provider's ratings",                         // Rating, DAT-10
+            "Retention: identity number views",                             // Verification, DAT-14
+            "Retention: insurance documents"                                // Provider, DAT-15
     );
 
     /**
@@ -67,7 +69,7 @@ class HomaSetValuesTest {
 
     private static Map<String, Runnable> checks() {
         Map<String, Runnable> checks = new LinkedHashMap<>();
-        checks.put("Minimum helper age", () -> assertThat(ProviderValues.MINIMUM_HELPER_AGE_YEARS).isEqualTo(18));
+        checks.put("Minimum age", () -> assertThat(ProviderValues.MINIMUM_HELPER_AGE_YEARS).isEqualTo(18));
         checks.put("Work permit buffer", () -> assertThat(ProviderValues.WORK_PERMIT_BUFFER_DAYS).isEqualTo(90));
         checks.put("Re-verification cycle", () -> {
             assertThat(ProviderValues.REVERIFICATION_CYCLE_MONTHS).isEqualTo(6);
@@ -75,10 +77,6 @@ class HomaSetValuesTest {
         });
         checks.put("Re-verification when flagged",
                 () -> assertThat(ProviderValues.FLAGGED_REVERIFICATION_DAYS).isEqualTo(14));
-        checks.put("Customer suspension lengths", () -> {
-            assertThat(CustomerValues.SHORT_SUSPENSION_DAYS).isEqualTo(7);
-            assertThat(CustomerValues.LONG_SUSPENSION_DAYS).isEqualTo(30);
-        });
         checks.put("Minimum rate", () -> assertThat(ListingValues.MINIMUM_RATE).isEqualTo(Money.myr(20)));
         checks.put("Maximum discount", () -> assertThat(ListingValues.MAXIMUM_DISCOUNT).isEqualTo(Percentage.of(99)));
         checks.put("Default hours", () -> {
@@ -135,7 +133,7 @@ class HomaSetValuesTest {
                 .containsExactly(Duration.ZERO, Duration.ofHours(2)));
         checks.put("Platform fee", () -> assertThat(PAYMENT.platformFeeRate()).isEqualTo(Percentage.of("15.5")));
         checks.put("Fine deduction cap", () -> assertThat(PAYMENT.fineDeductionCap()).isEqualTo(Percentage.of(20)));
-        checks.put("Money rounding",
+        checks.put("Rounding",
                 () -> assertThat(Money.myr("39.375").roundedToSen()).isEqualTo(Money.myr("39.38")));
         return checks;
     }
