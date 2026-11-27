@@ -1,6 +1,7 @@
 package com.homa.reservation.domain;
 
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
+import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.TOTAL_RESERVATION_FEE;
 import static com.homa.reservation.domain.ReservationFixtures.TAPPED_PAY_AT;
 import static com.homa.reservation.domain.ReservationFixtures.aisyahAddress;
@@ -34,6 +35,21 @@ class CheckoutTest {
         assertThat(checkout.quote().total()).isEqualTo(TOTAL_RESERVATION_FEE);
         assertThat(market.providerSchedule().blocks()).isEmpty();
         assertThat(market.scheduleOf(AISYAH_CUSTOMER_ID).blocks()).isEmpty();
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("Persistence: a stored checkout comes back from its id, booking and price, and its confirmed payment makes the reservation.")
+    void aStoredCheckoutComesBackFromItsParts() {
+        Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
+
+        Checkout stored = new Checkout(checkout.id(), checkout.booking(), checkout.quote());
+
+        assertThat(stored).isEqualTo(checkout);
+        assertThat(market.pay(stored, REQUESTED_AT).checkoutId())
+                .isEqualTo(checkout.id());
+        assertThatThrownBy(() -> new Checkout(checkout.id(), checkout.booking(), null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test

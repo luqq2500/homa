@@ -7,9 +7,6 @@ import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.usecase.exception.ScheduleChangedException;
 import com.homa.reservation.usecase.port.out.ReservationRepository;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -70,7 +67,7 @@ public final class InMemoryReservationRepository implements ReservationRepositor
 
     @Override
     public void save(Reservation reservation) {
-        stored.put(reservation.id(), copy(reservation));
+        stored.put(reservation.id(), saved(reservation));
     }
 
     @Override
@@ -109,27 +106,19 @@ public final class InMemoryReservationRepository implements ReservationRepositor
 
     /** A copy of the reservation with the same state, as a reload from the database gives. */
     static Reservation copy(Reservation original) {
-        try {
-            Constructor<?> constructor = Reservation.class.getDeclaredConstructors()[0];
-            constructor.setAccessible(true);
-            Object[] arguments = new Object[constructor.getParameterCount()];
-            List<Field> fields = java.util.Arrays.stream(Reservation.class.getDeclaredFields())
-                    .filter(field -> !Modifier.isStatic(field.getModifiers()))
-                    .toList();
-            for (int i = 0; i < arguments.length; i++) {
-                fields.get(i).setAccessible(true);
-                arguments[i] = fields.get(i).get(original);
-            }
-            Reservation copy = (Reservation) constructor.newInstance(arguments);
-            for (Field field : fields) {
-                field.setAccessible(true);
-                if (!Modifier.isFinal(field.getModifiers())) {
-                    field.set(copy, field.get(original));
-                }
-            }
-            return copy;
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Cannot copy the reservation", e);
-        }
+        return copy(original, original.version());
+    }
+
+    /** What a save keeps: the same state, at the next version, as the store moves it on with each save. */
+    private static Reservation saved(Reservation reservation) {
+        return copy(reservation, reservation.version() + 1);
+    }
+
+    private static Reservation copy(Reservation original, long version) {
+        return Reservation.restore(original.id(), original.checkoutId(), original.booking(), original.terms(),
+                original.quote(), original.values(), original.requestedAt(),
+                original.acceptanceDeadline().orElse(null), original.status(), original.reservedAt().orElse(null),
+                original.withdrawnAt().orElse(null), original.roster().orElse(null),
+                original.completedAt().orElse(null), original.completionPhotos(), version);
     }
 }

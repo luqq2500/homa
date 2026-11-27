@@ -19,9 +19,12 @@ import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.ReservationTerms;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * A reservation: the core aggregate. It is made only when a payment is confirmed (RES-7, P1), keeps the provider's
@@ -29,6 +32,13 @@ import java.util.Optional;
  * Requested → Reserved → Completed, or ends Withdrawn. It is never edited: a change is a new booking (P2, REQ-1).
  */
 public final class Reservation {
+
+    /** The statuses a stored reservation can have so far, each with the statuses it has been through to get there. */
+    private static final Map<ReservationStatus, Set<ReservationStatus>> PASSED_THROUGH = Map.of(
+            ReservationStatus.REQUESTED, Set.of(),
+            ReservationStatus.RESERVED, Set.of(ReservationStatus.RESERVED),
+            ReservationStatus.COMPLETED, Set.of(ReservationStatus.RESERVED, ReservationStatus.COMPLETED),
+            ReservationStatus.WITHDRAWN, Set.of(ReservationStatus.WITHDRAWN));
 
     private final ReservationId id;
     private final CheckoutId checkoutId;
@@ -43,21 +53,28 @@ public final class Reservation {
     private Instant withdrawnAt;
     private Roster roster;
     private Instant completedAt;
-    private List<CompletionPhoto> completionPhotos = List.of();
+    private List<CompletionPhoto> completionPhotos;
+    private final long version;
 
     private Reservation(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms, Quote quote,
-            Version values, Instant requestedAt) {
+            Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline, ReservationStatus status,
+            Instant reservedAt, Instant withdrawnAt, Roster roster, Instant completedAt,
+            List<CompletionPhoto> completionPhotos, long version) {
         this.id = Objects.requireNonNull(id, "id");
-        this.checkoutId = checkoutId;
-        this.booking = booking;
-        this.terms = terms;
-        this.quote = quote;
-        this.values = values;
-        this.requestedAt = requestedAt;
-        boolean instant = terms.acceptancePolicy().reservesAtOnce();
-        this.status = instant ? ReservationStatus.RESERVED : ReservationStatus.REQUESTED;
-        this.reservedAt = instant ? requestedAt : null;
-        this.acceptanceDeadline = instant ? null : AcceptanceDeadline.from(requestedAt, booking.jobTime(), values);
+        this.checkoutId = Objects.requireNonNull(checkoutId, "checkoutId");
+        this.booking = Objects.requireNonNull(booking, "booking");
+        this.terms = Objects.requireNonNull(terms, "terms");
+        this.quote = Objects.requireNonNull(quote, "quote");
+        this.values = Objects.requireNonNull(values, "values");
+        this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
+        this.acceptanceDeadline = acceptanceDeadline;
+        this.status = Objects.requireNonNull(status, "status");
+        this.reservedAt = reservedAt;
+        this.withdrawnAt = withdrawnAt;
+        this.roster = roster;
+        this.completedAt = completedAt;
+        this.completionPhotos = List.copyOf(completionPhotos);
+        this.version = version;
     }
 
     /**
@@ -87,7 +104,70 @@ public final class Reservation {
         Version values = ReservationValues.asOf(paidAt);
         providerSchedule.block(id, provider.calendarBlockFor(booking.jobTime(), values));
         customerSchedule.block(id, booking.jobTime().interval());
-        return new Reservation(id, checkout.id(), booking, terms, quote, values, paidAt);
+        return requested(id, checkout.id(), booking, terms, quote, values, paidAt);
+    }
+
+    /** A new reservation: Requested, or Reserved at once under Instant, which never waits for acceptance (ACC-1). */
+    private static Reservation requested(ReservationId id, CheckoutId checkoutId, Booking booking,
+            ReservationTerms terms, Quote quote, Version values, Instant requestedAt) {
+        boolean instant = terms.acceptancePolicy().reservesAtOnce();
+        return new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
+                instant ? null : AcceptanceDeadline.from(requestedAt, booking.jobTime(), values),
+                instant ? ReservationStatus.RESERVED : ReservationStatus.REQUESTED, instant ? requestedAt : null,
+                null, null, null, List.of(), 0);
+    }
+
+    /**
+     * Rebuilds a reservation from what was stored, with the {@code version} it was saved at: the optimistic lock
+     * that decides whether an acceptance or a withdrawal was recorded first (REQ-5). The store moves the version on
+     * with each save; the reservation never does. A moment not reached yet is {@code null}, as is the acceptance
+     * deadline under Instant and the roster until it is set.
+     *
+     * <p>Only the shape is checked: the status fits the moments it was reserved, withdrawn and completed; it has an
+     * acceptance deadline exactly when its terms wait for acceptance; after-photos exactly once completed; and a
+     * roster only once reserved. No booking rule, notice or deadline is checked again: they held when the payment
+     * was confirmed, and the reservation keeps what it was Requested with (RES-8). Declined, Expired and Cancelled
+     * reservations are restored once the slices that reach them add what they record.
+     */
+    public static Reservation restore(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms,
+            Quote quote, Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline,
+            ReservationStatus status, Instant reservedAt, Instant withdrawnAt, Roster roster, Instant completedAt,
+            List<CompletionPhoto> completionPhotos, long version) {
+        Reservation reservation = new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
+                acceptanceDeadline, status, reservedAt, withdrawnAt, roster, completedAt, completionPhotos, version);
+        reservation.requireStoredShape();
+        return reservation;
+    }
+
+    private void requireStoredShape() {
+        requireShape(passedThrough().equals(PASSED_THROUGH.get(status)), "the moments its status " + status
+                + " passed through, and a status this slice reaches");
+        requireShape(acceptanceDeadline().isPresent() != terms.acceptancePolicy().reservesAtOnce(),
+                "an acceptance deadline exactly when its terms wait for acceptance");
+        requireShape(completionPhotos.isEmpty() != completedAt().isPresent(),
+                "after-photos exactly when it is completed");
+        requireShape(roster().isEmpty() || reservedAt().isPresent(), "a roster only once it is reserved");
+    }
+
+    /** The statuses the reservation has been through, read from the moments it records. */
+    private Set<ReservationStatus> passedThrough() {
+        Set<ReservationStatus> passed = EnumSet.noneOf(ReservationStatus.class);
+        if (reservedAt != null) {
+            passed.add(ReservationStatus.RESERVED);
+        }
+        if (withdrawnAt != null) {
+            passed.add(ReservationStatus.WITHDRAWN);
+        }
+        if (completedAt != null) {
+            passed.add(ReservationStatus.COMPLETED);
+        }
+        return passed;
+    }
+
+    private static void requireShape(boolean fits, String what) {
+        if (!fits) {
+            throw new IllegalArgumentException("A stored reservation needs " + what);
+        }
     }
 
     /** ACC-2: the provider accepts a Request before the acceptance deadline, and it becomes Reserved. */
@@ -255,5 +335,14 @@ public final class Reservation {
     /** JOB-6: the after-photos, kept as evidence for reports. */
     public List<CompletionPhoto> completionPhotos() {
         return completionPhotos;
+    }
+
+    /**
+     * The version the reservation was loaded at, 0 for one not saved yet. Whoever saves it first moves it on, and a
+     * save from an older version is refused as a conflict, so of an acceptance and a withdrawal only the one recorded
+     * first wins (REQ-5).
+     */
+    public long version() {
+        return version;
     }
 }
