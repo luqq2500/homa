@@ -39,6 +39,10 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "reservation.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "verification.domain": {
     "score": 100.0,
     "strength": 100.0

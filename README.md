@@ -56,7 +56,7 @@ Vertical slices from the plan; inside each slice: domain, then usecase, then inf
 | Slice | Contexts | Rules | Status |
 | --- | --- | --- | --- |
 | 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done: outbox, `ProcessedMessageStore`, ECS/Fargate packaging ([ADRs](docs/decisions/)) |
-| 1. Book and get paid | Customer, Verification (minimal), Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, CUS-7, CUS-10, IDN-1, IDN-2, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9–11, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | Domain layer done for rules v1.6 in all six contexts (100% mutation); usecase and infra next |
+| 1. Book and get paid | Customer, Verification (minimal), Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, CUS-7, CUS-10, IDN-1, IDN-2, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9–11, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | Domain and usecase layers done for rules v1.6 in all six contexts (100% mutation); infra and the end-to-end flow A next |
 | 2. Requests and withdrawals | Reservation, Payment | REQ-1–5 | `WITHDRAWN` and `withdraw()` in the domain; the rest not started |
 | 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Not started |
 | 4. Team and roster | Provider, Reservation | PRV-6, PRV-11, HLP-5–10, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | Not started |
