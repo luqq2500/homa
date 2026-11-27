@@ -59,7 +59,8 @@ abstract class OutboxSampleSupport {
     String publishAnotherAbout(String customerId) {
         String eventId = UUID.randomUUID().toString();
         transaction.executeWithoutResult(status -> events.publishEvent(
-                new CustomerRegisteredIE(eventId, customerId, "CYBERJAYA", "ACTIVE", Instant.now())));
+                new CustomerRegisteredIE(eventId, customerId, "CYBERJAYA", "1, Jalan Sample",
+                        "Ring the bell", "ACTIVE", Instant.now())));
         return eventId;
     }
 

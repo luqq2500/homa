@@ -55,7 +55,8 @@ class ViewReservationTest {
 
         assertThat(seen).isEqualTo(new ViewReservationResponse(reserved.id().value(), "RESERVED",
                 AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID, List.of(KITCHEN_CLEANING, LAUNDRY_FOLDING),
-                saturday(9, 45), JOB_START, JOB_END, 2, AISYAH_CITY, AISYAH_CITY, "", Money.myr(180),
+                saturday(9, 45), JOB_START, JOB_END, 2, ReservationTestBed.HOME_STREET_ADDRESS, AISYAH_CITY,
+                ReservationTestBed.HOME_ARRIVAL_NOTE, Money.myr(180),
                 Money.myr(20), Money.myr(200), REQUESTED_AT, ACCEPTANCE_DEADLINE, ACCEPTED_AT, null,
                 List.of(new RosteredMember(SITI_MEMBER_ID, "HELPER", "Siti", "photo-siti"),
                         new RosteredMember(NURUL_MEMBER_ID, "HELPER", "Nurul", "photo-nurul"),

@@ -15,10 +15,14 @@ import org.junit.jupiter.api.Test;
 
 class HandleCustomerRegisteredIETest {
 
+    private static final String STREET_ADDRESS = "B-12-3, Residensi Salak, Jalan Salak 1";
+    private static final String ARRIVAL_NOTE = "Guardhouse: say unit B-12-3";
+
     private final ReservationTestBed bed = new ReservationTestBed();
 
     private CustomerRegisteredIE registered(String eventId, String city) {
-        return new CustomerRegisteredIE(eventId, "customer-new", city, "ACTIVE", TAPPED_PAY_AT);
+        return new CustomerRegisteredIE(eventId, "customer-new", city, STREET_ADDRESS, ARRIVAL_NOTE, "ACTIVE",
+                TAPPED_PAY_AT);
     }
 
     @Test
@@ -28,9 +32,19 @@ class HandleCustomerRegisteredIETest {
         bed.customerRegistered.handle(registered("registered-1", AISYAH_CITY));
 
         CustomerStanding standing = bed.customers.findById("customer-new").orElseThrow();
-        assertThat(standing).isEqualTo(CustomerStanding.registered("customer-new",
-                new ServiceAddress(AISYAH_CITY, AISYAH_CITY, "")));
         assertThat(standing.refusal()).contains(BookingRefusal.CUSTOMER_NOT_VERIFIED);
+    }
+
+    @Test
+    @Tag("CUS-1")
+    @Tag("RES-8")
+    @DisplayName("Aisyah's home is kept whole: \"B-12-3, Residensi Salak\" in Salak Tinggi, with \"Guardhouse: say "
+            + "unit B-12-3\".")
+    void registeredCustomersWholeHomeAddressIsKept() {
+        bed.customerRegistered.handle(registered("registered-1", AISYAH_CITY));
+
+        assertThat(bed.customers.findById("customer-new")).contains(CustomerStanding.registered("customer-new",
+                new ServiceAddress(STREET_ADDRESS, AISYAH_CITY, ARRIVAL_NOTE)));
     }
 
     @Test

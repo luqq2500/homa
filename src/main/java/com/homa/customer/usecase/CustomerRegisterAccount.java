@@ -22,7 +22,7 @@ import java.time.Instant;
  * CUS-1, CUS-2, CUS-7: registers the person who signed in. The sign-in is looked up first, because one
  * identity-provider account holds one customer account across every customer; the aggregate refuses one that is
  * taken. The domain's refusals reach the caller unchanged. Publishes {@link CustomerRegisteredIE}, from which
- * Reservation keeps the customer's standing and city.
+ * Reservation keeps the customer's standing and full home address with its arrival note (RES-1, RES-8).
  */
 public class CustomerRegisterAccount implements CustomerRegistrator {
 
@@ -54,7 +54,8 @@ public class CustomerRegisterAccount implements CustomerRegistrator {
         customers.save(customer);
         String status = customer.statusAt(now).name();
         publisher.publish(new CustomerRegisteredIE(eventIds.next(), customer.id().value(),
-                customer.homeAddress().city().value(), status, now));
+                customer.homeAddress().city().value(), customer.homeAddress().streetAddress(),
+                customer.arrivalNote().value(), status, now));
         return new RegisterAccountResponse(customer.id().value(), status);
     }
 }

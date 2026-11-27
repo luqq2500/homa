@@ -8,7 +8,6 @@ import static com.homa.reservation.usecase.ReservationTestBed.standardCheckout;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.ie.events.CustomerVerifiedIE;
-import com.homa.reservation.domain.ServiceAddress;
 import com.homa.reservation.domain.replica.CustomerStanding;
 import com.homa.reservation.usecase.ReservationTestBed;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +29,7 @@ class HandleCustomerVerifiedIETest {
         bed.customerVerified.handle(verified("verified-1", UNVERIFIED_CUSTOMER_ID));
 
         assertThat(bed.customers.findById(UNVERIFIED_CUSTOMER_ID)).contains(new CustomerStanding(
-                UNVERIFIED_CUSTOMER_ID, true, false, new ServiceAddress(AISYAH_CITY, AISYAH_CITY, "")));
+                UNVERIFIED_CUSTOMER_ID, true, false, ReservationTestBed.homeIn(AISYAH_CITY)));
         assertThat(bed.startCheckout.start(standardCheckout(UNVERIFIED_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID))
                 .outcome()).isEqualTo("STARTED");
     }
@@ -54,7 +53,7 @@ class HandleCustomerVerifiedIETest {
         CustomerVerifiedIE event = verified("verified-1", UNVERIFIED_CUSTOMER_ID);
         bed.customerVerified.handle(event);
         CustomerStanding suspended = new CustomerStanding(UNVERIFIED_CUSTOMER_ID, false, true,
-                new ServiceAddress(AISYAH_CITY, AISYAH_CITY, ""));
+                ReservationTestBed.homeIn(AISYAH_CITY));
         bed.customers.save(suspended);
 
         bed.customerVerified.handle(event);

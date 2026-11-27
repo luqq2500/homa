@@ -82,9 +82,17 @@ public final class Customer {
         return !homeAddress.equals(previous);
     }
 
-    /** CUS-1: the customer tells the team a new way to reach the home. */
-    public void changeArrivalNote(ArrivalNote newArrivalNote) {
+    /**
+     * CUS-1: the customer tells the team a new way to reach the home. A reservation keeps the note from when it was
+     * Requested, like the address (RES-8).
+     *
+     * @return true when the new note differs from the one the customer had, so the caller announces it; false when
+     *         they entered the same note again
+     */
+    public boolean changeArrivalNote(ArrivalNote newArrivalNote) {
+        ArrivalNote previous = arrivalNote;
         this.arrivalNote = Required.detail(newArrivalNote, "an arrival note");
+        return !arrivalNote.equals(previous);
     }
 
     /**

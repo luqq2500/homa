@@ -70,4 +70,20 @@ class CustomerProfileTest {
         assertThat(newUnitMoved).isTrue();
         assertThat(aisyah.homeAddress().streetAddress()).isEqualTo("B-7-1, Residensi Salak, Jalan Salak 1");
     }
+
+    @Test
+    @Tag("CUS-1")
+    @Tag("RES-8")
+    @DisplayName("Aisyah saves her profile with the arrival note she already has, then with a new one: only the new "
+            + "note is a change.")
+    void arrivalNoteChangesOnlyWhenItDiffers() {
+        Customer aisyah = aisyah();
+
+        boolean sameNoteChanged = aisyah.changeArrivalNote(new ArrivalNote(AISYAH_ARRIVAL_NOTE));
+        boolean newNoteChanged = aisyah.changeArrivalNote(new ArrivalNote("Guardhouse: say unit B-12-3, then lift B"));
+
+        assertThat(sameNoteChanged).isFalse();
+        assertThat(newNoteChanged).isTrue();
+        assertThat(aisyah.arrivalNote().value()).isEqualTo("Guardhouse: say unit B-12-3, then lift B");
+    }
 }
