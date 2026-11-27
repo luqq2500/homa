@@ -57,15 +57,28 @@ public final class VerificationAttempt {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(personId, "personId");
         Objects.requireNonNull(startedAt, "startedAt");
-        String account = accountId == null || accountId.isBlank() ? null : accountId;
-        boolean forCustomer = Objects.requireNonNull(role, "role") == PersonRole.CUSTOMER;
-        if (forCustomer && account == null) {
-            throw new VerificationAccountMismatchException("a customer verifies for their customer account");
+        return new VerificationAttempt(id, personId, role, accountFor(Objects.requireNonNull(role, "role"), accountId),
+                startedAt);
+    }
+
+    /** CUS-3: a customer's verification names their account; an owner's or member's names none. */
+    private static String accountFor(PersonRole role, String accountId) {
+        String account = namedAccount(accountId);
+        if ((account != null) != (role == PersonRole.CUSTOMER)) {
+            throw mismatchFor(role);
         }
-        if (!forCustomer && account != null) {
-            throw new VerificationAccountMismatchException(role.description() + " verifies without a customer account");
-        }
-        return new VerificationAttempt(id, personId, role, account, startedAt);
+        return account;
+    }
+
+    /** A blank account names none. */
+    private static String namedAccount(String accountId) {
+        return accountId == null || accountId.isBlank() ? null : accountId;
+    }
+
+    private static VerificationAccountMismatchException mismatchFor(PersonRole role) {
+        return new VerificationAccountMismatchException(role == PersonRole.CUSTOMER
+                ? "a customer verifies for their customer account"
+                : role.description() + " verifies without a customer account");
     }
 
     /**
