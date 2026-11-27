@@ -58,6 +58,32 @@ com.homa.app.wiring/
    and decide nothing (EXT-1). In tests they are WireMock-backed or a test double bean; no real vendor is called.
 10. **The `Country policy`** instance (`CountryPolicy.MALAYSIA`) is chosen in `VerificationWiring`.
 
+## Beans, names and vendors (added before the first infra wave)
+
+11. **No stereotype annotations on infra classes.** Six contexts each have a `JdbcProcessedMessageStore`,
+    `ClockTimeSource` and `UuidEventIds`, and Spring would give them the same default bean name and fail at
+    startup. So infra classes carry no `@Component`, `@Repository` or `@Service`. The context's `<Context>Wiring`
+    (`@Configuration`, in `com.homa.app.wiring`) registers every adapter, listener, schedule, use case and handler
+    with `@Bean` and an **explicit, context-prefixed name**: `customerProcessedMessageStore`,
+    `customerTimeSource`, `reservationIEListener`. `@Scheduled`, `@EventListener` and `@Transactional` on those
+    classes' methods still work, because the beans are registered.
+12. **Wiring shape.** Use cases are exposed as their `port/in` type, wrapped with `TransactionalPort.wrap(...)`.
+    Handlers are exposed as their `<Event>IEHandler` type, unwrapped (the listener supplies the transaction).
+    Adapters are exposed as their `port/out` type. Nothing else is exposed.
+13. **Vendor ports with no vendor chosen** (payment provider, verification service, account-holder check, completion
+    photo store, notifiers) get an `Unconfigured<Port>` adapter in `infra/transport/client`, registered by default.
+    It fails with the port's own "unavailable" refusal: for the payment gateway that is EXT-2 (nothing becomes
+    Requested, the customer can retry); for the verification service, EXT-5 (verification waits). It never invents
+    a result. A real adapter is registered instead when the vendor's property is set
+    (`@ConditionalOnProperty(homa.<vendor>.enabled=true)`), and tests register their own doubles.
+14. **Test helpers stay inside the context's own test package** (`com.homa.<context>.infra`), so six agents never
+    write the same file. Use the existing `com.homa.app.PostgresContainer`. Prefer a slice test that starts only the
+    datasource, Flyway and the context's adapters over a full application context, to keep each IT fast. A single
+    full-context startup test per context is also expected, to prove its wiring.
+15. **No foreign keys between contexts' tables**, and no table is read by another context's adapter. Contexts
+    share only the `outbox_event` and `processed_message` tables, through the app-level outbox and each
+    context's own `JdbcProcessedMessageStore`.
+
 ## Tests
 
 - Each repository and store has an `*IT` against Testcontainers PostgreSQL (`@ServiceConnection`, see
