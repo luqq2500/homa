@@ -1,127 +1,132 @@
 package com.homa.provider.domain;
 
-import com.homa.provider.domain.exception.BusinessVerificationAlreadyRecordedException;
-import com.homa.provider.domain.exception.BusinessVerificationNotFailedException;
 import com.homa.provider.domain.exception.NoActiveHelperException;
+import com.homa.provider.domain.exception.NoVerifiedPayoutAccountException;
 import com.homa.provider.domain.exception.ProviderAlreadyLiveException;
-import com.homa.provider.domain.exception.ProviderNotVerifiedException;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
- * A homecare business on Homa. It registers with its business registration, continues onboarding once the business
- * is verified (PRV-1), and goes live with at least one active helper (PRV-2); supervisors are optional (PRV-3).
+ * A homecare provider on Homa, run by one owner (PRV-1). It is opened by an identity-verified owner, builds its team
+ * from verified people (HLP-1 to HLP-4), and goes live with a verified payout account in its name and at least one
+ * active helper (PRV-2); supervisors are optional (PRV-3). Business verification is not Provider's: it is
+ * Verification's {@code BusinessVerification} (PRV-7).
  *
- * <p>Left for slice 6: {@code register} refusing a registration with debt (PAY-9, PAY-11), {@code startClosing} and
- * {@code close} (PRV-5), suspension and re-verification (MON-1 to MON-4), and insurance (PRV-4).
+ * <p>Left for later slices:
+ * <ul>
+ *   <li>Slice 4: one provider per person (HLP-10). {@link #open} and {@link #addTeamMember} will take an
+ *       {@code Affiliation}, looked up by personId the way Customer's {@code SignInStatus} is, and refuse a person who
+ *       already owns or belongs to a provider. The owner can also join their own team (PRV-6).</li>
+ *   <li>Slice 6: Business status (PRV-7), derived from {@code BusinessVerificationChangedIE} (business and owner link
+ *       verified) and a payout account held by {@link PayoutAccountHolder#BUSINESS}; foreign members only for a
+ *       Business provider (PRV-8) and their suspension on its loss (PRV-9); suspension, including the owner's
+ *       (PRV-12, SUS-5, MON-6), which adds SUSPENDED to {@link Bookability}; closing (PRV-5), which adds CLOSING;
+ *       payout account changes (PRV-10); insurance (PRV-4); and {@code open} refusing an owner or business with debt
+ *       (PAY-9, PAY-11).</li>
+ * </ul>
  */
 public final class Provider {
 
-    /** PRV-2: a provider needs at least this many active helpers to go live. */
-    public static final int MINIMUM_ACTIVE_HELPERS = ProviderValues.MINIMUM_ACTIVE_HELPERS;
-
     private final ProviderId id;
-    private BusinessRegistration registration;
+    private final Owner owner;
     private ProviderStatus status;
-    private Instant businessVerifiedAt;
+    private PayoutAccountHolder verifiedPayoutAccount;
 
-    private Provider(ProviderId id, BusinessRegistration registration, ProviderStatus status,
-            Instant businessVerifiedAt) {
+    private Provider(ProviderId id, Owner owner, ProviderStatus status, PayoutAccountHolder verifiedPayoutAccount) {
         this.id = Objects.requireNonNull(id, "id");
-        this.registration = Objects.requireNonNull(registration, "registration");
+        this.owner = Objects.requireNonNull(owner, "owner");
         this.status = Objects.requireNonNull(status, "status");
-        this.businessVerifiedAt = businessVerifiedAt;
-    }
-
-    /** A business submits its registration and awaits business verification (PRV-1). */
-    public static Provider register(ProviderId id, BusinessRegistration registration) {
-        return new Provider(id, registration, ProviderStatus.REGISTERED, null);
-    }
-
-    /** Rebuilds a provider from what was stored; {@code businessVerifiedAt} is null until the business is verified. */
-    public static Provider restore(ProviderId id, BusinessRegistration registration, ProviderStatus status,
-            Instant businessVerifiedAt) {
-        return new Provider(id, registration, status, businessVerifiedAt);
+        this.verifiedPayoutAccount = verifiedPayoutAccount;
     }
 
     /**
-     * Accepts the result of the business verification (KYB) that the registration is a legal business entity in the
-     * country (PRV-1). A pass lets the provider continue onboarding; a failure stops it until the business
-     * resubmits ({@link #resubmitForVerification}).
+     * A verified person opens a provider account as its owner (PRV-1). The owner must be verified as local and aged
+     * 18 or above; see {@link Owner#verifiedAs}.
      */
-    public void recordBusinessVerification(VerificationOutcome outcome, Instant verifiedAt) {
-        Objects.requireNonNull(outcome, "outcome");
-        Objects.requireNonNull(verifiedAt, "verifiedAt");
-        if (status != ProviderStatus.REGISTERED) {
-            throw new BusinessVerificationAlreadyRecordedException(id.value());
-        }
-        if (outcome.passed()) {
-            status = ProviderStatus.VERIFIED;
-            businessVerifiedAt = verifiedAt;
-        } else {
-            status = ProviderStatus.VERIFICATION_FAILED;
-        }
+    public static Provider open(ProviderId id, VerifiedPersonFacts owner) {
+        return new Provider(id, Owner.verifiedAs(owner), ProviderStatus.OPENED, null);
     }
 
     /**
-     * A business whose verification failed tries again, with its registration details as they stand now, which may
-     * be corrected (PRV-1). It awaits a new verification result; nothing else about it changes.
+     * Rebuilds a provider from what was stored. {@code verifiedPayoutAccount} is null while it has no verified payout
+     * account. Applies no rule: the provider was valid when it was saved.
      */
-    public void resubmitForVerification(BusinessRegistration resubmitted) {
-        Objects.requireNonNull(resubmitted, "resubmitted");
-        if (status != ProviderStatus.VERIFICATION_FAILED) {
-            throw new BusinessVerificationNotFailedException(id.value());
-        }
-        registration = resubmitted;
-        status = ProviderStatus.REGISTERED;
+    public static Provider restore(ProviderId id, Owner owner, ProviderStatus status,
+            PayoutAccountHolder verifiedPayoutAccount) {
+        return new Provider(id, owner, status, verifiedPayoutAccount);
     }
 
     /**
-     * Adds a helper or supervisor who passed verification (HLP-1 to HLP-4). Only a verified business can build its
-     * team (PRV-1), before or after going live (PRV-3: a supervisor can join later).
+     * Adds a verified person to the team at {@code addedAt}, before or after going live (PRV-3: a supervisor can join
+     * later). The member must have passed the age check (HLP-1); a local member is verified as local (HLP-2); a
+     * foreign member needs at least 90 days left on their permit (HLP-3) and the provider's confirmation that they
+     * work lawfully for it (HLP-4), given as {@code employmentConfirmed}, which a local member doesn't need.
+     *
+     * <p>Slice 6 adds PRV-8 here: a foreign member needs a Business provider.
      */
-    public TeamMember addTeamMember(TeamMemberId memberId, TeamRole role, Eligibility eligibility,
-            MemberVerification verification) {
-        requireBusinessVerified();
-        return TeamMember.add(memberId, id, role, eligibility, verification);
+    public TeamMember addTeamMember(TeamMemberId memberId, TeamRole role, VerifiedPersonFacts person,
+            boolean employmentConfirmed, Instant addedAt) {
+        return TeamMember.add(memberId, id, role, person, employmentConfirmed, addedAt);
     }
 
     /**
-     * Goes live once the business is verified (PRV-1) and with at least one active helper (PRV-2). Supervisors are
-     * optional and don't count (PRV-3); count with {@link Team#activeHelperCount()}.
+     * Payment reports that a payout account in the provider's name passed the holder check, held by the owner or by
+     * the business ({@code PayoutAccountVerifiedIE}). The provider can now go live and be booked (PRV-2).
+     */
+    public void recordPayoutAccountVerified(PayoutAccountHolder holder) {
+        this.verifiedPayoutAccount = Objects.requireNonNull(holder, "holder");
+    }
+
+    /**
+     * Payment reports that the provider no longer has a verified payout account in its name
+     * ({@code PayoutAccountVerifiedIE} with {@code verified} false). It can't be booked until one is verified (PRV-2).
+     */
+    public void recordPayoutAccountNotVerified() {
+        this.verifiedPayoutAccount = null;
+    }
+
+    /**
+     * Goes live with a verified payout account in the provider's name and at least one active helper (PRV-2).
+     * Supervisors are optional and don't count (PRV-3); count with {@link Team#activeHelperCount()}.
      */
     public void goLive(int activeHelperCount) {
         if (status == ProviderStatus.LIVE) {
             throw new ProviderAlreadyLiveException(id.value());
         }
-        requireBusinessVerified();
-        if (activeHelperCount < MINIMUM_ACTIVE_HELPERS) {
+        if (verifiedPayoutAccount == null) {
+            throw new NoVerifiedPayoutAccountException(id.value());
+        }
+        if (activeHelperCount < ProviderValues.MINIMUM_ACTIVE_HELPERS) {
             throw new NoActiveHelperException(id.value());
         }
         status = ProviderStatus.LIVE;
     }
 
-    /** Whether customers can book this provider: only when live and with an active helper (PRV-6). */
+    /**
+     * Whether customers can book this provider (PRV-2): only when live, with a verified payout account in its name and
+     * at least one active helper. A missing payout account is named before missing helpers, since only the owner can
+     * fix it.
+     */
     public Bookability bookabilityFor(int activeHelperCount) {
         if (status != ProviderStatus.LIVE) {
             return Bookability.NOT_LIVE;
         }
-        return activeHelperCount >= MINIMUM_ACTIVE_HELPERS ? Bookability.BOOKABLE : Bookability.NO_ACTIVE_HELPERS;
-    }
-
-    private void requireBusinessVerified() {
-        if (!status.isBusinessVerified()) {
-            throw new ProviderNotVerifiedException(id.value());
+        if (verifiedPayoutAccount == null) {
+            return Bookability.NO_VERIFIED_PAYOUT_ACCOUNT;
         }
+        return activeHelperCount >= ProviderValues.MINIMUM_ACTIVE_HELPERS
+                ? Bookability.BOOKABLE
+                : Bookability.NO_ACTIVE_HELPERS;
     }
 
     public ProviderId id() {
         return id;
     }
 
-    public BusinessRegistration registration() {
-        return registration;
+    /** The one person who runs the provider (PRV-1). */
+    public Owner owner() {
+        return owner;
     }
 
     public ProviderStatus status() {
@@ -132,8 +137,8 @@ public final class Provider {
         return status == ProviderStatus.LIVE;
     }
 
-    /** When the business passed verification, if it has. */
-    public Optional<Instant> businessVerifiedAt() {
-        return Optional.ofNullable(businessVerifiedAt);
+    /** Who holds the provider's verified payout account; empty while it has none (PRV-2). */
+    public Optional<PayoutAccountHolder> verifiedPayoutAccount() {
+        return Optional.ofNullable(verifiedPayoutAccount);
     }
 }
