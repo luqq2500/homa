@@ -21,7 +21,8 @@ class PaymentIdsTest {
                 Arguments.of("CustomerId", (Function<String, Object>) CustomerId::new),
                 Arguments.of("ProviderId", (Function<String, Object>) ProviderId::new),
                 Arguments.of("ReservationId", (Function<String, Object>) ReservationId::new),
-                Arguments.of("ReportId", (Function<String, Object>) ReportId::new));
+                Arguments.of("ReportId", (Function<String, Object>) ReportId::new),
+                Arguments.of("PayoutAccountId", (Function<String, Object>) PayoutAccountId::new));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -49,6 +50,14 @@ class PaymentIdsTest {
 
         assertThat(first.value()).isNotBlank();
         assertThat(first).isNotEqualTo(PaymentAttemptId.generate());
+    }
+
+    @Test
+    void generatedPayoutAccountIdsAreUnique() {
+        PayoutAccountId first = PayoutAccountId.generate();
+
+        assertThat(first.value()).isNotBlank();
+        assertThat(first).isNotEqualTo(PayoutAccountId.generate());
     }
 
     @Test

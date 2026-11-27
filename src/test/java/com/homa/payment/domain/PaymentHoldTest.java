@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.homa.fixtures.HomaFixtures;
 import com.homa.kernel.Money;
 import com.homa.payment.domain.exception.AmountNotPayableException;
+import com.homa.payment.domain.exception.CheckoutNotAwaitingPaymentException;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +57,43 @@ class PaymentHoldTest {
         assertThat(hold.held()).isEqualTo(Money.myr(0));
         assertThat(hold.countedAttempt()).isEmpty();
         assertThat(hold.heldSince()).isEmpty();
+    }
+
+    @Test
+    @Tag("RES-12")
+    @DisplayName("Aisyah taps Pay twice before any payment confirms: each attempt gets its own gateway reference.")
+    void customerCanStartAttemptsWhileNoPaymentIsConfirmed() {
+        PaymentHold hold = aisyahsCheckoutAwaitingPayment();
+
+        PaymentAttemptId card = hold.startAttempt();
+        PaymentAttemptId onlineBanking = hold.startAttempt();
+
+        assertThat(card).isNotNull().isNotEqualTo(onlineBanking);
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.PENDING);
+    }
+
+    @Test
+    @Tag("RES-12")
+    @DisplayName("Aisyah's RM200 is held: she can't start another payment, which would only be refunded.")
+    void heldCheckoutTakesNoFurtherPayment() {
+        PaymentHold hold = aisyahsHeldPayment();
+
+        assertThatThrownBy(hold::startAttempt)
+                .isInstanceOf(CheckoutNotAwaitingPaymentException.class)
+                .hasMessageContaining(AISYAHS_HOLD.value())
+                .hasMessageContaining("HELD");
+    }
+
+    @Test
+    @Tag("RES-11")
+    @DisplayName("Aisyah's rejected checkout was refunded in full: it takes no further payment.")
+    void refundedCheckoutTakesNoFurtherPayment() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.refundRejectedCheckout();
+
+        assertThatThrownBy(hold::startAttempt)
+                .isInstanceOf(CheckoutNotAwaitingPaymentException.class)
+                .hasMessageContaining("REFUNDED");
     }
 
     @Test

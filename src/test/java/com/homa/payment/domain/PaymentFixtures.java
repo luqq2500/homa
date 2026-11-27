@@ -26,6 +26,19 @@ final class PaymentFixtures {
     static final ReportId VASE_REPORT = new ReportId("report-cracked-vase");
     static final ReportId BATHROOM_REPORT = new ReportId("report-bathroom-not-cleaned");
 
+    /** Kemas Home Sdn Bhd's company bank account, the payout account it submits (PRV-2, PRV-7). */
+    static final PayoutAccountId KEMAS_HOMES_ACCOUNT = new PayoutAccountId("payout-account-kemas-home-maybank");
+    static final BankAccount KEMAS_HOMES_BANK_ACCOUNT =
+            new BankAccount("MAYBANK", "514011223344", HomaFixtures.KEMAS_HOME_NAME);
+    /** The account Kemas Home submits after its first one fails the holder check. */
+    static final PayoutAccountId KEMAS_HOMES_SECOND_ACCOUNT = new PayoutAccountId("payout-account-kemas-home-cimb");
+    static final BankAccount KEMAS_HOMES_SECOND_BANK_ACCOUNT =
+            new BankAccount("CIMB", "8001234567", HomaFixtures.KEMAS_HOME_NAME);
+    /** Azman submits Kemas Home's payout account the week before it goes live. */
+    static final Instant ACCOUNT_SUBMITTED_AT = at(2026, 11, 23, 10, 0);
+    /** Verification's holder check comes back the same afternoon. */
+    static final Instant ACCOUNT_CHECKED_AT = at(2026, 11, 23, 15, 0);
+
     /** Aisyah's online banking payment for the standard checkout. */
     static final PaymentAttemptId AISYAHS_ONLINE_BANKING = new PaymentAttemptId("attempt-aisyah-online-banking");
     /** Aisyah's card payment, retried after her first card attempt failed (RES-12). */
@@ -45,6 +58,19 @@ final class PaymentFixtures {
     static final Instant MARKED_COMPLETED_AT = HomaFixtures.JOB_END;
     /** The Protection Window ends Sunday 14:00. */
     static final Instant PROTECTION_WINDOW_END = PROTECTION_WINDOW.end();
+
+    /** Kemas Home's business payout account, waiting for Verification's holder check. */
+    static PayoutAccount kemasHomesSubmittedAccount() {
+        return PayoutAccount.submit(KEMAS_HOME, KEMAS_HOMES_ACCOUNT, PayoutAccountHolder.BUSINESS,
+                KEMAS_HOMES_BANK_ACCOUNT, ACCOUNT_SUBMITTED_AT);
+    }
+
+    /** Kemas Home's business payout account, its holder matched (PRV-2). */
+    static PayoutAccount kemasHomesVerifiedAccount() {
+        PayoutAccount account = kemasHomesSubmittedAccount();
+        account.recordHolderCheck(KEMAS_HOMES_ACCOUNT, true, ACCOUNT_CHECKED_AT);
+        return account;
+    }
 
     /** Aisyah has tapped Pay; the gateway has not confirmed any attempt yet. */
     static PaymentHold aisyahsCheckoutAwaitingPayment() {
