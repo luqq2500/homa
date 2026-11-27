@@ -126,4 +126,12 @@ class BookingBoundsTest {
         assertThatThrownBy(() -> defaults.withHelpersUpToActiveTeam(0)).isInstanceOf(InvalidBookingBoundsException.class);
         assertThatThrownBy(() -> defaults.withHelpers(3, 2)).isInstanceOf(InvalidBookingBoundsException.class);
     }
+
+    @Test
+    @Tag("RES-5")
+    @DisplayName("Booked hours move in 15-minute steps, whatever the provider's bounds")
+    void bookedHoursMoveInFifteenMinuteSteps() {
+        assertThat(BookingBounds.defaults().step()).isEqualTo(Duration.ofMinutes(15));
+        assertThat(BookingBounds.defaults().withHours(TWO_HOURS, SIX_HOURS).step()).isEqualTo(Duration.ofMinutes(15));
+    }
 }
