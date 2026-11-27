@@ -26,7 +26,7 @@ public final class Roster {
         return new Roster(copy);
     }
 
-    /** ROS-6: everyone the customer is shown, with name and photo. */
+    /** ROS-6: everyone the customer is shown, with name and verified photo. */
     public List<RosterMember> members() {
         return members;
     }

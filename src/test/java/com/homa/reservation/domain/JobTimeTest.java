@@ -26,7 +26,7 @@ class JobTimeTest {
 
     @Test
     @Tag("JOB-1")
-    @DisplayName("The team arrives at Aisyah's home at 9:52 and starts at 10:00.")
+    @DisplayName("The team arrives at 9:52 and starts at 10:00.")
     void teamArrivesDuringTheCheckInPeriodBeforeTheJobStarts() {
         assertThat(standard.checkInPeriod(VALUES)).isEqualTo(CHECK_IN_PERIOD);
         assertThat(standard.checkInStart(VALUES)).isEqualTo(saturday(9, 45));
@@ -74,7 +74,7 @@ class JobTimeTest {
 
     @Test
     @Tag("JOB-5")
-    @DisplayName("Kemas Home forgets. It's reminded at 14:00 and 16:00.")
+    @DisplayName("Kemas Home is reminded at 14:00 and 16:00.")
     void completionRemindersComeAtJobEndAndTwoHoursLater() {
         assertThat(standard.completionReminders(VALUES)).containsExactly(saturday(14, 0), saturday(16, 0));
     }

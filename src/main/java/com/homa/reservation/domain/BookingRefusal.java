@@ -8,9 +8,14 @@ import static com.homa.reservation.domain.CheckoutRejection.TIME_TAKEN;
  * refunded in full at once, for the {@link #rejection()} reason (P1, RES-11).
  */
 public enum BookingRefusal {
-    /** CUS-3, CUS-5: only a registered customer in good standing can reserve. */
-    CUSTOMER_CANNOT_RESERVE(RULE_FAILED),
-    /** PRV-6: the provider can't be booked, for example with no active helpers. */
+    /**
+     * CUS-3: only an identity-verified customer can reserve. At checkout the customer is asked to verify first,
+     * before paying; a confirmed payment refused for it is refunded as a failed rule.
+     */
+    CUSTOMER_NOT_VERIFIED(RULE_FAILED),
+    /** CUS-5: a suspended customer can't reserve. */
+    CUSTOMER_SUSPENDED(RULE_FAILED),
+    /** PRV-2: the provider can't be booked, for example with no active helpers or no verified payout account. */
     PROVIDER_NOT_BOOKABLE(RULE_FAILED),
     /** RES-1. */
     CITY_NOT_COVERED(RULE_FAILED),
@@ -44,5 +49,13 @@ public enum BookingRefusal {
     /** The reason a refused paid checkout is rejected with, for {@code ReservationCheckoutRejectedIE}. */
     public CheckoutRejection rejection() {
         return rejection;
+    }
+
+    /**
+     * CUS-3: the customer can go on once they verify their identity. At checkout this asks them to verify instead of
+     * opening a payment; browsing and enquiries never need it.
+     */
+    public boolean asksForVerification() {
+        return this == CUSTOMER_NOT_VERIFIED;
     }
 }

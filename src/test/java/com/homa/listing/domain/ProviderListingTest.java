@@ -41,8 +41,8 @@ class ProviderListingTest {
 
     @Test
     @Tag("OFR-1")
-    @DisplayName("Kemas Home picks \"Kitchen cleaning\", \"Laundry folding\" and \"Bathroom cleaning\", the tool \"HEPA vacuum\", "
-            + "and the cities Salak Tinggi, Cyberjaya and Putrajaya.")
+    @DisplayName("Kemas Home picks kitchen cleaning, laundry folding and bathroom cleaning, a HEPA vacuum, and Salak "
+            + "Tinggi, Cyberjaya and Putrajaya.")
     void aProviderChoosesItsJobsToolsAndCitiesFromHomaPresets() {
         ProviderListing kemasHome = kemasHomeListing();
 
@@ -137,7 +137,7 @@ class ProviderListingTest {
 
     @Test
     @Tag("OFR-5")
-    @DisplayName("Kemas Home sets 2 to 6 hours and leaves helpers on default")
+    @DisplayName("Kemas Home sets 2 to 6 hours and keeps the helper default")
     void aProviderSetsItsBookingBounds() {
         ProviderListing kemasHome = kemasHomeListing();
         BookingBounds twoToSix = BookingBounds.defaults().withHours(Duration.ofHours(2), Duration.ofHours(6));
@@ -150,7 +150,7 @@ class ProviderListingTest {
 
     @Test
     @Tag("OFR-9")
-    @DisplayName("Kemas Home chooses Request and Standard. These are shown on its page before a customer reserves.")
+    @DisplayName("Kemas Home's page shows Request and Standard.")
     void aProviderChoosesExactlyOneAcceptancePolicyAndOneCancellationTier() {
         ProviderListing kemasHome = kemasHomeListing();
 

@@ -47,7 +47,7 @@ class ReservationPricingTest {
 
     @Test
     @Tag("CAN-1")
-    @DisplayName("The Base Cancellation Fee is one discounted hour for both helpers: 25 × 2 × 1 × 0.9 = RM45.")
+    @DisplayName("The Base Cancellation Fee is RM45, not RM50: 25 × 2 helpers × 1 hour × (1 − 10%).")
     void baseCancellationFeeIsOneDiscountedHourForAllBookedHelpers() {
         assertThat(quote(240, 2).baseCancellationFee()).isEqualTo(BASE_CANCELLATION_FEE);
     }
@@ -75,7 +75,7 @@ class ReservationPricingTest {
     }
 
     @Test
-    @Tag("RES-6")
+    @Tag("OFR-3")
     @DisplayName("Kemas Home sets RM20 flat. Another provider sets RM10 for Salak Tinggi and RM25 for Putrajaya.")
     void travelFeeFollowsTheProvidersTravelFeeRule() {
         assertThat(TravelFeeRule.flat(FLAT_TRAVEL_FEE).feeFor("PUTRAJAYA")).isEqualTo(FLAT_TRAVEL_FEE);

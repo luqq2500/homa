@@ -4,25 +4,52 @@ import com.homa.reservation.domain.BookingRefusal;
 import com.homa.reservation.domain.ServiceAddress;
 import com.homa.reservation.domain.exception.BookingRefusedException;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
- * A registered customer as Reservation sees it, kept up to date from Customer's events. Only registered customers
- * have one (CUS-3); a suspended customer can't make reservations (CUS-5).
+ * A registered customer as Reservation sees it, kept up to date from Customer's events. Only an identity-verified
+ * customer can make reservations (CUS-3), and a suspended customer can't (CUS-5). Reservation learns that a customer
+ * is verified from Customer, never from Verification.
+ *
+ * @param identityVerified the customer's identity is verified (CUS-3, CUS-10); a newly registered customer isn't
+ *                         yet, and verifies at their first reservation, before paying
  */
-public record CustomerStanding(String customerId, boolean suspended, ServiceAddress homeAddress) {
+public record CustomerStanding(
+        String customerId, boolean identityVerified, boolean suspended, ServiceAddress homeAddress) {
 
     public CustomerStanding {
         Objects.requireNonNull(customerId, "customerId");
         Objects.requireNonNull(homeAddress, "homeAddress");
     }
 
+    /** A customer who has just registered: not yet identity verified, and not suspended (CUS-1, CUS-3). */
+    public static CustomerStanding registered(String customerId, ServiceAddress homeAddress) {
+        return new CustomerStanding(customerId, false, false, homeAddress);
+    }
+
+    /** The same customer once their identity is verified (CUS-3). */
+    public CustomerStanding verified() {
+        return new CustomerStanding(customerId, true, suspended, homeAddress);
+    }
+
     public boolean canReserve() {
-        return !suspended;
+        return refusal().isEmpty();
+    }
+
+    /**
+     * Why the customer can't reserve, if they can't: a suspension (CUS-5), or an identity not yet verified (CUS-3).
+     * A suspension is named first, because verifying wouldn't let a suspended customer reserve.
+     */
+    public Optional<BookingRefusal> refusal() {
+        if (suspended) {
+            return Optional.of(BookingRefusal.CUSTOMER_SUSPENDED);
+        }
+        return identityVerified ? Optional.empty() : Optional.of(BookingRefusal.CUSTOMER_NOT_VERIFIED);
     }
 
     public void requireCanReserve() {
-        if (!canReserve()) {
-            throw new BookingRefusedException(BookingRefusal.CUSTOMER_CANNOT_RESERVE);
-        }
+        refusal().ifPresent(refusal -> {
+            throw new BookingRefusedException(refusal);
+        });
     }
 }

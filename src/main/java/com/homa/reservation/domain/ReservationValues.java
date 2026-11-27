@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * The Homa-set values Reservation owns (§11 of the business rules). They are reservation values: a reservation keeps
+ * The Homa-set values Reservation owns (§13 of the business rules). They are reservation values: a reservation keeps
  * the version in force when it was Requested (P3, RES-8). A change never edits a number in place; it adds a new
  * {@link Version} with a later {@code effectiveFrom}, and every rule reads {@link #asOf(Instant)} at the
  * reservation's {@code requestedAt}.
@@ -78,7 +78,7 @@ public final class ReservationValues {
     }
 
     /**
-     * One dated set of Reservation's values (§11).
+     * One dated set of Reservation's values (§13).
      *
      * @param effectiveFrom                  reservations Requested from this moment use this version
      * @param checkInPeriod                  the Check-in Period before the job start time: 15 minutes (§1, JOB-1)

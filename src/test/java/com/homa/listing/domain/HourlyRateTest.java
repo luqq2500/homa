@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 class HourlyRateTest {
 
     @Test
-    @DisplayName("Kemas Home sets RM25 per helper per hour. A 2-hour job with 2 helpers is priced 25 × 2 × 2 = RM100 before travel.")
+    @DisplayName("Kemas Home sets RM25. A 2-hour, 2-helper job is 25 × 2 × 2 = RM100 before travel.")
     void aTwoHourJobWithTwoHelpersIsPricedPerHelperPerHour() {
         assertThat(KEMAS_HOME_RATE.priceFor(Duration.ofHours(2), 2)).isEqualTo(Money.myr(100));
     }
@@ -39,7 +39,7 @@ class HourlyRateTest {
 
     @Test
     @Tag("OFR-11")
-    @DisplayName("Kemas Home's RM25 after its 10% discount is RM22.50 per helper hour; with no discount it stays RM25")
+    @DisplayName("Its 10% gives RM22.50; with no discount it stays RM25")
     void theRateAfterADiscountIsTheRateLessTheDiscount() {
         assertThat(KEMAS_HOME_RATE.afterDiscount(Percentage.of(10))).isEqualTo(Money.myr("22.50"));
         assertThat(KEMAS_HOME_RATE.afterDiscount(Percentage.ZERO)).isEqualTo(Money.myr(25));

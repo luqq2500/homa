@@ -35,7 +35,7 @@ class ProviderScheduleTest {
 
     @Test
     @Tag("RES-9")
-    @DisplayName("Aisyah's request for Saturday 10:00–14:00 blocks Kemas Home from 9:45 to 14:30. Another customer can't book Kemas Home at 11:00 on Saturday, even for 1 helper; the earliest start after Aisyah's job is 14:45.")
+    @DisplayName("Aisyah's request blocks Kemas Home on Saturday 9:45–14:30 from Monday 20:00. No one can book it at 11:00; the next start is 14:45.")
     void providerHasOnlyOneReservationAtATime() {
         Reservation aisyahs = market.requestStandard();
 
@@ -53,7 +53,7 @@ class ProviderScheduleTest {
 
     @Test
     @Tag("RES-11")
-    @DisplayName("Aisyah and Mei both pay for Kemas Home on Saturday at 10:00. Aisyah's payment confirms at 20:01 and Mei's at 20:02. Aisyah's reservation is Requested; Mei gets her RM200 back straight away and is told the slot was taken.")
+    @DisplayName("Aisyah's payment confirms at 20:01 and Mei's at 20:02. Aisyah's is Requested; Mei gets RM200 back straight away.")
     void firstConfirmedPaymentForATimeWins() {
         Checkout aisyahsCheckout = market.checkout(standardBooking(), TAPPED_PAY_AT);
         Checkout meisCheckout = market.checkout(meiBooking(), monday(19, 59));

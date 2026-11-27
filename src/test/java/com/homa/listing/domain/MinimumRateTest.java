@@ -23,7 +23,7 @@ class MinimumRateTest {
     }
 
     @Test
-    @DisplayName("Kemas Home charges RM25, so its largest possible discount is 20% (RM25 × 0.8 = RM20)")
+    @DisplayName("At RM25, Kemas Home's largest discount is 20%.")
     void kemasHomesLargestDiscountIsTwentyPercent() {
         assertThat(KEMAS_HOME_RATE.afterDiscount(Percentage.of(20))).isEqualTo(Money.myr(20));
         assertThat(MinimumRate.HOMA.allows(KEMAS_HOME_RATE, discountOf("20"))).isTrue();
@@ -32,14 +32,14 @@ class MinimumRateTest {
     }
 
     @Test
-    @DisplayName("Its 10% discount gives RM22.50, which is allowed")
+    @DisplayName("Its 10% gives RM22.50.")
     void kemasHomesTenPercentDiscountIsAllowed() {
         assertThat(KEMAS_HOME_RATE.afterDiscount(KEMAS_HOME_DISCOUNT.rate())).isEqualTo(Money.myr("22.50"));
         assertThat(MinimumRate.HOMA.allows(KEMAS_HOME_RATE, KEMAS_HOME_DISCOUNT)).isTrue();
     }
 
     @Test
-    @DisplayName("A provider charging RM40 could offer up to 50%, but not 51%")
+    @DisplayName("A provider charging RM40 can offer up to 50%, but not 51%.")
     void aProviderChargingFortyCanOfferUpToHalfOff() {
         assertThat(MinimumRate.HOMA.allows(FORTY, discountOf("50"))).isTrue();
         assertThat(MinimumRate.HOMA.allows(FORTY, discountOf("51"))).isFalse();

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A provider's listing on Homa: the offerings and settings of §3.4. The provider creates it by choosing what has no
+ * A provider's listing on Homa: the offerings and settings of §3.5. The provider creates it by choosing what has no
  * default (jobs and cities, the rate, the acceptance policy and the cancellation tier); everything else starts at
  * its default (no travel fee, no discount, 1 to 8 hours, 1 helper up to the active team, 2 hours' notice, 30
  * minutes' buffer). Every change returns the full terms snapshot so it can be published (RES-8).

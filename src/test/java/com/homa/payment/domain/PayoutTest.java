@@ -54,8 +54,7 @@ class PayoutTest {
 
     @Test
     @Tag("PAY-2")
-    @DisplayName("The job is marked Completed on Saturday, no report is filed, and the Protection Window ends "
-            + "Sunday 14:00. The payout is released then.")
+    @DisplayName("With no report, Kemas Home is paid at Sunday 14:00.")
     void payoutIsReleasedWhenTheProtectionWindowEndsAfterTheJobIsCompleted() {
         Payout payout = kemasHomesPayoutAtReserved();
 
@@ -173,8 +172,8 @@ class PayoutTest {
 
     @Test
     @Tag("JOB-5")
-    @DisplayName("Kemas Home forgets and marks the job Completed on Monday. The payout is released after that, "
-            + "with no fine.")
+    @DisplayName("Kemas Home is reminded at 14:00 and 16:00, marks it on Monday, and is paid after that, with no "
+            + "fine.")
     void jobMarkedCompletedAfterTheProtectionWindowIsReleasableAtOnce() {
         Instant markedCompletedOnMonday = at(2026, 12, 7, 9, 0);
         Payout payout = kemasHomesPayoutAtReserved();

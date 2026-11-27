@@ -22,6 +22,6 @@ public enum CancellationCause {
     CUSTOMER_NO_SHOW,
     /** CUS-5. */
     CUSTOMER_SUSPENDED,
-    /** SUS-1 to SUS-3. */
+    /** SUS-1 to SUS-5. */
     PROVIDER_SUSPENDED
 }

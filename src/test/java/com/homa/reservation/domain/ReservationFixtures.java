@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
@@ -103,8 +104,9 @@ final class ReservationFixtures {
         return new ServiceAddress("B-12-3, Jalan Salak Tinggi", AISYAH_CITY, "Guardhouse: say unit B-12-3");
     }
 
+    /** §0: Aisyah is identity verified (CUS-3). */
     static CustomerStanding aisyah() {
-        return new CustomerStanding(AISYAH_CUSTOMER_ID, false, aisyahAddress());
+        return CustomerStanding.registered(AISYAH_CUSTOMER_ID, aisyahAddress()).verified();
     }
 
     static ServiceAddress anotherCustomerAddress() {
@@ -112,7 +114,7 @@ final class ReservationFixtures {
     }
 
     static CustomerStanding anotherCustomer() {
-        return new CustomerStanding(ANOTHER_CUSTOMER_ID, false, anotherCustomerAddress());
+        return CustomerStanding.registered(ANOTHER_CUSTOMER_ID, anotherCustomerAddress()).verified();
     }
 
     static ServiceAddress meiAddress() {
@@ -121,7 +123,7 @@ final class ReservationFixtures {
 
     /** RES-11 case: Mei pays for the same Saturday time as Aisyah. */
     static CustomerStanding mei() {
-        return new CustomerStanding(MEI_CUSTOMER_ID, false, meiAddress());
+        return CustomerStanding.registered(MEI_CUSTOMER_ID, meiAddress()).verified();
     }
 
     // Kemas Home
@@ -268,12 +270,12 @@ final class ReservationFixtures {
     // The team
 
     static RosterableMember siti() {
-        return RosterableMember.citizen(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti",
+        return RosterableMember.local(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti",
                 "photo-siti", true);
     }
 
     static RosterableMember nurul() {
-        return RosterableMember.citizen(NURUL_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Nurul",
+        return RosterableMember.local(NURUL_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Nurul",
                 "photo-nurul", true);
     }
 
@@ -287,13 +289,19 @@ final class ReservationFixtures {
     }
 
     static RosterableMember farid() {
-        return RosterableMember.citizen(FARID_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.SUPERVISOR, "Farid",
+        return RosterableMember.local(FARID_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.SUPERVISOR, "Farid",
                 "photo-farid", true);
     }
 
     static RosterableMember deactivated(RosterableMember member) {
         return new RosterableMember(member.memberId(), member.providerId(), member.role(), member.name(),
-                member.photoReference(), false, member.rosterableUntil());
+                member.photoVerified(), member.photoReference(), false, member.rosterableUntil());
+    }
+
+    /** The member as Provider announced them on joining, before Reservation heard of a verified photo (IDN-4). */
+    static RosterableMember withoutVerifiedPhoto(RosterableMember member) {
+        return new RosterableMember(member.memberId(), member.providerId(), member.role(), member.name(), false,
+                Optional.empty(), member.active(), member.rosterableUntil());
     }
 
     // The marketplace around one provider

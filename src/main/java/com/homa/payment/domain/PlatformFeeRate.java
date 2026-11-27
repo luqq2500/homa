@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /**
  * Homa's platform fee on every payout to a provider, including cancellation, last-minute and no-show fees (PAY-3).
- * The rate is a reservation value (§11): it comes from {@link PaymentValues}, in the version in force when the
+ * The rate is a reservation value (§13): it comes from {@link PaymentValues}, in the version in force when the
  * reservation was Requested (P3).
  */
 public record PlatformFeeRate(Percentage percentage) {

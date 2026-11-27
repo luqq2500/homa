@@ -5,7 +5,7 @@ import com.homa.kernel.Percentage;
 import java.time.Duration;
 
 /**
- * The Homa-set values Listing owns (§11), each in one place. They are business constants, not configuration: a
+ * The Homa-set values Listing owns (§13), each in one place. They are business constants, not configuration: a
  * change is a one-line change here, reviewed like a contract change. A reservation keeps them because they are
  * frozen into the terms snapshot it was Requested with (P3, RES-8), so no dated versions are kept here.
  */

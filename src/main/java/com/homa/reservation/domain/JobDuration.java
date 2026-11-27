@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * How long a job lasts. Homa's 1-hour minimum and 15-minute steps (RES-5) are Listing's to define, in its booking
- * bounds; Reservation only checks that the length matches the bounds and step it received (§11, OFR-5).
+ * bounds; Reservation only checks that the length matches the bounds and step it received (§13, OFR-5).
  */
 public record JobDuration(Duration length) {
 

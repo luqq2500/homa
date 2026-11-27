@@ -23,7 +23,7 @@ class JobDurationTest {
 
     @Test
     @Tag("RES-5")
-    @DisplayName("With a provider whose minimum is 1 hour, Aisyah can book 1h, 1h 15m, 1h 30m and so on, but not 50 minutes or 1h 10m. With Kemas Home (minimum 2 hours) she starts at 2h.")
+    @DisplayName("Aisyah can book 1h 15m but not 1h 10m. With Kemas Home's 2-hour minimum, she starts at 2 hours.")
     void jobLengthMatchesTheProvidersBoundsAndSteps() {
         assertThat(JobDuration.ofMinutes(60).fits(DEFAULT_BOUNDS)).isTrue();
         assertThat(JobDuration.ofMinutes(75).fits(DEFAULT_BOUNDS)).isTrue();

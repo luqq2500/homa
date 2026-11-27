@@ -26,7 +26,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("JOB-1")
-    @DisplayName("§11: the Check-in Period is the 15 minutes before the job start time, and the Protection Window runs until 24 hours after the job end time.")
+    @DisplayName("§13: the Check-in Period is the 15 minutes before the job start time, and the Protection Window runs until 24 hours after the job end time.")
     void checkInPeriodAndProtectionWindowAreHomasValues() {
         assertThat(VALUES.checkInPeriod()).isEqualTo(Duration.ofMinutes(15));
         assertThat(VALUES.protectionAfterJobEnd()).isEqualTo(Duration.ofHours(24));
@@ -34,7 +34,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("ACC-3")
-    @DisplayName("§11: the acceptance deadline is 24 hours after the request, or 1 hour before the Check-in Period, whichever is first.")
+    @DisplayName("§13: the acceptance deadline is 24 hours after the request, or 1 hour before the Check-in Period, whichever is first.")
     void acceptanceDeadlineValuesAreHomas() {
         assertThat(VALUES.acceptanceResponseTime()).isEqualTo(Duration.ofHours(24));
         assertThat(VALUES.acceptanceCutOffBeforeCheckIn()).isEqualTo(Duration.ofHours(1));
@@ -42,7 +42,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("CCX-1")
-    @DisplayName("§11: the Grace Period is 4 hours after Reserved, if Reserved at least 24 hours before the Check-in Period; the tiers are free until Flexible 4 hours, Standard 12 hours and Firm 24 hours before it.")
+    @DisplayName("§13: the Grace Period is 4 hours after Reserved, if Reserved at least 24 hours before the Check-in Period; the tiers are free until Flexible 4 hours, Standard 12 hours and Firm 24 hours before it.")
     void graceAndTierCutOffsAreHomasValues() {
         assertThat(VALUES.gracePeriod()).isEqualTo(Duration.ofHours(4));
         assertThat(VALUES.graceNeedsReservedBeforeCheckIn()).isEqualTo(Duration.ofHours(24));
@@ -54,7 +54,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("PCX-2")
-    @DisplayName("§11: provider fines are Base, Base + 10% within 24 hours, + 12% for no roster, + 20% last minute and + 30% for a no show; compensation is 3%, 4%, 7% and 10%.")
+    @DisplayName("§13: provider fines are Base, Base + 10% within 24 hours, + 12% for no roster, + 20% last minute and + 30% for a no show; compensation is 3%, 4%, 7% and 10%.")
     void finesAndCompensationAreHomasValues() {
         assertThat(VALUES.providerFines()).isEqualTo(new ReservationValues.ProviderFines(Duration.ofHours(24),
                 Percentage.of(10), Percentage.of(12), Percentage.of(20), Percentage.of(30)));
@@ -64,7 +64,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("NSH-5")
-    @DisplayName("§11: a Customer No Show pays 30% of the Hours Fee after the first hour; no fee or fine exceeds 100% of the Total Reservation Fee; worked time is charged in 15-minute steps.")
+    @DisplayName("§13: a Customer No Show pays 30% of the Hours Fee after the first hour; no fee or fine exceeds 100% of the Total Reservation Fee; worked time is charged in 15-minute steps.")
     void noShowShareCapAndPartialTimeStepAreHomasValues() {
         assertThat(VALUES.customerNoShowShareOfLaterHours()).isEqualTo(Percentage.of(30));
         assertThat(VALUES.feeAndFineCap()).isEqualTo(Percentage.HUNDRED_PERCENT);
@@ -73,7 +73,7 @@ class ReservationValuesTest {
 
     @Test
     @Tag("JOB-5")
-    @DisplayName("§11: the provider is reminded at the job end time and 2 hours later.")
+    @DisplayName("§13: the provider is reminded at the job end time and 2 hours later.")
     void completionRemindersAreHomasValues() {
         assertThat(VALUES.completionRemindersAfterJobEnd()).containsExactly(Duration.ZERO, Duration.ofHours(2));
     }

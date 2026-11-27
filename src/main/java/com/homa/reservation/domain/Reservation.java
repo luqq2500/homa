@@ -113,9 +113,9 @@ public final class Reservation {
     }
 
     /**
-     * ROS-1 to ROS-4: sets or changes the roster of a Reserved reservation before the Check-in Period starts; then
-     * it is locked. Every member must be the provider's own and able to work on this job, and the roster must have
-     * the booked number of helpers. Supervisors are extra and not billed, so the price does not change.
+     * ROS-1 to ROS-4, ROS-6: sets or changes the roster of a Reserved reservation before the Check-in Period starts;
+     * then it is locked. Every member must be the provider's own and able to work on this job, with a verified photo
+     * the customer is shown (IDN-4), and the roster must have the booked number of helpers. Supervisors are extra and not billed, so the price does not change.
      */
     public void assignRoster(List<RosterableMember> members, Instant now) {
         requireStatus(ReservationStatus.RESERVED, "roster");
@@ -201,7 +201,7 @@ public final class Reservation {
         return terms;
     }
 
-    /** Homa's reservation values in force when the reservation was Requested, which it keeps (P3, §11). */
+    /** Homa's reservation values in force when the reservation was Requested, which it keeps (P3, §13). */
     public Version values() {
         return values;
     }

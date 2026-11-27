@@ -17,9 +17,8 @@ import org.junit.jupiter.api.Test;
 class ProviderListingMinimumNoticeTest {
 
     @Test
-    @DisplayName("Kemas Home (Request) keeps the 2-hour default and can't go lower. An Instant provider sets 1 hour; when it "
-            + "later switches to Request, its notice becomes 2 hours and it's notified. A larger team sets 24 hours "
-            + "because it plans the day before.")
+    @DisplayName("Kemas Home (Request) can't go below 2 hours. An Instant provider at 1 hour that switches to Request "
+            + "moves to 2 hours and is told. A larger team sets 24 hours because it plans the day before.")
     void switchingToRequestRaisesAOneHourNoticeToTwoHours() {
         ProviderListing instant = instantListing();
         instant.setMinimumNotice(MinimumNotice.of(Duration.ofHours(1)));
@@ -33,7 +32,7 @@ class ProviderListingMinimumNoticeTest {
     }
 
     @Test
-    @DisplayName("Kemas Home (Request) keeps the 2-hour default and can't go lower")
+    @DisplayName("Kemas Home (Request) can't go below 2 hours")
     void aRequestProviderKeepsTwoHoursAndCantGoLower() {
         ProviderListing kemasHome = kemasHomeListing();
 

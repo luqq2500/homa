@@ -18,7 +18,7 @@ class ReservationAcceptanceTest {
 
     @Test
     @Tag("ACC-2")
-    @DisplayName("Aisyah pays on Monday 20:00. Kemas Home accepts on Monday 22:00, and the reservation becomes Reserved.")
+    @DisplayName("Kemas Home accepts on Monday 22:00, and Aisyah's booking is Reserved.")
     void requestBecomesReservedWhenTheProviderAcceptsBeforeTheDeadline() {
         Reservation reservation = market.requestStandard();
 

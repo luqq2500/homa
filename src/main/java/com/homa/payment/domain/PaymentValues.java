@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The Homa-set values Payment owns (§11): the platform fee (PAY-3) and the fine deduction cap (PAY-5). Both are
+ * The Homa-set values Payment owns (§13): the platform fee (PAY-3) and the fine deduction cap (PAY-5). Both are
  * reservation values, fixed when a reservation is Requested (P3, RES-8). A change never edits a number in place: it
  * adds a new dated {@link Version}, and every payout reads the version in force at its reservation's
  * {@code requestedAt} through {@link #asOf(Instant)}. A business constant, not configuration: changing it is a change

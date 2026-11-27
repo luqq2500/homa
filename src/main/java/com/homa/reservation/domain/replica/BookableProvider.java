@@ -33,7 +33,8 @@ import java.util.function.Predicate;
  * booking rules; the provider's own reservations are checked by the {@code ProviderSchedule}. A booking checked at a
  * moment is checked under the reservation values in force then, the ones it would be Requested with (P3).
  *
- * @param bookable    false while the provider can't be booked, for example with no active helpers (PRV-6)
+ * @param bookable    false while the provider can't be booked, for example with no active helpers or no verified
+ *                    payout account (PRV-2)
  * @param busyTimes   private appointments synced from external calendars (OFR-8)
  */
 public record BookableProvider(
