@@ -9,6 +9,9 @@ import java.time.Instant;
  * one personId across roles. The identity document number never leaves Verification (IDN-3).
  *
  * @param role           CUSTOMER, OWNER or MEMBER: the role the verification was started for
+ * @param accountId      for role CUSTOMER, the customer account that started it (CUS-3); null for OWNER and MEMBER,
+ *                       whom Provider recognises by personId
+ * @param name           the person's verified name (IDN-2), shown on the roster (ROS-6)
  * @param status         LOCAL or FOREIGN (§14)
  * @param ageCheckPassed true when the person is aged 18 or above (CUS-10, PRV-1, HLP-1)
  * @param permitExpiry   for a foreign person, the work permit's expiry as an ISO date (yyyy-MM-dd); null for local
@@ -18,6 +21,8 @@ public record PersonVerifiedIE(
         String eventId,
         String personId,
         String role,
+        String accountId,
+        String name,
         String status,
         boolean ageCheckPassed,
         String permitExpiry,
