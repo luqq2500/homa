@@ -74,6 +74,7 @@ public final class Payout {
         payout.status = Objects.requireNonNull(status, "status");
         payout.release = release;
         payout.requireStoredShape();
+        payout.requireNoCompletionOfAFee();
         return payout;
     }
 
@@ -81,6 +82,9 @@ public final class Payout {
         requireShape(!gross.isNegative(), "a gross that isn't negative");
         requireShape(released().isPresent() == (status == PayoutStatus.RELEASED),
                 "release lines exactly once it is released");
+    }
+
+    private void requireNoCompletionOfAFee() {
         requireShape(kind == PayoutKind.JOB || completedAt().isEmpty(), "no completion when it pays a fee instead");
     }
 
