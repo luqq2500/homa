@@ -42,7 +42,7 @@ public final class Payout {
         this.id = Objects.requireNonNull(id, "id");
         this.reservationId = Objects.requireNonNull(reservationId, "reservationId");
         this.providerId = Objects.requireNonNull(providerId, "providerId");
-        this.gross = Amounts.requirePayable(gross, "A payout");
+        this.gross = Objects.requireNonNull(gross, "gross");
         this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
         this.protectionWindowEnd = Objects.requireNonNull(protectionWindowEnd, "protectionWindowEnd");
     }
@@ -53,7 +53,45 @@ public final class Payout {
      */
     public static Payout openForReservation(PayoutId id, ReservationId reservationId, ProviderId providerId,
             Money total, Instant requestedAt, Instant protectionWindowEnd) {
-        return new Payout(id, reservationId, providerId, total, requestedAt, protectionWindowEnd);
+        return new Payout(id, reservationId, providerId, Amounts.requirePayable(total, "A payout"), requestedAt,
+                protectionWindowEnd);
+    }
+
+    /**
+     * Rebuilds a payout from what was stored: its kind and gross, which partial refunds may have brought down to
+     * zero, when the job was marked Completed, the reports still open, and its status with the release lines once
+     * released ({@code null} for a moment or release not reached). Only the shape is checked: a gross that isn't
+     * negative, release lines exactly once released, and no completion on a payout that pays a fee instead (PAY-6).
+     * Whether it was releasable isn't checked again: the Protection Window and reports held when it was released.
+     */
+    public static Payout restore(PayoutId id, ReservationId reservationId, ProviderId providerId, PayoutKind kind,
+            Money gross, Instant requestedAt, Instant protectionWindowEnd, Instant completedAt,
+            Set<ReportId> openReports, PayoutStatus status, PayoutRelease release) {
+        Payout payout = new Payout(id, reservationId, providerId, gross, requestedAt, protectionWindowEnd);
+        payout.kind = Objects.requireNonNull(kind, "kind");
+        payout.completedAt = completedAt;
+        payout.openReports.addAll(openReports);
+        payout.status = Objects.requireNonNull(status, "status");
+        payout.release = release;
+        payout.requireStoredShape();
+        payout.requireNoCompletionOfAFee();
+        return payout;
+    }
+
+    private void requireStoredShape() {
+        requireShape(!gross.isNegative(), "a gross that isn't negative");
+        requireShape(released().isPresent() == (status == PayoutStatus.RELEASED),
+                "release lines exactly once it is released");
+    }
+
+    private void requireNoCompletionOfAFee() {
+        requireShape(kind == PayoutKind.JOB || completedAt().isEmpty(), "no completion when it pays a fee instead");
+    }
+
+    private static void requireShape(boolean fits, String what) {
+        if (!fits) {
+            throw new IllegalArgumentException("A stored payout needs " + what);
+        }
     }
 
     /** The provider marked the job Completed (JOB-3). Even marked late, it is releasable once due (JOB-5). */
@@ -179,6 +217,11 @@ public final class Payout {
 
     public Instant protectionWindowEnd() {
         return protectionWindowEnd;
+    }
+
+    /** The reports on the reservation still open: while any is, the payout waits (RPT-6). */
+    public Set<ReportId> openReports() {
+        return Set.copyOf(openReports);
     }
 
     /** When the job was marked Completed, once it has been. */

@@ -66,6 +66,24 @@ public final class Customer {
         return new Customer(CustomerId.generate(), signInId, name, homeAddress, arrivalNote, termsAcceptance);
     }
 
+    /**
+     * Rebuilds a customer from what was stored: the sign-in, the profile, the terms acceptance and, once they exist,
+     * the verified identity and the latest suspension, each {@code null} when there is none. Every detail CUS-1 asks
+     * for must be present. The sign-in (CUS-7) and identity (CUS-10) lookups aren't repeated: they held when the
+     * customer registered and verified.
+     */
+    public static Customer restore(CustomerId id, SignInId signInId, CustomerName name, HomeAddress homeAddress,
+            ArrivalNote arrivalNote, TermsAcceptance termsAcceptance, VerifiedIdentity verifiedIdentity,
+            Suspension suspension) {
+        Customer customer = new Customer(Objects.requireNonNull(id, "id"), Objects.requireNonNull(signInId, "signInId"),
+                Required.detail(name, "a name"), Required.detail(homeAddress, "a home address"),
+                Required.detail(arrivalNote, "an arrival note"),
+                Objects.requireNonNull(termsAcceptance, "termsAcceptance"));
+        customer.verifiedIdentity = verifiedIdentity;
+        customer.suspension = suspension;
+        return customer;
+    }
+
     /** CUS-1: the customer goes by a new name. */
     public void changeName(CustomerName newName) {
         this.name = Required.detail(newName, "a name");

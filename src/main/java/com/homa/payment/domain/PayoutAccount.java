@@ -40,6 +40,23 @@ public final class PayoutAccount {
     }
 
     /**
+     * Rebuilds a payout account from what was stored: the current account, when it was submitted, and its status
+     * with when its holder check came back ({@code null} while it waits). Only the shape is checked: a check time
+     * exactly once the account is no longer PENDING.
+     */
+    public static PayoutAccount restore(ProviderId providerId, PayoutAccountId accountId, PayoutAccountHolder holder,
+            BankAccount bankAccount, Instant submittedAt, PayoutAccountStatus status, Instant checkedAt) {
+        PayoutAccount account = submit(providerId, accountId, holder, bankAccount, submittedAt);
+        account.status = Objects.requireNonNull(status, "status");
+        account.checkedAt = checkedAt;
+        if (account.checkedAt().isPresent() == (status == PayoutAccountStatus.PENDING)) {
+            throw new IllegalArgumentException("A stored payout account needs a check time exactly once it is "
+                    + "checked, not while " + status);
+        }
+        return account;
+    }
+
+    /**
      * The provider submits another account before the current one is verified, for instance after a failed check. It
      * replaces the current one and waits for its own check. A verified account is changed under PRV-10 instead.
      */

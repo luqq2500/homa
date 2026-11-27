@@ -14,7 +14,7 @@ final class InMemoryAvailabilityRepository implements AvailabilityRepository {
 
     @Override
     public Optional<AvailabilitySchedule> findById(ProviderId providerId) {
-        return Optional.ofNullable(stored.get(providerId)).map(hours -> AvailabilitySchedule.create(providerId, hours));
+        return Optional.ofNullable(stored.get(providerId)).map(hours -> AvailabilitySchedule.rebuild(providerId, hours));
     }
 
     @Override

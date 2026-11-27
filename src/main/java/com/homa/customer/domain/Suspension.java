@@ -5,6 +5,7 @@ import com.homa.customer.domain.exception.MissingSuspensionLengthException;
 import com.homa.customer.domain.exception.MissingSuspensionReasonException;
 import com.homa.customer.domain.exception.SuspensionEndsOnItsOwnException;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -43,6 +44,16 @@ public final class Suspension {
         }
         requireEndFitting(length, endsAt, suspendedAt);
         return new Suspension(length, reason, suspendedAt, endsAt, null);
+    }
+
+    /**
+     * Rebuilds a suspension from what was stored. It fits together as Support's decision did (CUS-4, CUS-6), and only
+     * a suspension until lifted can carry {@code liftedAt}, which is {@code null} while it hasn't been lifted.
+     */
+    public static Suspension restore(SuspensionLength length, Instant endsAt, String reason, Instant suspendedAt,
+            Instant liftedAt) {
+        Suspension decided = decided(length, endsAt, reason, Objects.requireNonNull(suspendedAt, "suspendedAt"));
+        return liftedAt == null ? decided : decided.liftedAt(liftedAt);
     }
 
     private static void requireEndFitting(SuspensionLength length, Instant endsAt, Instant suspendedAt) {
