@@ -2,6 +2,8 @@ package com.homa.verification.usecase.ie;
 
 import com.homa.ie.events.PayoutAccountHolderMatchedIE;
 import com.homa.ie.events.PayoutAccountSubmittedIE;
+import com.homa.verification.domain.PersonId;
+import com.homa.verification.usecase.exception.ProviderOwnerNotYetKnownException;
 import com.homa.verification.usecase.port.in.PayoutAccountSubmittedIEHandler;
 import com.homa.verification.usecase.port.out.AccountHolderCheck;
 import com.homa.verification.usecase.port.out.EventIds;
@@ -16,10 +18,11 @@ import com.homa.verification.usecase.port.out.VerifiedPersonRepository;
  * so it asks the payment provider's account-holder check whether the owner's verified identity holds the account,
  * and publishes only "matched" or "not matched" (IDN-3, §11). Every submission is checked afresh.
  *
- * <p>Not matched, without asking, when the owner is unknown to Verification or isn't verified: there is no verified
- * identity to check against. A BUSINESS holder is not matched in slice 1: the business's registered name is held by
- * {@code BusinessVerification} (PRV-7, slice 6), which doesn't exist yet. A failing check throws, so the relay
- * retries it (docs/decisions/0002).
+ * <p>The owner comes from {@code ProviderOpenedIE}. Payment takes a payout account only from a provider whose owner
+ * it knows, so an owner Verification doesn't know yet is on their way: the handler throws and the relay retries it.
+ * Not matched, without asking, when the owner isn't verified: there is no verified identity to check against. A
+ * BUSINESS holder is not matched in slice 1: the business's registered name is held by {@code BusinessVerification}
+ * (PRV-7, slice 6), which doesn't exist yet. A failing check throws, so the relay retries it (docs/decisions/0002).
  */
 public class HandlePayoutAccountSubmittedIE implements PayoutAccountSubmittedIEHandler {
 
@@ -59,9 +62,10 @@ public class HandlePayoutAccountSubmittedIE implements PayoutAccountSubmittedIEH
     }
 
     private boolean heldByTheOwner(PayoutAccountSubmittedIE event) {
-        return providerOwners.ownerOf(event.providerId())
-                .flatMap(persons::findById)
-                .map(owner -> holderCheck.isHeldBy(event.payoutAccountId(), owner.identityNumber(), owner.name()))
+        PersonId ownerId = providerOwners.ownerOf(event.providerId())
+                .orElseThrow(() -> new ProviderOwnerNotYetKnownException(event.providerId()));
+        return persons.findById(ownerId)
+                .map(owner -> holderCheck.isHeldBy(event.gatewayAccountRef(), owner.identityNumber(), owner.name()))
                 .orElse(false);
     }
 }

@@ -2,32 +2,25 @@ package com.homa.listing.usecase;
 
 import com.homa.listing.domain.ProviderId;
 import com.homa.listing.usecase.exception.NotAllowedException;
+import com.homa.listing.usecase.exception.ProviderOwnerNotYetKnownException;
 import com.homa.listing.usecase.port.out.ListingOwners;
-import java.util.Optional;
 
-/** Application policy: only a provider's owner changes its listing. */
+/** Application policy: only a provider's owner creates and changes its listing (PRV-1). */
 final class Ownership {
 
     private Ownership() {
     }
 
-    /** Refuses unless the person is the provider's recorded owner. */
-    static void requireOwner(ListingOwners owners, ProviderId providerId, String personId) {
-        owners.ownerOf(providerId).filter(personId::equals).orElseThrow(() -> notOwner(providerId, personId));
-    }
-
     /**
-     * Refuses when another person is the provider's recorded owner. Before the provider goes live Listing may not
-     * know its owner yet, so the person creating the listing is recorded until {@code ProviderWentLiveIE} names one.
+     * Refuses unless the person is the provider's owner, as {@code ProviderOpenedIE} recorded them. Before that event
+     * has reached Listing the owner isn't known, so the act is refused until it has, never handed to whoever asks
+     * first.
      */
-    static void requireNoOtherOwner(ListingOwners owners, ProviderId providerId, String personId) {
-        Optional<String> otherOwner = owners.ownerOf(providerId).filter(owner -> !owner.equals(personId));
-        if (otherOwner.isPresent()) {
-            throw notOwner(providerId, personId);
+    static void requireOwner(ListingOwners owners, ProviderId providerId, String personId) {
+        String owner = owners.ownerOf(providerId)
+                .orElseThrow(() -> new ProviderOwnerNotYetKnownException(providerId.value()));
+        if (!owner.equals(personId)) {
+            throw new NotAllowedException(personId + " isn't the owner of provider " + providerId.value());
         }
-    }
-
-    private static NotAllowedException notOwner(ProviderId providerId, String personId) {
-        return new NotAllowedException(personId + " isn't the owner of provider " + providerId.value());
     }
 }

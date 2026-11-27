@@ -152,7 +152,8 @@ class ProviderSetBookingRulesTest {
     }
 
     private static ListingTestBed instantProviderAtOneHour() {
-        ListingTestBed instant = new ListingTestBed().withHomaPresets().withKemasHomeTeam();
+        ListingTestBed instant = new ListingTestBed().withHomaPresets().withKemasHomeOpened()
+                .withKemasHomeTeam();
         instant.createListing.create(kemasHomeCreation(Money.myr(25), "INSTANT"));
         instant.setBookingRules.set(rules(AZMAN, 60, 480, 1, null, 60L, 30, "INSTANT", "STANDARD"));
         instant.publisher.clear();

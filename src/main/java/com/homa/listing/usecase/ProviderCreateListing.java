@@ -19,7 +19,8 @@ import com.homa.listing.usecase.port.out.PresetRepository;
 /**
  * A provider sets up its one listing, usually before it goes live. The plan names no use case for this; a listing
  * must exist before its terms can change, so this one creates it with the domain's defaults for everything the
- * provider hasn't chosen, records the acting person as its owner, and publishes the first terms snapshot.
+ * provider hasn't chosen, and publishes the first terms snapshot. Only the owner {@code ProviderOpenedIE} named may
+ * create it; until that event has reached Listing, nobody may.
  */
 public final class ProviderCreateListing implements ListingCreator {
 
@@ -41,7 +42,7 @@ public final class ProviderCreateListing implements ListingCreator {
     @Override
     public ProviderCreateListingResponse create(ProviderCreateListingRequest request) {
         ProviderId providerId = new ProviderId(request.providerId());
-        Ownership.requireNoOtherOwner(owners, providerId, request.actingPersonId());
+        Ownership.requireOwner(owners, providerId, request.actingPersonId());
         if (listings.findById(providerId).isPresent()) {
             throw new ListingAlreadyExistsException(request.providerId());
         }
@@ -53,7 +54,6 @@ public final class ProviderCreateListing implements ListingCreator {
                 AcceptancePolicy.valueOf(request.acceptancePolicy()),
                 CancellationTier.valueOf(request.cancellationTier()));
         listings.save(listing);
-        owners.record(providerId, request.actingPersonId());
         publisher.publish(events.termsChanged(new ListingTermsChange(listing.terms(), false)));
         return new ProviderCreateListingResponse(request.providerId());
     }

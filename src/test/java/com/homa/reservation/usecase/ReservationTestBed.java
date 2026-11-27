@@ -37,6 +37,7 @@ import com.homa.kernel.Money;
 import com.homa.kernel.Percentage;
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationId;
+import com.homa.reservation.domain.ServiceAddress;
 import com.homa.reservation.usecase.dto.AcceptReservationRequest;
 import com.homa.reservation.usecase.dto.StartReservationCheckoutRequest;
 import com.homa.reservation.usecase.dto.StartReservationCheckoutResponse;
@@ -77,6 +78,12 @@ public final class ReservationTestBed {
     public static final Instant TAPPED_PAY_AT = REQUESTED_AT.minus(Duration.ofMinutes(2));
     public static final Instant ACCEPTED_AT = monday(22, 0);
     public static final String CLEAN_KITCHEN_PHOTO = "photo-clean-kitchen";
+    /** Every customer the bed registers lives at this address in their own city, with this arrival note (CUS-1). */
+    public static final String HOME_STREET_ADDRESS = "B-12-3, Residensi Salak, Jalan Salak 1";
+    public static final String HOME_ARRIVAL_NOTE = "Guardhouse: say unit B-12-3";
+    /** Where a customer who moves lives next, and how the team reaches it. */
+    public static final String NEW_STREET_ADDRESS = "A-3-1, Residensi Cyber, Persiaran Multimedia";
+    public static final String NEW_ARRIVAL_NOTE = "Lobby: ask the concierge for unit A-3-1";
 
     public final InMemorySchedules schedules = new InMemorySchedules();
     public final InMemoryReservationRepository reservations = new InMemoryReservationRepository(schedules);
@@ -163,7 +170,7 @@ public final class ReservationTestBed {
         bed.registerVerified(AISYAH_CUSTOMER_ID, AISYAH_CITY);
         bed.registerVerified(MEI_CUSTOMER_ID, PUTRAJAYA);
         bed.customerRegistered.handle(new CustomerRegisteredIE(bed.nextInboundId(), UNVERIFIED_CUSTOMER_ID,
-                AISYAH_CITY, "ACTIVE", TAPPED_PAY_AT));
+                AISYAH_CITY, HOME_STREET_ADDRESS, HOME_ARRIVAL_NOTE, "ACTIVE", TAPPED_PAY_AT));
         bed.registerVerified(SHAH_ALAM_CUSTOMER_ID, "SHAH_ALAM");
         return bed;
     }
@@ -209,14 +216,20 @@ public final class ReservationTestBed {
     }
 
     public void registerVerified(String customerId, String city) {
-        customerRegistered.handle(new CustomerRegisteredIE(nextInboundId(), customerId, city, "ACTIVE",
-                TAPPED_PAY_AT));
+        customerRegistered.handle(new CustomerRegisteredIE(nextInboundId(), customerId, city, HOME_STREET_ADDRESS,
+                HOME_ARRIVAL_NOTE, "ACTIVE", TAPPED_PAY_AT));
         customerVerified.handle(new CustomerVerifiedIE(nextInboundId(), customerId, "person-" + customerId,
                 TAPPED_PAY_AT));
     }
 
     public CustomerAddressChangedIE moved(String customerId, String city) {
-        return new CustomerAddressChangedIE(nextInboundId(), customerId, city, "ACTIVE", time.now());
+        return new CustomerAddressChangedIE(nextInboundId(), customerId, city, NEW_STREET_ADDRESS, NEW_ARRIVAL_NOTE,
+                "ACTIVE", time.now());
+    }
+
+    /** The bed's home address in {@code city}, as Customer's events tell it. */
+    public static ServiceAddress homeIn(String city) {
+        return new ServiceAddress(HOME_STREET_ADDRESS, city, HOME_ARRIVAL_NOTE);
     }
 
     public ProviderBookabilityChangedIE bookability(boolean bookable, String reason) {

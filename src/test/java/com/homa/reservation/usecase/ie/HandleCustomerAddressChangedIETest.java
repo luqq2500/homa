@@ -2,6 +2,10 @@ package com.homa.reservation.usecase.ie;
 
 import static com.homa.fixtures.HomaFixtures.AISYAH_CITY;
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
+import static com.homa.reservation.usecase.ReservationTestBed.HOME_ARRIVAL_NOTE;
+import static com.homa.reservation.usecase.ReservationTestBed.HOME_STREET_ADDRESS;
+import static com.homa.reservation.usecase.ReservationTestBed.NEW_ARRIVAL_NOTE;
+import static com.homa.reservation.usecase.ReservationTestBed.NEW_STREET_ADDRESS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.ie.events.CustomerAddressChangedIE;
@@ -28,8 +32,23 @@ class HandleCustomerAddressChangedIETest {
         bed.customerAddressChanged.handle(bed.moved(AISYAH_CUSTOMER_ID, CYBERJAYA));
 
         assertThat(bed.customers.findById(AISYAH_CUSTOMER_ID)).contains(new CustomerStanding(AISYAH_CUSTOMER_ID,
-                true, false, new ServiceAddress(CYBERJAYA, CYBERJAYA, "")));
-        assertThat(bed.reload(booked).booking().address().city()).isEqualTo(AISYAH_CITY);
+                true, false, new ServiceAddress(NEW_STREET_ADDRESS, CYBERJAYA, NEW_ARRIVAL_NOTE)));
+        assertThat(bed.reload(booked).booking().address()).isEqualTo(ReservationTestBed.homeIn(AISYAH_CITY));
+    }
+
+    @Test
+    @Tag("RES-8")
+    @DisplayName("Aisyah changes only her arrival note: her next booking reads the new note, Saturday's keeps the old.")
+    void newArrivalNoteAppliesOnlyToNewBookings() {
+        Reservation booked = bed.requestStandard();
+
+        bed.customerAddressChanged.handle(new CustomerAddressChangedIE(bed.nextInboundId(), AISYAH_CUSTOMER_ID,
+                AISYAH_CITY, HOME_STREET_ADDRESS, "Guardhouse: say unit B-12-3, then lift B", "ACTIVE",
+                bed.time.now()));
+
+        assertThat(bed.customers.findById(AISYAH_CUSTOMER_ID).orElseThrow().homeAddress()).isEqualTo(
+                new ServiceAddress(HOME_STREET_ADDRESS, AISYAH_CITY, "Guardhouse: say unit B-12-3, then lift B"));
+        assertThat(bed.reload(booked).booking().address().arrivalNote()).isEqualTo(HOME_ARRIVAL_NOTE);
     }
 
     @Test

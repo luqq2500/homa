@@ -13,6 +13,7 @@ import static com.homa.fixtures.HomaFixtures.SITI_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.at;
 
 import com.homa.ie.events.ProviderBookabilityChangedIE;
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
 import com.homa.kernel.Money;
@@ -23,6 +24,7 @@ import com.homa.listing.domain.ProviderId;
 import com.homa.listing.domain.Tool;
 import com.homa.listing.usecase.dto.ProviderCreateListingRequest;
 import com.homa.listing.usecase.ie.HandleProviderBookabilityChangedIE;
+import com.homa.listing.usecase.ie.HandleProviderOpenedIE;
 import com.homa.listing.usecase.ie.HandleProviderWentLiveIE;
 import com.homa.listing.usecase.ie.HandleTeamMemberActivatedIE;
 import java.time.Instant;
@@ -33,7 +35,8 @@ import java.util.stream.Collectors;
 /**
  * Every Listing use case and handler wired to in-memory fakes, with Kemas Home's listing from the example setup
  * (§0): kitchen cleaning, laundry folding and bathroom cleaning with a HEPA vacuum, in Salak Tinggi, Cyberjaya and
- * Putrajaya, at RM25, Request and Standard. Azman is its owner; Hana runs Hana Cleaning.
+ * Putrajaya, at RM25, Request and Standard. Azman is its owner, once Provider says he opened it; Hana runs Hana
+ * Cleaning.
  */
 final class ListingTestBed {
 
@@ -80,7 +83,8 @@ final class ListingTestBed {
     final AdminManagePresets managePresets = new AdminManagePresets(presets);
     final SearchProvidersByCity search = new SearchProvidersByCity(listings, standings);
 
-    final HandleProviderWentLiveIE wentLive = new HandleProviderWentLiveIE(processed, standings, owners);
+    final HandleProviderOpenedIE opened = new HandleProviderOpenedIE(processed, owners);
+    final HandleProviderWentLiveIE wentLive = new HandleProviderWentLiveIE(processed, standings);
     final HandleProviderBookabilityChangedIE bookabilityChanged =
             new HandleProviderBookabilityChangedIE(processed, standings);
     final HandleTeamMemberActivatedIE memberActivated =
@@ -104,9 +108,16 @@ final class ListingTestBed {
         return this;
     }
 
+    /** Provider has told Listing that Azman opened Kemas Home, so he is its owner. */
+    ListingTestBed withKemasHomeOpened() {
+        opened.handle(kemasHomeOpened("provider-event-opened"));
+        return this;
+    }
+
     /** Azman creates Kemas Home's listing; the events it published are cleared. */
     ListingTestBed withKemasHomeListing() {
         withHomaPresets();
+        withKemasHomeOpened();
         createListing.create(kemasHomeCreation());
         publisher.clear();
         return this;
@@ -125,6 +136,10 @@ final class ListingTestBed {
     static ProviderCreateListingRequest kemasHomeCreation(Money rate, String policy) {
         return new ProviderCreateListingRequest(AZMAN, KEMAS_HOME, KEMAS_HOME_JOBS, List.of(HEPA_VACUUM),
                 KEMAS_HOME_CITIES, rate, policy, CANCELLATION_TIER);
+    }
+
+    static ProviderOpenedIE kemasHomeOpened(String eventId) {
+        return new ProviderOpenedIE(eventId, KEMAS_HOME, AZMAN, NOW);
     }
 
     static ProviderWentLiveIE kemasHomeWentLive(String eventId) {

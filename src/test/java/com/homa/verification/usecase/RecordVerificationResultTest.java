@@ -30,10 +30,13 @@ import static com.homa.verification.usecase.VerificationWorld.rinasAnswer;
 import static com.homa.verification.usecase.VerificationWorld.sitisAnswer;
 import static com.homa.verification.usecase.VerificationWorld.sonsAnswer;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.fixtures.HomaFixtures;
+import com.homa.ie.events.PersonVerificationRefusedIE;
 import com.homa.ie.events.PersonVerifiedIE;
+import com.homa.ie.port.VerificationIE;
 import com.homa.verification.domain.PersonId;
 import com.homa.verification.domain.PersonStatus;
 import com.homa.verification.domain.VerificationAttempt;
@@ -47,6 +50,7 @@ import com.homa.verification.usecase.port.out.VerificationAnswer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -66,14 +70,21 @@ class RecordVerificationResultTest {
                 rule, reason);
     }
 
-    /** The refusal was recorded on the verification, nobody was verified and nothing was published. */
+    /** The refusal was recorded on the verification, and nobody was verified. */
     private void assertRecordedRefusal(StartVerificationResponse started, String rule) {
         VerificationAttempt attempt = world.attempts.findById(started.verificationId()).orElseThrow();
         assertThat(world.attempts.savedStateOf(started.verificationId())).isEqualTo(VerificationAttemptState.REFUSED);
         assertThat(attempt.refusedUnder()).contains(rule);
         assertThat(attempt.decidedAt()).contains(world.time.now());
         assertThat(world.persons.findById(new PersonId(started.personId()))).isEmpty();
-        assertThat(world.publisher.published()).isEmpty();
+        assertThat(world.publisher.published(PersonVerifiedIE.class)).isEmpty();
+    }
+
+    /** The refusal as Verification publishes it, decided now. */
+    private PersonVerificationRefusedIE refusedEvent(String eventId, StartVerificationResponse started, String role,
+            String accountId, String reason, String rule) {
+        return new PersonVerificationRefusedIE(eventId, started.personId(), role, accountId, reason, rule,
+                world.time.now());
     }
 
     @Test
@@ -156,6 +167,8 @@ class RecordVerificationResultTest {
         assertThat(response).isEqualTo(refused(started, CUSTOMER, "CUS-10",
                 "CUS-10: a customer must be aged 18 or above"));
         assertRecordedRefusal(started, "CUS-10");
+        assertThat(world.publisher.published()).<VerificationIE>containsExactly(refusedEvent("event-1", started,
+                CUSTOMER, SON_CUSTOMER_ID, "UNDER_MINIMUM_AGE", "CUS-10"));
     }
 
     @Test
@@ -171,6 +184,10 @@ class RecordVerificationResultTest {
         assertThat(world.answer(asOwner, rinasAnswer())).isEqualTo(refused(asOwner, OWNER, "PRV-1",
                 "PRV-1: in Malaysia an owner can't be foreign"));
         assertRecordedRefusal(asOwner, "PRV-1");
+        assertThat(world.publisher.published()).<VerificationIE>containsExactly(
+                refusedEvent("event-1", asCustomer, CUSTOMER, "customer-rina", "STATUS_NOT_ALLOWED_FOR_ROLE",
+                        "CUS-10"),
+                refusedEvent("event-2", asOwner, OWNER, null, "STATUS_NOT_ALLOWED_FOR_ROLE", "PRV-1"));
     }
 
     @Test
@@ -186,6 +203,8 @@ class RecordVerificationResultTest {
         assertThat(response).isEqualTo(refused(started, CUSTOMER, "IDN-1",
                 "IDN-1: the identity document did not pass verification, so the person can't be verified"));
         assertRecordedRefusal(started, "IDN-1");
+        assertThat(world.publisher.published()).<VerificationIE>containsExactly(refusedEvent("event-1", started,
+                CUSTOMER, HomaFixtures.AISYAH_CUSTOMER_ID, "CHECK_NOT_PASSED", "IDN-1"));
     }
 
     @Test
@@ -203,6 +222,11 @@ class RecordVerificationResultTest {
                 .isEqualTo(refused(localIKad, MEMBER, "IDN-1",
                         "IDN-1: in Malaysia a local person isn't verified with i-Kad"));
         assertRecordedRefusal(localIKad, "IDN-1");
+        assertThat(world.publisher.published(PersonVerificationRefusedIE.class))
+                .extracting(PersonVerificationRefusedIE::reason, PersonVerificationRefusedIE::refusedUnder)
+                .containsExactly(tuple("DOCUMENT_NOT_ACCEPTED", "IDN-1"), tuple("DOCUMENT_NOT_ACCEPTED", "IDN-1"));
+        assertThat(world.publisher.published().getLast())
+                .isEqualTo(refusedEvent("event-2", localIKad, MEMBER, null, "DOCUMENT_NOT_ACCEPTED", "IDN-1"));
     }
 
     @Test
@@ -218,6 +242,9 @@ class RecordVerificationResultTest {
         assertThat(world.answer(noName, localMyKad(" ", SITI_MYKAD, ADULT_BORN, SITI_CHECKED_AT)))
                 .isEqualTo(refused(noName, MEMBER, "IDN-2", "IDN-2: a verified person must have a name"));
         assertRecordedRefusal(noName, "IDN-2");
+        assertThat(world.publisher.published(PersonVerificationRefusedIE.class))
+                .extracting(PersonVerificationRefusedIE::reason, PersonVerificationRefusedIE::refusedUnder)
+                .containsExactly(tuple("DOCUMENT_NOT_ACCEPTED", "HLP-3"), tuple("DOCUMENT_NOT_ACCEPTED", "IDN-2"));
     }
 
     @Test
@@ -235,6 +262,8 @@ class RecordVerificationResultTest {
         assertThat(response).isEqualTo(refused(second, CUSTOMER, "IDN-3",
                 "IDN-3: this identity document is already verified for another person"));
         assertRecordedRefusal(second, "IDN-3");
+        assertThat(world.publisher.published()).<VerificationIE>containsExactly(refusedEvent("event-2", second,
+                CUSTOMER, DANIEL_SECOND_CUSTOMER_ID, "IDENTITY_ALREADY_HELD", "IDN-3"));
         assertThat(world.persons.size()).isEqualTo(1);
     }
 
@@ -287,13 +316,15 @@ class RecordVerificationResultTest {
         world.answer(started, sonsAnswer());
         world.verificationService.answers(world.referenceOf(started), aisyahsAnswer());
         int saves = world.attempts.saveCount();
+        List<VerificationIE> publishedOnce = world.publisher.published();
 
         RecordVerificationResultResponse again = world.webhook(world.nextNotificationId(), started);
 
         assertThat(again).isEqualTo(refused(started, CUSTOMER, "CUS-10", "CUS-10: a customer must be aged 18 or above"));
         assertThat(world.verificationService.resultsAsked()).hasSize(1);
         assertThat(world.attempts.saveCount()).isEqualTo(saves);
-        assertThat(world.publisher.published()).isEmpty();
+        assertThat(publishedOnce).hasSize(1);
+        assertThat(world.publisher.published()).isEqualTo(publishedOnce);
     }
 
     @Test

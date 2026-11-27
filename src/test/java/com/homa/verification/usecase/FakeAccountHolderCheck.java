@@ -12,16 +12,16 @@ import java.util.Map;
 public final class FakeAccountHolderCheck implements AccountHolderCheck {
 
     /** One question the check was asked. */
-    public record Question(String payoutAccountId, IdentityNumber identityNumber, PersonName name) {
+    public record Question(String gatewayAccountRef, IdentityNumber identityNumber, PersonName name) {
     }
 
     private final Map<String, IdentityNumber> holders = new HashMap<>();
     private final List<Question> asked = new ArrayList<>();
     private boolean down;
 
-    /** The bank holds {@code payoutAccountId} for the person with this identity number. */
-    public void accountHeldBy(String payoutAccountId, String identityNumber) {
-        holders.put(payoutAccountId, new IdentityNumber(identityNumber));
+    /** The bank holds the account the payment provider knows as {@code gatewayAccountRef} for this identity. */
+    public void accountHeldBy(String gatewayAccountRef, String identityNumber) {
+        holders.put(gatewayAccountRef, new IdentityNumber(identityNumber));
     }
 
     public void goDown() {
@@ -29,12 +29,12 @@ public final class FakeAccountHolderCheck implements AccountHolderCheck {
     }
 
     @Override
-    public boolean isHeldBy(String payoutAccountId, IdentityNumber identityNumber, PersonName name) {
+    public boolean isHeldBy(String gatewayAccountRef, IdentityNumber identityNumber, PersonName name) {
         if (down) {
             throw new IllegalStateException("The payment provider is unavailable");
         }
-        asked.add(new Question(payoutAccountId, identityNumber, name));
-        return identityNumber.equals(holders.get(payoutAccountId));
+        asked.add(new Question(gatewayAccountRef, identityNumber, name));
+        return identityNumber.equals(holders.get(gatewayAccountRef));
     }
 
     public List<Question> asked() {

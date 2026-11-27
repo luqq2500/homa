@@ -21,6 +21,7 @@ public class RegisterCustomer {
 
     public void register(String eventId, String customerId, String city, Instant now) {
         customers.add(customerId, city);
-        publisher.publish(new CustomerRegisteredIE(eventId, customerId, city, "ACTIVE", now));
+        publisher.publish(new CustomerRegisteredIE(eventId, customerId, city, "1, Jalan Sample", "Ring the bell",
+                "ACTIVE", now));
     }
 }

@@ -1,6 +1,7 @@
 package com.homa.reservation.usecase.ie;
 
 import com.homa.ie.events.CustomerRegisteredIE;
+import com.homa.reservation.domain.ServiceAddress;
 import com.homa.reservation.domain.replica.CustomerStanding;
 import com.homa.reservation.usecase.port.in.CustomerRegisteredIEHandler;
 import com.homa.reservation.usecase.port.out.CustomerStandingRepository;
@@ -8,7 +9,8 @@ import com.homa.reservation.usecase.port.out.ProcessedMessageStore;
 
 /**
  * CUS-1, CUS-3: a customer registered. They can browse at once, but reserve only once Customer says their identity
- * is verified.
+ * is verified. Their home address, city and arrival note are kept whole, so a reservation can keep them from when it
+ * is Requested (RES-8).
  */
 public final class HandleCustomerRegisteredIE implements CustomerRegisteredIEHandler {
 
@@ -27,6 +29,7 @@ public final class HandleCustomerRegisteredIE implements CustomerRegisteredIEHan
         if (!processed.recordFirstHandling(event.eventId(), HANDLER)) {
             return;
         }
-        customers.save(CustomerStanding.registered(event.customerId(), CustomerHomeAddress.inCity(event.city())));
+        customers.save(CustomerStanding.registered(event.customerId(),
+                new ServiceAddress(event.streetAddress(), event.city(), event.arrivalNote())));
     }
 }

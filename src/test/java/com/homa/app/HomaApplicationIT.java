@@ -77,7 +77,9 @@ class HomaApplicationIT {
     void scheduledRelayPublishesTheOutbox() {
         String eventId = UUID.randomUUID().toString();
         transaction.executeWithoutResult(status -> events.publishEvent(
-                new CustomerRegisteredIE(eventId, "customer-aisyah", "SALAK_TINGGI", "ACTIVE", Instant.now())));
+                new CustomerRegisteredIE(eventId, "customer-aisyah", "SALAK_TINGGI",
+                        "B-12-3, Residensi Salak, Jalan Salak 1", "Guardhouse: say unit B-12-3", "ACTIVE",
+                        Instant.now())));
 
         await().atMost(Duration.ofSeconds(10)).until(() -> jdbc
                 .sql("SELECT published_at IS NOT NULL FROM outbox_event WHERE event_id = :eventId")

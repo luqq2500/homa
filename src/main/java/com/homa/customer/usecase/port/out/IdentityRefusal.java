@@ -7,7 +7,8 @@ import java.time.Instant;
  * customer still can't reserve. The event that carried it counts as handled and is not retried, because a retry
  * would be refused the same way.
  *
- * @param eventId    the PersonVerifiedIE that was refused
+ * @param eventId    the PersonVerifiedIE Customer refused, or the PersonVerificationRefusedIE that reported
+ *                   Verification's refusal
  * @param customerId the account the verification was started for, as the event named it; null if it named none
  * @param personId   the person Verification verified
  * @param reason     why it was refused
@@ -17,7 +18,10 @@ public record IdentityRefusal(String eventId, String customerId, String personId
 
     /** Why a verification could not be recorded. */
     public enum Reason {
-        /** CUS-10: another customer account already holds this verified identity. */
+        /**
+         * CUS-10: another customer account already holds this verified identity, as Customer found or as
+         * Verification reported (IDN-3).
+         */
         IDENTITY_HOLDS_ANOTHER_ACCOUNT,
         /** CUS-10: this account is already verified as another person. */
         ACCOUNT_HOLDS_ANOTHER_IDENTITY,

@@ -16,7 +16,12 @@ public final class InMemoryProviderOwners implements ProviderOwners {
         return Optional.ofNullable(owners.get(providerId));
     }
 
+    @Override
+    public void record(String providerId, PersonId ownerPersonId) {
+        owners.put(providerId, ownerPersonId);
+    }
+
     public void ownedBy(String providerId, String personId) {
-        owners.put(providerId, new PersonId(personId));
+        record(providerId, new PersonId(personId));
     }
 }

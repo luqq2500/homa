@@ -22,8 +22,8 @@ import java.util.Objects;
 /**
  * CUS-1: the signed-in customer saves their profile. Only their own profile can change. Every detail is read before
  * any is applied, so a profile with one detail missing changes nothing. Publishes {@link CustomerAddressChangedIE}
- * only when the customer moved, so Reservation copies the new city (RES-1); a new name or arrival note concerns only
- * Customer.
+ * when the customer moved or changed their arrival note, so Reservation copies the new city (RES-1) and new
+ * reservations keep the new address and note (RES-8); a new name concerns only Customer.
  */
 public class CustomerUpdateProfile implements CustomerProfileUpdater {
 
@@ -53,18 +53,19 @@ public class CustomerUpdateProfile implements CustomerProfileUpdater {
 
         customer.changeName(name);
         boolean moved = customer.changeHomeAddress(homeAddress);
-        customer.changeArrivalNote(arrivalNote);
+        boolean noteChanged = customer.changeArrivalNote(arrivalNote);
         customers.save(customer);
-        if (moved) {
-            announceMove(customer);
+        if (moved || noteChanged) {
+            announceAddress(customer);
         }
         return new UpdateProfileResponse(id.value(), name.value(), homeAddress.streetAddress(),
                 homeAddress.city().value(), arrivalNote.value());
     }
 
-    private void announceMove(Customer customer) {
+    private void announceAddress(Customer customer) {
         Instant now = time.now();
         publisher.publish(new CustomerAddressChangedIE(eventIds.next(), customer.id().value(),
-                customer.homeAddress().city().value(), customer.statusAt(now).name(), now));
+                customer.homeAddress().city().value(), customer.homeAddress().streetAddress(),
+                customer.arrivalNote().value(), customer.statusAt(now).name(), now));
     }
 }

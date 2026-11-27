@@ -67,6 +67,8 @@ class CustomerFlowATest {
         assertThat(registeredEvent.eventId()).isEqualTo("event-1");
         assertThat(registeredEvent.customerId()).isEqualTo(aisyahsId);
         assertThat(registeredEvent.city()).isEqualTo(AISYAH_CITY);
+        assertThat(registeredEvent.streetAddress()).isEqualTo(CustomerUsecaseFixtures.AISYAH_STREET_ADDRESS);
+        assertThat(registeredEvent.arrivalNote()).isEqualTo(CustomerUsecaseFixtures.AISYAH_ARRIVAL_NOTE);
         assertThat(registeredEvent.status()).isEqualTo("ACTIVE");
         assertThat(registeredEvent.occurredAt()).isEqualTo(REGISTERED_AT);
 

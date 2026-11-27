@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.homa.fixtures.HomaFixtures;
 import com.homa.ie.events.PayoutAccountHolderMatchedIE;
 import com.homa.ie.events.PayoutAccountSubmittedIE;
+import com.homa.ie.events.PersonVerificationRefusedIE;
 import com.homa.ie.events.PersonVerifiedIE;
 import com.homa.verification.usecase.dto.RecordVerificationResultResponse;
 import com.homa.verification.usecase.dto.StartVerificationRequest;
@@ -90,12 +91,13 @@ class IdentityNumberNeverLeavesTest {
                 DANIEL_SECOND_CUSTOMER_ID, danielsAnswer(at(2026, 11, 25, 9, 0)));
         responses.add(second);
         world.providerOwners.ownedBy(KEMAS_HOME_PROVIDER_ID, azman.personId());
-        world.holderCheck.accountHeldBy("payout-account-kemas-1", AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy("gateway-account-kemas-1", AZMAN_MYKAD);
         world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1", KEMAS_HOME_PROVIDER_ID,
-                "payout-account-kemas-1", "OWNER", at(2026, 10, 2, 11, 0)));
+                "payout-account-kemas-1", "gateway-account-kemas-1", "OWNER", at(2026, 10, 2, 11, 0)));
 
         assertThat(second.outcome()).isEqualTo("REFUSED");
         assertThat(world.publisher.published(PersonVerifiedIE.class)).hasSize(5);
+        assertThat(world.publisher.published(PersonVerificationRefusedIE.class)).hasSize(2);
         assertThat(world.publisher.published(PayoutAccountHolderMatchedIE.class)).hasSize(1);
         Stream.concat(world.publisher.published().stream(), responses.stream())
                 .forEach(IdentityNumberNeverLeavesTest::assertHoldsNoNumber);
@@ -106,7 +108,8 @@ class IdentityNumberNeverLeavesTest {
     @Tag("IDN-3")
     @DisplayName("Verification's events and responses have no field that could hold an identity number.")
     void noEventOrResponseHasAFieldForTheNumber() {
-        Stream.of(PersonVerifiedIE.class, PayoutAccountHolderMatchedIE.class, StartVerificationResponse.class,
+        Stream.of(PersonVerifiedIE.class, PersonVerificationRefusedIE.class, PayoutAccountHolderMatchedIE.class,
+                        StartVerificationResponse.class,
                         RecordVerificationResultResponse.class)
                 .flatMap(type -> componentNames(type).stream())
                 .forEach(name -> assertThat(name).doesNotContain("number").doesNotContain("document"));

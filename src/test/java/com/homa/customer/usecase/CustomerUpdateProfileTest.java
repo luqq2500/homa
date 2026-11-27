@@ -57,28 +57,49 @@ class CustomerUpdateProfileTest {
         assertThat(response).isEqualTo(new UpdateProfileResponse(aisyahsId, "Aisyah R.", CYBERJAYA_STREET_ADDRESS,
                 CYBERJAYA, CYBERJAYA_ARRIVAL_NOTE));
 
-        assertThat(publisher.published()).hasSize(1);
-        CustomerAddressChangedIE moved = (CustomerAddressChangedIE) publisher.published().getFirst();
-        assertThat(moved.eventId()).isEqualTo("event-1");
-        assertThat(moved.customerId()).isEqualTo(aisyahsId);
-        assertThat(moved.city()).isEqualTo(CYBERJAYA);
-        assertThat(moved.status()).isEqualTo("ACTIVE");
-        assertThat(moved.occurredAt()).isEqualTo(SAVED_AT);
+        assertThat(publisher.published()).containsExactly(new CustomerAddressChangedIE("event-1", aisyahsId,
+                CYBERJAYA, CYBERJAYA_STREET_ADDRESS, CYBERJAYA_ARRIVAL_NOTE, "ACTIVE", SAVED_AT));
     }
 
     @Test
     @Tag("CUS-1")
-    @DisplayName("Aisyah changes how her name is written and her arrival note, at the same home: nothing to tell "
-            + "Reservation.")
-    void customerWhoStaysHomeIsNotAnnouncedAsMoved() {
+    @Tag("RES-8")
+    @DisplayName("Aisyah changes only her arrival note, at the same home: Reservation hears of it, so her next "
+            + "booking keeps the new note.")
+    void aNewArrivalNoteAloneIsAnnounced() {
         UpdateProfileResponse response = updateProfile.update(new UpdateProfileRequest(aisyahsId, aisyahsId,
-                "Aisyah R.", AISYAH_STREET_ADDRESS, AISYAH_CITY, "Guardhouse: say unit B-12-3, then lift B"));
+                AISYAH_NAME, AISYAH_STREET_ADDRESS, AISYAH_CITY, "Guardhouse: say unit B-12-3, then lift B"));
+
+        assertThat(customers.saves()).containsExactly(aisyah.id());
+        assertThat(aisyah.arrivalNote().value()).isEqualTo("Guardhouse: say unit B-12-3, then lift B");
+        assertThat(response.city()).isEqualTo(AISYAH_CITY);
+        assertThat(publisher.published()).containsExactly(new CustomerAddressChangedIE("event-1", aisyahsId,
+                AISYAH_CITY, AISYAH_STREET_ADDRESS, "Guardhouse: say unit B-12-3, then lift B", "ACTIVE",
+                SAVED_AT));
+    }
+
+    @Test
+    @Tag("CUS-1")
+    @DisplayName("Aisyah changes only how her name is written: nothing to tell Reservation.")
+    void aNewNameAloneIsNotAnnounced() {
+        UpdateProfileResponse response = updateProfile.update(new UpdateProfileRequest(aisyahsId, aisyahsId,
+                "Aisyah R.", AISYAH_STREET_ADDRESS, AISYAH_CITY, AISYAH_ARRIVAL_NOTE));
 
         assertThat(customers.saves()).containsExactly(aisyah.id());
         assertThat(aisyah.name().value()).isEqualTo("Aisyah R.");
-        assertThat(aisyah.arrivalNote().value()).isEqualTo("Guardhouse: say unit B-12-3, then lift B");
-        assertThat(response.city()).isEqualTo(AISYAH_CITY);
+        assertThat(response.name()).isEqualTo("Aisyah R.");
         assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("CUS-1")
+    @DisplayName("Aisyah moves to a new unit and keeps her arrival note: Reservation hears of the new address.")
+    void aNewAddressWithTheSameNoteIsAnnounced() {
+        updateProfile.update(new UpdateProfileRequest(aisyahsId, aisyahsId, AISYAH_NAME,
+                "B-7-1, Residensi Salak, Jalan Salak 1", AISYAH_CITY, AISYAH_ARRIVAL_NOTE));
+
+        assertThat(publisher.published()).containsExactly(new CustomerAddressChangedIE("event-1", aisyahsId,
+                AISYAH_CITY, "B-7-1, Residensi Salak, Jalan Salak 1", AISYAH_ARRIVAL_NOTE, "ACTIVE", SAVED_AT));
     }
 
     @Test

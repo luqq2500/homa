@@ -60,6 +60,8 @@ class CustomerRegisterAccountTest {
         assertThat(registered.eventId()).isEqualTo("event-1");
         assertThat(registered.customerId()).isEqualTo(response.customerId());
         assertThat(registered.city()).isEqualTo(AISYAH_CITY);
+        assertThat(registered.streetAddress()).isEqualTo(AISYAH_STREET_ADDRESS);
+        assertThat(registered.arrivalNote()).isEqualTo(AISYAH_ARRIVAL_NOTE);
         assertThat(registered.status()).isEqualTo("ACTIVE");
         assertThat(registered.occurredAt()).isEqualTo(REGISTERED_AT);
     }

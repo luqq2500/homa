@@ -10,6 +10,7 @@ import com.homa.verification.usecase.dto.RecordVerificationResultResponse;
 import com.homa.verification.usecase.dto.StartVerificationRequest;
 import com.homa.verification.usecase.dto.StartVerificationResponse;
 import com.homa.verification.usecase.ie.HandlePayoutAccountSubmittedIE;
+import com.homa.verification.usecase.ie.HandleProviderOpenedIE;
 import com.homa.verification.usecase.port.out.VerificationAnswer;
 import java.time.Duration;
 import java.time.Instant;
@@ -73,6 +74,7 @@ public final class VerificationWorld {
             processedMessages, attempts, persons, verificationService, publisher, eventIds, time);
     public final HandlePayoutAccountSubmittedIE payoutAccountSubmitted = new HandlePayoutAccountSubmittedIE(
             processedMessages, providerOwners, persons, holderCheck, publisher, eventIds, time);
+    public final HandleProviderOpenedIE providerOpened = new HandleProviderOpenedIE(processedMessages, providerOwners);
 
     private int notifications;
 

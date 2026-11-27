@@ -4,14 +4,13 @@ import com.homa.listing.domain.ProviderId;
 import java.util.Optional;
 
 /**
- * Who may change a provider's listing: its owner's personId. Application policy, not a domain rule. The person who
- * creates a listing is recorded first; {@code ProviderWentLiveIE} then records the owner Provider names, which
- * replaces it.
+ * Who may create and change a provider's listing: its owner's personId, as {@code ProviderOpenedIE} named them
+ * (PRV-1). Application policy, not a domain rule. Empty until that event has reached Listing.
  */
 public interface ListingOwners {
 
     Optional<String> ownerOf(ProviderId providerId);
 
-    /** Records the owner, replacing any owner recorded before. */
+    /** Records the owner Provider named when the provider opened. */
     void record(ProviderId providerId, String ownerPersonId);
 }

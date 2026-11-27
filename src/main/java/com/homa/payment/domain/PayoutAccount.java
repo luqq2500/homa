@@ -25,6 +25,7 @@ public final class PayoutAccount {
     private Instant submittedAt;
     private PayoutAccountStatus status;
     private Instant checkedAt;
+    private String gatewayAccountRef;
 
     private PayoutAccount(ProviderId providerId) {
         this.providerId = Objects.requireNonNull(providerId, "providerId");
@@ -58,6 +59,17 @@ public final class PayoutAccount {
         this.submittedAt = Objects.requireNonNull(at, "submittedAt");
         this.status = PayoutAccountStatus.PENDING;
         this.checkedAt = null;
+        this.gatewayAccountRef = null;
+    }
+
+    /**
+     * The payment provider registered the current account and knows it by {@code reference}. Verification's holder
+     * check names the account by this reference, so the bank account number never leaves Payment (IDN-3). An account
+     * submitted to replace this one is registered afresh.
+     */
+    public void recordGatewayRegistration(String reference) {
+        Ids.requireText(reference, "The payment provider's account reference");
+        this.gatewayAccountRef = reference;
     }
 
     /**
@@ -120,5 +132,10 @@ public final class PayoutAccount {
     /** When the current account's holder check came back, once it has. */
     public Optional<Instant> checkedAt() {
         return Optional.ofNullable(checkedAt);
+    }
+
+    /** How the payment provider knows the current account, once it is registered there. */
+    public Optional<String> gatewayAccountRef() {
+        return Optional.ofNullable(gatewayAccountRef);
     }
 }

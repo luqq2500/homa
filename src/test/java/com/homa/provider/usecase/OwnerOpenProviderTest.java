@@ -4,9 +4,11 @@ import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.HANA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.provider.domain.Owner;
 import com.homa.provider.domain.PersonId;
 import com.homa.provider.domain.Provider;
@@ -29,7 +31,8 @@ class OwnerOpenProviderTest {
 
     @Test
     @Tag("PRV-1")
-    @DisplayName("Azman, verified with his MyKad, opens Kemas Home as its owner; it isn't live and has no payout account.")
+    @DisplayName("Azman, verified with his MyKad, opens Kemas Home as its owner; it isn't live and has no payout account, "
+            + "and the other contexts hear that he owns it.")
     void verifiedLocalAdultOpensAProvider() {
         world.verifiedPeople.save(ProviderUsecaseFixtures.verifiedLocal(AZMAN, "Azman"));
 
@@ -42,7 +45,8 @@ class OwnerOpenProviderTest {
         assertThat(stored.owner()).isEqualTo(new Owner(new PersonId(AZMAN)));
         assertThat(stored.status()).isEqualTo(ProviderStatus.OPENED);
         assertThat(stored.verifiedPayoutAccount()).isEmpty();
-        assertThat(world.publisher.published()).isEmpty();
+        assertThat(world.publisher.published()).containsExactly(
+                new ProviderOpenedIE("event-1", response.providerId(), AZMAN, TEAM_ADDED_AT));
     }
 
     @Test
@@ -59,6 +63,9 @@ class OwnerOpenProviderTest {
         assertThat(world.providers.count()).isEqualTo(2);
         assertThat(world.providers.stored(new ProviderId(hanaCleaning.providerId())).isRunBy(new PersonId(HANA)))
                 .isTrue();
+        assertThat(world.publisher.published()).containsExactly(
+                new ProviderOpenedIE("event-1", kemasHome.providerId(), AZMAN, TEAM_ADDED_AT),
+                new ProviderOpenedIE("event-2", hanaCleaning.providerId(), HANA, TEAM_ADDED_AT));
     }
 
     @Test
@@ -70,6 +77,7 @@ class OwnerOpenProviderTest {
                 .isInstanceOf(PersonNotVerifiedException.class)
                 .hasMessageContaining(AZMAN);
         assertThat(world.providers.count()).isZero();
+        assertThat(world.publisher.published()).isEmpty();
     }
 
     @Test
@@ -82,6 +90,7 @@ class OwnerOpenProviderTest {
         assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(RINA)))
                 .isInstanceOf(OwnerNotLocalException.class);
         assertThat(world.providers.count()).isZero();
+        assertThat(world.publisher.published()).isEmpty();
     }
 
     @Test
@@ -93,5 +102,6 @@ class OwnerOpenProviderTest {
         assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(HANA)))
                 .isInstanceOf(OwnerUnderageException.class);
         assertThat(world.providers.count()).isZero();
+        assertThat(world.publisher.published()).isEmpty();
     }
 }
