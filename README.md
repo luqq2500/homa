@@ -9,6 +9,7 @@ backend fresh from the **Homa Business Rule** and its **development plan**:
 - [`docs/homa-business-rule-development-plan.md`](docs/homa-business-rule-development-plan.md): bounded contexts,
   domain model, use cases, events, flows and the build order.
 - [`docs/backend_module_discipline.md`](docs/backend_module_discipline.md): the layering rules every context follows.
+- [`docs/business-rule-coverage.md`](docs/business-rule-coverage.md): which rule is built, in which layer of which context, generated from the test tags.
 - [`docs/decisions/`](docs/decisions/): runtime, persistence and the product owner's answers to open questions.
 
 The Notion pages are the source of truth; the copies in `docs/` were ingested on 2026-11-22 (rules version 1.6). The rules open with three
@@ -36,6 +37,7 @@ src/main/resources/db/migration Flyway migrations (PostgreSQL)
 docs/decisions/                  ADRs: runtime (ECS/Fargate), persistence (Spring JDBC), outbox and idempotency
 deploy/ecs/                      how the container runs on ECS/Fargate; Dockerfile at the root
 tools/quality_gates.py           CRAP gate, per-layer mutation gate and ratchet
+tools/rule_coverage.py           generates docs/business-rule-coverage.md from the rules page and the test tags
 quality/ratchet.json             last passing mutation score per layer
 ```
 
