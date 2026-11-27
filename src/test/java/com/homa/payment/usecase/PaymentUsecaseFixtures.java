@@ -41,6 +41,8 @@ public final class PaymentUsecaseFixtures {
     public static final String HOLD_ID = "hold-aisyah-standard";
     public static final String PAYOUT_ID = "payout-kemas-home-standard";
     public static final String MEI_CUSTOMER_ID = "customer-mei";
+    /** Azman, Kemas Home's owner (PRV-1), as Verification knows him. */
+    public static final String AZMAN = "person-azman";
 
     public static final CheckoutId CHECKOUT = new CheckoutId(CHECKOUT_ID);
     public static final CustomerId AISYAH = new CustomerId(AISYAH_CUSTOMER_ID);
@@ -70,7 +72,7 @@ public final class PaymentUsecaseFixtures {
     public static final Instant PROTECTION_WINDOW_END = HomaFixtures.PROTECTION_WINDOW.end();
 
     public static SubmitPayoutAccountRequest kemasHomesAccountRequest() {
-        return new SubmitPayoutAccountRequest(KEMAS_HOME_PROVIDER_ID, "BUSINESS", BANK, ACCOUNT_NUMBER,
+        return new SubmitPayoutAccountRequest(AZMAN, KEMAS_HOME_PROVIDER_ID, "BUSINESS", BANK, ACCOUNT_NUMBER,
                 KEMAS_HOME_NAME);
     }
 

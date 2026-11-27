@@ -12,6 +12,7 @@ import static com.homa.listing.usecase.ListingTestBed.SHAH_ALAM;
 import static com.homa.listing.usecase.ListingTestBed.kemasHomeBookability;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.kernel.Money;
 import com.homa.listing.usecase.dto.ProviderCreateListingRequest;
@@ -80,6 +81,8 @@ class SearchProvidersByCityTest {
     }
 
     private void hanaCleaningLive(Map<String, Money> travelFeeByCity) {
+        bed.opened.handle(new ProviderOpenedIE("provider-event-hana-opened", HANA_CLEANING, HANA,
+                ListingTestBed.NOW));
         bed.createListing.create(new ProviderCreateListingRequest(HANA, HANA_CLEANING, List.of(KITCHEN_CLEANING),
                 List.of(), List.of(SALAK_TINGGI), Money.myr(30), "INSTANT", "FLEXIBLE"));
         bed.setPricingTerms.set(new ProviderSetPricingTermsRequest(HANA, HANA_CLEANING, Money.myr(30), "BY_CITY", null,

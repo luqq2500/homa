@@ -4,6 +4,7 @@ import static com.homa.fixtures.HomaFixtures.HOURLY_RATE_PER_HELPER;
 import static com.homa.listing.usecase.ListingTestBed.AZMAN;
 import static com.homa.listing.usecase.ListingTestBed.CYBERJAYA;
 import static com.homa.listing.usecase.ListingTestBed.HANA;
+import static com.homa.listing.usecase.ListingTestBed.HANA_CLEANING;
 import static com.homa.listing.usecase.ListingTestBed.KEMAS_HOME;
 import static com.homa.listing.usecase.ListingTestBed.KEMAS_HOME_ID;
 import static com.homa.listing.usecase.ListingTestBed.KEMAS_HOME_JOBS;
@@ -20,6 +21,7 @@ import com.homa.listing.domain.AcceptancePolicy;
 import com.homa.listing.domain.CancellationTier;
 import com.homa.listing.domain.City;
 import com.homa.listing.domain.JobType;
+import com.homa.listing.domain.ProviderId;
 import com.homa.listing.domain.ListingTerms;
 import com.homa.listing.domain.Tool;
 import com.homa.listing.domain.exception.BelowMinimumRateException;
@@ -28,6 +30,7 @@ import com.homa.listing.usecase.dto.ProviderCreateListingRequest;
 import com.homa.listing.usecase.dto.ProviderCreateListingResponse;
 import com.homa.listing.usecase.exception.ListingAlreadyExistsException;
 import com.homa.listing.usecase.exception.NotAllowedException;
+import com.homa.listing.usecase.exception.ProviderOwnerNotYetKnownException;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +39,7 @@ import org.junit.jupiter.api.Test;
 
 class ProviderCreateListingTest {
 
-    private final ListingTestBed bed = new ListingTestBed().withHomaPresets();
+    private final ListingTestBed bed = new ListingTestBed().withHomaPresets().withKemasHomeOpened();
 
     @Test
     @Tag("OFR-1")
@@ -92,8 +95,9 @@ class ProviderCreateListingTest {
     }
 
     @Test
-    @DisplayName("Once Provider names Azman as Kemas Home's owner, he can still create its listing")
-    void theOwnerProviderNamedCreatesTheListing() {
+    @Tag("PRV-1")
+    @DisplayName("Once Kemas Home is live, Azman, its owner, can still create its listing")
+    void theOwnerCreatesTheListingAfterGoingLive() {
         bed.withKemasHomeLive();
 
         bed.createListing.create(kemasHomeCreation());
@@ -103,16 +107,36 @@ class ProviderCreateListingTest {
     }
 
     @Test
-    @DisplayName("Hana can't create Kemas Home's listing once Provider has named Azman its owner")
+    @Tag("PRV-1")
+    @DisplayName("Hana can't create Kemas Home's listing: Provider named Azman its owner when it opened")
     void anotherPersonCantCreateTheListing() {
-        bed.withKemasHomeLive();
         ProviderCreateListingRequest byHana = new ProviderCreateListingRequest(HANA, KEMAS_HOME, KEMAS_HOME_JOBS,
                 List.of(), List.of(SALAK_TINGGI), HOURLY_RATE_PER_HELPER, "REQUEST", "STANDARD");
 
-        assertThatThrownBy(() -> bed.createListing.create(byHana)).isInstanceOf(NotAllowedException.class);
+        assertThatThrownBy(() -> bed.createListing.create(byHana))
+                .isInstanceOf(NotAllowedException.class)
+                .hasMessage("person-hana isn't the owner of provider provider-kemas-home");
 
         assertThat(bed.listings.termsOf(KEMAS_HOME_ID)).isEmpty();
         assertThat(bed.owners.ownerOf(KEMAS_HOME_ID)).contains(AZMAN);
+        assertThat(bed.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-1")
+    @DisplayName("Before Listing has heard that Hana Cleaning opened, nobody can create its listing yet, not even "
+            + "Hana; she can try again shortly, and the first person to ask isn't made its owner")
+    void aListingWaitsUntilTheOwnerIsKnown() {
+        ProviderCreateListingRequest byHana = new ProviderCreateListingRequest(HANA, HANA_CLEANING, KEMAS_HOME_JOBS,
+                List.of(), List.of(SALAK_TINGGI), HOURLY_RATE_PER_HELPER, "REQUEST", "STANDARD");
+
+        assertThatThrownBy(() -> bed.createListing.create(byHana))
+                .isInstanceOf(ProviderOwnerNotYetKnownException.class)
+                .hasMessage("The owner of provider provider-hana-cleaning isn't known to Listing yet; try again "
+                        + "shortly");
+
+        assertThat(bed.listings.termsOf(new ProviderId(HANA_CLEANING))).isEmpty();
+        assertThat(bed.owners.ownerOf(new ProviderId(HANA_CLEANING))).isEmpty();
         assertThat(bed.publisher.published()).isEmpty();
     }
 
@@ -141,7 +165,6 @@ class ProviderCreateListingTest {
         assertThatThrownBy(() -> bed.createListing.create(withKlang)).isInstanceOf(NotInPresetsException.class);
 
         assertThat(bed.listings.termsOf(KEMAS_HOME_ID)).isEmpty();
-        assertThat(bed.owners.ownerOf(KEMAS_HOME_ID)).isEmpty();
         assertThat(bed.publisher.published()).isEmpty();
     }
 
@@ -149,7 +172,7 @@ class ProviderCreateListingTest {
     @Tag("OFR-1")
     @DisplayName("Before Homa has any presets, nothing can be chosen")
     void withoutPresetsNothingCanBeChosen() {
-        ListingTestBed empty = new ListingTestBed();
+        ListingTestBed empty = new ListingTestBed().withKemasHomeOpened();
 
         assertThatThrownBy(() -> empty.createListing.create(kemasHomeCreation()))
                 .isInstanceOf(NotInPresetsException.class);

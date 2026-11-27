@@ -18,7 +18,8 @@ public final class ProviderWorld {
     public final FixedTimeSource time = new FixedTimeSource(TEAM_ADDED_AT);
     public final SequentialEventIds eventIds = new SequentialEventIds();
 
-    public final OwnerOpenProvider openProvider = new OwnerOpenProvider(verifiedPeople, providers);
+    public final OwnerOpenProvider openProvider = new OwnerOpenProvider(verifiedPeople, providers, publisher, time,
+            eventIds);
     public final ProviderAddTeamMember addTeamMember = new ProviderAddTeamMember(
             providers, members, verifiedPeople, photos, publisher, time, eventIds);
     public final ProviderGoLive goLive = new ProviderGoLive(providers, members, publisher, time, eventIds);

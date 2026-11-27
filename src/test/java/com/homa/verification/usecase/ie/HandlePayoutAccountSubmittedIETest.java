@@ -12,10 +12,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.ie.events.PayoutAccountHolderMatchedIE;
 import com.homa.ie.events.PayoutAccountSubmittedIE;
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.verification.domain.IdentityNumber;
 import com.homa.verification.domain.PersonName;
 import com.homa.verification.usecase.FakeAccountHolderCheck;
 import com.homa.verification.usecase.VerificationWorld;
+import com.homa.verification.usecase.exception.ProviderOwnerNotYetKnownException;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +36,8 @@ class HandlePayoutAccountSubmittedIETest {
     @BeforeEach
     void azmanIsAVerifiedOwnerOfKemasHome() {
         azman = world.verify(AZMAN_SIGN_IN, OWNER, null, azmansAnswer()).personId();
-        world.providerOwners.ownedBy(KEMAS_HOME_PROVIDER_ID, azman);
+        world.providerOpened.handle(new ProviderOpenedIE("provider-event-1", KEMAS_HOME_PROVIDER_ID, azman,
+                SUBMITTED_AT));
         world.publisher.clear();
         world.time.set(CHECKED_AT);
     }
@@ -90,16 +93,30 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("PRV-1")
     @DisplayName("Without a verified owner there's no identity to check the account against, so it isn't matched.")
     void anAccountWithoutAVerifiedOwnerIsNotMatched() {
-        world.providerOwners.ownedBy("provider-hana-cleaning", "person-not-verified");
+        world.providerOpened.handle(new ProviderOpenedIE("provider-event-2", "provider-hana-cleaning",
+                "person-not-verified", SUBMITTED_AT));
         world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
 
-        world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1", "provider-unknown",
-                PAYOUT_ACCOUNT, "OWNER", SUBMITTED_AT));
         world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-2", "provider-hana-cleaning",
                 PAYOUT_ACCOUNT, "OWNER", SUBMITTED_AT));
 
         assertThat(world.publisher.published(PayoutAccountHolderMatchedIE.class))
-                .extracting(PayoutAccountHolderMatchedIE::matched).containsExactly(false, false);
+                .extracting(PayoutAccountHolderMatchedIE::matched).containsExactly(false);
+        assertThat(world.holderCheck.asked()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-1")
+    @DisplayName("A submission that arrives before Verification has heard who owns the provider fails, so the relay "
+            + "retries it once ProviderOpenedIE is in; nothing is published meanwhile.")
+    void anAccountOfAProviderWhoseOwnerIsNotYetKnownIsRetried() {
+        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+
+        assertThatThrownBy(() -> world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1",
+                "provider-unknown", PAYOUT_ACCOUNT, "OWNER", SUBMITTED_AT)))
+                .isInstanceOf(ProviderOwnerNotYetKnownException.class)
+                .hasMessage("The owner of provider provider-unknown isn't known to Verification yet");
+        assertThat(world.publisher.published()).isEmpty();
         assertThat(world.holderCheck.asked()).isEmpty();
     }
 

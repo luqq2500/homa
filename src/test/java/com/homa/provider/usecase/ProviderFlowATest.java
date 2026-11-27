@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.ie.events.PayoutAccountVerifiedIE;
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
 import com.homa.ie.port.ProviderIE;
@@ -49,7 +50,8 @@ class ProviderFlowATest {
 
         world.payoutAccountVerified.handle(new PayoutAccountVerifiedIE("payout-kemas-home", kemasHome,
                 "payout-account-kemas-home", "BUSINESS", true, HomaFixtures.at(2026, 9, 1, 10, 0)));
-        assertThat(world.publisher.published()).isEmpty();
+        assertThat(world.publisher.published()).containsExactly(
+                new ProviderOpenedIE("event-1", kemasHome, AZMAN, TEAM_ADDED_AT));
 
         world.personVerified.handle(localMemberVerified("verification-siti", SITI, "Siti"));
         world.personVerified.handle(localMemberVerified("verification-nurul", NURUL, "Nurul"));
@@ -67,12 +69,12 @@ class ProviderFlowATest {
         assertThat(world.providers.stored(new ProviderId(kemasHome)).verifiedPayoutAccount())
                 .contains(PayoutAccountHolder.BUSINESS);
         List<ProviderIE> published = world.publisher.published();
-        assertThat(published).hasSize(3);
-        assertThat(published.get(0)).isEqualTo(new TeamMemberActivatedIE("event-1", siti.memberId(), SITI, kemasHome,
+        assertThat(published).hasSize(4);
+        assertThat(published.get(1)).isEqualTo(new TeamMemberActivatedIE("event-2", siti.memberId(), SITI, kemasHome,
                 "Siti", "HELPER", "LOCAL", true, null, TEAM_ADDED_AT));
-        assertThat(published.get(1)).isEqualTo(new TeamMemberActivatedIE("event-2", nurul.memberId(), NURUL,
+        assertThat(published.get(2)).isEqualTo(new TeamMemberActivatedIE("event-3", nurul.memberId(), NURUL,
                 kemasHome, "Nurul", "HELPER", "LOCAL", true, null, TEAM_ADDED_AT));
-        assertThat(published.get(2)).isEqualTo(
-                new ProviderWentLiveIE("event-3", kemasHome, AZMAN, null, GOES_LIVE_AT));
+        assertThat(published.get(3)).isEqualTo(
+                new ProviderWentLiveIE("event-4", kemasHome, AZMAN, null, GOES_LIVE_AT));
     }
 }

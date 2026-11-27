@@ -47,6 +47,7 @@ class FlowAListingWalkTest {
                 List.of("KITCHEN_CLEANING", "LAUNDRY_FOLDING", "BATHROOM_CLEANING"), List.of("HEPA_VACUUM"),
                 List.of("SALAK_TINGGI", "CYBERJAYA", "PUTRAJAYA", "SHAH_ALAM")));
         bed.withKemasHomeTeam();
+        bed.opened.handle(ListingTestBed.kemasHomeOpened("provider-event-opened"));
 
         bed.createListing.create(kemasHomeCreation());
         bed.setPricingTerms.set(ProviderSetPricingTermsTest.kemasHomePricing(AZMAN));

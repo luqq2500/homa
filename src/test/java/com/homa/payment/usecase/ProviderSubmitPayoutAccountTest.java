@@ -4,6 +4,7 @@ import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_NAME;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.payment.usecase.PaymentUsecaseFixtures.ACCOUNT_CHECKED_AT;
 import static com.homa.payment.usecase.PaymentUsecaseFixtures.ACCOUNT_SUBMITTED_AT;
+import static com.homa.payment.usecase.PaymentUsecaseFixtures.AZMAN;
 import static com.homa.payment.usecase.PaymentUsecaseFixtures.KEMAS_HOME;
 import static com.homa.payment.usecase.PaymentUsecaseFixtures.KEMAS_HOMES_ACCOUNT;
 import static com.homa.payment.usecase.PaymentUsecaseFixtures.kemasHomesAccountRequest;
@@ -20,18 +21,27 @@ import com.homa.payment.domain.PayoutAccountStatus;
 import com.homa.payment.domain.exception.PayoutAccountAlreadyVerifiedException;
 import com.homa.payment.usecase.dto.SubmitPayoutAccountRequest;
 import com.homa.payment.usecase.dto.SubmitPayoutAccountResponse;
+import com.homa.payment.usecase.exception.NotProviderOwnerException;
+import com.homa.payment.usecase.exception.ProviderOwnerNotYetKnownException;
 import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class ProviderSubmitPayoutAccountTest {
 
+    private final InMemoryProviderOwners owners = new InMemoryProviderOwners();
     private final InMemoryPayoutAccountRepository accounts = new InMemoryPayoutAccountRepository();
     private final RecordingPaymentIEPublisher publisher = new RecordingPaymentIEPublisher();
     private final FixedTimeSource time = new FixedTimeSource(ACCOUNT_SUBMITTED_AT);
     private final ProviderSubmitPayoutAccount submitter =
-            new ProviderSubmitPayoutAccount(accounts, publisher, time, new SequentialEventIds());
+            new ProviderSubmitPayoutAccount(owners, accounts, publisher, time, new SequentialEventIds());
+
+    @BeforeEach
+    void azmanOpenedKemasHome() {
+        owners.record(KEMAS_HOME, AZMAN);
+    }
 
     @Test
     @Tag("PRV-2")
@@ -62,7 +72,7 @@ class ProviderSubmitPayoutAccountTest {
         Instant nextDay = Instant.parse("2026-11-24T01:00:00Z");
         time.set(nextDay);
 
-        SubmitPayoutAccountResponse response = submitter.submit(new SubmitPayoutAccountRequest(
+        SubmitPayoutAccountResponse response = submitter.submit(new SubmitPayoutAccountRequest(AZMAN,
                 KEMAS_HOME_PROVIDER_ID, "OWNER", "CIMB", "8001234567", "Azman bin Ali"));
 
         assertThat(response.payoutAccountId()).isNotEqualTo(KEMAS_HOMES_ACCOUNT.value());
@@ -92,9 +102,35 @@ class ProviderSubmitPayoutAccountTest {
     @Tag("PRV-2")
     @DisplayName("An account held by anyone but the owner or the business is refused.")
     void unknownHolderIsRefused() {
-        assertThatThrownBy(() -> submitter.submit(new SubmitPayoutAccountRequest(KEMAS_HOME_PROVIDER_ID, "FRIEND",
-                "MAYBANK", "514011223344", KEMAS_HOME_NAME)))
+        assertThatThrownBy(() -> submitter.submit(new SubmitPayoutAccountRequest(AZMAN, KEMAS_HOME_PROVIDER_ID,
+                "FRIEND", "MAYBANK", "514011223344", KEMAS_HOME_NAME)))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThat(accounts.saves()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-1")
+    @DisplayName("Hana isn't Kemas Home's owner, so she can't submit its payout account.")
+    void onlyTheOwnerSubmitsThePayoutAccount() {
+        assertThatThrownBy(() -> submitter.submit(new SubmitPayoutAccountRequest("person-hana",
+                KEMAS_HOME_PROVIDER_ID, "OWNER", "MAYBANK", "514011223344", "Hana")))
+                .isInstanceOf(NotProviderOwnerException.class)
+                .hasMessage("person-hana isn't the owner of provider provider-kemas-home");
+        assertThat(accounts.saves()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-1")
+    @DisplayName("Before Payment has heard that Hana Cleaning opened, nobody can submit its payout account yet; Hana "
+            + "can try again shortly.")
+    void aPayoutAccountWaitsUntilTheOwnerIsKnown() {
+        assertThatThrownBy(() -> submitter.submit(new SubmitPayoutAccountRequest("person-hana",
+                "provider-hana-cleaning", "OWNER", "MAYBANK", "514011223344", "Hana")))
+                .isInstanceOf(ProviderOwnerNotYetKnownException.class)
+                .hasMessage("The owner of provider provider-hana-cleaning isn't known to Payment yet; try again "
+                        + "shortly");
         assertThat(accounts.saves()).isEmpty();
         assertThat(publisher.published()).isEmpty();
     }
@@ -103,6 +139,6 @@ class ProviderSubmitPayoutAccountTest {
     @DisplayName("The request never writes the account number into a log.")
     void requestHidesTheAccountNumber() {
         assertThat(kemasHomesAccountRequest().toString())
-                .isEqualTo("SubmitPayoutAccountRequest[provider-kemas-home, BUSINESS, MAYBANK]");
+                .isEqualTo("SubmitPayoutAccountRequest[person-azman, provider-kemas-home, BUSINESS, MAYBANK]");
     }
 }
