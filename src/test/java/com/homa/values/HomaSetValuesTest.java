@@ -9,6 +9,7 @@ import com.homa.payment.domain.PaymentValues;
 import com.homa.provider.domain.ProviderValues;
 import com.homa.reservation.domain.ReservationValues;
 import com.homa.reservation.domain.terms.CancellationTier;
+import com.homa.verification.domain.VerificationValues;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,14 +70,14 @@ class HomaSetValuesTest {
 
     private static Map<String, Runnable> checks() {
         Map<String, Runnable> checks = new LinkedHashMap<>();
-        checks.put("Minimum age", () -> assertThat(ProviderValues.MINIMUM_HELPER_AGE_YEARS).isEqualTo(18));
+        checks.put("Minimum age", () -> assertThat(VerificationValues.MINIMUM_AGE_YEARS).isEqualTo(18));
         checks.put("Work permit buffer", () -> assertThat(ProviderValues.WORK_PERMIT_BUFFER_DAYS).isEqualTo(90));
         checks.put("Re-verification cycle", () -> {
-            assertThat(ProviderValues.REVERIFICATION_CYCLE_MONTHS).isEqualTo(6);
-            assertThat(ProviderValues.REVERIFICATION_REMINDER_DAYS).isEqualTo(60);
+            assertThat(VerificationValues.REVERIFICATION_CYCLE_MONTHS).isEqualTo(6);
+            assertThat(VerificationValues.REVERIFICATION_REMINDER_DAYS).isEqualTo(60);
         });
         checks.put("Re-verification when flagged",
-                () -> assertThat(ProviderValues.FLAGGED_REVERIFICATION_DAYS).isEqualTo(14));
+                () -> assertThat(VerificationValues.FLAGGED_REVERIFICATION_DAYS).isEqualTo(14));
         checks.put("Minimum rate", () -> assertThat(ListingValues.MINIMUM_RATE).isEqualTo(Money.myr(20)));
         checks.put("Maximum discount", () -> assertThat(ListingValues.MAXIMUM_DISCOUNT).isEqualTo(Percentage.of(99)));
         checks.put("Default hours", () -> {
