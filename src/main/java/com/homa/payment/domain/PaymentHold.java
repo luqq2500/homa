@@ -1,6 +1,7 @@
 package com.homa.payment.domain;
 
 import com.homa.kernel.Money;
+import com.homa.payment.domain.exception.CheckoutNotAwaitingPaymentException;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import java.time.Instant;
@@ -44,6 +45,18 @@ public final class PaymentHold {
     public static PaymentHold openForCheckout(PaymentHoldId id, CheckoutId checkoutId, CustomerId customerId,
             Money total) {
         return new PaymentHold(id, checkoutId, customerId, total);
+    }
+
+    /**
+     * The customer starts another attempt to pay the checkout total: a card payment, a retry after a failed attempt,
+     * an online banking payment. The new attempt's id is the gateway's reference for the payment. Only while no
+     * payment is confirmed: once one is held, another payment would only be refunded in full (RES-12).
+     */
+    public PaymentAttemptId startAttempt() {
+        if (status != PaymentHoldStatus.PENDING) {
+            throw new CheckoutNotAwaitingPaymentException(id, status);
+        }
+        return PaymentAttemptId.generate();
     }
 
     /**
