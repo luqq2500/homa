@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 class HandlePayoutAccountSubmittedIETest {
 
     private static final String PAYOUT_ACCOUNT = "payout-account-kemas-1";
+    /** How the payment provider knows Kemas Home's account; the check names it so, never by its number. */
+    private static final String GATEWAY_REF = "gateway-account-kemas-1";
     private static final Instant SUBMITTED_AT = at(2026, 10, 2, 11, 0);
     private static final Instant CHECKED_AT = at(2026, 10, 2, 11, 1);
 
@@ -43,7 +45,8 @@ class HandlePayoutAccountSubmittedIETest {
     }
 
     private static PayoutAccountSubmittedIE submitted(String eventId, String holder) {
-        return new PayoutAccountSubmittedIE(eventId, KEMAS_HOME_PROVIDER_ID, PAYOUT_ACCOUNT, holder, SUBMITTED_AT);
+        return new PayoutAccountSubmittedIE(eventId, KEMAS_HOME_PROVIDER_ID, PAYOUT_ACCOUNT, GATEWAY_REF, holder,
+                SUBMITTED_AT);
     }
 
     private static PayoutAccountHolderMatchedIE matched(String holder, boolean matched) {
@@ -56,12 +59,12 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("IDN-3")
     @DisplayName("Kemas Home's account in Azman's name is matched against his verified MyKad identity.")
     void anOwnerHeldAccountIsMatched() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
 
         world.payoutAccountSubmitted.handle(submitted("payment-event-1", "OWNER"));
 
         assertThat(world.publisher.single(PayoutAccountHolderMatchedIE.class)).isEqualTo(matched("OWNER", true));
-        assertThat(world.holderCheck.asked()).containsExactly(new FakeAccountHolderCheck.Question(PAYOUT_ACCOUNT,
+        assertThat(world.holderCheck.asked()).containsExactly(new FakeAccountHolderCheck.Question(GATEWAY_REF,
                 new IdentityNumber(AZMAN_MYKAD), new PersonName("Azman")));
     }
 
@@ -69,7 +72,7 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("PRV-2")
     @DisplayName("An account the payment provider says isn't Azman's is not matched.")
     void anAccountHeldBySomeoneElseIsNotMatched() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, SITI_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, SITI_MYKAD);
 
         world.payoutAccountSubmitted.handle(submitted("payment-event-1", "OWNER"));
 
@@ -81,7 +84,7 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("PRV-7")
     @DisplayName("A business-held account isn't matched in slice 1: there is no business verification to check it against.")
     void aBusinessHeldAccountIsNotMatchedYet() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
 
         world.payoutAccountSubmitted.handle(submitted("payment-event-1", "BUSINESS"));
 
@@ -95,10 +98,10 @@ class HandlePayoutAccountSubmittedIETest {
     void anAccountWithoutAVerifiedOwnerIsNotMatched() {
         world.providerOpened.handle(new ProviderOpenedIE("provider-event-2", "provider-hana-cleaning",
                 "person-not-verified", SUBMITTED_AT));
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
 
         world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-2", "provider-hana-cleaning",
-                PAYOUT_ACCOUNT, "OWNER", SUBMITTED_AT));
+                PAYOUT_ACCOUNT, GATEWAY_REF, "OWNER", SUBMITTED_AT));
 
         assertThat(world.publisher.published(PayoutAccountHolderMatchedIE.class))
                 .extracting(PayoutAccountHolderMatchedIE::matched).containsExactly(false);
@@ -110,10 +113,10 @@ class HandlePayoutAccountSubmittedIETest {
     @DisplayName("A submission that arrives before Verification has heard who owns the provider fails, so the relay "
             + "retries it once ProviderOpenedIE is in; nothing is published meanwhile.")
     void anAccountOfAProviderWhoseOwnerIsNotYetKnownIsRetried() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
 
         assertThatThrownBy(() -> world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1",
-                "provider-unknown", PAYOUT_ACCOUNT, "OWNER", SUBMITTED_AT)))
+                "provider-unknown", PAYOUT_ACCOUNT, GATEWAY_REF, "OWNER", SUBMITTED_AT)))
                 .isInstanceOf(ProviderOwnerNotYetKnownException.class)
                 .hasMessage("The owner of provider provider-unknown isn't known to Verification yet");
         assertThat(world.publisher.published()).isEmpty();
@@ -124,7 +127,7 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("PRV-10")
     @DisplayName("A redelivered submission changes nothing: the check is asked once and the outcome published once.")
     void aRedeliveredEventChangesNothing() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
         PayoutAccountSubmittedIE event = submitted("payment-event-1", "OWNER");
         world.payoutAccountSubmitted.handle(event);
 
@@ -140,7 +143,7 @@ class HandlePayoutAccountSubmittedIETest {
     @Tag("PRV-10")
     @DisplayName("Kemas Home changes banks: the new account is checked afresh.")
     void everySubmissionIsCheckedAfresh() {
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy(GATEWAY_REF, AZMAN_MYKAD);
         world.payoutAccountSubmitted.handle(submitted("payment-event-1", "OWNER"));
 
         world.payoutAccountSubmitted.handle(submitted("payment-event-2", "OWNER"));

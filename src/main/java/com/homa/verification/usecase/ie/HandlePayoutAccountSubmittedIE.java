@@ -65,7 +65,7 @@ public class HandlePayoutAccountSubmittedIE implements PayoutAccountSubmittedIEH
         PersonId ownerId = providerOwners.ownerOf(event.providerId())
                 .orElseThrow(() -> new ProviderOwnerNotYetKnownException(event.providerId()));
         return persons.findById(ownerId)
-                .map(owner -> holderCheck.isHeldBy(event.payoutAccountId(), owner.identityNumber(), owner.name()))
+                .map(owner -> holderCheck.isHeldBy(event.gatewayAccountRef(), owner.identityNumber(), owner.name()))
                 .orElse(false);
     }
 }

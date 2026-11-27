@@ -23,6 +23,7 @@ import com.homa.payment.usecase.dto.SubmitPayoutAccountRequest;
 import com.homa.payment.usecase.dto.SubmitPayoutAccountResponse;
 import com.homa.payment.usecase.exception.NotProviderOwnerException;
 import com.homa.payment.usecase.exception.ProviderOwnerNotYetKnownException;
+import com.homa.payment.usecase.port.out.PayoutGateway;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,9 +35,10 @@ class ProviderSubmitPayoutAccountTest {
     private final InMemoryProviderOwners owners = new InMemoryProviderOwners();
     private final InMemoryPayoutAccountRepository accounts = new InMemoryPayoutAccountRepository();
     private final RecordingPaymentIEPublisher publisher = new RecordingPaymentIEPublisher();
+    private final RecordingPayoutGateway gateway = new RecordingPayoutGateway();
     private final FixedTimeSource time = new FixedTimeSource(ACCOUNT_SUBMITTED_AT);
     private final ProviderSubmitPayoutAccount submitter =
-            new ProviderSubmitPayoutAccount(owners, accounts, publisher, time, new SequentialEventIds());
+            new ProviderSubmitPayoutAccount(owners, accounts, gateway, publisher, time, new SequentialEventIds());
 
     @BeforeEach
     void azmanOpenedKemasHome() {
@@ -45,7 +47,9 @@ class ProviderSubmitPayoutAccountTest {
 
     @Test
     @Tag("PRV-2")
-    @DisplayName("Azman submits Kemas Home Sdn Bhd's company account: it waits for Verification's holder check.")
+    @Tag("IDN-3")
+    @DisplayName("Azman submits Kemas Home Sdn Bhd's company account: the payment provider registers it, and it waits "
+            + "for Verification's holder check, which names it by the provider's reference, never its number.")
     void submittedAccountWaitsForTheHolderCheck() {
         SubmitPayoutAccountResponse response = submitter.submit(kemasHomesAccountRequest());
 
@@ -56,9 +60,14 @@ class ProviderSubmitPayoutAccountTest {
         assertThat(saved.bankAccount()).isEqualTo(new BankAccount("MAYBANK", "514011223344", KEMAS_HOME_NAME));
         assertThat(saved.submittedAt()).isEqualTo(ACCOUNT_SUBMITTED_AT);
         assertThat(saved.status()).isEqualTo(PayoutAccountStatus.PENDING);
+        assertThat(saved.gatewayAccountRef()).contains("gateway-account-1");
         assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(gateway.registrations()).containsExactly(new PayoutGateway.AccountRegistration(
+                response.payoutAccountId(), "MAYBANK", "514011223344", KEMAS_HOME_NAME));
         assertThat(publisher.published()).containsExactly(new PayoutAccountSubmittedIE("event-1",
-                KEMAS_HOME_PROVIDER_ID, response.payoutAccountId(), "BUSINESS", ACCOUNT_SUBMITTED_AT));
+                KEMAS_HOME_PROVIDER_ID, response.payoutAccountId(), "gateway-account-1", "BUSINESS",
+                ACCOUNT_SUBMITTED_AT));
+        assertThat(publisher.published().getFirst().toString()).doesNotContain("514011223344");
     }
 
     @Test
@@ -80,8 +89,11 @@ class ProviderSubmitPayoutAccountTest {
         assertThat(accounts.saves()).containsExactly(failed);
         assertThat(failed.accountId().value()).isEqualTo(response.payoutAccountId());
         assertThat(failed.bankAccount()).isEqualTo(new BankAccount("CIMB", "8001234567", "Azman bin Ali"));
+        assertThat(failed.gatewayAccountRef()).contains("gateway-account-1");
+        assertThat(gateway.registrations()).containsExactly(new PayoutGateway.AccountRegistration(
+                response.payoutAccountId(), "CIMB", "8001234567", "Azman bin Ali"));
         assertThat(publisher.published()).containsExactly(new PayoutAccountSubmittedIE("event-1",
-                KEMAS_HOME_PROVIDER_ID, response.payoutAccountId(), "OWNER", nextDay));
+                KEMAS_HOME_PROVIDER_ID, response.payoutAccountId(), "gateway-account-1", "OWNER", nextDay));
     }
 
     @Test
@@ -94,6 +106,7 @@ class ProviderSubmitPayoutAccountTest {
         assertThatThrownBy(() -> submitter.submit(kemasHomesAccountRequest()))
                 .isInstanceOf(PayoutAccountAlreadyVerifiedException.class);
         assertThat(verified.accountId()).isEqualTo(KEMAS_HOMES_ACCOUNT);
+        assertThat(gateway.registrations()).isEmpty();
         assertThat(accounts.saves()).isEmpty();
         assertThat(publisher.published()).isEmpty();
     }
@@ -133,6 +146,13 @@ class ProviderSubmitPayoutAccountTest {
                         + "shortly");
         assertThat(accounts.saves()).isEmpty();
         assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A registration never writes the account number into a log.")
+    void registrationHidesTheAccountNumber() {
+        assertThat(new PayoutGateway.AccountRegistration("payout-account-1", "MAYBANK", "514011223344",
+                KEMAS_HOME_NAME).toString()).isEqualTo("AccountRegistration[payout-account-1, MAYBANK]");
     }
 
     @Test

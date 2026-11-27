@@ -115,6 +115,38 @@ class PayoutAccountTest {
 
     @Test
     @Tag("PRV-2")
+    @Tag("IDN-3")
+    @DisplayName("The payment provider registers Kemas Home's account under its own reference; the CIMB account that "
+            + "replaces it has none until it is registered in turn.")
+    void gatewayReferenceBelongsToTheCurrentAccount() {
+        PayoutAccount account = kemasHomesSubmittedAccount();
+        assertThat(account.gatewayAccountRef()).isEmpty();
+
+        account.recordGatewayRegistration("gw-acct-maybank");
+        assertThat(account.gatewayAccountRef()).contains("gw-acct-maybank");
+
+        account.resubmit(KEMAS_HOMES_SECOND_ACCOUNT, PayoutAccountHolder.OWNER, KEMAS_HOMES_SECOND_BANK_ACCOUNT,
+                RESUBMITTED_AT);
+        assertThat(account.gatewayAccountRef()).isEmpty();
+
+        account.recordGatewayRegistration("gw-acct-cimb");
+        assertThat(account.gatewayAccountRef()).contains("gw-acct-cimb");
+    }
+
+    @Test
+    @Tag("IDN-3")
+    @DisplayName("A registration without the payment provider's reference is refused, and the account keeps none.")
+    void gatewayReferenceIsNeverBlank() {
+        PayoutAccount account = kemasHomesSubmittedAccount();
+
+        assertThatThrownBy(() -> account.recordGatewayRegistration(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The payment provider's account reference must not be blank");
+        assertThat(account.gatewayAccountRef()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-2")
     @DisplayName("Azman replaces the Maybank account before its check comes back: the late Maybank result changes "
             + "nothing, and the CIMB result decides.")
     void resultForAReplacedAccountChangesNothing() {

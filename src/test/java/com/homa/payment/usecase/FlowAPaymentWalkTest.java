@@ -63,8 +63,8 @@ class FlowAPaymentWalkTest {
         InMemoryProviderOwners owners = new InMemoryProviderOwners();
         new HandleProviderOpenedIE(processed, owners).handle(new ProviderOpenedIE("provider-1",
                 KEMAS_HOME_PROVIDER_ID, PaymentUsecaseFixtures.AZMAN, ACCOUNT_SUBMITTED_AT));
-        SubmitPayoutAccountResponse account = new ProviderSubmitPayoutAccount(owners, accounts, publisher, time,
-                eventIds).submit(kemasHomesAccountRequest());
+        SubmitPayoutAccountResponse account = new ProviderSubmitPayoutAccount(owners, accounts, payoutGateway,
+                publisher, time, eventIds).submit(kemasHomesAccountRequest());
         PayoutAccountSubmittedIE submitted = (PayoutAccountSubmittedIE) publisher.published().get(0);
         new HandlePayoutAccountHolderMatchedIE(accounts, publisher, processed, time, eventIds)
                 .handle(new PayoutAccountHolderMatchedIE("verification-1", submitted.payoutAccountId(),
@@ -87,7 +87,7 @@ class FlowAPaymentWalkTest {
         String payoutId = payouts.findByReservationId(RESERVATION).orElseThrow().id().value();
         assertThat(publisher.published()).containsExactly(
                 new PayoutAccountSubmittedIE("event-1", KEMAS_HOME_PROVIDER_ID, account.payoutAccountId(),
-                        "BUSINESS", ACCOUNT_SUBMITTED_AT),
+                        "gateway-account-1", "BUSINESS", ACCOUNT_SUBMITTED_AT),
                 new PayoutAccountVerifiedIE("event-2", KEMAS_HOME_PROVIDER_ID, account.payoutAccountId(),
                         "BUSINESS", true, ACCOUNT_SUBMITTED_AT),
                 new PaymentHeldIE("event-3", CHECKOUT_ID, Money.myr(200), PAID_AT, PAID_AT),

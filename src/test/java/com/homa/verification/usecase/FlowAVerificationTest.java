@@ -52,10 +52,10 @@ class FlowAVerificationTest {
         assertThat(world.answer(azman, azmansAnswer()).outcome()).isEqualTo("VERIFIED");
 
         world.providerOwners.ownedBy(KEMAS_HOME_PROVIDER_ID, azman.personId());
-        world.holderCheck.accountHeldBy(PAYOUT_ACCOUNT, AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy("gateway-account-kemas-1", AZMAN_MYKAD);
         world.time.set(PAYOUT_CHECKED_AT);
         world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1", KEMAS_HOME_PROVIDER_ID,
-                PAYOUT_ACCOUNT, "OWNER", at(2026, 10, 2, 11, 0)));
+                PAYOUT_ACCOUNT, "gateway-account-kemas-1", "OWNER", at(2026, 10, 2, 11, 0)));
 
         StartVerificationResponse siti = world.start(SITI_SIGN_IN, MEMBER, null, "MyKad");
         assertThat(world.answer(siti, sitisAnswer()).outcome()).isEqualTo("VERIFIED");

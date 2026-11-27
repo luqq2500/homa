@@ -90,9 +90,9 @@ class IdentityNumberNeverLeavesTest {
                 DANIEL_SECOND_CUSTOMER_ID, danielsAnswer(at(2026, 11, 25, 9, 0)));
         responses.add(second);
         world.providerOwners.ownedBy(KEMAS_HOME_PROVIDER_ID, azman.personId());
-        world.holderCheck.accountHeldBy("payout-account-kemas-1", AZMAN_MYKAD);
+        world.holderCheck.accountHeldBy("gateway-account-kemas-1", AZMAN_MYKAD);
         world.payoutAccountSubmitted.handle(new PayoutAccountSubmittedIE("payment-event-1", KEMAS_HOME_PROVIDER_ID,
-                "payout-account-kemas-1", "OWNER", at(2026, 10, 2, 11, 0)));
+                "payout-account-kemas-1", "gateway-account-kemas-1", "OWNER", at(2026, 10, 2, 11, 0)));
 
         assertThat(second.outcome()).isEqualTo("REFUSED");
         assertThat(world.publisher.published(PersonVerifiedIE.class)).hasSize(5);
