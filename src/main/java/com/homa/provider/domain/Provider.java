@@ -129,6 +129,14 @@ public final class Provider {
         return owner;
     }
 
+    /**
+     * True when {@code person} is the provider's owner, the one person who runs the provider account (PRV-1). Members
+     * act for it only on the reservations they're rostered on (PRV-11), so they don't run its account.
+     */
+    public boolean isRunBy(PersonId person) {
+        return owner.personId().equals(person);
+    }
+
     public ProviderStatus status() {
         return status;
     }

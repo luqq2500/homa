@@ -6,6 +6,7 @@ import static com.homa.provider.domain.ProviderFixtures.HANA_CLEANING;
 import static com.homa.provider.domain.ProviderFixtures.KEMAS_HOME;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERSON;
+import static com.homa.provider.domain.ProviderFixtures.SITI_PERSON;
 import static com.homa.provider.domain.ProviderFixtures.openedHanaCleaning;
 import static com.homa.provider.domain.ProviderFixtures.openedKemasHome;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -86,5 +87,17 @@ class ProviderOpeningTest {
         assertThat(kemasHome.verifiedPayoutAccount()).contains(PayoutAccountHolder.BUSINESS);
         assertThat(hanaCleaning.isLive()).isFalse();
         assertThat(hanaCleaning.verifiedPayoutAccount()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-1")
+    @DisplayName("Azman runs Kemas Home's account; neither Hana nor Siti, one of its helpers, does.")
+    void onlyTheOwnerRunsTheProviderAccount() {
+        Provider kemasHome = openedKemasHome();
+
+        assertThat(kemasHome.isRunBy(AZMAN)).isTrue();
+        assertThat(kemasHome.isRunBy(new PersonId(AZMAN.value()))).isTrue();
+        assertThat(kemasHome.isRunBy(HANA)).isFalse();
+        assertThat(kemasHome.isRunBy(SITI_PERSON)).isFalse();
     }
 }
