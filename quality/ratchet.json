@@ -42,5 +42,9 @@
   "verification.domain": {
     "score": 100.0,
     "strength": 100.0
+  },
+  "verification.usecase": {
+    "score": 100.0,
+    "strength": 100.0
   }
 }
