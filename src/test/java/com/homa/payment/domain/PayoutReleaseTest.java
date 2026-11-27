@@ -30,7 +30,7 @@ class PayoutReleaseTest {
 
     @Test
     @Tag("PAY-3")
-    @DisplayName("Payout RM200: platform fee RM31, Kemas Home receives RM169.")
+    @DisplayName("A RM200 payout pays Kemas Home RM169.")
     void platformFeeIsTakenFromAJobPayout() {
         PayoutRelease release = kemasHomesJobPayout().release(PROTECTION_WINDOW_END);
 
@@ -43,8 +43,7 @@ class PayoutReleaseTest {
     @Test
     @Tag("PAY-3")
     @Tag("PAY-6")
-    @DisplayName("If Aisyah had paid a RM45 cancellation fee instead, the platform fee would be RM6.98 and Kemas Home "
-            + "would receive RM38.02.")
+    @DisplayName("A RM45 cancellation fee pays it RM38.02 after a RM6.98 platform fee.")
     void platformFeeIsTakenFromAFeePayoutToo() {
         PayoutRelease release = kemasHomesCancellationFeePayout().release(PROTECTION_WINDOW_END);
 

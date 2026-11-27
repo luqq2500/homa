@@ -75,8 +75,8 @@ class PaymentHoldTest {
     @Test
     @Tag("RES-12")
     @Tag("PAY-7")
-    @DisplayName("Aisyah's card retry confirms at 20:04, then her slow online banking payment confirms at 20:06. "
-            + "The 20:06 payment is refunded in full straight away.")
+    @DisplayName("Aisyah's card retry confirms at 20:04 and her slow bank payment at 20:06. The 20:06 payment is "
+            + "refunded.")
     void laterConfirmedPaymentForTheSameCheckoutIsRefundedInFullAtOnce() {
         PaymentHold hold = aisyahsCheckoutAwaitingPayment();
         hold.recordConfirmation(AISYAHS_CARD_RETRY, CARD_RETRY_CONFIRMED_AT);

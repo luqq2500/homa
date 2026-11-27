@@ -23,7 +23,7 @@ class PlatformFeeRateTest {
     @Test
     @Tag("PAY-3")
     @Tag("PAY-8")
-    @DisplayName("Payout RM200: platform fee RM31. A RM45 fee: RM6.975, rounded once to RM6.98.")
+    @DisplayName("A RM200 payout has a RM31 platform fee. A RM45 cancellation fee has RM6.975, rounded once to RM6.98.")
     void platformFeeOnAPayoutIsRoundedOnceToTheSen() {
         PlatformFeeRate rate = PlatformFeeRate.asOf(REQUESTED_AT);
 
