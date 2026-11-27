@@ -79,6 +79,21 @@ class AvailabilityScheduleTest {
                 .isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    @DisplayName("Persistence: Kemas Home's stored schedule comes back with its working hours, and they can still be changed")
+    void aStoredScheduleIsRebuiltWithItsWorkingHours() {
+        AvailabilitySchedule kemasHome = kemasHomeAvailability();
+
+        AvailabilitySchedule stored = AvailabilitySchedule.rebuild(kemasHome.providerId(), kemasHome.weeklyHours());
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(kemasHome);
+        assertThat(stored.isAvailableFor(JOB_TIME, KUALA_LUMPUR)).isTrue();
+        stored.setWeeklyHours(WeeklyHours.on(Set.of(DayOfWeek.MONDAY), EIGHT_TO_SIX));
+        assertThat(stored.isAvailableFor(JOB_TIME, KUALA_LUMPUR)).isFalse();
+        assertThatThrownBy(() -> AvailabilitySchedule.rebuild(KEMAS_HOME, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
     private static TimeInterval saturday(int startHour, int startMinute, int endHour, int endMinute) {
         return new TimeInterval(at(2026, 12, 5, startHour, startMinute), at(2026, 12, 5, endHour, endMinute));
     }

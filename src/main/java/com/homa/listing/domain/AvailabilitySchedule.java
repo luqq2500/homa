@@ -24,6 +24,14 @@ public final class AvailabilitySchedule {
         return new AvailabilitySchedule(providerId, weeklyHours);
     }
 
+    /**
+     * A schedule as it was stored, with its weekly working hours. Busy time synced from external calendars joins here
+     * in slice 8 (OFR-8).
+     */
+    public static AvailabilitySchedule rebuild(ProviderId providerId, WeeklyHours weeklyHours) {
+        return new AvailabilitySchedule(providerId, weeklyHours);
+    }
+
     public ProviderId providerId() {
         return providerId;
     }
