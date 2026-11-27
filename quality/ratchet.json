@@ -15,6 +15,10 @@
     "score": 100.0,
     "strength": 100.0
   },
+  "listing.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "payment.domain": {
     "score": 100.0,
     "strength": 100.0
