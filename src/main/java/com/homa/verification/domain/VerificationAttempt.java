@@ -61,6 +61,39 @@ public final class VerificationAttempt {
                 startedAt);
     }
 
+    /**
+     * Rebuilds an attempt from what was stored: the service's reference once submitted, and Homa's decision once
+     * made, each {@code null} until then. Only the shape is checked: a customer's attempt names its account and
+     * another role's names none (CUS-3); a decision time exactly once decided; a rule and reason exactly when refused.
+     *
+     * @throws VerificationAccountMismatchException when the account doesn't fit the role (CUS-3)
+     */
+    public static VerificationAttempt restore(VerificationAttemptId id, PersonId personId, PersonRole role,
+            String accountId, Instant startedAt, String serviceReference, VerificationAttemptState state,
+            String refusedUnder, String refusalReason, Instant decidedAt) {
+        VerificationAttempt attempt = start(id, personId, role, accountId, startedAt);
+        attempt.serviceReference = serviceReference;
+        attempt.state = Objects.requireNonNull(state, "state");
+        attempt.refusedUnder = refusedUnder;
+        attempt.refusalReason = refusalReason;
+        attempt.decidedAt = decidedAt;
+        requireShape(attempt.decidedAt().isPresent() != attempt.isPending(), "a decision time exactly once decided");
+        attempt.requireRefusalFitsState();
+        return attempt;
+    }
+
+    private void requireRefusalFitsState() {
+        requireShape(refusedUnder().isPresent() == (state == VerificationAttemptState.REFUSED),
+                "a refusal rule exactly when refused");
+        requireShape(refusalReason().isPresent() == refusedUnder().isPresent(), "a refusal reason with its rule");
+    }
+
+    private static void requireShape(boolean fits, String what) {
+        if (!fits) {
+            throw new IllegalArgumentException("A stored verification attempt needs " + what);
+        }
+    }
+
     /** CUS-3: a customer's verification names their account; an owner's or member's names none. */
     private static String accountFor(PersonRole role, String accountId) {
         String account = namedAccount(accountId);

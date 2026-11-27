@@ -73,6 +73,30 @@ public final class VerifiedPerson {
         return person;
     }
 
+    /**
+     * Rebuilds a verified person from what was stored: only what IDN-2 lists. Only the shape is checked: the result
+     * passed, and a work permit expiry exactly for a foreign person (§14). The document, the identity number's holder
+     * and the role's eligibility aren't checked again: they held when the person was verified.
+     */
+    public static VerifiedPerson restore(PersonId id, PersonName name, PersonStatus status,
+            IdentityDocument identityDocument, VerificationResult result, LocalDate permitExpiry) {
+        VerifiedPerson person = new VerifiedPerson(
+                Objects.requireNonNull(id, "id"),
+                Objects.requireNonNull(name, "name"),
+                Objects.requireNonNull(status, "status"),
+                Objects.requireNonNull(identityDocument, "identityDocument"),
+                Objects.requireNonNull(result, "result"),
+                permitExpiry);
+        if (result.outcome() != VerificationOutcome.PASSED) {
+            throw new IllegalArgumentException("A stored verified person needs a passed verification result");
+        }
+        if (person.permitExpiry().isPresent() == (status == PersonStatus.LOCAL)) {
+            throw new IllegalArgumentException("A stored verified person needs a work permit expiry exactly when "
+                    + "foreign, not when " + status);
+        }
+        return person;
+    }
+
     /** §14, HLP-3: a foreign person's permit expiry is their document's date, where the policy says it dates it. */
     private static LocalDate permitExpiryFrom(IdentityCheck check, AcceptedDocument document) {
         if (check.status() == PersonStatus.LOCAL) {
