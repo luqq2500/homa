@@ -1,6 +1,7 @@
 package com.homa.reservation.usecase.ie;
 
 import com.homa.ie.events.PaymentHeldIE;
+import com.homa.ie.port.ReservationIE;
 import com.homa.reservation.domain.Checkout;
 import com.homa.reservation.domain.CheckoutId;
 import com.homa.reservation.domain.Reservation;
@@ -23,6 +24,8 @@ import com.homa.reservation.usecase.port.out.ProcessedMessageStore;
 import com.homa.reservation.usecase.port.out.ProviderScheduleRepository;
 import com.homa.reservation.usecase.port.out.ReservationIEPublisher;
 import com.homa.reservation.usecase.port.out.ReservationRepository;
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * RES-7, RES-11, ACC-1: the checkout's payment is confirmed and held. If the time is still free and every booking
@@ -67,13 +70,11 @@ public final class HandlePaymentHeldIE implements PaymentHeldIEHandler {
         }
         Checkout checkout = checkouts.findById(new CheckoutId(event.checkoutId()))
                 .orElseThrow(() -> new CheckoutNotFoundException(event.checkoutId()));
-        ScheduleRetry.retried(() -> {
-            request(checkout, event);
-            return checkout;
-        });
+        ScheduleRetry.retried(() -> request(checkout, event)).forEach(publisher::publish);
     }
 
-    private void request(Checkout checkout, PaymentHeldIE event) {
+    /** One attempt: the events to publish once it is decided, Requested (and Reserved) or the rejection. */
+    private List<ReservationIE> request(Checkout checkout, PaymentHeldIE event) {
         String customerId = checkout.booking().customerId();
         String providerId = checkout.booking().providerId();
         CustomerStanding customer = customers.findById(customerId)
@@ -88,11 +89,11 @@ public final class HandlePaymentHeldIE implements PaymentHeldIEHandler {
             reservation = Reservation.request(ReservationId.generate(), checkout, provider, customer,
                     providerSchedule, customerSchedule, event.paidAt());
         } catch (BookingRefusedException refused) {
-            publisher.publish(events.checkoutRejected(checkout, refused.rejection()));
-            return;
+            return List.of(events.checkoutRejected(checkout, refused.rejection()));
         }
         reservations.saveWithSchedules(reservation, providerSchedule, customerSchedule);
-        publisher.publish(events.requested(reservation));
-        reservation.reservedAt().ifPresent(reservedAt -> publisher.publish(events.reserved(reservation)));
+        ReservationIE requested = events.requested(reservation);
+        return Stream.concat(Stream.of(requested),
+                reservation.reservedAt().map(reservedAt -> events.reserved(reservation)).stream()).toList();
     }
 }

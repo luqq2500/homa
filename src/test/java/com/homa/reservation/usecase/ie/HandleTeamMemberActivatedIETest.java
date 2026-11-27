@@ -89,16 +89,20 @@ class HandleTeamMemberActivatedIETest {
 
     @Test
     @Tag("ROS-3")
-    @DisplayName("A redelivered activation changes nothing and records the member once.")
+    @DisplayName("Siti went on leave after joining; her redelivered activation doesn't make her active again.")
     void redeliveredActivationIsIgnored() {
         TeamMemberActivatedIE joined = activated("join-siti", SITI_MEMBER_ID, "person-siti", "Siti", true, null);
         bed.teamMemberActivated.handle(joined);
         photoChecked("person-siti", true, "photo-siti");
 
+        RosterableMember onLeave = new RosterableMember(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER,
+                "Siti", true, Optional.of("photo-siti"), false, Optional.empty());
+        bed.members.save("person-siti", onLeave);
+
         bed.teamMemberActivated.handle(joined);
 
         assertThat(bed.members.count()).isEqualTo(1);
-        assertThat(member(SITI_MEMBER_ID).photoReference()).contains("photo-siti");
+        assertThat(member(SITI_MEMBER_ID)).isEqualTo(onLeave);
         assertThat(HandleTeamMemberActivatedIE.HANDLER).isEqualTo("reservation.TeamMemberActivated");
         assertThat(bed.publisher.published()).isEmpty();
     }

@@ -55,12 +55,11 @@ public final class ProviderCompleteReservation implements ReservationCompleter {
     private Reservation markCompleted(CompleteReservationRequest request, List<CompletionPhoto> afterPhotos) {
         Reservation reservation = ReservationParties.requireProvider(
                 ReservationParties.load(reservations, request.reservationId()), request.providerId());
-        String providerId = reservation.booking().providerId();
-        String customerId = reservation.booking().customerId();
-        ProviderSchedule providerSchedule = providerSchedules.findByProviderId(providerId)
-                .orElseGet(() -> new ProviderSchedule(providerId));
-        CustomerSchedule customerSchedule = customerSchedules.findByCustomerId(customerId)
-                .orElseGet(() -> new CustomerSchedule(customerId));
+        // Both schedules were saved with the reservation when its payment was confirmed (RES-9, RES-10).
+        ProviderSchedule providerSchedule =
+                providerSchedules.findByProviderId(reservation.booking().providerId()).orElseThrow();
+        CustomerSchedule customerSchedule =
+                customerSchedules.findByCustomerId(reservation.booking().customerId()).orElseThrow();
         reservation.markCompleted(afterPhotos, time.now());
         providerSchedule.release(reservation);
         customerSchedule.release(reservation);
