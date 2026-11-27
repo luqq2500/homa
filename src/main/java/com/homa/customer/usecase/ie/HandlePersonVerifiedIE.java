@@ -32,7 +32,7 @@ import java.util.function.Predicate;
 public class HandlePersonVerifiedIE implements PersonVerifiedIEHandler {
 
     /** Stable across renames of the class: changing it would make every old event look new to this handler. */
-    static final String HANDLER = "customer.PersonVerified";
+    public static final String HANDLER = "customer.PersonVerified";
     static final String CUSTOMER_ROLE = "CUSTOMER";
     static final String LOCAL = "LOCAL";
 
