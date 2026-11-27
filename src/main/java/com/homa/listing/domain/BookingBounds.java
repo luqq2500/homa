@@ -47,6 +47,11 @@ public record BookingBounds(Duration minHours, Duration maxHours, int minHelpers
         return new BookingBounds(minHours, maxHours, min, OptionalInt.empty());
     }
 
+    /** The step booked hours move in: 15 minutes (RES-5). Published with the bounds, so no other context holds it. */
+    public Duration step() {
+        return DURATION_STEP;
+    }
+
     /** True when the hours are within the bounds and in 15-minute steps (RES-5). */
     public boolean allowsHours(Duration hours) {
         return hours.compareTo(minHours) >= 0 && hours.compareTo(maxHours) <= 0 && inDurationSteps(hours);
