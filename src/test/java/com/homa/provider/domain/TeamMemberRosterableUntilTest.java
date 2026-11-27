@@ -15,19 +15,19 @@ class TeamMemberRosterableUntilTest {
 
     @Test
     @Tag("ROS-4")
-    @DisplayName("Rina's permit expires on 21 May 2027, so she can be rostered only on jobs ending by 20 February 2027,"
-            + " 90 days earlier.")
+    @DisplayName("Rina's permit expires on 20 March, so she can work jobs up to 20 December, not 2 January.")
     void foreignMemberIsRosterableUntilNinetyDaysBeforeHerPermitExpires() {
         TeamMember rina = rina(liveKemasHome());
 
-        assertThat(RINA_PERMIT_EXPIRY).isEqualTo(LocalDate.of(2027, 5, 21));
-        assertThat(rina.rosterableUntil()).contains(LocalDate.of(2027, 2, 20));
+        assertThat(RINA_PERMIT_EXPIRY).isEqualTo(LocalDate.of(2027, 3, 20));
+        assertThat(rina.rosterableUntil()).contains(LocalDate.of(2026, 12, 20));
+        assertThat(rina.rosterableUntil().orElseThrow()).isBefore(LocalDate.of(2027, 1, 2));
     }
 
     @Test
     @Tag("ROS-4")
-    @DisplayName("Siti is a citizen, so no permit limits the jobs she can be rostered on.")
-    void citizenHasNoRosterableLimit() {
+    @DisplayName("Siti is local, so no permit limits the jobs she can be rostered on.")
+    void localMemberHasNoRosterableLimit() {
         assertThat(siti(liveKemasHome()).rosterableUntil()).isEmpty();
     }
 }

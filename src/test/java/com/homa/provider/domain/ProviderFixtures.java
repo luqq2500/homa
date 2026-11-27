@@ -1,24 +1,24 @@
 package com.homa.provider.domain;
 
 import static com.homa.fixtures.HomaFixtures.FARID_MEMBER_ID;
-import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_NAME;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
-import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_REGISTRATION_NO;
 import static com.homa.fixtures.HomaFixtures.NURUL_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.RINA_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.SITI_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.at;
 
-import com.homa.provider.domain.Eligibility.Citizen;
 import com.homa.provider.domain.Eligibility.ForeignWorker;
+import com.homa.provider.domain.Eligibility.Local;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Kemas Home Sdn Bhd and its team from the example setup (§0), built from {@link com.homa.fixtures.HomaFixtures}:
- * helpers Siti and Nurul (citizens), helper Rina (foreign) and supervisor Farid (citizen). Kemas Home's business
- * is verified on Monday 2 November 2026 at 10:00 and its team the same afternoon at 14:00, Kuala Lumpur time.
+ * The providers and people of the example setup (§0), built from {@link com.homa.fixtures.HomaFixtures}. Kemas Home
+ * Sdn Bhd is a Business provider run by its owner Azman, with helpers Siti and Nurul (local), helper Rina (foreign) and
+ * supervisor Farid (local). Hana Cleaning is run by its owner Hana. Everyone here has passed identity verification;
+ * the facts are what Verification decided about them. Kemas Home adds its team on Tuesday 1 September 2026 at 14:00,
+ * Kuala Lumpur time, when Rina's permit has 200 days left (HLP-3): it expires on 20 March 2027 (ROS-4).
  */
 final class ProviderFixtures {
 
@@ -26,77 +26,92 @@ final class ProviderFixtures {
     }
 
     static final ProviderId KEMAS_HOME = new ProviderId(KEMAS_HOME_PROVIDER_ID);
+    static final ProviderId HANA_CLEANING = new ProviderId("provider-hana-cleaning");
+
+    static final PersonId AZMAN = new PersonId("person-azman");
+    static final PersonId HANA = new PersonId("person-hana");
+    static final PersonId SITI_PERSON = new PersonId("person-siti");
+    static final PersonId NURUL_PERSON = new PersonId("person-nurul");
+    static final PersonId RINA_PERSON = new PersonId("person-rina");
+    static final PersonId FARID_PERSON = new PersonId("person-farid");
+
     static final TeamMemberId SITI = new TeamMemberId(SITI_MEMBER_ID);
     static final TeamMemberId NURUL = new TeamMemberId(NURUL_MEMBER_ID);
     static final TeamMemberId RINA = new TeamMemberId(RINA_MEMBER_ID);
     static final TeamMemberId FARID = new TeamMemberId(FARID_MEMBER_ID);
 
-    static final Instant BUSINESS_VERIFIED_AT = at(2026, 11, 2, 10, 0);
-    static final Instant TEAM_VERIFIED_AT = at(2026, 11, 2, 14, 0);
-    static final LocalDate TEAM_VERIFIED_ON = LocalDate.of(2026, 11, 2);
+    static final Instant TEAM_ADDED_AT = at(2026, 9, 1, 14, 0);
+    static final LocalDate TEAM_ADDED_ON = LocalDate.of(2026, 9, 1);
 
-    static final LocalDate SITI_BORN = LocalDate.of(1994, 6, 12);
-    static final LocalDate NURUL_BORN = LocalDate.of(1998, 1, 25);
-    static final LocalDate RINA_BORN = LocalDate.of(1996, 9, 3);
-    static final LocalDate FARID_BORN = LocalDate.of(1985, 4, 18);
+    /** Rina's permit, the date on her i-Kad, has 200 days left when she is added (HLP-3). */
+    static final LocalDate RINA_PERMIT_EXPIRY = LocalDate.of(2027, 3, 20);
 
-    /** Rina's permit expires 200 days after she is verified (HLP-3 case). */
-    static final LocalDate RINA_PERMIT_EXPIRY = TEAM_VERIFIED_ON.plusDays(200);
-
-    static BusinessRegistration kemasHomeRegistration() {
-        return new BusinessRegistration(KEMAS_HOME_REGISTRATION_NO, KEMAS_HOME_NAME);
+    /** Azman, verified with his MyKad: local and aged 18 or above. */
+    static VerifiedPersonFacts azman() {
+        return VerifiedPersonFacts.local(AZMAN, true);
     }
 
-    /** Kemas Home has submitted its company registration and awaits business verification. */
-    static Provider registeredKemasHome() {
-        return Provider.register(KEMAS_HOME, kemasHomeRegistration());
+    /** Hana, verified with her MyKad: local and aged 18 or above. */
+    static VerifiedPersonFacts hana() {
+        return VerifiedPersonFacts.local(HANA, true);
     }
 
-    /** Kemas Home's business is verified; it has no team yet. */
-    static Provider verifiedKemasHome() {
-        Provider kemasHome = registeredKemasHome();
-        kemasHome.recordBusinessVerification(VerificationOutcome.PASSED, BUSINESS_VERIFIED_AT);
+    static VerifiedPersonFacts sitiVerified() {
+        return VerifiedPersonFacts.local(SITI_PERSON, true);
+    }
+
+    static VerifiedPersonFacts nurulVerified() {
+        return VerifiedPersonFacts.local(NURUL_PERSON, true);
+    }
+
+    /** Rina, verified with her i-Kad: foreign, aged 18 or above, permit until 20 March 2027. */
+    static VerifiedPersonFacts rinaVerified() {
+        return VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY);
+    }
+
+    static VerifiedPersonFacts faridVerified() {
+        return VerifiedPersonFacts.local(FARID_PERSON, true);
+    }
+
+    /** Azman has opened Kemas Home; it has no team and no payout account yet. */
+    static Provider openedKemasHome() {
+        return Provider.open(KEMAS_HOME, azman());
+    }
+
+    /** Hana has opened Hana Cleaning; it has no team and no payout account yet. */
+    static Provider openedHanaCleaning() {
+        return Provider.open(HANA_CLEANING, hana());
+    }
+
+    /** Kemas Home's payout account, in the company's name, is verified; it has not gone live. */
+    static Provider kemasHomeWithVerifiedPayoutAccount() {
+        Provider kemasHome = openedKemasHome();
+        kemasHome.recordPayoutAccountVerified(PayoutAccountHolder.BUSINESS);
         return kemasHome;
     }
 
-    /** Kemas Home is live with Siti, Nurul and Rina, and no supervisor. */
+    /** Kemas Home is live with Siti, Nurul and Rina, no supervisor, and its company payout account verified. */
     static Provider liveKemasHome() {
-        Provider kemasHome = verifiedKemasHome();
+        Provider kemasHome = kemasHomeWithVerifiedPayoutAccount();
         kemasHome.goLive(helpers(kemasHome).activeHelperCount());
         return kemasHome;
     }
 
-    static MemberVerification passedVerification(LocalDate dateOfBirth) {
-        return new MemberVerification(VerificationOutcome.PASSED, dateOfBirth, TEAM_VERIFIED_AT);
-    }
-
-    static MemberVerification failedVerification(LocalDate dateOfBirth) {
-        return new MemberVerification(VerificationOutcome.FAILED, dateOfBirth, TEAM_VERIFIED_AT);
-    }
-
-    static Eligibility citizen() {
-        return new Citizen();
-    }
-
-    /** Rina's permit, with Kemas Home's confirmation that it lawfully employs her (HLP-4). */
-    static ForeignWorker rinaPermit() {
-        return new ForeignWorker(RINA_PERMIT_EXPIRY, true);
-    }
-
     static TeamMember siti(Provider provider) {
-        return provider.addTeamMember(SITI, TeamRole.HELPER, citizen(), passedVerification(SITI_BORN));
+        return provider.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), false, TEAM_ADDED_AT);
     }
 
     static TeamMember nurul(Provider provider) {
-        return provider.addTeamMember(NURUL, TeamRole.HELPER, citizen(), passedVerification(NURUL_BORN));
+        return provider.addTeamMember(NURUL, TeamRole.HELPER, nurulVerified(), false, TEAM_ADDED_AT);
     }
 
+    /** Rina, with Kemas Home's confirmation that she works lawfully for it (HLP-4). */
     static TeamMember rina(Provider provider) {
-        return provider.addTeamMember(RINA, TeamRole.HELPER, rinaPermit(), passedVerification(RINA_BORN));
+        return provider.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true, TEAM_ADDED_AT);
     }
 
     static TeamMember farid(Provider provider) {
-        return provider.addTeamMember(FARID, TeamRole.SUPERVISOR, citizen(), passedVerification(FARID_BORN));
+        return provider.addTeamMember(FARID, TeamRole.SUPERVISOR, faridVerified(), false, TEAM_ADDED_AT);
     }
 
     /** Siti, Nurul and Rina, all active. */
@@ -104,8 +119,14 @@ final class ProviderFixtures {
         return new Team(List.of(siti(provider), nurul(provider), rina(provider)));
     }
 
-    /** A stored member of Kemas Home, as the persistence adapter would rebuild it. */
+    /** Rina's eligibility: her permit, with Kemas Home's confirmation (HLP-3, HLP-4). */
+    static ForeignWorker rinaPermit() {
+        return new ForeignWorker(RINA_PERMIT_EXPIRY, true);
+    }
+
+    /** A stored local member of Kemas Home with a verified photo, as the persistence adapter would rebuild it. */
     static TeamMember storedMember(TeamMemberId id, TeamRole role, boolean deactivated, boolean suspended) {
-        return TeamMember.restore(id, KEMAS_HOME, role, citizen(), TEAM_VERIFIED_AT, deactivated, suspended);
+        return TeamMember.restore(id, KEMAS_HOME, SITI_PERSON, role, new Local(), TEAM_ADDED_AT, true, deactivated,
+                suspended);
     }
 }
