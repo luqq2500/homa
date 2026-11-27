@@ -25,10 +25,11 @@ class CustomerProfileTest {
         HomeAddress cyberjaya = new HomeAddress("A-3-1, Residensi Cyber, Persiaran Multimedia",
                 new CityCode("CYBERJAYA"));
 
-        aisyah.changeHomeAddress(cyberjaya);
+        boolean moved = aisyah.changeHomeAddress(cyberjaya);
         aisyah.changeArrivalNote(new ArrivalNote("Lobby: ask the concierge for unit A-3-1"));
         aisyah.changeName(new CustomerName("Aisyah R."));
 
+        assertThat(moved).isTrue();
         assertThat(aisyah.homeAddress()).isEqualTo(cyberjaya);
         assertThat(aisyah.homeAddress().city().value()).isEqualTo("CYBERJAYA");
         assertThat(aisyah.arrivalNote().value()).isEqualTo("Lobby: ask the concierge for unit A-3-1");
@@ -51,5 +52,22 @@ class CustomerProfileTest {
         assertThat(aisyah.homeAddress().streetAddress()).isEqualTo(AISYAH_STREET_ADDRESS);
         assertThat(aisyah.homeAddress().city().value()).isEqualTo(AISYAH_CITY);
         assertThat(aisyah.arrivalNote().value()).isEqualTo(AISYAH_ARRIVAL_NOTE);
+    }
+
+    @Test
+    @Tag("CUS-1")
+    @DisplayName("Aisyah saves her profile with the Salak Tinggi address she already has, or with only a new unit "
+            + "number on the same street; only the second is a move.")
+    void customerMovesHomeOnlyWhenTheAddressDiffers() {
+        Customer aisyah = aisyah();
+
+        boolean sameAddressMoved = aisyah.changeHomeAddress(new HomeAddress(AISYAH_STREET_ADDRESS,
+                new CityCode(AISYAH_CITY)));
+        boolean newUnitMoved = aisyah.changeHomeAddress(new HomeAddress("B-7-1, Residensi Salak, Jalan Salak 1",
+                new CityCode(AISYAH_CITY)));
+
+        assertThat(sameAddressMoved).isFalse();
+        assertThat(newUnitMoved).isTrue();
+        assertThat(aisyah.homeAddress().streetAddress()).isEqualTo("B-7-1, Residensi Salak, Jalan Salak 1");
     }
 }

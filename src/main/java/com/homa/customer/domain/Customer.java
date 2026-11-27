@@ -72,9 +72,14 @@ public final class Customer {
     /**
      * CUS-1: the customer moves home; the new address has a city, which Reservation copies (RES-1). Reservations
      * already Requested keep the address they were made with.
+     *
+     * @return true when the new address differs from the one the customer had, so the caller announces the move;
+     *         false when they entered the same address again
      */
-    public void changeHomeAddress(HomeAddress newHomeAddress) {
+    public boolean changeHomeAddress(HomeAddress newHomeAddress) {
+        HomeAddress previous = homeAddress;
         this.homeAddress = Required.detail(newHomeAddress, "a home address");
+        return !homeAddress.equals(previous);
     }
 
     /** CUS-1: the customer tells the team a new way to reach the home. */
