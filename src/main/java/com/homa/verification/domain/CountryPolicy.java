@@ -1,5 +1,6 @@
 package com.homa.verification.domain;
 
+import com.homa.verification.domain.exception.DocumentNotAcceptedException;
 import com.homa.verification.domain.exception.DocumentNotSetForStatusException;
 import java.time.Period;
 import java.util.List;
@@ -90,6 +91,15 @@ public record CountryPolicy(
                 .map(AcceptedDocument::type)
                 .filter(type -> type.name().equals(name))
                 .findFirst();
+    }
+
+    /**
+     * IDN-1: the identity document the country calls {@code name}.
+     *
+     * @throws DocumentNotAcceptedException when the policy names no such document, so no one verifies with it
+     */
+    public IdentityDocumentType requireDocumentNamed(String name) {
+        return documentNamed(name).orElseThrow(() -> new DocumentNotAcceptedException(country, name));
     }
 
     /**

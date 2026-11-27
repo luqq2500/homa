@@ -8,6 +8,7 @@ import static com.homa.verification.domain.VerificationFixtures.PASSPORT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.homa.verification.domain.exception.DocumentNotAcceptedException;
 import com.homa.verification.domain.exception.DocumentNotSetForStatusException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -172,6 +173,18 @@ class CountryPolicyTest {
                 .isInstanceOf(DocumentNotSetForStatusException.class)
                 .hasMessage("IDN-1: in Malaysia a local person isn't verified with i-Kad");
         assertThat(MALAYSIA.requireDocumentFor(PersonStatus.LOCAL, MYPR).holders()).isEqualTo("permanent residents");
+    }
+
+    @Test
+    @Tag("IDN-1")
+    @DisplayName("A candidate who offers a passport can't start verifying: Malaysia verifies only with MyKad, MyPR or i-Kad.")
+    void aDocumentTheCountryDoesNotNameIsRefusedByName() {
+        assertThat(MALAYSIA.requireDocumentNamed("MyKad")).isEqualTo(MYKAD);
+        assertThat(MALAYSIA.requireDocumentNamed("i-Kad")).isEqualTo(IKAD);
+        assertThatThrownBy(() -> MALAYSIA.requireDocumentNamed("Passport"))
+                .isInstanceOf(DocumentNotAcceptedException.class)
+                .hasMessage("IDN-1: Malaysia doesn't verify anyone with Passport")
+                .extracting(refusal -> ((DocumentNotAcceptedException) refusal).ruleId()).isEqualTo("IDN-1");
     }
 
     @Test
