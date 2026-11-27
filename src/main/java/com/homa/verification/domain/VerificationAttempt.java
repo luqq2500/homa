@@ -28,36 +28,34 @@ public final class VerificationAttempt {
     private final PersonId personId;
     private final PersonRole role;
     private final String accountId;
-    private final String serviceReference;
     private final Instant startedAt;
+    private String serviceReference;
     private VerificationAttemptState state = VerificationAttemptState.PENDING;
     private String refusedUnder;
     private String refusalReason;
     private Instant decidedAt;
 
     private VerificationAttempt(VerificationAttemptId id, PersonId personId, PersonRole role, String accountId,
-            String serviceReference, Instant startedAt) {
+            Instant startedAt) {
         this.id = id;
         this.personId = personId;
         this.role = role;
         this.accountId = accountId;
-        this.serviceReference = serviceReference;
         this.startedAt = startedAt;
     }
 
     /**
-     * Starts a verification of {@code personId} for {@code role}, which the verification service knows by
-     * {@code serviceReference}.
+     * Starts a verification of {@code personId} for {@code role}. It is then submitted to the verification service
+     * ({@link #submittedAs}), so nothing reaches the service for a verification Homa wouldn't start.
      *
      * @param accountId the customer account the verification is for when {@code role} is CUSTOMER; null otherwise
      * @throws VerificationAccountMismatchException when a customer's attempt names no account, or another role's
      *         names one (CUS-3)
      */
     public static VerificationAttempt start(VerificationAttemptId id, PersonId personId, PersonRole role,
-            String accountId, String serviceReference, Instant startedAt) {
+            String accountId, Instant startedAt) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(personId, "personId");
-        Objects.requireNonNull(serviceReference, "serviceReference");
         Objects.requireNonNull(startedAt, "startedAt");
         String account = accountId == null || accountId.isBlank() ? null : accountId;
         boolean forCustomer = Objects.requireNonNull(role, "role") == PersonRole.CUSTOMER;
@@ -67,7 +65,17 @@ public final class VerificationAttempt {
         if (!forCustomer && account != null) {
             throw new VerificationAccountMismatchException(role.description() + " verifies without a customer account");
         }
-        return new VerificationAttempt(id, personId, role, account, serviceReference, startedAt);
+        return new VerificationAttempt(id, personId, role, account, startedAt);
+    }
+
+    /**
+     * The verification service took the check and knows it by {@code reference}. Only a pending verification is
+     * submitted; a resubmission after an outage (EXT-5, slice 10) replaces the reference.
+     */
+    public void submittedAs(String reference) {
+        Objects.requireNonNull(reference, "reference");
+        requirePending();
+        serviceReference = reference;
     }
 
     /** The service passed the check and the person is verified for the role (IDN-1). */
@@ -90,11 +98,15 @@ public final class VerificationAttempt {
 
     private void decide(VerificationAttemptState decision, Instant at) {
         Objects.requireNonNull(at, "at");
+        requirePending();
+        state = decision;
+        decidedAt = at;
+    }
+
+    private void requirePending() {
         if (state != VerificationAttemptState.PENDING) {
             throw new VerificationAlreadyDecidedException(state.name().toLowerCase());
         }
-        state = decision;
-        decidedAt = at;
     }
 
     /** True while the verification service hasn't answered. */
@@ -119,9 +131,9 @@ public final class VerificationAttempt {
         return Optional.ofNullable(accountId);
     }
 
-    /** How the verification service knows this check. */
-    public String serviceReference() {
-        return serviceReference;
+    /** How the verification service knows this check. Empty until it is submitted. */
+    public Optional<String> serviceReference() {
+        return Optional.ofNullable(serviceReference);
     }
 
     public Instant startedAt() {

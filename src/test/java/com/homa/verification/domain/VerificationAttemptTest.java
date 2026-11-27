@@ -25,8 +25,10 @@ class VerificationAttemptTest {
     private static final Instant ANSWERED_AT = AISYAH_CHECKED_AT;
 
     private static VerificationAttempt aisyahsAttempt() {
-        return VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, HomaFixtures.AISYAH_CUSTOMER_ID, REFERENCE,
+        VerificationAttempt attempt = VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, HomaFixtures.AISYAH_CUSTOMER_ID,
                 STARTED_AT);
+        attempt.submittedAs(REFERENCE);
+        return attempt;
     }
 
     @Test
@@ -39,7 +41,7 @@ class VerificationAttemptTest {
         assertThat(attempt.personId()).isEqualTo(AISYAH);
         assertThat(attempt.role()).isEqualTo(PersonRole.CUSTOMER);
         assertThat(attempt.accountId()).contains(HomaFixtures.AISYAH_CUSTOMER_ID);
-        assertThat(attempt.serviceReference()).isEqualTo(REFERENCE);
+        assertThat(attempt.serviceReference()).contains(REFERENCE);
         assertThat(attempt.startedAt()).isEqualTo(STARTED_AT);
         assertThat(attempt.state()).isEqualTo(VerificationAttemptState.PENDING);
         assertThat(attempt.isPending()).isTrue();
@@ -52,10 +54,10 @@ class VerificationAttemptTest {
     @Tag("CUS-3")
     @DisplayName("A customer's verification without the account that asked for it can't start.")
     void aCustomersVerificationNeedsTheirAccount() {
-        assertThatThrownBy(() -> VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, null, REFERENCE, STARTED_AT))
+        assertThatThrownBy(() -> VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, null, STARTED_AT))
                 .isInstanceOf(VerificationAccountMismatchException.class)
                 .hasMessage("CUS-3: a customer verifies for their customer account");
-        assertThatThrownBy(() -> VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, " ", REFERENCE, STARTED_AT))
+        assertThatThrownBy(() -> VerificationAttempt.start(ID, AISYAH, PersonRole.CUSTOMER, " ", STARTED_AT))
                 .isInstanceOf(VerificationAccountMismatchException.class);
     }
 
@@ -64,13 +66,15 @@ class VerificationAttemptTest {
     @Tag("HLP-1")
     @DisplayName("Azman, as an owner, and Siti, as a member, verify without a customer account.")
     void anOwnerOrAMemberVerifiesWithoutACustomerAccount() {
-        VerificationAttempt azman = VerificationAttempt.start(ID, AZMAN, PersonRole.OWNER, null, REFERENCE, STARTED_AT);
-        VerificationAttempt siti = VerificationAttempt.start(ID, SITI, PersonRole.MEMBER, "", REFERENCE, STARTED_AT);
+        VerificationAttempt azman = VerificationAttempt.start(ID, AZMAN, PersonRole.OWNER, null, STARTED_AT);
+        VerificationAttempt siti = VerificationAttempt.start(ID, SITI, PersonRole.MEMBER, "", STARTED_AT);
 
         assertThat(azman.accountId()).isEmpty();
+        assertThat(azman.serviceReference()).isEmpty();
+        assertThat(azman.isPending()).isTrue();
         assertThat(siti.accountId()).isEmpty();
         assertThat(siti.role()).isEqualTo(PersonRole.MEMBER);
-        assertThatThrownBy(() -> VerificationAttempt.start(ID, AZMAN, PersonRole.OWNER, "customer-azman", REFERENCE,
+        assertThatThrownBy(() -> VerificationAttempt.start(ID, AZMAN, PersonRole.OWNER, "customer-azman",
                 STARTED_AT))
                 .isInstanceOf(VerificationAccountMismatchException.class)
                 .hasMessage("CUS-3: an owner verifies without a customer account");
@@ -137,6 +141,21 @@ class VerificationAttemptTest {
         assertThat(verified.decidedAt()).contains(ANSWERED_AT);
         assertThat(refused.state()).isEqualTo(VerificationAttemptState.REFUSED);
         assertThat(refused.refusedUnder()).contains("IDN-1");
+        assertThatThrownBy(() -> verified.submittedAs("service-ref-2"))
+                .isInstanceOf(VerificationAlreadyDecidedException.class);
+        assertThat(verified.serviceReference()).contains(REFERENCE);
+    }
+
+    @Test
+    @Tag("EXT-5")
+    @DisplayName("A pending verification resubmitted to the service is known by its new reference.")
+    void aPendingVerificationCanBeResubmitted() {
+        VerificationAttempt attempt = aisyahsAttempt();
+
+        attempt.submittedAs("service-ref-2");
+
+        assertThat(attempt.serviceReference()).contains("service-ref-2");
+        assertThat(attempt.isPending()).isTrue();
     }
 
     @Test
