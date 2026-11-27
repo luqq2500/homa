@@ -1,5 +1,6 @@
 package com.homa.verification.usecase;
 
+import com.homa.ie.events.PersonVerificationRefusedIE;
 import com.homa.ie.events.PersonVerifiedIE;
 import com.homa.verification.domain.CountryPolicy;
 import com.homa.verification.domain.IdentityCheck;
@@ -9,6 +10,7 @@ import com.homa.verification.domain.PersonName;
 import com.homa.verification.domain.VerificationAttempt;
 import com.homa.verification.domain.VerificationOutcome;
 import com.homa.verification.domain.VerifiedPerson;
+import com.homa.verification.domain.exception.IdentityNotVerifiedException;
 import com.homa.verification.domain.exception.VerificationRuleViolationException;
 import com.homa.verification.usecase.dto.RecordVerificationResultRequest;
 import com.homa.verification.usecase.dto.RecordVerificationResultResponse;
@@ -31,13 +33,14 @@ import java.time.LocalDate;
  * {@link VerifiedPerson#verify} decide. A pass creates the verified person, or verifies them again under the same
  * personId (a member who becomes a customer), and publishes {@code PersonVerifiedIE}. A refusal (the document not
  * passed or not the one for their status, under 18, a status the role doesn't allow, a number another person holds)
- * is recorded on the verification with its rule and returned; it publishes nothing.
+ * is recorded on the verification with its rule, published as {@code PersonVerificationRefusedIE} so Customer can
+ * tell the customer why they can't reserve, and returned. The refused person is never stored.
  *
  * <p>A repeated notification is a no-op (the service's notification id, as for gateway webhooks), and a decided
  * verification is never decided again: a later notification for it just returns the recorded outcome.
  *
- * <p>The verification and the verified person are saved in one transaction. The verification carries no events, so
- * the per-aggregate event order is untouched.
+ * <p>The verification and the verified person are saved in one transaction. Both events are about the person
+ * (their personId comes right after eventId), so a person's verifications reach other contexts in order.
  */
 public class RecordVerificationResult implements VerificationResultRecorder {
 
@@ -86,12 +89,29 @@ public class RecordVerificationResult implements VerificationResultRecorder {
         try {
             switch (answer) {
                 case VerificationAnswer.Passed passed -> verify(attempt, passed, now);
-                case VerificationAnswer.NotPassed notPassed -> attempt.recordUnpassedCheck(now);
+                case VerificationAnswer.NotPassed notPassed ->
+                        refuse(attempt, new IdentityNotVerifiedException(), now);
             }
         } catch (VerificationRuleViolationException refusal) {
-            attempt.recordRefusal(refusal, now);
+            refuse(attempt, refusal, now);
         }
         attempts.save(attempt);
+    }
+
+    /**
+     * Records the refusal on the verification and publishes it, field by field from the decided verification. The
+     * reason is the contract's code, never the rule's message (IDN-3).
+     */
+    private void refuse(VerificationAttempt attempt, VerificationRuleViolationException refusal, Instant now) {
+        attempt.recordRefusal(refusal, now);
+        publisher.publish(new PersonVerificationRefusedIE(
+                eventIds.next(),
+                attempt.personId().value(),
+                attempt.role().name(),
+                attempt.accountId().orElse(null),
+                RefusalReasons.of(refusal),
+                attempt.refusedUnder().orElseThrow(),
+                attempt.decidedAt().orElseThrow()));
     }
 
     private void verify(VerificationAttempt attempt, VerificationAnswer.Passed passed, Instant now) {

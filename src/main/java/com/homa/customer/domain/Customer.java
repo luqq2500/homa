@@ -6,6 +6,7 @@ import com.homa.customer.domain.exception.CustomerNotSuspendedException;
 import com.homa.customer.domain.exception.MissingSignInException;
 import com.homa.customer.domain.exception.TermsOfServiceNotAcceptedException;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -30,6 +31,7 @@ public final class Customer {
     private HomeAddress homeAddress;
     private ArrivalNote arrivalNote;
     private VerifiedIdentity verifiedIdentity;
+    private VerificationRefusal verificationRefusal;
     private Suspension suspension;
 
     private Customer(CustomerId id, SignInId signInId, CustomerName name, HomeAddress homeAddress,
@@ -118,6 +120,16 @@ public final class Customer {
         return !couldReserveBefore && identity.allowsReserving();
     }
 
+    /**
+     * CUS-10: Verification refused the identity the customer verified with, and never stores a person it refused,
+     * so the refusal is recorded here instead: the customer is told why they can't reserve rather than only asked to
+     * verify. A later refusal replaces it. It matters only while no identity is verified: once one is, the verified
+     * identity decides, so a passing verification (for example once the person comes of age) supersedes it.
+     */
+    public void recordVerificationRefused(VerificationRefusal refusal) {
+        this.verificationRefusal = Objects.requireNonNull(refusal, "refusal");
+    }
+
     private boolean isVerifiedAsSomeoneOtherThan(PersonId personId) {
         return verifiedIdentity != null && !verifiedIdentity.personId().equals(personId);
     }
@@ -153,15 +165,18 @@ public final class Customer {
     }
 
     /**
-     * What stops the customer from reserving at {@code now}: a suspension (CUS-5), no verified identity yet (CUS-3),
-     * or a verified identity that isn't local or didn't pass the age check (CUS-10). Empty when they can reserve.
+     * What stops the customer from reserving at {@code now}: a suspension (CUS-5); no verified identity yet (CUS-3),
+     * or the reason Verification refused the one they tried (CUS-10); or a verified identity that isn't local or
+     * didn't pass the age check (CUS-10). Empty when they can reserve.
      */
     public Optional<ReservationBlocker> reservationBlockerAt(Instant now) {
         if (isSuspendedAt(now)) {
             return Optional.of(ReservationBlocker.SUSPENDED);
         }
         if (verifiedIdentity == null) {
-            return Optional.of(ReservationBlocker.IDENTITY_NOT_VERIFIED);
+            return Optional.of(verificationRefusal == null
+                    ? ReservationBlocker.IDENTITY_NOT_VERIFIED
+                    : verificationRefusal.blocker());
         }
         return verifiedIdentity.reservationBlocker();
     }
@@ -210,6 +225,11 @@ public final class Customer {
     /** What Verification found about the customer's identity (CUS-3, CUS-10). Empty until they verify. */
     public Optional<VerifiedIdentity> verifiedIdentity() {
         return Optional.ofNullable(verifiedIdentity);
+    }
+
+    /** Why Verification last refused the customer's identity (CUS-10). Empty if it never refused it. */
+    public Optional<VerificationRefusal> verificationRefusal() {
+        return Optional.ofNullable(verificationRefusal);
     }
 
     /** The customer's latest suspension, whether still in force or ended. Empty if never suspended. */

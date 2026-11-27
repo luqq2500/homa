@@ -15,9 +15,18 @@ public enum ReservationBlocker {
      */
     IDENTITY_NOT_VERIFIED,
 
-    /** CUS-10, §14: the verified identity isn't local, and the country policy allows only locals as customers. */
+    /**
+     * CUS-10, §14: the identity isn't local, and the country policy allows only locals as customers. Customer learns
+     * it from a verified identity, or from Verification's refusal.
+     */
     NOT_LOCAL,
 
     /** CUS-10: the verified identity didn't pass the age check; a customer must be aged 18 or above. */
-    UNDER_MINIMUM_AGE
+    UNDER_MINIMUM_AGE,
+
+    /**
+     * CUS-10, IDN-3: Verification refused the identity because another person already holds it, so one verified
+     * identity holds one customer account.
+     */
+    IDENTITY_HELD_BY_ANOTHER_ACCOUNT
 }
