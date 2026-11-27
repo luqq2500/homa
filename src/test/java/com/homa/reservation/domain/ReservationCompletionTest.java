@@ -89,6 +89,21 @@ class ReservationCompletionTest {
     }
 
     @Test
+    @Tag("JOB-5")
+    @DisplayName("Kemas Home is reminded at 14:00 and 16:00 while the job isn't marked; none once it is marked.")
+    void remindersFallDueAtTheJobEndAndTwoHoursLaterUntilTheJobIsMarked() {
+        assertThat(reservation.completionRemindersDueAt(saturday(13, 59))).isEmpty();
+        assertThat(reservation.completionRemindersDueAt(saturday(14, 0))).containsExactly(saturday(14, 0));
+        assertThat(reservation.completionRemindersDueAt(saturday(15, 59))).containsExactly(saturday(14, 0));
+        assertThat(reservation.completionRemindersDueAt(saturday(16, 0)))
+                .containsExactly(saturday(14, 0), saturday(16, 0));
+
+        reservation.markCompleted(List.of(CLEAN_KITCHEN), saturday(16, 30));
+
+        assertThat(reservation.completionRemindersDueAt(saturday(17, 0))).isEmpty();
+    }
+
+    @Test
     @Tag("JOB-6")
     @DisplayName("Support checks the after-photos when Aisyah reports the bathroom wasn't cleaned.")
     void completionPhotosAreKeptAsEvidence() {

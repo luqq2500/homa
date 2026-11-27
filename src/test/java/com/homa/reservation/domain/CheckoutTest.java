@@ -105,4 +105,18 @@ class CheckoutTest {
         assertThat(suspendedUnverified.refusal()).contains(BookingRefusal.CUSTOMER_SUSPENDED);
         assertThat(suspendedUnverified.verified().refusal()).contains(BookingRefusal.CUSTOMER_SUSPENDED);
     }
+
+    @Test
+    @Tag("RES-8")
+    @DisplayName("Her new address on Thursday applies only to new bookings: she stays verified, and a suspension stays.")
+    void customerWhoMovesKeepsTheirStandingAndBooksAtTheNewAddress() {
+        ServiceAddress cyberjaya = new ServiceAddress("7, Persiaran Cyberjaya", "CYBERJAYA", "Lobby");
+        CustomerStanding aisyah = CustomerStanding.registered(AISYAH_CUSTOMER_ID, aisyahAddress()).verified();
+        CustomerStanding suspended = new CustomerStanding(AISYAHS_HUSBAND_ID, false, true, aisyahAddress());
+
+        assertThat(aisyah.movedTo(cyberjaya))
+                .isEqualTo(new CustomerStanding(AISYAH_CUSTOMER_ID, true, false, cyberjaya));
+        assertThat(suspended.movedTo(cyberjaya))
+                .isEqualTo(new CustomerStanding(AISYAHS_HUSBAND_ID, false, true, cyberjaya));
+    }
 }

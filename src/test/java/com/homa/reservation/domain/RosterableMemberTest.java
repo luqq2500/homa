@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.reservation.domain.exception.MemberNotRosterableException;
+import com.homa.reservation.domain.replica.PersonPhoto;
 import com.homa.reservation.domain.replica.RosterableMember;
 import com.homa.reservation.domain.roster.MemberRole;
 import java.time.LocalDate;
@@ -84,6 +85,24 @@ class RosterableMemberTest {
         assertThat(afterNewPhotoVerified).isEqualTo(new RosterableMember(siti.memberId(), siti.providerId(),
                 siti.role(), siti.name(), true, Optional.of("photo-siti-new"), siti.active(), siti.rosterableUntil()));
         assertThat(rina().withVerifiedPhoto("photo-rina-new").rosterableUntil()).isEqualTo(rina().rosterableUntil());
+    }
+
+    @Test
+    @Tag("IDN-4")
+    @DisplayName("Siti's new photo fails the check, so the roster keeps her old verified photo; once one passes, it replaces it.")
+    void personPhotoChangesOnlyWhenTheNewPhotoIsVerified() {
+        PersonPhoto none = PersonPhoto.none("person-siti");
+        PersonPhoto verified = none.checked(true, "photo-siti-new");
+
+        assertThat(none.verifiedReference()).isEmpty();
+        assertThat(none.checked(false, "photo-siti-blurry")).isEqualTo(none);
+        assertThat(verified).isEqualTo(new PersonPhoto("person-siti", Optional.of("photo-siti-new")));
+        assertThat(verified.checked(false, "photo-siti-blurry")).isEqualTo(verified);
+        assertThat(verified.checked(true, "photo-siti-newer").verifiedReference()).contains("photo-siti-newer");
+
+        assertThat(siti().showing(none)).isEqualTo(siti());
+        assertThat(siti().showing(verified)).isEqualTo(siti().withVerifiedPhoto("photo-siti-new"));
+        assertThat(withoutVerifiedPhoto(siti()).showing(verified).canWorkOn(JOB_END)).isTrue();
     }
 
     @Test

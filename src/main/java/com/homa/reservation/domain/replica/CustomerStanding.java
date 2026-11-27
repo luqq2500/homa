@@ -32,6 +32,11 @@ public record CustomerStanding(
         return new CustomerStanding(customerId, true, suspended, homeAddress);
     }
 
+    /** RES-8: the customer moved; new bookings use the new home address, booked reservations keep theirs. */
+    public CustomerStanding movedTo(ServiceAddress newHomeAddress) {
+        return new CustomerStanding(customerId, identityVerified, suspended, newHomeAddress);
+    }
+
     public boolean canReserve() {
         return refusal().isEmpty();
     }
