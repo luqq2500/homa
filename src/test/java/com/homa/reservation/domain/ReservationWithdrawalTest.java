@@ -28,7 +28,7 @@ class ReservationWithdrawalTest {
 
     @Test
     @Tag("REQ-2")
-    @DisplayName("Aisyah withdraws on Monday 21:00 before Kemas Home responds. She gets the full RM200 back, and Saturday 10:00–14:00 opens for other customers.")
+    @DisplayName("Aisyah withdraws on Monday 21:00 and gets RM200 back.")
     void customerWithdrawsARequestForFreeAndTheTimeOpensAgain() {
         Reservation reservation = market.requestStandard();
 
@@ -47,7 +47,7 @@ class ReservationWithdrawalTest {
 
     @Test
     @Tag("REQ-1")
-    @DisplayName("On Monday 21:00 Aisyah wants 3 hours instead of 4. She withdraws her request, gets RM200 back, and requests 3 hours for RM155. It's a new request with a new acceptance deadline, Tuesday 21:00.")
+    @DisplayName("Aisyah wants 3 hours instead of 4. She withdraws and requests 3 hours (RM155) as a new request, with a new deadline. The slot isn't held in between (P1).")
     void changeIsAWithdrawalAndANewRequest() {
         Reservation fourHours = market.requestStandard();
         fourHours.withdraw(monday(21, 0));
@@ -66,7 +66,7 @@ class ReservationWithdrawalTest {
 
     @Test
     @Tag("REQ-5")
-    @DisplayName("Kemas Home's acceptance is recorded at 21:02:10 and Aisyah's withdrawal at 21:02:12. The reservation is Reserved, so she can't withdraw it and is told she can cancel instead.")
+    @DisplayName("Kemas Home accepts at 21:02:10 and Aisyah withdraws at 21:02:12. The reservation is Reserved, and she can cancel for free within her Grace Period (CCX-1).")
     void acceptanceRecordedFirstWinsOverALaterWithdrawal() {
         Reservation reservation = market.requestStandard();
         reservation.accept(monday(21, 2).plusSeconds(10));

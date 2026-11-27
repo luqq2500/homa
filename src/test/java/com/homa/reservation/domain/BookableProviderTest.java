@@ -41,7 +41,7 @@ class BookableProviderTest {
 
     @Test
     @Tag("RES-1")
-    @DisplayName("Aisyah lives in Salak Tinggi, so she can reserve Kemas Home. Her sister in Shah Alam can't, because Kemas Home doesn't cover Shah Alam.")
+    @DisplayName("Aisyah in Salak Tinggi can reserve Kemas Home. Her sister in Shah Alam can't.")
     void providerAdmitsOnlyCustomersInACityItCovers() {
         Booking sisterInShahAlam = new Booking("customer-sister", KEMAS_HOME_PROVIDER_ID,
                 JobSelection.of(ReservationFixtures.KITCHEN_CLEANING), JobTime.of(JOB_START, STANDARD_HOURS), 2,
@@ -64,7 +64,7 @@ class BookableProviderTest {
 
     @Test
     @Tag("RES-3")
-    @DisplayName("Kemas Home works 8:00–18:00, so a job can start at 8:00 (team arrives from 7:45) but can't run 17:00–19:00.")
+    @DisplayName("A job can start at 8:00, but can't run 17:00–19:00.")
     void jobTimeMustFallWithinWorkingHours() {
         assertThat(kemasHome.admits(booking(saturday(8, 0), 2), REQUESTED_AT)).isTrue();
         assertThat(kemasHome.refusalOf(booking(saturday(17, 0), 2), REQUESTED_AT))
@@ -104,7 +104,7 @@ class BookableProviderTest {
 
     @Test
     @Tag("RES-4")
-    @DisplayName("It's Saturday 7:00 and Kemas Home's notice is 2 hours. The earliest Check-in Period can start at 9:00, so the earliest job start Aisyah can pick is 9:15.")
+    @DisplayName("At Saturday 7:00, with 2 hours' notice, the earliest Check-in Period starts at 9:00, so the earliest start is 9:15.")
     void noticeMustBeAtLeastTheProvidersMinimumNotice() {
         assertThat(kemasHome.admits(booking(saturday(9, 15), 4), saturday(7, 0))).isTrue();
         assertThat(kemasHome.refusalOf(booking(saturday(9, 0), 4), saturday(7, 0)))
@@ -135,7 +135,7 @@ class BookableProviderTest {
 
     @Test
     @Tag("OFR-5")
-    @DisplayName("With 3 active helpers, customers can book 1 to 3 helpers; a lower maximum or a higher minimum narrows that.")
+    @DisplayName("Kemas Home keeps the helper default; with 3 active helpers, customers book 1 to 3. A lower maximum or a higher minimum narrows that.")
     void helpersMustFallWithinTheBoundsAndTheActiveHelpers() {
         assertThat(kemasHome.admits(booking(saturday(10, 0), STANDARD_HOURS, 3), REQUESTED_AT)).isTrue();
         assertThat(kemasHome.refusalOf(booking(saturday(10, 0), STANDARD_HOURS, 4), REQUESTED_AT))
@@ -154,8 +154,8 @@ class BookableProviderTest {
     }
 
     @Test
-    @Tag("PRV-6")
-    @DisplayName("Siti, Nurul and Rina are all deactivated for a holiday week, so Kemas Home can't be booked.")
+    @Tag("PRV-2")
+    @DisplayName("When all its helpers are deactivated for a holiday week, Kemas Home can't be booked.")
     void providerThatIsNotBookableAdmitsNoBooking() {
         BookableProvider onHoliday = kemasHomeProvider().notBookable().build();
 

@@ -43,7 +43,7 @@ class CustomerScheduleTest {
 
     @Test
     @Tag("RES-10")
-    @DisplayName("Aisyah has requested Kemas Home for Saturday 10:00–14:00. She can't also request another provider for Saturday 12:00. She can book Sunday.")
+    @DisplayName("Aisyah can't also request another provider for Saturday 12:00, but can book Sunday.")
     void customerCannotHaveTwoReservationsWithOverlappingJobTimes() {
         Reservation kemas = kemasHome.requestStandard();
 

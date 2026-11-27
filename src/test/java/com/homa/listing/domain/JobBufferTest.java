@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class JobBufferTest {
 
     @Test
-    @DisplayName("Kemas Home keeps the 30-minute default. A provider covering a wider area sets 60 minutes.")
+    @DisplayName("Kemas Home keeps 30 minutes. A provider covering a wider area sets 60.")
     void aProviderKeepsTheThirtyMinuteDefaultOrSetsItsOwnBuffer() {
         ProviderListing kemasHome = kemasHomeListing();
         ProviderListing widerArea = kemasHomeListing();

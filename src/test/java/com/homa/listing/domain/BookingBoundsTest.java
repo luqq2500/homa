@@ -18,8 +18,8 @@ class BookingBoundsTest {
     private static final int ACTIVE_HELPERS = 3;
 
     @Test
-    @DisplayName("Kemas Home sets 2 to 6 hours and leaves helpers on default. With 3 active helpers, customers can book "
-            + "1 to 3 helpers. A provider that doesn't change hours can be booked for 1 to 8 hours.")
+    @DisplayName("Kemas Home sets 2 to 6 hours and keeps the helper default; with 3 active helpers, customers book 1 to "
+            + "3. A provider that doesn't change hours can be booked for 1 to 8 hours.")
     void hoursAndHelpersStayWithinTheProvidersBounds() {
         BookingBounds kemasHome = BookingBounds.defaults().withHours(TWO_HOURS, SIX_HOURS);
 
@@ -54,8 +54,7 @@ class BookingBoundsTest {
 
     @Test
     @Tag("RES-5")
-    @DisplayName("With a provider whose minimum is 1 hour, Aisyah can book 1h, 1h 15m, 1h 30m and so on, but not "
-            + "50 minutes or 1h 10m. With Kemas Home (minimum 2 hours, OFR-5) she starts at 2h.")
+    @DisplayName("Aisyah can book 1h 15m but not 1h 10m. With Kemas Home's 2-hour minimum, she starts at 2 hours.")
     void durationStartsAtOneHourAndMovesInQuarterHourSteps() {
         BookingBounds defaults = BookingBounds.defaults();
         BookingBounds kemasHome = defaults.withHours(TWO_HOURS, SIX_HOURS);

@@ -33,7 +33,7 @@ class ProviderListingMinimumRateTest {
     }
 
     @Test
-    @DisplayName("Kemas Home charges RM25, so it can raise its discount to 20% but not to 21%")
+    @DisplayName("At RM25, Kemas Home's largest discount is 20%: it can raise its discount to 20% but not to 21%")
     void aBiggerDiscountThatBreaksTheMinimumRateIsRefused() {
         ProviderListing kemasHome = kemasHomeListing();
 

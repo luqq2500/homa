@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-/** Each of Listing's rows in §11 Homa-set values, against its constant, so the rules page and the code can't drift. */
+/** Each of Listing's rows in §13 Homa-set values, against its constant, so the rules page and the code can't drift. */
 class ListingValuesTest {
 
     @Test

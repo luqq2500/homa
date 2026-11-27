@@ -9,6 +9,7 @@ import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.TOTAL_RESERVATION_FEE;
 import static com.homa.reservation.domain.ReservationFixtures.TAPPED_PAY_AT;
 import static com.homa.reservation.domain.ReservationFixtures.aisyahAddress;
+import static com.homa.reservation.domain.ReservationFixtures.aisyahBooking;
 import static com.homa.reservation.domain.ReservationFixtures.anotherCustomerBooking;
 import static com.homa.reservation.domain.ReservationFixtures.assertRefused;
 import static com.homa.reservation.domain.ReservationFixtures.kemasHomeProvider;
@@ -42,7 +43,7 @@ class ReservationRequestTest {
 
     @Test
     @Tag("RES-7")
-    @DisplayName("Aisyah pays RM200 on Monday 20:00. The reservation is Requested and Homa holds the RM200.")
+    @DisplayName("Aisyah pays RM200 on Monday 20:00. Her reservation is Requested.")
     void confirmedPaymentMakesARequestedReservationWithThePaymentHeld() {
         Checkout checkout = market.checkout(standardBooking(), TAPPED_PAY_AT);
 
@@ -87,7 +88,7 @@ class ReservationRequestTest {
 
     @Test
     @Tag("RES-8")
-    @DisplayName("On Wednesday Kemas Home raises its rate to RM30 and switches to Firm. Aisyah's Saturday reservation stays at RM200 under Standard.")
+    @DisplayName("Kemas Home raises its rate to RM30 and switches to Firm on Wednesday; Aisyah's Saturday booking stays RM200 under Standard.")
     void reservationKeepsTheTermsFromWhenItWasRequested() {
         Reservation reservation = market.requestStandard();
 
@@ -105,7 +106,7 @@ class ReservationRequestTest {
 
     @Test
     @Tag("RES-8")
-    @DisplayName("When Aisyah updates her profile address on Thursday, Saturday's team still goes to the original address.")
+    @DisplayName("Her new address on Thursday applies only to new bookings.")
     void reservationKeepsTheAddressFromWhenItWasRequested() {
         Reservation reservation = market.requestStandard();
 
@@ -113,6 +114,9 @@ class ReservationRequestTest {
                 new ServiceAddress("8, Jalan Cyber 2", "CYBERJAYA", "Ring the bell")).verified());
 
         assertThat(reservation.booking().address()).isEqualTo(aisyahAddress());
+        Checkout nextBooking = market.checkout(
+                aisyahBooking(HomaFixtures.at(2026, 12, 8, 10, 0), Duration.ofHours(4), 2), tuesday(9, 0));
+        assertThat(nextBooking.booking().address().city()).isEqualTo("CYBERJAYA");
     }
 
     @Test
@@ -204,7 +208,7 @@ class ReservationRequestTest {
 
     @Test
     @Tag("ACC-1")
-    @DisplayName("An Instant provider: Aisyah pays and the reservation is Reserved at once.")
+    @DisplayName("With an Instant provider, Aisyah's booking is Reserved the moment she pays.")
     void instantReservationIsReservedAtOnce() {
         market.providerBecomes(kemasHomeProvider().policy(AcceptancePolicy.INSTANT).build());
 
@@ -230,7 +234,7 @@ class ReservationRequestTest {
 
     @Test
     @Tag("ACC-3")
-    @DisplayName("Aisyah requests on Monday 20:00 for Saturday, so Kemas Home must respond by Tuesday 20:00. A request made on Saturday 7:00 for 10:00 has a deadline of 8:45. A request at 8:00 for 10:00 is blocked, because Kemas Home's 2-hour notice needs it by 7:45.")
+    @DisplayName("A Monday 20:00 request has until Tuesday 20:00. A Saturday 7:00 request for 10:00 has until 8:45.")
     void acceptanceDeadlineIsADayLaterOrAnHourBeforeCheckInWhicheverComesFirst() {
         assertThat(market.requestStandard().acceptanceDeadline()).contains(new AcceptanceDeadline(ACCEPTANCE_DEADLINE));
 

@@ -22,7 +22,7 @@ class BookingTest {
 
     @Test
     @Tag("RES-2")
-    @DisplayName("Aisyah selects \"Kitchen cleaning\" and \"Laundry folding\", Saturday 10:00, 4 hours, 2 helpers, and her saved address. She can't continue without choosing a job.")
+    @DisplayName("Aisyah picks kitchen cleaning and laundry folding, Saturday 10:00, 4 hours, 2 helpers and her saved address. She can't continue without choosing a job.")
     void bookingNeedsAtLeastOneJob() {
         Booking booking = standardBooking();
         assertThat(booking.jobs().jobCodes()).containsExactlyInAnyOrder(KITCHEN_CLEANING, LAUNDRY_FOLDING);

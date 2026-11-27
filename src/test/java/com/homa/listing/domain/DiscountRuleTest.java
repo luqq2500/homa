@@ -19,8 +19,7 @@ import org.junit.jupiter.api.Test;
 class DiscountRuleTest {
 
     @Test
-    @DisplayName("Kemas Home sets 10% for at least 3 hours and 2 helpers. Aisyah's 4-hour, 2-helper booking gets 10% off; "
-            + "a 2-hour, 2-helper booking doesn't.")
+    @DisplayName("Kemas Home's 10% applies to Aisyah's 4-hour, 2-helper booking, not to a 2-hour one.")
     void aBookingThatMeetsTheMinimumHoursAndHelpersGetsTheDiscount() {
         assertThat(KEMAS_HOME_DISCOUNT.rateFor(STANDARD_HOURS, STANDARD_HELPERS)).isEqualTo(DISCOUNT_RATE);
         assertThat(KEMAS_HOME_DISCOUNT.rateFor(Duration.ofHours(2), 2)).isEqualTo(Percentage.ZERO);
@@ -56,7 +55,7 @@ class DiscountRuleTest {
     }
 
     @Test
-    @DisplayName("A provider can set a discount rate of up to 99%: 99% is allowed, 99.01% and 100% are refused")
+    @DisplayName("A provider can set a discount of up to 99%: 99% is allowed, 99.01% and 100% are refused")
     void aDiscountRateIsAtMostNinetyNinePercent() {
         Duration threeHours = Duration.ofHours(3);
 

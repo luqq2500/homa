@@ -22,7 +22,7 @@ class AvailableStartTimesTest {
 
     @Test
     @Tag("RES-3")
-    @DisplayName("Kemas Home has a job Saturday 8:00–10:00 elsewhere. With its 30-minute buffer, the earliest start Aisyah can choose is 10:45, with the Check-in Period from 10:30.")
+    @DisplayName("With a job elsewhere 8:00–10:00 and a 30-minute buffer, Aisyah's earliest start is 10:45.")
     void earliestStartAfterAnotherJobLeavesTheBufferAndCheckIn() {
         market.book(anotherCustomerBooking(saturday(8, 0), Duration.ofHours(2), 2), monday(19, 0), monday(19, 1));
 
@@ -34,7 +34,7 @@ class AvailableStartTimesTest {
 
     @Test
     @Tag("RES-4")
-    @DisplayName("It's Saturday 7:00, Kemas Home has no other jobs that morning, and its notice is 2 hours. The earliest job start Aisyah can pick is 9:15.")
+    @DisplayName("At Saturday 7:00, with 2 hours' notice, the earliest Check-in Period starts at 9:00, so the earliest start is 9:15.")
     void earliestStartLeavesTheMinimumNotice() {
         assertThat(startsOn(saturday(7, 0))).first().isEqualTo(saturday(9, 15));
     }

@@ -9,7 +9,7 @@ import java.util.Objects;
  */
 public record MinimumRate(Money perHelperHour) {
 
-    /** RM20 per helper hour, after discount (§11). */
+    /** RM20 per helper hour, after discount (§13). */
     public static final MinimumRate HOMA = new MinimumRate(ListingValues.MINIMUM_RATE);
 
     public MinimumRate {

@@ -27,7 +27,7 @@ class ReservationCompletionTest {
 
     @Test
     @Tag("JOB-2")
-    @DisplayName("The team finishes the jobs at 13:30. Aisyah still pays for 4 hours.")
+    @DisplayName("The team finishes at 13:30. Aisyah pays for 4 hours.")
     void billingIsForTheBookedHoursEvenWhenTheTeamFinishesEarly() {
         reservation.markCompleted(List.of(CLEAN_KITCHEN), JOB_END);
 
@@ -37,7 +37,7 @@ class ReservationCompletionTest {
 
     @Test
     @Tag("JOB-3")
-    @DisplayName("At 13:30 the Completed button isn't available yet. At 14:00 Kemas Home uploads a photo of the clean kitchen and marks the job Completed.")
+    @DisplayName("The button appears at 14:00. Siti uploads a photo of the kitchen and marks the job Completed.")
     void providerMarksTheJobCompletedWithAnAfterPhotoOnlyAfterTheJobEnds() {
         assertThatThrownBy(() -> reservation.markCompleted(List.of(CLEAN_KITCHEN), saturday(13, 30)))
                 .isInstanceOf(JobNotEndedException.class);
@@ -73,7 +73,7 @@ class ReservationCompletionTest {
 
     @Test
     @Tag("JOB-5")
-    @DisplayName("Kemas Home forgets. It's reminded at 14:00 and 16:00, and marks the job Completed on Monday.")
+    @DisplayName("Kemas Home is reminded at 14:00 and 16:00, and marks it on Monday.")
     void uncompletedJobAwaitsCompletionFromItsEndUntilMarked() {
         Instant monday = saturday(10, 0).plusSeconds(2 * 86_400);
 
@@ -90,7 +90,7 @@ class ReservationCompletionTest {
 
     @Test
     @Tag("JOB-6")
-    @DisplayName("Aisyah reports that the bathroom wasn't cleaned. Support checks the after-photos while reviewing the report.")
+    @DisplayName("Support checks the after-photos when Aisyah reports the bathroom wasn't cleaned.")
     void completionPhotosAreKeptAsEvidence() {
         List<CompletionPhoto> uploaded = new ArrayList<>(List.of(CLEAN_KITCHEN, new CompletionPhoto("photo-bathroom")));
         reservation.markCompleted(uploaded, JOB_END);
