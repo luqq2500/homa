@@ -48,6 +48,46 @@ public final class PaymentHold {
     }
 
     /**
+     * Rebuilds a payment hold from what was stored: every attempt confirmed so far, the one that counts and when it
+     * was confirmed ({@code null} until one is), and what is still held. Only the shape is checked: a counted attempt
+     * and its time exactly once the payment is no longer pending, the counted attempt among the confirmed ones and
+     * none confirmed without it, and the amount held fitting the status, never more than the total.
+     */
+    public static PaymentHold restore(PaymentHoldId id, CheckoutId checkoutId, CustomerId customerId, Money total,
+            PaymentHoldStatus status, Set<PaymentAttemptId> confirmedAttempts, PaymentAttemptId countedAttempt,
+            Instant heldSince, Money held) {
+        PaymentHold hold = new PaymentHold(id, checkoutId, customerId, total);
+        hold.status = Objects.requireNonNull(status, "status");
+        hold.confirmedAttempts.addAll(confirmedAttempts);
+        hold.countedAttempt = countedAttempt;
+        hold.heldSince = heldSince;
+        hold.held = Objects.requireNonNull(held, "held");
+        hold.requireStoredShape();
+        return hold;
+    }
+
+    private void requireStoredShape() {
+        requireShape(countedAttempt().isPresent() != (status == PaymentHoldStatus.PENDING),
+                "a counted attempt exactly once its payment is confirmed");
+        requireShape(countedAttempt().isPresent() == heldSince().isPresent(),
+                "the time its counted attempt was confirmed");
+        requireShape(countedAttempt().map(confirmedAttempts::contains).orElse(confirmedAttempts.isEmpty()),
+                "its counted attempt among the confirmed ones, and no confirmed attempt without one");
+        requireShape(heldFitsStatus(), "an amount held only while " + status + " allows, never more than the total");
+    }
+
+    /** Something, up to the total, is held while HELD; nothing before a payment is confirmed or once refunded. */
+    private boolean heldFitsStatus() {
+        return status == PaymentHoldStatus.HELD ? held.isPositive() && !held.isGreaterThan(total) : held.isZero();
+    }
+
+    private static void requireShape(boolean fits, String what) {
+        if (!fits) {
+            throw new IllegalArgumentException("A stored payment hold needs " + what);
+        }
+    }
+
+    /**
      * The customer starts another attempt to pay the checkout total: a card payment, a retry after a failed attempt,
      * an online banking payment. The new attempt's id is the gateway's reference for the payment. Only while no
      * payment is confirmed: once one is held, another payment would only be refunded in full (RES-12).
@@ -133,6 +173,14 @@ public final class PaymentHold {
 
     public PaymentHoldStatus status() {
         return status;
+    }
+
+    /**
+     * Every attempt the gateway has confirmed for the checkout, the one that counts and any refunded in full
+     * (RES-12), so a repeated confirmation changes nothing.
+     */
+    public Set<PaymentAttemptId> confirmedAttempts() {
+        return Set.copyOf(confirmedAttempts);
     }
 
     /** The payment attempt that counts: the first one confirmed (RES-12). */
