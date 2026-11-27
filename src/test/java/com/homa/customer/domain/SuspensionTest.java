@@ -1,101 +1,122 @@
 package com.homa.customer.domain;
 
+import static com.homa.customer.domain.CustomerFixtures.DANIEL_SUSPENDED_AT;
 import static com.homa.customer.domain.CustomerFixtures.SAFETY_AND_MISCONDUCT;
+import static com.homa.customer.domain.CustomerFixtures.SEVEN_DAYS_END;
+import static com.homa.customer.domain.CustomerFixtures.THIRTY_DAYS_END;
+import static com.homa.customer.domain.CustomerFixtures.supportSuspendsDaniel;
 import static com.homa.fixtures.HomaFixtures.at;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.homa.kernel.BusinessCalendar;
+import com.homa.customer.domain.exception.InconsistentSuspensionEndException;
+import com.homa.customer.domain.exception.MissingSuspensionLengthException;
+import com.homa.customer.domain.exception.MissingSuspensionReasonException;
 import java.time.Instant;
-import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class SuspensionTest {
 
-    private static Suspension suspendedAt(SuspensionPeriod period, Instant now) {
-        return Suspension.start(period, SAFETY_AND_MISCONDUCT, now);
-    }
-
-    @Test
-    @Tag("CUS-6")
-    @DisplayName("Daniel, suspended for the shorter period on Wednesday 2 December at 15:00, is still suspended the "
-            + "instant before Wednesday 9 December at 15:00 and free at 15:00.")
-    void aShortSuspensionEndsAtTheSameKualaLumpurTimeAfterItsCalendarDays() {
-        Suspension shorter = suspendedAt(SuspensionPeriod.SEVEN_DAYS, at(2026, 12, 2, 15, 0));
-        Instant endsAt = at(2026, 12, 9, 15, 0);
-
-        assertThat(shorter.endsAt()).contains(endsAt);
-        assertThat(shorter.isInForceAt(endsAt.minusNanos(1))).isTrue();
-        assertThat(shorter.isInForceAt(endsAt)).isFalse();
-        assertThat(shorter.isInForceAt(endsAt.plusSeconds(1))).isFalse();
-    }
-
-    @Test
-    @Tag("CUS-6")
-    @DisplayName("A suspension for the longer period counts calendar days, not a calendar month: from 2 December it "
-            + "ends on 1 January.")
-    void aLongSuspensionCountsCalendarDaysAcrossTheMonthEnd() {
-        Suspension longer = suspendedAt(SuspensionPeriod.THIRTY_DAYS, at(2026, 12, 2, 15, 0));
-        Instant endsAt = at(2027, 1, 1, 15, 0);
-
-        assertThat(longer.endsAt()).contains(endsAt);
-        assertThat(longer.isInForceAt(endsAt.minusNanos(1))).isTrue();
-        assertThat(longer.isInForceAt(endsAt)).isFalse();
-    }
-
     @Test
     @Tag("CUS-4")
-    @DisplayName("Suspended at 00:15 on 3 December in Kuala Lumpur, which is still 2 December in UTC, Daniel's "
-            + "shorter suspension ends at 00:15 on 10 December in Kuala Lumpur.")
-    void suspensionDaysAreCountedOnTheKualaLumpurCalendar() {
-        Instant justAfterMidnight = at(2026, 12, 3, 0, 15);
-        Suspension shorter = suspendedAt(SuspensionPeriod.SEVEN_DAYS, justAfterMidnight);
-        Instant endsAt = at(2026, 12, 10, 0, 15);
-
-        assertThat(BusinessCalendar.dateOf(justAfterMidnight)).isEqualTo(LocalDate.of(2026, 12, 3));
-        assertThat(shorter.endsAt()).contains(endsAt);
-        assertThat(BusinessCalendar.dateOf(shorter.endsAt().orElseThrow())).isEqualTo(LocalDate.of(2026, 12, 10));
-        assertThat(shorter.isInForceAt(at(2026, 12, 9, 23, 59))).isTrue();
-        assertThat(shorter.isInForceAt(at(2026, 12, 10, 0, 0))).isTrue();
-        assertThat(shorter.isInForceAt(endsAt)).isFalse();
-    }
-
-    @Test
-    @Tag("CUS-4")
-    @DisplayName("Suspended at 23:45 on 2 December in Kuala Lumpur, Daniel's shorter suspension ends at 23:45 on "
-            + "9 December, not at the start of a day.")
-    void aSuspensionLateInTheKualaLumpurDayEndsLateInTheDay() {
-        Suspension shorter = suspendedAt(SuspensionPeriod.SEVEN_DAYS, at(2026, 12, 2, 23, 45));
-        Instant endsAt = at(2026, 12, 9, 23, 45);
-
-        assertThat(shorter.endsAt()).contains(endsAt);
-        assertThat(shorter.isInForceAt(at(2026, 12, 9, 0, 0))).isTrue();
-        assertThat(shorter.isInForceAt(endsAt.minusNanos(1))).isTrue();
-        assertThat(shorter.isInForceAt(endsAt)).isFalse();
+    @DisplayName("Support's decision to suspend Daniel says why and for how long.")
+    void supportsDecisionGivesAReasonAndALength() {
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.THIRTY_DAYS, THIRTY_DAYS_END, null,
+                DANIEL_SUSPENDED_AT))
+                .isInstanceOf(MissingSuspensionReasonException.class);
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.THIRTY_DAYS, THIRTY_DAYS_END, " ",
+                DANIEL_SUSPENDED_AT))
+                .isInstanceOf(MissingSuspensionReasonException.class)
+                .hasMessageContaining("CUS-4");
+        assertThatThrownBy(() -> Suspension.decided(null, THIRTY_DAYS_END, SAFETY_AND_MISCONDUCT,
+                DANIEL_SUSPENDED_AT))
+                .isInstanceOf(MissingSuspensionLengthException.class)
+                .hasMessage("CUS-4: Support's decision must say how long the suspension lasts");
     }
 
     @Test
     @Tag("CUS-4")
     @DisplayName("A suspension takes effect the moment Support confirms it, not before.")
     void aSuspensionIsInForceFromTheMomentItStarts() {
-        Instant confirmed = at(2026, 12, 2, 15, 0);
-
-        for (SuspensionPeriod period : SuspensionPeriod.values()) {
-            Suspension suspension = suspendedAt(period, confirmed);
-            assertThat(suspension.isInForceAt(confirmed.minusNanos(1))).as(period.name()).isFalse();
-            assertThat(suspension.isInForceAt(confirmed)).as(period.name()).isTrue();
+        for (SuspensionLength length : SuspensionLength.values()) {
+            Suspension suspension = supportSuspendsDaniel(length);
+            assertThat(suspension.isInForceAt(DANIEL_SUSPENDED_AT.minusNanos(1))).as(length.name()).isFalse();
+            assertThat(suspension.isInForceAt(DANIEL_SUSPENDED_AT)).as(length.name()).isTrue();
         }
     }
 
     @Test
     @Tag("CUS-6")
-    @DisplayName("A suspension until lifted never runs out on its own.")
-    void aSuspensionUntilLiftedHasNoEndOfItsOwn() {
-        Suspension untilLifted = suspendedAt(SuspensionPeriod.UNTIL_LIFTED, at(2026, 12, 2, 15, 0));
+    @DisplayName("Daniel's 7-day suspension ends by itself at the end Support gave, Wednesday 9 December at 15:00.")
+    void aSevenDaySuspensionEndsByItselfAtTheEndSupportGave() {
+        Suspension sevenDays = supportSuspendsDaniel(SuspensionLength.SEVEN_DAYS);
 
+        assertThat(SuspensionLength.SEVEN_DAYS.endsOnItsOwn()).isTrue();
+        assertThat(sevenDays.endsAt()).contains(SEVEN_DAYS_END);
+        assertThat(sevenDays.isInForceAt(SEVEN_DAYS_END.minusNanos(1))).isTrue();
+        assertThat(sevenDays.isInForceAt(SEVEN_DAYS_END)).isFalse();
+        assertThat(sevenDays.isInForceAt(SEVEN_DAYS_END.plusSeconds(1))).isFalse();
+    }
+
+    @Test
+    @Tag("CUS-6")
+    @DisplayName("Daniel can book again after 30 days: his suspension ends at the end Support gave, 1 January at "
+            + "15:00.")
+    void aThirtyDaySuspensionEndsByItselfAtTheEndSupportGave() {
+        Suspension thirtyDays = supportSuspendsDaniel(SuspensionLength.THIRTY_DAYS);
+
+        assertThat(SuspensionLength.THIRTY_DAYS.endsOnItsOwn()).isTrue();
+        assertThat(thirtyDays.endsAt()).contains(THIRTY_DAYS_END);
+        assertThat(thirtyDays.isInForceAt(THIRTY_DAYS_END.minusNanos(1))).isTrue();
+        assertThat(thirtyDays.isInForceAt(THIRTY_DAYS_END)).isFalse();
+    }
+
+    @Test
+    @Tag("CUS-6")
+    @DisplayName("A suspension until lifted never ends by itself.")
+    void aSuspensionUntilLiftedHasNoEndOfItsOwn() {
+        Suspension untilLifted = supportSuspendsDaniel(SuspensionLength.UNTIL_LIFTED);
+
+        assertThat(SuspensionLength.UNTIL_LIFTED.endsOnItsOwn()).isFalse();
         assertThat(untilLifted.endsAt()).isEmpty();
         assertThat(untilLifted.liftedAt()).isEmpty();
         assertThat(untilLifted.isInForceAt(at(2036, 12, 2, 15, 0))).isTrue();
+    }
+
+    @Test
+    @Tag("CUS-6")
+    @DisplayName("A 7- or 30-day suspension Support decides must end after it starts, because it ends by itself.")
+    void aSuspensionThatEndsByItselfNeedsAnEndAfterItStarts() {
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.THIRTY_DAYS, null, SAFETY_AND_MISCONDUCT,
+                DANIEL_SUSPENDED_AT))
+                .isInstanceOf(InconsistentSuspensionEndException.class)
+                .hasMessage("CUS-6: a THIRTY_DAYS suspension ends on its own, so it needs an end after it starts, "
+                        + "not none");
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.SEVEN_DAYS, DANIEL_SUSPENDED_AT,
+                SAFETY_AND_MISCONDUCT, DANIEL_SUSPENDED_AT))
+                .isInstanceOf(InconsistentSuspensionEndException.class)
+                .hasMessage("CUS-6: a SEVEN_DAYS suspension ends on its own, so it needs an end after it starts, "
+                        + "not " + DANIEL_SUSPENDED_AT);
+        Instant earlier = DANIEL_SUSPENDED_AT.minusSeconds(60);
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.SEVEN_DAYS, earlier, SAFETY_AND_MISCONDUCT,
+                DANIEL_SUSPENDED_AT))
+                .isInstanceOf(InconsistentSuspensionEndException.class);
+
+        Instant aMomentLater = DANIEL_SUSPENDED_AT.plusNanos(1);
+        assertThat(Suspension.decided(SuspensionLength.SEVEN_DAYS, aMomentLater, SAFETY_AND_MISCONDUCT,
+                DANIEL_SUSPENDED_AT).endsAt()).contains(aMomentLater);
+    }
+
+    @Test
+    @Tag("CUS-6")
+    @DisplayName("A suspension until lifted that Support decides has no end of its own.")
+    void aSuspensionUntilLiftedCannotHaveAnEnd() {
+        assertThatThrownBy(() -> Suspension.decided(SuspensionLength.UNTIL_LIFTED, THIRTY_DAYS_END,
+                SAFETY_AND_MISCONDUCT, DANIEL_SUSPENDED_AT))
+                .isInstanceOf(InconsistentSuspensionEndException.class)
+                .hasMessage("CUS-6: a suspension until lifted has no end of its own, so it can't end at "
+                        + THIRTY_DAYS_END);
     }
 }

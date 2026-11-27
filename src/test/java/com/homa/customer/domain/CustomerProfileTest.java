@@ -4,6 +4,7 @@ import static com.homa.customer.domain.CustomerFixtures.AISYAH_ARRIVAL_NOTE;
 import static com.homa.customer.domain.CustomerFixtures.AISYAH_STREET_ADDRESS;
 import static com.homa.customer.domain.CustomerFixtures.aisyah;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsGoogleAccount;
+import static com.homa.customer.domain.CustomerFixtures.aisyahsMyKad;
 import static com.homa.customer.domain.CustomerRegistrationTest.assertMissing;
 import static com.homa.fixtures.HomaFixtures.AISYAH_CITY;
 import static com.homa.fixtures.HomaFixtures.AISYAH_NAME;
@@ -17,8 +18,8 @@ class CustomerProfileTest {
 
     @Test
     @Tag("CUS-1")
-    @DisplayName("Aisyah moves from Salak Tinggi to Cyberjaya and enters her new address and arrival note. Her "
-            + "account keeps a name, a home address with city, and an arrival note, with the new city.")
+    @DisplayName("Aisyah moves from Salak Tinggi to Cyberjaya. She enters her new address, with its city, and a new "
+            + "arrival note, and changes how her name is written.")
     void customerChangesHerHomeAddressArrivalNoteAndName() {
         Customer aisyah = aisyah();
         HomeAddress cyberjaya = new HomeAddress("A-3-1, Residensi Cyber, Persiaran Multimedia",
@@ -33,6 +34,7 @@ class CustomerProfileTest {
         assertThat(aisyah.arrivalNote().value()).isEqualTo("Lobby: ask the concierge for unit A-3-1");
         assertThat(aisyah.name().value()).isEqualTo("Aisyah R.");
         assertThat(aisyah.signInId()).isEqualTo(aisyahsGoogleAccount());
+        assertThat(aisyah.verifiedIdentity()).contains(aisyahsMyKad());
     }
 
     @Test

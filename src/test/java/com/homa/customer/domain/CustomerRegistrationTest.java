@@ -3,7 +3,7 @@ package com.homa.customer.domain;
 import static com.homa.customer.domain.CustomerFixtures.AISYAH_AGREED_AT;
 import static com.homa.customer.domain.CustomerFixtures.AISYAH_ARRIVAL_NOTE;
 import static com.homa.customer.domain.CustomerFixtures.AISYAH_STREET_ADDRESS;
-import static com.homa.customer.domain.CustomerFixtures.aisyah;
+import static com.homa.customer.domain.CustomerFixtures.aisyahJustRegistered;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsArrivalNote;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsGoogleAccount;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsHome;
@@ -27,10 +27,10 @@ class CustomerRegistrationTest {
 
     @Test
     @Tag("CUS-1")
-    @DisplayName("Aisyah enters \"Aisyah\", her Salak Tinggi address, and the arrival note "
-            + "\"Guardhouse: say unit B-12-3\". Her account is created.")
+    @DisplayName("Aisyah enters her name, her Salak Tinggi address and \"Guardhouse: say unit B-12-3\". No phone "
+            + "number is asked for.")
     void customerRegistersWithANameAHomeAddressWithCityAndAnArrivalNote() {
-        Customer aisyah = aisyah();
+        Customer aisyah = aisyahJustRegistered();
 
         assertThat(aisyah.name().value()).isEqualTo(AISYAH_NAME);
         assertThat(aisyah.homeAddress().streetAddress()).isEqualTo(AISYAH_STREET_ADDRESS);
@@ -46,9 +46,9 @@ class CustomerRegistrationTest {
     @Tag("CUS-1")
     @DisplayName("Each registration gets its own customer id.")
     void customerGetsANewIdOnRegistration() {
-        Customer aisyah = aisyah();
+        Customer aisyah = aisyahJustRegistered();
 
-        assertThat(aisyah.id()).isNotNull().isNotEqualTo(aisyah().id());
+        assertThat(aisyah.id()).isNotNull().isNotEqualTo(aisyahJustRegistered().id());
         assertThat(UUID.fromString(aisyah.id().value())).isNotNull();
         assertThat(CustomerId.generate()).isNotEqualTo(CustomerId.generate());
         assertThat(new CustomerId("customer-aisyah").value()).isEqualTo("customer-aisyah");
@@ -58,8 +58,7 @@ class CustomerRegistrationTest {
 
     @Test
     @Tag("CUS-1")
-    @DisplayName("Aisyah can't finish registering while her name, home address or arrival note is missing. No phone "
-            + "number is asked for.")
+    @DisplayName("Aisyah can't finish registering while her name, her home address or her arrival note is missing.")
     void customerCannotRegisterWithADetailMissing() {
         assertMissing(() -> Customer.register(aisyahsGoogleAccount(), SignInStatus.free(), null, aisyahsHome(),
                 aisyahsArrivalNote(), aisyahsTermsAcceptance()), "a name");
@@ -86,8 +85,7 @@ class CustomerRegistrationTest {
 
     @Test
     @Tag("CUS-2")
-    @DisplayName("Aisyah fills in every field but doesn't tick the Terms of Service. She can't finish registering "
-            + "until she does.")
+    @DisplayName("Aisyah can't finish registering until she ticks the Terms of Service.")
     void customerCannotRegisterWithoutAgreeingToTheTermsOfService() {
         assertThatThrownBy(() -> TermsAcceptance.of(false, AISYAH_AGREED_AT))
                 .isInstanceOf(TermsOfServiceNotAcceptedException.class)
