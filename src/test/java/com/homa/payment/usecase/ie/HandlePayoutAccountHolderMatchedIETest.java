@@ -80,6 +80,19 @@ class HandlePayoutAccountHolderMatchedIETest {
 
     @Test
     @Tag("PRV-2")
+    @DisplayName("An event this handler already handled is not applied again, whatever state the account is in.")
+    void alreadyHandledEventIsNotApplied() {
+        processed.recordFirstHandling("verification-event-1", HandlePayoutAccountHolderMatchedIE.HANDLER);
+
+        handler.handle(holderMatched("verification-event-1", KEMAS_HOMES_ACCOUNT, true));
+
+        assertThat(account.status()).isEqualTo(PayoutAccountStatus.PENDING);
+        assertThat(accounts.saves()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-2")
     @DisplayName("A result for an account Kemas Home has since replaced changes nothing and publishes nothing.")
     void resultForAReplacedAccountChangesNothing() {
         handler.handle(holderMatched("verification-event-1", new PayoutAccountId("payout-account-replaced"), true));

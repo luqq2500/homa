@@ -52,6 +52,20 @@ class HandleReservationCompletedIETest {
     }
 
     @Test
+    @Tag("PAY-2")
+    @DisplayName("An event this handler already handled is not applied again, whatever state the payout is in.")
+    void alreadyHandledEventIsNotApplied() {
+        Payout payout = kemasHomesPayoutAtReserved();
+        payouts.given(payout);
+        processed.recordFirstHandling("reservation-event-2", HandleReservationCompletedIE.HANDLER);
+
+        handler.handle(completed("reservation-event-2"));
+
+        assertThat(payout.completedAt()).isEmpty();
+        assertThat(payouts.saves()).isEmpty();
+    }
+
+    @Test
     @Tag("JOB-3")
     @DisplayName("A payout whose job is already marked Completed changes nothing, and the event is not retried "
             + "forever.")

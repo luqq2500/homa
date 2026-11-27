@@ -60,6 +60,21 @@ class HandleReservationCheckoutRejectedIETest {
     }
 
     @Test
+    @Tag("RES-11")
+    @DisplayName("An event this handler already handled is not applied again, whatever state the hold is in.")
+    void alreadyHandledEventIsNotApplied() {
+        PaymentHold hold = aisyahsHeldPayment();
+        holds.given(hold);
+        processed.recordFirstHandling("reservation-event-1", HandleReservationCheckoutRejectedIE.HANDLER);
+
+        handler.handle(checkoutRejected("reservation-event-1"));
+
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.HELD);
+        assertThat(gateway.refunds()).isEmpty();
+        assertThat(holds.saves()).isEmpty();
+    }
+
+    @Test
     @Tag("PAY-4")
     @DisplayName("A rejected checkout that holds nothing refunds nothing, and the event is not retried forever.")
     void checkoutHoldingNothingRefundsNothing() {
