@@ -12,9 +12,11 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 /**
- * ROS-3, ROS-4, ROS-6: a helper or supervisor is active on the provider's team. Whether their photo is verified
- * comes from Provider; which photo it is comes from Verification's photo check, which may have arrived first
- * (IDN-4). A foreign member's last job date is Provider's, already net of its permit buffer.
+ * ROS-3, ROS-4, ROS-6: a helper or supervisor is active on the provider's team, under their verified name. Photo
+ * checks are ordered by person and activations by member, so either can come first: a verified photo Verification
+ * already reported is applied now and wins over Provider's {@code photoVerified} flag; without one, the flag stands
+ * and the member waits for the photo before they can be rostered (IDN-4). A foreign member's last job date is
+ * Provider's, already net of its permit buffer.
  */
 public final class HandleTeamMemberActivatedIE implements TeamMemberActivatedIEHandler {
 
@@ -44,8 +46,8 @@ public final class HandleTeamMemberActivatedIE implements TeamMemberActivatedIEH
                 MemberRole.valueOf(event.role()),
                 event.displayName(),
                 event.photoVerified(),
-                photo.verifiedReference(),
+                Optional.empty(),
                 true,
-                Optional.ofNullable(event.rosterableUntil()).map(LocalDate::parse)));
+                Optional.ofNullable(event.rosterableUntil()).map(LocalDate::parse)).showing(photo));
     }
 }
