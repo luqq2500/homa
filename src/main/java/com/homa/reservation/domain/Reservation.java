@@ -155,6 +155,17 @@ public final class Reservation {
         return jobTime().completionReminders(values);
     }
 
+    /**
+     * JOB-5: the reminders due by now for a job past its end time that isn't marked Completed; none once it is
+     * marked, or before the job ends.
+     */
+    public List<Instant> completionRemindersDueAt(Instant now) {
+        if (!awaitsCompletionAt(now)) {
+            return List.of();
+        }
+        return completionReminders().stream().filter(reminder -> !reminder.isAfter(now)).toList();
+    }
+
     public ReservationPhase phaseAt(Instant now) {
         return jobTime().phaseAt(now, values);
     }

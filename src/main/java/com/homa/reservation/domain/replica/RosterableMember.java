@@ -61,6 +61,11 @@ public record RosterableMember(
                 active, rosterableUntil);
     }
 
+    /** IDN-4: the member shows the person's verified photo once Verification has verified one; else nothing changes. */
+    public RosterableMember showing(PersonPhoto photo) {
+        return photo.verifiedReference().map(this::withVerifiedPhoto).orElse(this);
+    }
+
     /** IDN-4, ROS-6: the member has a verified photo the customer can be shown. */
     public boolean hasVerifiedPhoto() {
         return photoVerified && photoReference.isPresent();
