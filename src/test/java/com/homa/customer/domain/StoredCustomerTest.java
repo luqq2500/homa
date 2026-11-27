@@ -3,6 +3,7 @@ package com.homa.customer.domain;
 import static com.homa.customer.domain.CustomerFixtures.DANIEL_SUSPENDED_AT;
 import static com.homa.customer.domain.CustomerFixtures.SAFETY_AND_MISCONDUCT;
 import static com.homa.customer.domain.CustomerFixtures.SEVEN_DAYS_END;
+import static com.homa.customer.domain.CustomerFixtures.aisyah;
 import static com.homa.customer.domain.CustomerFixtures.aisyahJustRegistered;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsArrivalNote;
 import static com.homa.customer.domain.CustomerFixtures.aisyahsGoogleAccount;
@@ -35,7 +36,7 @@ class StoredCustomerTest {
     private static Customer restored(Customer stored) {
         return Customer.restore(stored.id(), stored.signInId(), stored.name(), stored.homeAddress(),
                 stored.arrivalNote(), stored.termsAcceptance(), stored.verifiedIdentity().orElse(null),
-                stored.suspension().map(StoredCustomerTest::restored).orElse(null));
+                stored.verificationRefusal().orElse(null), stored.suspension().map(StoredCustomerTest::restored).orElse(null));
     }
 
     private static Suspension restored(Suspension stored) {
@@ -45,7 +46,7 @@ class StoredCustomerTest {
 
     private static Customer aisyahStoredWith(CustomerName name, HomeAddress home, ArrivalNote note) {
         return Customer.restore(CustomerId.generate(), aisyahsGoogleAccount(), name, home, note,
-                aisyahsTermsAcceptance(), null, null);
+                aisyahsTermsAcceptance(), null, null, null);
     }
 
     @Test
@@ -118,13 +119,13 @@ class StoredCustomerTest {
     @DisplayName("Persistence: a stored customer without an id, a sign-in or the Terms of Service accepted is refused.")
     void aStoredCustomerMissingItsIdSignInOrTermsIsRefused() {
         assertThatThrownBy(() -> Customer.restore(null, aisyahsGoogleAccount(), aisyahsName(), aisyahsHome(),
-                aisyahsArrivalNote(), aisyahsTermsAcceptance(), null, null))
+                aisyahsArrivalNote(), aisyahsTermsAcceptance(), null, null, null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Customer.restore(CustomerId.generate(), null, aisyahsName(), aisyahsHome(),
-                aisyahsArrivalNote(), aisyahsTermsAcceptance(), null, null))
+                aisyahsArrivalNote(), aisyahsTermsAcceptance(), null, null, null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Customer.restore(CustomerId.generate(), aisyahsGoogleAccount(), aisyahsName(),
-                aisyahsHome(), aisyahsArrivalNote(), null, null, null))
+                aisyahsHome(), aisyahsArrivalNote(), null, null, null, null))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -141,5 +142,32 @@ class StoredCustomerTest {
         assertThatThrownBy(() -> Suspension.restore(SuspensionLength.UNTIL_LIFTED, null, SAFETY_AND_MISCONDUCT,
                 null, null))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @Tag("CUS-10")
+    @DisplayName("Persistence: Aisyah's 16-year-old son comes back with the reason his verification was refused, so he is still told why he can't book.")
+    void aStoredCustomerKeepsWhyVerificationWasRefused() {
+        Customer son = aisyahJustRegistered();
+        son.recordVerificationRefused(VerificationRefusal.UNDER_MINIMUM_AGE);
+
+        Customer stored = restored(son);
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(son);
+        assertThat(stored.verificationRefusal()).contains(VerificationRefusal.UNDER_MINIMUM_AGE);
+        assertThat(stored.reservationBlockerAt(DANIEL_SUSPENDED_AT)).contains(ReservationBlocker.UNDER_MINIMUM_AGE);
+    }
+
+    @Test
+    @Tag("CUS-10")
+    @DisplayName("Persistence: a refusal stored beside a verified identity comes back, and the verified identity still decides.")
+    void aStoredRefusalBesideAVerifiedIdentityDoesNotBlock() {
+        Customer aisyah = aisyah();
+        aisyah.recordVerificationRefused(VerificationRefusal.UNDER_MINIMUM_AGE);
+
+        Customer stored = restored(aisyah);
+
+        assertThat(stored.verificationRefusal()).contains(VerificationRefusal.UNDER_MINIMUM_AGE);
+        assertThat(stored.reservationBlockerAt(DANIEL_SUSPENDED_AT)).isEmpty();
     }
 }

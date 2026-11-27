@@ -21,12 +21,12 @@ import org.junit.jupiter.api.Test;
 class StoredPayoutAccountTest {
 
     private static PayoutAccount restored(PayoutAccount stored) {
-        return stored(stored.status(), stored.checkedAt().orElse(null));
+        return stored(stored.gatewayAccountRef().orElse(null), stored.status(), stored.checkedAt().orElse(null));
     }
 
-    private static PayoutAccount stored(PayoutAccountStatus status, Instant checkedAt) {
+    private static PayoutAccount stored(String gatewayAccountRef, PayoutAccountStatus status, Instant checkedAt) {
         return PayoutAccount.restore(KEMAS_HOME, KEMAS_HOMES_ACCOUNT, PayoutAccountHolder.BUSINESS,
-                KEMAS_HOMES_BANK_ACCOUNT, ACCOUNT_SUBMITTED_AT, status, checkedAt);
+                KEMAS_HOMES_BANK_ACCOUNT, ACCOUNT_SUBMITTED_AT, gatewayAccountRef, status, checkedAt);
     }
 
     @Test
@@ -68,13 +68,35 @@ class StoredPayoutAccountTest {
     @Tag("PRV-2")
     @DisplayName("Persistence: a stored account has a check time exactly once its holder check came back, and always a status.")
     void aStoredCheckTimeMustFitTheStatus() {
-        assertThatThrownBy(() -> stored(PayoutAccountStatus.PENDING, ACCOUNT_CHECKED_AT))
+        assertThatThrownBy(() -> stored(null, PayoutAccountStatus.PENDING, ACCOUNT_CHECKED_AT))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("A stored payout account needs ");
-        assertThatThrownBy(() -> stored(PayoutAccountStatus.VERIFIED, null))
+        assertThatThrownBy(() -> stored(null, PayoutAccountStatus.VERIFIED, null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> stored(PayoutAccountStatus.NOT_VERIFIED, null))
+        assertThatThrownBy(() -> stored(null, PayoutAccountStatus.NOT_VERIFIED, null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> stored(null, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> stored(null, null, null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @Tag("PRV-2")
+    @DisplayName("Persistence: the payment provider's reference for Kemas Home's account comes back with it, so Verification's holder check can still name the account without the bank number.")
+    void aStoredAccountKeepsItsGatewayReference() {
+        PayoutAccount registered = kemasHomesSubmittedAccount();
+        registered.recordGatewayRegistration("gw-acct-maybank");
+
+        PayoutAccount stored = restored(registered);
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(registered);
+        assertThat(stored.gatewayAccountRef()).contains("gw-acct-maybank");
+        assertThat(stored(null, PayoutAccountStatus.PENDING, null).gatewayAccountRef()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-2")
+    @DisplayName("Persistence: a stored gateway reference that is blank is refused.")
+    void aBlankStoredGatewayReferenceIsRefused() {
+        assertThatThrownBy(() -> stored(" ", PayoutAccountStatus.PENDING, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

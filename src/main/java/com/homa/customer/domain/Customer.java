@@ -68,18 +68,20 @@ public final class Customer {
 
     /**
      * Rebuilds a customer from what was stored: the sign-in, the profile, the terms acceptance and, once they exist,
-     * the verified identity and the latest suspension, each {@code null} when there is none. Every detail CUS-1 asks
-     * for must be present. The sign-in (CUS-7) and identity (CUS-10) lookups aren't repeated: they held when the
+     * the verified identity, the reason Verification last refused one, and the latest suspension, each {@code null}
+     * when there is none. A refusal can sit beside a verified identity, which then decides (CUS-10). Every detail
+     * CUS-1 asks for must be present. The sign-in (CUS-7) and identity (CUS-10) lookups aren't repeated: they held when the
      * customer registered and verified.
      */
     public static Customer restore(CustomerId id, SignInId signInId, CustomerName name, HomeAddress homeAddress,
             ArrivalNote arrivalNote, TermsAcceptance termsAcceptance, VerifiedIdentity verifiedIdentity,
-            Suspension suspension) {
+            VerificationRefusal verificationRefusal, Suspension suspension) {
         Customer customer = new Customer(Objects.requireNonNull(id, "id"), Objects.requireNonNull(signInId, "signInId"),
                 Required.detail(name, "a name"), Required.detail(homeAddress, "a home address"),
                 Required.detail(arrivalNote, "an arrival note"),
                 Objects.requireNonNull(termsAcceptance, "termsAcceptance"));
         customer.verifiedIdentity = verifiedIdentity;
+        customer.verificationRefusal = verificationRefusal;
         customer.suspension = suspension;
         return customer;
     }

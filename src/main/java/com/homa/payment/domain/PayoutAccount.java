@@ -40,13 +40,18 @@ public final class PayoutAccount {
     }
 
     /**
-     * Rebuilds a payout account from what was stored: the current account, when it was submitted, and its status
-     * with when its holder check came back ({@code null} while it waits). Only the shape is checked: a check time
-     * exactly once the account is no longer PENDING.
+     * Rebuilds a payout account from what was stored: the current account, when it was submitted, the payment
+     * provider's reference for it ({@code null} until it is registered), and its status with when its holder check
+     * came back ({@code null} while it waits). Only the shape is checked: a check time exactly once the account is no
+     * longer PENDING, and a reference that is not blank when there is one.
      */
     public static PayoutAccount restore(ProviderId providerId, PayoutAccountId accountId, PayoutAccountHolder holder,
-            BankAccount bankAccount, Instant submittedAt, PayoutAccountStatus status, Instant checkedAt) {
+            BankAccount bankAccount, Instant submittedAt, String gatewayAccountRef, PayoutAccountStatus status,
+            Instant checkedAt) {
         PayoutAccount account = submit(providerId, accountId, holder, bankAccount, submittedAt);
+        if (gatewayAccountRef != null) {
+            account.recordGatewayRegistration(gatewayAccountRef);
+        }
         account.status = Objects.requireNonNull(status, "status");
         account.checkedAt = checkedAt;
         if (account.checkedAt().isPresent() == (status == PayoutAccountStatus.PENDING)) {
