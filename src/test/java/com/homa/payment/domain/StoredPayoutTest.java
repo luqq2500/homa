@@ -46,7 +46,7 @@ class StoredPayoutTest {
     }
 
     private static PayoutRelease releasedJobPayout() {
-        return kemasHomesJobPayout().release(PROTECTION_WINDOW_END);
+        return kemasHomesJobPayout().release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
     }
 
     @Test
@@ -64,7 +64,7 @@ class StoredPayoutTest {
         assertThat(stored.openReports()).containsExactly(VASE_REPORT);
         assertThat(stored.releasableAt(PROTECTION_WINDOW_END)).isFalse();
         stored.reportResolved(VASE_REPORT);
-        assertThat(stored.release(PROTECTION_WINDOW_END).afterPlatformFee()).isEqualTo(Money.myr(169));
+        assertThat(stored.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing()).afterPlatformFee()).isEqualTo(Money.myr(169));
     }
 
     @Test
@@ -104,7 +104,7 @@ class StoredPayoutTest {
     @DisplayName("Persistence: a released payout comes back with its release lines, and a voided one stays void; neither changes again.")
     void aStoredReleasedOrVoidPayoutStaysSo() {
         Payout released = kemasHomesJobPayout();
-        released.release(PROTECTION_WINDOW_END);
+        released.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
         Payout voided = kemasHomesPayoutAtReserved();
         voided.reportOpened(VASE_REPORT);
         voided.makeVoid();

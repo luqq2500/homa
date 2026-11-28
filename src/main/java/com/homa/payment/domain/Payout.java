@@ -20,8 +20,8 @@ import java.util.Set;
  * open (PAY-2, JOB-5). If the reservation ends with a cancellation, last-minute or no-show fee for the provider, the
  * payout pays that fee instead; a FEE payout needs no completion and waits for the booked job's Protection Window
  * and every report the same way (PAY-6). Releasing takes Homa's platform fee from every payout (PAY-3), at the rate in
- * force when the reservation was Requested (P3), rounded once to the sen (PAY-8). Amounts come from the Settlement;
- * Payment never re-derives them.
+ * force when the reservation was Requested (P3), rounded once to the sen (PAY-8), and then the provider's fine
+ * deduction (PAY-5). Amounts come from the Settlement; Payment never re-derives them.
  */
 public final class Payout {
 
@@ -168,18 +168,27 @@ public final class Payout {
 
     /**
      * Releases the payout to the provider: the platform fee comes off every payout (PAY-3), at the rate in force when
-     * the reservation was Requested (P3), rounded once to the sen (PAY-8).
+     * the reservation was Requested (P3), rounded once to the sen (PAY-8). Then the provider's fines are deducted from
+     * what is left, at most the fine deduction cap in force then, whatever the payout kind (PAY-5): the provider's
+     * {@link ProviderFineAccount} gives up that much.
      */
-    public PayoutRelease release(Instant now) {
-        return release(now, PaymentValues.homa());
+    public PayoutRelease release(Instant now, ProviderFineAccount fines) {
+        return release(now, fines, PaymentValues.homa());
     }
 
-    PayoutRelease release(Instant now, PaymentValues values) {
+    PayoutRelease release(Instant now, ProviderFineAccount fines, PaymentValues values) {
+        Objects.requireNonNull(fines, "fines");
         if (!releasableAt(now)) {
             throw new PayoutNotReleasableException(id, now);
         }
-        Money platformFee = PlatformFeeRate.of(values.inForceAt(requestedAt)).feeOn(gross);
-        release = new PayoutRelease(id, providerId, kind, gross, platformFee, now);
+        if (!fines.providerId().equals(providerId)) {
+            throw new IllegalArgumentException("Payout " + id.value() + " is released against the fines of provider "
+                    + providerId.value() + ", not " + fines.providerId().value());
+        }
+        PaymentValues.Version version = values.inForceAt(requestedAt);
+        Money platformFee = PlatformFeeRate.of(version).feeOn(gross);
+        Money fineDeduction = fines.deductFrom(gross.minus(platformFee), version);
+        release = new PayoutRelease(id, providerId, kind, gross, platformFee, fineDeduction, now);
         status = PayoutStatus.RELEASED;
         return release;
     }

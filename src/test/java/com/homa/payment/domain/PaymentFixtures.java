@@ -72,6 +72,18 @@ final class PaymentFixtures {
         return account;
     }
 
+    /** Kemas Home has never been fined: releasing a payout deducts nothing (PAY-5). */
+    static ProviderFineAccount owingNothing() {
+        return ProviderFineAccount.openFor(KEMAS_HOME);
+    }
+
+    /** Kemas Home owes the RM105 fine of a provider no-show (PAY-4). */
+    static ProviderFineAccount owingTheNoShowFine() {
+        ProviderFineAccount account = ProviderFineAccount.openFor(KEMAS_HOME);
+        account.recordFine(new ReservationId("reservation-no-show"), Money.myr(105), at(2026, 12, 5, 10, 30));
+        return account;
+    }
+
     /** Aisyah has tapped Pay; the gateway has not confirmed any attempt yet. */
     static PaymentHold aisyahsCheckoutAwaitingPayment() {
         return PaymentHold.openForCheckout(AISYAHS_HOLD, STANDARD_CHECKOUT, AISYAH, TOTAL_RESERVATION_FEE);
