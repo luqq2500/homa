@@ -81,9 +81,9 @@ public class HandleSettlementAdjustedIE implements SettlementAdjustedIEHandler {
 
     /** Only the reasons Payment can tell a refund by are accepted: later slices add theirs here (RPT-9, SUS-3, RPT-5). */
     private static RefundReason reasonOf(String adjustmentReason) {
-        return switch (adjustmentReason) {
-            case "SMALLER_ROSTER" -> RefundReason.SMALLER_ROSTER;
-            default -> throw new UnknownAdjustmentReasonException(adjustmentReason);
-        };
+        if (!RefundReason.SMALLER_ROSTER.name().equals(adjustmentReason)) {
+            throw new UnknownAdjustmentReasonException(adjustmentReason);
+        }
+        return RefundReason.SMALLER_ROSTER;
     }
 }
