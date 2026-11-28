@@ -1,6 +1,7 @@
 package com.homa.reservation.domain;
 
 import com.homa.reservation.domain.ReservationValues.Version;
+import com.homa.reservation.domain.exception.AcceptanceDeadlineNotReachedException;
 import com.homa.reservation.domain.exception.AcceptanceDeadlinePassedException;
 import com.homa.reservation.domain.exception.BookingRefusedException;
 import com.homa.reservation.domain.exception.CompletionPhotoRequiredException;
@@ -29,7 +30,8 @@ import java.util.Set;
 /**
  * A reservation: the core aggregate. It is made only when a payment is confirmed (RES-7, P1), keeps the provider's
  * terms, Homa's reservation values and the customer's address from when it was Requested (RES-8, P3), and moves
- * Requested → Reserved → Completed, or ends Withdrawn. It is never edited: a change is a new booking (P2, REQ-1).
+ * Requested → Reserved → Completed, or ends Withdrawn, Declined or Expired. It is never edited: a change is a new
+ * booking (P2, REQ-1).
  */
 public final class Reservation {
 
@@ -38,7 +40,9 @@ public final class Reservation {
             ReservationStatus.REQUESTED, Set.of(),
             ReservationStatus.RESERVED, Set.of(ReservationStatus.RESERVED),
             ReservationStatus.COMPLETED, Set.of(ReservationStatus.RESERVED, ReservationStatus.COMPLETED),
-            ReservationStatus.WITHDRAWN, Set.of(ReservationStatus.WITHDRAWN));
+            ReservationStatus.WITHDRAWN, Set.of(ReservationStatus.WITHDRAWN),
+            ReservationStatus.DECLINED, Set.of(ReservationStatus.DECLINED),
+            ReservationStatus.EXPIRED, Set.of(ReservationStatus.EXPIRED));
 
     private final ReservationId id;
     private final CheckoutId checkoutId;
@@ -51,6 +55,8 @@ public final class Reservation {
     private ReservationStatus status;
     private Instant reservedAt;
     private Instant withdrawnAt;
+    private Instant declinedAt;
+    private Instant expiredAt;
     private Roster roster;
     private Instant completedAt;
     private List<CompletionPhoto> completionPhotos;
@@ -58,8 +64,8 @@ public final class Reservation {
 
     private Reservation(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms, Quote quote,
             Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline, ReservationStatus status,
-            Instant reservedAt, Instant withdrawnAt, Roster roster, Instant completedAt,
-            List<CompletionPhoto> completionPhotos, long version) {
+            Instant reservedAt, Instant withdrawnAt, Instant declinedAt, Instant expiredAt, Roster roster,
+            Instant completedAt, List<CompletionPhoto> completionPhotos, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.checkoutId = Objects.requireNonNull(checkoutId, "checkoutId");
         this.booking = Objects.requireNonNull(booking, "booking");
@@ -71,6 +77,8 @@ public final class Reservation {
         this.status = Objects.requireNonNull(status, "status");
         this.reservedAt = reservedAt;
         this.withdrawnAt = withdrawnAt;
+        this.declinedAt = declinedAt;
+        this.expiredAt = expiredAt;
         this.roster = roster;
         this.completedAt = completedAt;
         this.completionPhotos = List.copyOf(completionPhotos);
@@ -114,7 +122,7 @@ public final class Reservation {
         return new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
                 instant ? null : AcceptanceDeadline.from(requestedAt, booking.jobTime(), values),
                 instant ? ReservationStatus.RESERVED : ReservationStatus.REQUESTED, instant ? requestedAt : null,
-                null, null, null, List.of(), 0);
+                null, null, null, null, null, List.of(), 0);
     }
 
     /**
@@ -123,18 +131,19 @@ public final class Reservation {
      * with each save; the reservation never does. A moment not reached yet is {@code null}, as is the acceptance
      * deadline under Instant and the roster until it is set.
      *
-     * <p>Only the shape is checked: the status fits the moments it was reserved, withdrawn and completed; it has an
-     * acceptance deadline exactly when its terms wait for acceptance; after-photos exactly once completed; and a
-     * roster only once reserved. No booking rule, notice or deadline is checked again: they held when the payment
-     * was confirmed, and the reservation keeps what it was Requested with (RES-8). Declined, Expired and Cancelled
-     * reservations are restored once the slices that reach them add what they record.
+     * <p>Only the shape is checked: the status fits the moments it was reserved, withdrawn, declined, expired and
+     * completed; it has an acceptance deadline exactly when its terms wait for acceptance; after-photos exactly once
+     * completed; and a roster only once reserved. No booking rule, notice or deadline is checked again: they held
+     * when the payment was confirmed, and the reservation keeps what it was Requested with (RES-8). Cancelled
+     * reservations are restored once the slice that reaches them adds what it records.
      */
     public static Reservation restore(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms,
             Quote quote, Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline,
-            ReservationStatus status, Instant reservedAt, Instant withdrawnAt, Roster roster, Instant completedAt,
-            List<CompletionPhoto> completionPhotos, long version) {
+            ReservationStatus status, Instant reservedAt, Instant withdrawnAt, Instant declinedAt, Instant expiredAt,
+            Roster roster, Instant completedAt, List<CompletionPhoto> completionPhotos, long version) {
         Reservation reservation = new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
-                acceptanceDeadline, status, reservedAt, withdrawnAt, roster, completedAt, completionPhotos, version);
+                acceptanceDeadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, completedAt,
+                completionPhotos, version);
         reservation.requireStoredShape();
         return reservation;
     }
@@ -157,6 +166,12 @@ public final class Reservation {
         }
         if (withdrawnAt != null) {
             passed.add(ReservationStatus.WITHDRAWN);
+        }
+        if (declinedAt != null) {
+            passed.add(ReservationStatus.DECLINED);
+        }
+        if (expiredAt != null) {
+            passed.add(ReservationStatus.EXPIRED);
         }
         if (completedAt != null) {
             passed.add(ReservationStatus.COMPLETED);
@@ -190,6 +205,32 @@ public final class Reservation {
         requireStatus(ReservationStatus.REQUESTED, "withdraw");
         status = ReservationStatus.WITHDRAWN;
         withdrawnAt = now;
+    }
+
+    /**
+     * REQ-3: the provider declines a Requested reservation. It becomes Declined and the customer gets a full refund;
+     * the time opens again once the schedules release it. Like a withdrawal, a decline is not a cancellation: no
+     * fee, no fine and no reliability count (RTG-10). Whichever of a decline and an acceptance is recorded first wins
+     * (REQ-5).
+     */
+    public void decline(Instant now) {
+        requireStatus(ReservationStatus.REQUESTED, "decline");
+        status = ReservationStatus.DECLINED;
+        declinedAt = now;
+    }
+
+    /**
+     * REQ-4: a request not accepted by its acceptance deadline expires. It is refused until the deadline is reached,
+     * from which moment it can no longer be accepted (ACC-2), so a request is always open to one or the other. The
+     * customer gets a full refund; no fee, no fine and no reliability count.
+     */
+    public void expire(Instant now) {
+        requireStatus(ReservationStatus.REQUESTED, "expire");
+        if (acceptanceDeadline.isOpenAt(now)) {
+            throw new AcceptanceDeadlineNotReachedException(acceptanceDeadline.at());
+        }
+        status = ReservationStatus.EXPIRED;
+        expiredAt = now;
     }
 
     /**
@@ -321,6 +362,15 @@ public final class Reservation {
 
     public Optional<Instant> withdrawnAt() {
         return Optional.ofNullable(withdrawnAt);
+    }
+
+    public Optional<Instant> declinedAt() {
+        return Optional.ofNullable(declinedAt);
+    }
+
+    /** When the expiry was recorded, at or after the acceptance deadline (REQ-4). */
+    public Optional<Instant> expiredAt() {
+        return Optional.ofNullable(expiredAt);
     }
 
     /** ROS-6: the roster shown to the customer; empty until the provider sets it. */

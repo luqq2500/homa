@@ -118,7 +118,8 @@ public final class InMemoryReservationRepository implements ReservationRepositor
         return Reservation.restore(original.id(), original.checkoutId(), original.booking(), original.terms(),
                 original.quote(), original.values(), original.requestedAt(),
                 original.acceptanceDeadline().orElse(null), original.status(), original.reservedAt().orElse(null),
-                original.withdrawnAt().orElse(null), original.roster().orElse(null),
+                original.withdrawnAt().orElse(null), original.declinedAt().orElse(null),
+                original.expiredAt().orElse(null), original.roster().orElse(null),
                 original.completedAt().orElse(null), original.completionPhotos(), version);
     }
 }
