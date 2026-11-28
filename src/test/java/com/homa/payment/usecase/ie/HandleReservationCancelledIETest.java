@@ -283,6 +283,26 @@ class HandleReservationCancelledIETest {
     }
 
     @Test
+    @Tag("PAY-6")
+    @Tag("PAY-7")
+    @DisplayName("A fee as large as the whole payment leaves nothing to refund: no refund is sent, and Kemas Home's "
+            + "payout becomes a RM200 fee payout.")
+    void feeAsLargeAsThePaymentSendsNoRefund() {
+        PaymentHold hold = givenAisyahPaidAndReserved();
+
+        handler.handle(cancelled("reservation-event-1", "CUSTOMER_NO_SHOW", LATE_CANCELLATION_AT,
+                "settlement-whole-fee", Money.myr(200), NOTHING, NOTHING, NOTHING, Money.myr(200)));
+
+        assertThat(gateway.refunds()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+        assertThat(holds.saves()).isEmpty();
+        assertThat(hold.held()).isEqualTo(Money.myr(200));
+        assertThat(payoutOfTheReservation().kind()).isEqualTo(PayoutKind.FEE);
+        assertThat(payoutOfTheReservation().gross()).isEqualTo(Money.myr(200));
+        assertThat(ledger.balanceOf(LedgerAccount.CUSTOMER_HELD)).isEqualTo(Money.myr(200));
+    }
+
+    @Test
     @Tag("PAY-5")
     @DisplayName("Kemas Home already owes RM45 from an earlier reservation: the new RM105 fine goes after it, so the "
             + "older fine is cleared first.")
