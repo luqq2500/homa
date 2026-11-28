@@ -84,12 +84,24 @@ public final class RatingSession {
     }
 
     private void requireStoredShape() {
-        switch (status) {
-            case OPEN -> requireShape(revealedAt == null && ratings.size() < PartyRole.values().length,
-                    "nothing revealed and at most one rating while still open");
-            case REVEALED -> requireShape(revealedAt != null, "a reveal moment once revealed");
-            case VOID -> requireShape(ratings.isEmpty(), "no ratings once void");
-        }
+        requireOpenShape();
+        requireRevealedShape();
+        requireVoidShape();
+    }
+
+    private void requireOpenShape() {
+        requireShape(status != RatingSessionStatus.OPEN
+                || (revealedAt == null && ratings.size() < PartyRole.values().length),
+                "nothing revealed and at most one rating while still open");
+    }
+
+    private void requireRevealedShape() {
+        requireShape(status != RatingSessionStatus.REVEALED || revealedAt != null,
+                "a reveal moment once revealed");
+    }
+
+    private void requireVoidShape() {
+        requireShape(status != RatingSessionStatus.VOID || ratings.isEmpty(), "no ratings once void");
     }
 
     private static void requireShape(boolean fits, String what) {

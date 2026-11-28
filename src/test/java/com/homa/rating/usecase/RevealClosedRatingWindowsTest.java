@@ -197,6 +197,34 @@ class RevealClosedRatingWindowsTest {
 
     @Test
     @Tag("RTG-3")
+    @DisplayName("A session revealed by the second rating while this run was under way is left as it is: nothing is "
+            + "saved or published again.")
+    void aSessionRevealedMeanwhileIsNotRevealedAgain() {
+        RatingSession both = openSession();
+        both.submit(byAisyah(4));
+        both.submit(byKemasHome(5));
+        RatingSessionRepository stale = new InMemoryRatingSessionRepository() {
+            @Override
+            public List<ReservationId> findIdsOfOpenWithWindowClosedBy(Instant now) {
+                return List.of(both.reservationId());
+            }
+        };
+        stale.save(both);
+        publisher.clear();
+        RevealClosedRatingWindows run = new RevealClosedRatingWindows(stale,
+                new ProviderRatingUpdates(stale, publisher, events), unitOfWork, time);
+
+        RevealClosedRatingWindowsResponse response = run.revealClosed(RUN);
+
+        assertThat(response.revealedReservationIds()).isEmpty();
+        assertThat(response.changedMeanwhileIds()).isEmpty();
+        assertThat(both.revealedAt()).contains(KEMAS_HOME_RATES_AT);
+        assertThat(publisher.published()).isEmpty();
+        assertThat(unitOfWork.units()).isEqualTo(1);
+    }
+
+    @Test
+    @Tag("RTG-3")
     @DisplayName("The scheduler runs an hour late: the reveal is still stamped with the closing moment, and the event "
             + "with the time it was published.")
     void aLateRunStampsTheClosingMoment() {

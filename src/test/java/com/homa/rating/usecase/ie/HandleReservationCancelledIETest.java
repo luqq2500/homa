@@ -174,6 +174,32 @@ class HandleReservationCancelledIETest {
 
     @Test
     @Tag("RTG-10")
+    @DisplayName("An event this handler already handled is not applied again, whatever is stored.")
+    void alreadyHandledEventIsNotApplied() {
+        processed.recordFirstHandling("reservation-event-7", HandleReservationCancelledIE.HANDLER);
+
+        handler.handle(cancelled("reservation-event-7", CUSTOMER_CANCELLED_WITH_FEE));
+
+        assertThat(reliability.saves()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("NSH-6")
+    @DisplayName("A Provider No Show event this handler already handled does not void the ratings again.")
+    void alreadyHandledNoShowDoesNotVoidRatings() {
+        RatingSession session = openSession();
+        sessions.given(session);
+        processed.recordFirstHandling("reservation-event-9", HandleReservationCancelledIE.HANDLER);
+
+        handler.handle(cancelled("reservation-event-9", PROVIDER_NO_SHOW));
+
+        assertThat(session.status()).isEqualTo(RatingSessionStatus.OPEN);
+        assertThat(sessions.saves()).isEmpty();
+    }
+
+    @Test
+    @Tag("RTG-10")
     @DisplayName("The same cancellation arriving under another event id is not counted twice.")
     void theSameCancellationUnderAnotherEventIdCountsOnce() {
         handler.handle(cancelled("reservation-event-7", CUSTOMER_CANCELLED_WITH_FEE));
