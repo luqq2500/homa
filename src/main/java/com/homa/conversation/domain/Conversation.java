@@ -73,11 +73,20 @@ public final class Conversation {
      */
     public static Conversation restore(ConversationId id, ConversationKind kind, CustomerId customerId,
             ProviderId providerId, ReservationId reservationId, Instant startedAt, List<Message> messages) {
+        requireReservationExactlyForAReservationsChat(kind, reservationId);
+        requireEnquiryToBeginWithItsCustomer(kind, messages);
+        return new Conversation(id, kind, customerId, providerId, reservationId, startedAt, messages);
+    }
+
+    private static void requireReservationExactlyForAReservationsChat(ConversationKind kind,
+            ReservationId reservationId) {
         requireShape((kind == ConversationKind.RESERVATION) == (reservationId != null),
                 "a reservation exactly when it is a reservation's chat");
+    }
+
+    private static void requireEnquiryToBeginWithItsCustomer(ConversationKind kind, List<Message> messages) {
         requireShape(kind != ConversationKind.ENQUIRY || startsWithCustomer(messages),
                 "an Enquiry that begins with its customer's message");
-        return new Conversation(id, kind, customerId, providerId, reservationId, startedAt, messages);
     }
 
     private static boolean startsWithCustomer(List<Message> messages) {
