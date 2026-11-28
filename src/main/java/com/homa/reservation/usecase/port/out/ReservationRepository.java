@@ -35,6 +35,13 @@ public interface ReservationRepository {
     List<Reservation> findRequestedPastDeadline(Instant now);
 
     /**
+     * Reserved reservations whose roster has this member and whose Check-in Period hasn't started by this moment, so
+     * the member can still be replaced (ROS-5). Several handlers can ask at once; each reservation is then saved on
+     * its own and the loser of a race gets {@link ReservationChangedException}.
+     */
+    List<Reservation> findReservedRosteredWith(String memberId, Instant now);
+
+    /**
      * Saves a reservation whose schedules did not change.
      *
      * @throws ReservationChangedException when the reservation was saved by someone else since it was loaded

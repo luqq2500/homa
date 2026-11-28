@@ -10,6 +10,7 @@ import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
 import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.ie.events.RosterChangedIE;
+import com.homa.ie.events.RosterNeedsReplacementIE;
 import com.homa.reservation.domain.Cancellation;
 import com.homa.reservation.domain.Checkout;
 import com.homa.reservation.domain.CheckoutRejection;
@@ -109,6 +110,12 @@ public final class ReservationEvents {
         List<String> memberIds = reservation.roster().orElseThrow().members().stream()
                 .map(RosterMember::memberId).toList();
         return new RosterChangedIE(eventIds.next(), reservation.id().value(), memberIds, time.now());
+    }
+
+    /** ROS-5: a rostered member stopped being active, and the provider replaces them before the Check-in Period. */
+    public RosterNeedsReplacementIE rosterNeedsReplacement(Reservation reservation, String memberId) {
+        return new RosterNeedsReplacementIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().providerId(), memberId, reservation.checkInStart(), time.now());
     }
 
     /** JOB-3, JOB-6: Completed, with the after-photos as evidence; the gross is informational for Payment. */

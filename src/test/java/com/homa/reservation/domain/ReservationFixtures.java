@@ -94,6 +94,14 @@ final class ReservationFixtures {
         return HomaFixtures.at(2026, 12, 1, hour, minute);
     }
 
+    static Instant wednesday(int hour, int minute) {
+        return HomaFixtures.at(2026, 12, 2, hour, minute);
+    }
+
+    static Instant thursday(int hour, int minute) {
+        return HomaFixtures.at(2026, 12, 3, hour, minute);
+    }
+
     static Instant friday(int hour, int minute) {
         return HomaFixtures.at(2026, 12, 4, hour, minute);
     }

@@ -2,6 +2,7 @@ package com.homa.reservation.usecase;
 
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationId;
+import com.homa.reservation.domain.ReservationPhase;
 import com.homa.reservation.domain.ReservationStatus;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
@@ -74,6 +75,16 @@ public final class InMemoryReservationRepository implements ReservationRepositor
                 .filter(reservation -> reservation.status() == ReservationStatus.REQUESTED)
                 .filter(reservation -> reservation.acceptanceDeadline().map(AcceptanceDeadline::at)
                         .filter(deadline -> !deadline.isAfter(now)).isPresent())
+                .map(InMemoryReservationRepository::copy)
+                .toList();
+    }
+
+    @Override
+    public List<Reservation> findReservedRosteredWith(String memberId, Instant now) {
+        return stored.values().stream()
+                .filter(reservation -> reservation.status() == ReservationStatus.RESERVED)
+                .filter(reservation -> reservation.phaseAt(now) == ReservationPhase.BEFORE_CHECK_IN)
+                .filter(reservation -> reservation.roster().filter(roster -> roster.includes(memberId)).isPresent())
                 .map(InMemoryReservationRepository::copy)
                 .toList();
     }

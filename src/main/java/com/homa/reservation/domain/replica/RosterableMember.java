@@ -60,6 +60,15 @@ public record RosterableMember(
                 Optional.of(verifiedPhotoReference), active, Optional.of(rosterableUntil));
     }
 
+    /**
+     * HLP-5, HLP-6: the member stopped being active, because the provider deactivated or removed them. A deactivated
+     * member can't be rostered; Provider announces a reactivation with a new activation.
+     */
+    public RosterableMember deactivated() {
+        return new RosterableMember(memberId, personId, providerId, role, name, photoVerified, photoReference, false,
+                rosterableUntil);
+    }
+
     /** IDN-4: the member's new photo is verified, and replaces the one shown on the roster. */
     public RosterableMember withVerifiedPhoto(String verifiedPhotoReference) {
         return new RosterableMember(memberId, personId, providerId, role, name, true,

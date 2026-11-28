@@ -34,6 +34,7 @@ import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderBookabilityChangedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
+import com.homa.ie.events.TeamMemberDeactivatedIE;
 import com.homa.kernel.Money;
 import com.homa.kernel.Percentage;
 import com.homa.reservation.domain.Reservation;
@@ -54,6 +55,7 @@ import com.homa.reservation.usecase.ie.HandleProviderBookabilityChangedIE;
 import com.homa.reservation.usecase.ie.HandleProviderOpenedIE;
 import com.homa.reservation.usecase.ie.HandleProviderWentLiveIE;
 import com.homa.reservation.usecase.ie.HandleTeamMemberActivatedIE;
+import com.homa.reservation.usecase.ie.HandleTeamMemberDeactivatedIE;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -140,6 +142,8 @@ public final class ReservationTestBed {
             schedules, schedules, photoStore, publisher, events, time);
     public final RemindUncompletedJobs remindUncompletedJobs =
             new RemindUncompletedJobs(reservations, reminderLog, notifier, time);
+    public final RosterReplacements rosterReplacements =
+            new RosterReplacements(reservations, publisher, events, time);
     public final ViewReservation viewReservation = new ViewReservation(reservations);
     public final ListMyReservations listMyReservations = new ListMyReservations(reservations);
 
@@ -156,6 +160,8 @@ public final class ReservationTestBed {
             new HandleProviderBookabilityChangedIE(processed, providers);
     public final HandleTeamMemberActivatedIE teamMemberActivated =
             new HandleTeamMemberActivatedIE(processed, members, photos);
+    public final HandleTeamMemberDeactivatedIE teamMemberDeactivated =
+            new HandleTeamMemberDeactivatedIE(processed, members, rosterReplacements);
     public final HandleProfilePhotoChangedIE profilePhotoChanged =
             new HandleProfilePhotoChangedIE(processed, photos, members);
     public final HandleCustomerRegisteredIE customerRegistered = new HandleCustomerRegisteredIE(processed, customers);
@@ -252,6 +258,12 @@ public final class ReservationTestBed {
         teamMemberActivated.handle(new TeamMemberActivatedIE(nextInboundId(), memberId, personId,
                 KEMAS_HOME_PROVIDER_ID, name, role, rosterableUntil == null ? "LOCAL" : "FOREIGN_WORKER", true,
                 rosterableUntil, TAPPED_PAY_AT));
+    }
+
+    /** Provider tells Reservation a member stopped being active: deactivated by the provider, or removed (HLP-5, HLP-8). */
+    public TeamMemberDeactivatedIE deactivation(String memberId, String personId, String reason) {
+        return new TeamMemberDeactivatedIE(nextInboundId(), memberId, personId, KEMAS_HOME_PROVIDER_ID, reason,
+                time.now());
     }
 
     public void registerVerified(String customerId, String city) {

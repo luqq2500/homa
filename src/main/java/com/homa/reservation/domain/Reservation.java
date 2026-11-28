@@ -345,6 +345,26 @@ public final class Reservation {
         roster = Roster.of(members.stream().map(RosterableMember::asRosterMember).toList(), booking.helpers());
     }
 
+    /**
+     * ROS-5: a rostered member stopped being active (deactivated, removed or suspended). Before the Check-in Period
+     * the provider replaces them, so the roster is flagged and isn't complete until it is set again (ROS-7). From the
+     * Check-in Period the roster is locked and nothing changes here (ROS-9, ROS-10 cover a member lost later).
+     * Returns whether this flagged the roster: false when the reservation is no longer open to roster changes, the
+     * member isn't on its roster, or they were flagged already.
+     */
+    public boolean rosterMemberStoppedBeingActive(String memberId, Instant now) {
+        if (roster == null || !rosterCanStillChangeAt(now) || !roster.canFlagForReplacement(memberId)) {
+            return false;
+        }
+        roster = roster.flaggedForReplacement(memberId);
+        return true;
+    }
+
+    /** ROS-1: a Reserved reservation's roster changes only until the Check-in Period starts. */
+    private boolean rosterCanStillChangeAt(Instant now) {
+        return status == ReservationStatus.RESERVED && phaseAt(now) == ReservationPhase.BEFORE_CHECK_IN;
+    }
+
     /** JOB-3: the provider marks the job Completed with at least one after-photo, only after the job end time. */
     public void markCompleted(List<CompletionPhoto> photos, Instant now) {
         requireStatus(ReservationStatus.RESERVED, "mark completed");
