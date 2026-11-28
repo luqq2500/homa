@@ -10,14 +10,21 @@ import com.homa.reservation.domain.exception.CompletionPhotoRequiredException;
 import com.homa.reservation.domain.exception.JobAlreadyEndedException;
 import com.homa.reservation.domain.exception.JobNotEndedException;
 import com.homa.reservation.domain.exception.MemberNotRosterableException;
+import com.homa.reservation.domain.exception.NoSmallerRosterProposedException;
+import com.homa.reservation.domain.exception.NotASmallerRosterException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
 import com.homa.reservation.domain.exception.RosterLockedException;
+import com.homa.reservation.domain.exception.SmallerRosterAlreadyProposedException;
 import com.homa.reservation.domain.pricing.Quote;
 import com.homa.reservation.domain.pricing.ReservationPricing;
 import com.homa.reservation.domain.replica.BookableProvider;
 import com.homa.reservation.domain.replica.CustomerStanding;
 import com.homa.reservation.domain.replica.RosterableMember;
+import com.homa.reservation.domain.roster.MemberRole;
 import com.homa.reservation.domain.roster.Roster;
+import com.homa.reservation.domain.roster.RosterAdjustment;
+import com.homa.reservation.domain.roster.RosterMember;
+import com.homa.reservation.domain.roster.RosterProposal;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.domain.settlement.CustomerLastMinutePolicy;
@@ -29,6 +36,7 @@ import com.homa.reservation.domain.settlement.ProviderLastMinutePolicy;
 import com.homa.reservation.domain.settlement.Settlement;
 import com.homa.reservation.domain.settlement.SettlementBasis;
 import com.homa.reservation.domain.settlement.SettlementPolicy;
+import com.homa.reservation.domain.settlement.SmallerRosterPolicy;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.GracePeriod;
 import com.homa.reservation.domain.terms.ReservationTerms;
@@ -39,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A reservation: the core aggregate. It is made only when a payment is confirmed (RES-7, P1), keeps the provider's
@@ -81,6 +90,8 @@ public final class Reservation {
     private Instant expiredAt;
     private Cancellation cancellation;
     private Roster roster;
+    private RosterProposal proposal;
+    private RosterAdjustment adjustment;
     private Instant completedAt;
     private List<CompletionPhoto> completionPhotos;
     private final long version;
@@ -88,8 +99,8 @@ public final class Reservation {
     private Reservation(ReservationId id, CheckoutId checkoutId, String ownerPersonId, Booking booking,
             ReservationTerms terms, Quote quote, Version values, Instant requestedAt,
             AcceptanceDeadline acceptanceDeadline, ReservationStatus status, Instant reservedAt, Instant withdrawnAt,
-            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, Instant completedAt,
-            List<CompletionPhoto> completionPhotos, long version) {
+            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, RosterProposal proposal,
+            RosterAdjustment adjustment, Instant completedAt, List<CompletionPhoto> completionPhotos, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.checkoutId = Objects.requireNonNull(checkoutId, "checkoutId");
         this.ownerPersonId = Objects.requireNonNull(ownerPersonId, "ownerPersonId");
@@ -106,6 +117,8 @@ public final class Reservation {
         this.expiredAt = expiredAt;
         this.cancellation = cancellation;
         this.roster = roster;
+        this.proposal = proposal;
+        this.adjustment = adjustment;
         this.completedAt = completedAt;
         this.completionPhotos = List.copyOf(completionPhotos);
         this.version = version;
@@ -148,7 +161,7 @@ public final class Reservation {
         return new Reservation(id, checkoutId, ownerPersonId, booking, terms, quote, values, requestedAt,
                 instant ? null : AcceptanceDeadline.from(requestedAt, booking.jobTime(), values),
                 instant ? ReservationStatus.RESERVED : ReservationStatus.REQUESTED, instant ? requestedAt : null,
-                null, null, null, null, null, null, List.of(), 0);
+                null, null, null, null, null, null, null, null, List.of(), 0);
     }
 
     /**
@@ -159,19 +172,21 @@ public final class Reservation {
      *
      * <p>Only the shape is checked: the status fits the moments it was reserved, withdrawn, declined, expired and
      * completed and whether it was cancelled; it has an acceptance deadline exactly when its terms wait for
-     * acceptance; after-photos exactly once completed; a roster only once reserved; and a cancellation's settlement
-     * adds up to the price that was held and stays within the fee and fine cap (CAN-2). No booking rule, notice or
+     * acceptance; after-photos exactly once completed; a roster, an offered smaller roster and an accepted one only
+     * once reserved; an accepted smaller roster with fewer helpers at a lower price, an offered one with fewer helpers
+     * than there are now, and a roster with the helpers the reservation has now; and a cancellation's settlement adds
+     * up to the price now held and stays within the fee and fine cap (CAN-2). No booking rule, notice or
      * deadline is checked again: they held when the payment was confirmed, and the reservation keeps what it was
      * Requested with (RES-8).
      */
     public static Reservation restore(ReservationId id, CheckoutId checkoutId, String ownerPersonId, Booking booking,
             ReservationTerms terms, Quote quote, Version values, Instant requestedAt,
             AcceptanceDeadline acceptanceDeadline, ReservationStatus status, Instant reservedAt, Instant withdrawnAt,
-            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, Instant completedAt,
-            List<CompletionPhoto> completionPhotos, long version) {
+            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, RosterProposal proposal,
+            RosterAdjustment adjustment, Instant completedAt, List<CompletionPhoto> completionPhotos, long version) {
         Reservation reservation = new Reservation(id, checkoutId, ownerPersonId, booking, terms, quote, values,
                 requestedAt, acceptanceDeadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation,
-                roster, completedAt, completionPhotos, version);
+                roster, proposal, adjustment, completedAt, completionPhotos, version);
         reservation.requireStoredShape();
         return reservation;
     }
@@ -184,7 +199,23 @@ public final class Reservation {
         requireShape(completionPhotos.isEmpty() != completedAt().isPresent(),
                 "after-photos exactly when it is completed");
         requireShape(roster().isEmpty() || reservedAt().isPresent(), "a roster only once it is reserved");
+        requireShape(rosterHasTheHelpersItHas(), "a roster with the helpers the reservation has");
+        requireShape(offerFits(), "a smaller roster offered only once reserved, with fewer helpers than it has");
+        requireShape(adjustmentFits(), "a smaller roster accepted only once reserved, with fewer helpers at a lower price");
         requireShape(settlementFitsThePrice(), "a settlement that adds up to the price held, within the fee cap");
+    }
+
+    private boolean rosterHasTheHelpersItHas() {
+        return roster == null || roster.helpers().size() == helpers();
+    }
+
+    private boolean offerFits() {
+        return proposal == null || (reservedAt != null && proposal.helpers() < helpers());
+    }
+
+    private boolean adjustmentFits() {
+        return adjustment == null || (reservedAt != null && adjustment.helpers() < booking.helpers()
+                && adjustment.quote().total().isLessThan(quote.total()));
     }
 
     /** CAN-2: refund + fee is the amount held, and neither the fee nor the fine is more than the cap. */
@@ -194,7 +225,7 @@ public final class Reservation {
         }
         Settlement settlement = cancellation.settlement();
         Money cap = basis().cap();
-        return settlement.customerFee().plus(settlement.customerRefund()).equals(quote.total())
+        return settlement.customerFee().plus(settlement.customerRefund()).equals(currentQuote().total())
                 && !settlement.customerFee().isGreaterThan(cap) && !settlement.providerFine().isGreaterThan(cap);
     }
 
@@ -324,12 +355,16 @@ public final class Reservation {
     private Cancellation cancelled(Cancellation settled) {
         status = ReservationStatus.CANCELLED;
         cancellation = settled;
+        proposal = null;
         return settled;
     }
 
-    /** What the settlement policies read: the price, job time and values this reservation was Requested with (P3). */
+    /**
+     * What the settlement policies read: the price now, job time and values this reservation was Requested with (P3).
+     * The price now is the booked one, or the smaller roster's once the customer accepted it (ROS-8).
+     */
     private SettlementBasis basis() {
-        return new SettlementBasis(quote, jobTime(), values);
+        return new SettlementBasis(currentQuote(), jobTime(), values);
     }
 
     /**
@@ -338,14 +373,103 @@ public final class Reservation {
      * the customer is shown (IDN-4), and the roster must have the booked number of helpers. Supervisors are extra and not billed, so the price does not change.
      */
     public void assignRoster(List<RosterableMember> members, Instant now) {
-        requireStatus(ReservationStatus.RESERVED, "roster");
+        requireRosterOpenAt(now, "roster");
+        requireRosterable(members);
+        roster = Roster.of(members.stream().map(RosterableMember::asRosterMember).toList(), helpers());
+        proposal = null;
+    }
+
+    /**
+     * ROS-8: a provider short of helpers offers a smaller roster before the Check-in Period starts, and the customer
+     * answers it. The offer is worked out now: the smaller team the customer is shown, the booked job re-quoted for
+     * fewer helpers with the booking discount kept, and what would go back to them. Every member must be the
+     * provider's own and able to work on this job, and the helpers must be at least one and fewer than the
+     * reservation has now. One offer waits for an answer at a time; setting a complete roster, a decline or the
+     * Check-in Period ends it.
+     */
+    public RosterProposal proposeSmallerRoster(List<RosterableMember> members, Instant now) {
+        requireRosterOpenAt(now, "offer a smaller roster on");
+        if (proposal != null) {
+            throw new SmallerRosterAlreadyProposedException();
+        }
+        requireRosterable(members);
+        int offered = (int) members.stream().filter(member -> member.role() == MemberRole.HELPER).count();
+        requireSmaller(offered);
+        SmallerRosterPolicy policy = new SmallerRosterPolicy(terms, offered);
+        proposal = new RosterProposal(
+                Roster.of(members.stream().map(RosterableMember::asRosterMember).toList(), offered),
+                policy.requote(basis()), policy.settle(basis(), now), now);
+        return proposal;
+    }
+
+    private void requireSmaller(int offeredHelpers) {
+        if (offeredHelpers < 1 || offeredHelpers >= helpers()) {
+            throw new NotASmallerRosterException(offeredHelpers, helpers());
+        }
+    }
+
+    /**
+     * ROS-8: the customer accepts the smaller roster before the Check-in Period starts. The reservation goes on with
+     * the smaller team and the new price, which keeps the booking discount; the difference is refunded and the
+     * provider isn't fined. {@code team} is the offered members as they are now, and each must still be able to work
+     * on this job, or the offer can't be accepted and the provider makes a new one.
+     */
+    public RosterAdjustment acceptProposal(List<RosterableMember> team, Instant now) {
+        RosterProposal accepted = requireProposalOpenAt(now, "accept a smaller roster of");
+        requireOfferedMembersRosterable(accepted, team);
+        adjustment = new RosterAdjustment(accepted.helpers(), accepted.quote(), accepted.settlement(), now);
+        roster = accepted.roster();
+        proposal = null;
+        return adjustment;
+    }
+
+    /**
+     * ROS-8: the customer declines the smaller roster before the Check-in Period starts. The reservation stays as it
+     * was booked: the provider can still set a complete roster before the Check-in Period, and if it doesn't, ROS-7
+     * applies when that starts.
+     */
+    public void declineProposal(Instant now) {
+        requireProposalOpenAt(now, "decline a smaller roster of");
+        proposal = null;
+    }
+
+    private RosterProposal requireProposalOpenAt(Instant now, String act) {
+        requireRosterOpenAt(now, act);
+        if (proposal == null) {
+            throw new NoSmallerRosterProposedException();
+        }
+        return proposal;
+    }
+
+    private void requireOfferedMembersRosterable(RosterProposal offered, List<RosterableMember> team) {
+        Set<String> able = team.stream().filter(this::isRosterable).map(RosterableMember::memberId)
+                .collect(Collectors.toSet());
+        offered.roster().members().stream().map(RosterMember::memberId).filter(memberId -> !able.contains(memberId))
+                .findFirst().ifPresent(memberId -> {
+                    throw new MemberNotRosterableException(memberId);
+                });
+    }
+
+    /** ROS-1: the roster, and an offer of a smaller one, change only while the Check-in Period hasn't started. */
+    private void requireRosterOpenAt(Instant now, String act) {
+        requireStatus(ReservationStatus.RESERVED, act);
         if (phaseAt(now) != ReservationPhase.BEFORE_CHECK_IN) {
             throw new RosterLockedException(checkInStart());
         }
+    }
+
+    private void requireRosterable(List<RosterableMember> members) {
         members.stream().filter(member -> !isRosterable(member)).findFirst().ifPresent(member -> {
             throw new MemberNotRosterableException(member.memberId());
         });
-        roster = Roster.of(members.stream().map(RosterableMember::asRosterMember).toList(), booking.helpers());
+    }
+
+    /** The ids of the members of the smaller roster on offer; none when no offer is waiting for an answer. */
+    public List<String> proposedMemberIds() {
+        if (proposal == null) {
+            return List.of();
+        }
+        return proposal.roster().members().stream().map(RosterMember::memberId).toList();
     }
 
     /**
@@ -360,6 +484,7 @@ public final class Reservation {
         requireRosterToLockAt(now);
         if (hasCompleteRoster()) {
             roster = roster.locked(now);
+            proposal = null;
             return Optional.empty();
         }
         return Optional.of(cancelled(settled(now, CancellationCause.NO_ROSTER, NO_ROSTER)));
@@ -511,7 +636,10 @@ public final class Reservation {
         return values;
     }
 
-    /** The price; its total is the amount held from the moment the reservation is Requested (PAY-1). */
+    /**
+     * The price it was booked at; its total is the amount held from the moment the reservation is Requested (PAY-1).
+     * It never changes (P3); see {@link #currentQuote()} for the price after a smaller roster.
+     */
     public Quote quote() {
         return quote;
     }
@@ -549,6 +677,32 @@ public final class Reservation {
     /** How it was cancelled, with its cause and settlement (§6); empty unless Cancelled. */
     public Optional<Cancellation> cancellation() {
         return Optional.ofNullable(cancellation);
+    }
+
+    /**
+     * The helpers the reservation has: the booked number, or the smaller roster's once the customer accepted it
+     * (ROS-8).
+     */
+    public int helpers() {
+        return adjustment == null ? booking.helpers() : adjustment.helpers();
+    }
+
+    /**
+     * The price now, which every later settlement works from: the booked {@link #quote()}, or the smaller roster's
+     * once the customer accepted it, with the booking discount kept (ROS-8).
+     */
+    public Quote currentQuote() {
+        return adjustment == null ? quote : adjustment.quote();
+    }
+
+    /** ROS-8: the smaller roster the provider offered and the customer hasn't answered; empty when none waits. */
+    public Optional<RosterProposal> proposal() {
+        return Optional.ofNullable(proposal);
+    }
+
+    /** ROS-8: the smaller roster the customer accepted, the latest one if there were several; empty otherwise. */
+    public Optional<RosterAdjustment> adjustment() {
+        return Optional.ofNullable(adjustment);
     }
 
     /** ROS-6: the roster shown to the customer; empty until the provider sets it. */

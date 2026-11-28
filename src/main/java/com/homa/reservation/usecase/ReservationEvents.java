@@ -11,16 +11,22 @@ import com.homa.ie.events.ReservationReservedIE;
 import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.ie.events.RosterChangedIE;
 import com.homa.ie.events.RosterNeedsReplacementIE;
+import com.homa.ie.events.SettlementAdjustedIE;
+import com.homa.ie.events.SmallerRosterDeclinedIE;
+import com.homa.ie.events.SmallerRosterProposedIE;
 import com.homa.reservation.domain.Cancellation;
 import com.homa.reservation.domain.Checkout;
 import com.homa.reservation.domain.CheckoutRejection;
 import com.homa.reservation.domain.CompletionPhoto;
 import com.homa.reservation.domain.Reservation;
+import com.homa.reservation.domain.roster.RosterAdjustment;
 import com.homa.reservation.domain.roster.RosterMember;
+import com.homa.reservation.domain.roster.RosterProposal;
 import com.homa.reservation.domain.settlement.Settlement;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.usecase.port.out.EventIds;
 import com.homa.reservation.usecase.port.out.TimeSource;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -118,10 +124,39 @@ public final class ReservationEvents {
                 reservation.booking().providerId(), memberId, reservation.checkInStart(), time.now());
     }
 
+    /** ROS-8: the provider offered a smaller roster, and the customer is told what it costs and answers by the Check-in Period. */
+    public SmallerRosterProposedIE smallerRosterProposed(Reservation reservation) {
+        RosterProposal offer = reservation.proposal().orElseThrow();
+        return new SmallerRosterProposedIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                offer.roster().members().stream().map(RosterMember::memberId).toList(), offer.helpers(),
+                offer.quote().total(), offer.refund(), offer.proposedAt(), reservation.checkInStart(), time.now());
+    }
+
+    /** ROS-8: the customer declined it, and the provider is told it can still complete the roster before the Check-in Period. */
+    public SmallerRosterDeclinedIE smallerRosterDeclined(Reservation reservation, Instant declinedAt) {
+        return new SmallerRosterDeclinedIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(), declinedAt,
+                reservation.checkInStart(), time.now());
+    }
+
+    /**
+     * ROS-8: the customer accepted the smaller roster, so Payment refunds the difference at once and lowers the
+     * provider's payout. The adjustment id is unique to the adjustment: each one leaves fewer helpers than the one
+     * before, so a replay of the event repeats the same id and Payment's idempotency keys hold.
+     */
+    public SettlementAdjustedIE settlementAdjusted(Reservation reservation) {
+        RosterAdjustment adjustment = reservation.adjustment().orElseThrow();
+        return new SettlementAdjustedIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                "adjustment-" + reservation.id().value() + "-" + adjustment.helpers(), "SMALLER_ROSTER",
+                adjustment.refund(), adjustment.quote().total(), adjustment.adjustedAt(), time.now());
+    }
+
     /** JOB-3, JOB-6: Completed, with the after-photos as evidence; the gross is informational for Payment. */
     public ReservationCompletedIE completed(Reservation reservation) {
         return new ReservationCompletedIE(eventIds.next(), reservation.id().value(),
-                reservation.booking().customerId(), reservation.booking().providerId(), reservation.quote().total(),
+                reservation.booking().customerId(), reservation.booking().providerId(), reservation.currentQuote().total(),
                 reservation.protectionWindowEnd(), reservation.completedAt().orElseThrow(), reservation.requestedAt(),
                 reservation.completionPhotos().stream().map(CompletionPhoto::reference).toList(), time.now());
     }

@@ -138,6 +138,10 @@ public final class ReservationTestBed {
             new ProviderCancelReservation(reservations, schedules, schedules, publisher, events, time);
     public final ProviderAssignRoster assignRoster =
             new ProviderAssignRoster(reservations, members, publisher, events, time);
+    public final ProviderProposeSmallerRoster proposeSmallerRoster =
+            new ProviderProposeSmallerRoster(reservations, members, publisher, events, time);
+    public final CustomerRespondToSmallerRoster respondToSmallerRoster =
+            new CustomerRespondToSmallerRoster(reservations, members, publisher, events, time);
     public final ProviderCompleteReservation completeReservation = new ProviderCompleteReservation(reservations,
             schedules, schedules, photoStore, publisher, events, time);
     public final RemindUncompletedJobs remindUncompletedJobs =

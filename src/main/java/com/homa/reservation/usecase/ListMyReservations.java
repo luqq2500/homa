@@ -32,8 +32,8 @@ public final class ListMyReservations implements ReservationLister {
     private static ReservationSummary summary(Reservation reservation) {
         return new ReservationSummary(reservation.id().value(), reservation.status().name(),
                 reservation.booking().customerId(), reservation.booking().providerId(),
-                reservation.jobTime().start(), reservation.jobTime().end(), reservation.booking().helpers(),
-                reservation.quote().total(), reservation.roster().map(ListMyReservations::rostered).orElse(List.of()));
+                reservation.jobTime().start(), reservation.jobTime().end(), reservation.helpers(),
+                reservation.currentQuote().total(), reservation.roster().map(ListMyReservations::rostered).orElse(List.of()));
     }
 
     private static List<RosteredMember> rostered(Roster roster) {

@@ -216,7 +216,7 @@ class ReservationCancellationTest {
         Reservation requestedUnderOldValues = Reservation.restore(current.id(), current.checkoutId(),
                 current.ownerPersonId(), current.booking(), current.terms(), current.quote(), old, current.requestedAt(),
                 current.acceptanceDeadline().orElseThrow(), current.status(), current.reservedAt().orElse(null), null,
-                null, null, null, null, null, List.of(), 0);
+                null, null, null, null, null, null, null, List.of(), 0);
 
         assertThat(requestedUnderOldValues.cancelByCustomer(friday(21, 44)).settlement().customerFee())
                 .isEqualTo(Money.myr(45));
@@ -527,6 +527,6 @@ class ReservationCancellationTest {
     private static Reservation restoredWith(Reservation from, Version values) {
         return Reservation.restore(from.id(), from.checkoutId(), from.ownerPersonId(), from.booking(), from.terms(),
                 from.quote(), values, from.requestedAt(), from.acceptanceDeadline().orElseThrow(), from.status(),
-                from.reservedAt().orElse(null), null, null, null, null, null, null, List.of(), 0);
+                from.reservedAt().orElse(null), null, null, null, null, null, null, null, null, List.of(), 0);
     }
 }

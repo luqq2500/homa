@@ -176,6 +176,7 @@ public final class InMemoryReservationRepository implements ReservationRepositor
                 original.acceptanceDeadline().orElse(null), original.status(), original.reservedAt().orElse(null),
                 original.withdrawnAt().orElse(null), original.declinedAt().orElse(null),
                 original.expiredAt().orElse(null), original.cancellation().orElse(null), original.roster().orElse(null),
+                original.proposal().orElse(null), original.adjustment().orElse(null),
                 original.completedAt().orElse(null), original.completionPhotos(), version);
     }
 }

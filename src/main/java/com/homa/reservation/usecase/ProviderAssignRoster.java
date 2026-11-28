@@ -5,7 +5,6 @@ import com.homa.reservation.domain.replica.RosterableMember;
 import com.homa.reservation.usecase.dto.AssignRosterRequest;
 import com.homa.reservation.usecase.dto.AssignRosterResponse;
 import com.homa.reservation.usecase.dto.AssignRosterResponse.RosteredMember;
-import com.homa.reservation.usecase.exception.TeamMemberNotFoundException;
 import com.homa.reservation.usecase.port.in.RosterAssigner;
 import com.homa.reservation.usecase.port.out.ReservationIEPublisher;
 import com.homa.reservation.usecase.port.out.ReservationRepository;
@@ -38,10 +37,7 @@ public final class ProviderAssignRoster implements RosterAssigner {
     public AssignRosterResponse assign(AssignRosterRequest request) {
         Reservation reservation = ReservationParties.requireProviderSide(
                 ReservationParties.load(reservations, request.reservationId()), request.personId());
-        List<RosterableMember> team = request.memberIds().stream()
-                .map(memberId -> members.findById(memberId)
-                        .orElseThrow(() -> new TeamMemberNotFoundException(memberId)))
-                .toList();
+        List<RosterableMember> team = ReservationParties.team(members, request.memberIds());
         reservation.assignRoster(team, time.now());
         reservations.save(reservation);
         publisher.publish(events.rosterChanged(reservation));

@@ -20,6 +20,8 @@ import com.homa.reservation.domain.exception.ReservationStatusConflictException;
 import com.homa.reservation.domain.settlement.Settlement;
 import com.homa.kernel.Money;
 import com.homa.reservation.domain.roster.Roster;
+import com.homa.reservation.domain.roster.RosterAdjustment;
+import com.homa.reservation.domain.roster.RosterProposal;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.AcceptancePolicy;
 import com.homa.reservation.domain.terms.ReservationTerms;
@@ -36,64 +38,67 @@ class StoredReservationTest {
     /** What a store keeps of a reservation, changeable one part at a time to make it inconsistent. */
     private record Stored(Reservation from, AcceptanceDeadline deadline, ReservationStatus status, Instant reservedAt,
             Instant withdrawnAt, Instant declinedAt, Instant expiredAt, Cancellation cancellation,
-            Roster roster, Instant completedAt, List<CompletionPhoto> photos, long version) {
+            Roster roster, RosterProposal proposal, RosterAdjustment adjustment, Instant completedAt,
+            List<CompletionPhoto> photos, long version) {
 
         static Stored of(Reservation reservation) {
             return new Stored(reservation, reservation.acceptanceDeadline().orElse(null), reservation.status(),
                     reservation.reservedAt().orElse(null), reservation.withdrawnAt().orElse(null),
                     reservation.declinedAt().orElse(null), reservation.expiredAt().orElse(null),
-                    reservation.cancellation().orElse(null), reservation.roster().orElse(null), reservation.completedAt().orElse(null),
+                    reservation.cancellation().orElse(null), reservation.roster().orElse(null),
+                    reservation.proposal().orElse(null), reservation.adjustment().orElse(null),
+                    reservation.completedAt().orElse(null),
                     reservation.completionPhotos(), reservation.version());
         }
 
         Stored status(ReservationStatus changed) {
-            return new Stored(from, deadline, changed, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, deadline, changed, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored deadline(AcceptanceDeadline changed) {
-            return new Stored(from, changed, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, changed, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored reservedAt(Instant changed) {
-            return new Stored(from, deadline, status, changed, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, changed, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored declinedAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, changed, expiredAt, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, changed, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored expiredAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, changed, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, changed, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored withdrawnAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, changed, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, changed, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored cancellation(Cancellation changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, changed, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, changed, roster, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored roster(Roster changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, changed, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, changed, proposal, adjustment, completedAt, photos, version);
         }
 
         Stored completedAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, changed, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, changed, photos, version);
         }
 
         Stored photos(List<CompletionPhoto> changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, changed, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, changed, version);
         }
 
         Stored version(long changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, changed);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, proposal, adjustment, completedAt, photos, changed);
         }
 
         Reservation restore() {
             return Reservation.restore(from.id(), from.checkoutId(), from.ownerPersonId(), from.booking(), from.terms(),
                     from.quote(), from.values(), from.requestedAt(), deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt,
-                    cancellation, roster, completedAt, photos, version);
+                    cancellation, roster, proposal, adjustment, completedAt, photos, version);
         }
     }
 
@@ -408,6 +413,6 @@ class StoredReservationTest {
             CheckoutId checkoutId, String ownerPersonId, Booking booking, ReservationTerms terms,
             com.homa.reservation.domain.pricing.Quote quote, ReservationValues.Version values, Instant requestedAt) {
         return Reservation.restore(id, checkoutId, ownerPersonId, booking, terms, quote, values, requestedAt,
-                deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null, List.of(), 0);
+                deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null, null, null, List.of(), 0);
     }
 }
