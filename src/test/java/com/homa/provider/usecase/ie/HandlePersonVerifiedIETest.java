@@ -1,6 +1,9 @@
 package com.homa.provider.usecase.ie;
 
+import static com.homa.fixtures.HomaFixtures.at;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.FARID;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NURUL;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
@@ -9,10 +12,13 @@ import static com.homa.provider.usecase.ProviderUsecaseFixtures.azmanVerified;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.localMemberVerified;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.personVerified;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.rinaVerified;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.storedMember;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.ie.events.PersonVerifiedIE;
 import com.homa.provider.domain.PersonId;
+import com.homa.provider.domain.TeamMemberId;
+import com.homa.provider.domain.TeamRole;
 import com.homa.provider.domain.VerifiedPersonFacts;
 import com.homa.provider.usecase.ProviderWorld;
 import com.homa.provider.usecase.port.out.VerifiedPerson;
@@ -99,5 +105,53 @@ class HandlePersonVerifiedIETest {
 
         assertThat(kept(SITI).name()).isEqualTo("Siti Aminah");
         assertThat(world.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("HLP-7")
+    @DisplayName("Farid re-verifies on 3 March: his team membership keeps when the new pass falls due, and Nurul's doesn't change.")
+    void reverificationMovesTheMembersDueDate() {
+        world.members.save(storedMember("member-farid", FARID, TeamRole.SUPERVISOR, true, false, false));
+        world.members.save(storedMember("member-nurul", NURUL, TeamRole.HELPER, false, false, false));
+        Instant nextDue = at(2027, 9, 3, 9, 0);
+
+        world.personVerified.handle(new PersonVerifiedIE("verification-9", FARID, "MEMBER", null, "Farid", "LOCAL",
+                true, null, nextDue, at(2027, 3, 3, 9, 0)));
+
+        assertThat(world.members.stored(new TeamMemberId("member-farid")).verifiedUntil()).isEqualTo(nextDue);
+        assertThat(world.members.stored(new TeamMemberId("member-farid")).isDeactivated()).isTrue();
+        assertThat(world.members.stored(new TeamMemberId("member-nurul")).verifiedUntil()).isEqualTo(NEXT_DUE_AT);
+        assertThat(kept(FARID).facts().verifiedUntil()).isEqualTo(nextDue);
+        assertThat(world.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("HLP-7")
+    @DisplayName("A redelivered PersonVerifiedIE doesn't move a member's due date back.")
+    void redeliveryKeepsTheLaterDueDate() {
+        world.members.save(storedMember("member-farid", FARID, TeamRole.SUPERVISOR, true, false, false));
+        Instant firstDue = at(2027, 9, 3, 9, 0);
+        Instant laterDue = at(2028, 3, 3, 9, 0);
+        world.personVerified.handle(new PersonVerifiedIE("verification-10", FARID, "MEMBER", null, "Farid", "LOCAL",
+                true, null, firstDue, at(2027, 3, 3, 9, 0)));
+        world.personVerified.handle(new PersonVerifiedIE("verification-11", FARID, "MEMBER", null, "Farid", "LOCAL",
+                true, null, laterDue, at(2027, 9, 1, 9, 0)));
+
+        world.personVerified.handle(new PersonVerifiedIE("verification-10", FARID, "MEMBER", null, "Farid", "LOCAL",
+                true, null, firstDue, at(2027, 3, 3, 9, 0)));
+
+        assertThat(world.members.stored(new TeamMemberId("member-farid")).verifiedUntil()).isEqualTo(laterDue);
+    }
+
+    @Test
+    @Tag("HLP-7")
+    @DisplayName("A verification started for a customer account doesn't touch the member who shares the person.")
+    void customerVerificationLeavesTheMemberAlone() {
+        world.members.save(storedMember("member-siti", SITI, TeamRole.HELPER, false, false, false));
+
+        world.personVerified.handle(new PersonVerifiedIE("verification-12", SITI, "CUSTOMER", "customer-siti", "Siti",
+                "LOCAL", true, null, null, Instant.EPOCH));
+
+        assertThat(world.members.stored(new TeamMemberId("member-siti")).verifiedUntil()).isEqualTo(NEXT_DUE_AT);
     }
 }

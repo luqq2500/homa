@@ -2,9 +2,11 @@ package com.homa.provider.usecase;
 
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.HANA;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.KEMAS_HOME;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.SITI;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,8 +20,11 @@ import com.homa.provider.domain.ProviderStatus;
 import com.homa.provider.domain.VerifiedPersonFacts;
 import com.homa.provider.domain.exception.OwnerNotLocalException;
 import com.homa.provider.domain.exception.OwnerUnderageException;
+import com.homa.provider.domain.exception.PersonAlreadyBelongsToProviderException;
+import com.homa.provider.usecase.dto.DeactivateTeamMemberRequest;
 import com.homa.provider.usecase.dto.OpenProviderRequest;
 import com.homa.provider.usecase.dto.OpenProviderResponse;
+import com.homa.provider.usecase.dto.RemoveTeamMemberRequest;
 import com.homa.provider.usecase.exception.PersonNotVerifiedException;
 import com.homa.provider.usecase.port.out.VerifiedPerson;
 import org.junit.jupiter.api.DisplayName;
@@ -103,6 +108,54 @@ class OwnerOpenProviderTest {
         assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(HANA)))
                 .isInstanceOf(OwnerUnderageException.class);
         assertThat(world.providers.count()).isZero();
+        assertThat(world.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Siti, a Kemas Home helper, can't open her own provider until Kemas Home removes her.")
+    void memberCannotOpenAProviderUntilRemoved() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        int providersBefore = world.providers.count();
+
+        assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(SITI)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class)
+                .hasMessageContaining(SITI);
+        assertThat(world.providers.count()).isEqualTo(providersBefore);
+        assertThat(world.publisher.published()).isEmpty();
+
+        world.removeTeamMember.remove(
+                new RemoveTeamMemberRequest(AZMAN, KEMAS_HOME.value(), KemasHomeScenario.SITI_MEMBER));
+        OpenProviderResponse response = world.openProvider.open(new OpenProviderRequest(SITI));
+
+        assertThat(response.ownerPersonId()).isEqualTo(SITI);
+        assertThat(world.providers.count()).isEqualTo(providersBefore + 1);
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Siti is deactivated for leave: she still belongs to Kemas Home, so she still can't open her own provider.")
+    void deactivatedMemberCannotOpenAProvider() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        world.deactivateTeamMember.deactivate(
+                new DeactivateTeamMemberRequest(AZMAN, KEMAS_HOME.value(), KemasHomeScenario.SITI_MEMBER));
+
+        assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(SITI)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class);
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Azman already owns Kemas Home, so he can't open a second provider.")
+    void ownerCannotOpenASecondProvider() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        world.verifiedPeople.save(ProviderUsecaseFixtures.verifiedLocal(AZMAN, "Azman"));
+        int providersBefore = world.providers.count();
+
+        assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(AZMAN)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class)
+                .hasMessageContaining(AZMAN);
+        assertThat(world.providers.count()).isEqualTo(providersBefore);
         assertThat(world.publisher.published()).isEmpty();
     }
 }

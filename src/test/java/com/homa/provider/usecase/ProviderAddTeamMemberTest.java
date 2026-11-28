@@ -15,11 +15,16 @@ import static com.homa.provider.usecase.ProviderUsecaseFixtures.verifiedLocal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.homa.ie.events.ProviderBookabilityChangedIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
+import com.homa.ie.port.ProviderIE;
 import com.homa.provider.domain.Eligibility.ForeignWorker;
 import com.homa.provider.domain.Eligibility.Local;
+import com.homa.provider.domain.Owner;
 import com.homa.provider.domain.PayoutAccountHolder;
 import com.homa.provider.domain.PersonId;
+import com.homa.provider.domain.Provider;
+import com.homa.provider.domain.ProviderId;
 import com.homa.provider.domain.ProviderStatus;
 import com.homa.provider.domain.TeamMember;
 import com.homa.provider.domain.TeamMemberId;
@@ -27,18 +32,24 @@ import com.homa.provider.domain.TeamRole;
 import com.homa.provider.domain.VerifiedPersonFacts;
 import com.homa.provider.domain.exception.EmploymentNotConfirmedException;
 import com.homa.provider.domain.exception.MemberUnderageException;
+import com.homa.provider.domain.exception.PersonAlreadyBelongsToProviderException;
 import com.homa.provider.usecase.dto.AddTeamMemberRequest;
 import com.homa.provider.usecase.dto.AddTeamMemberResponse;
+import com.homa.provider.usecase.dto.DeactivateTeamMemberRequest;
+import com.homa.provider.usecase.dto.RemoveTeamMemberRequest;
 import com.homa.provider.usecase.exception.NotAllowedException;
 import com.homa.provider.usecase.exception.PersonNotVerifiedException;
 import com.homa.provider.usecase.exception.ProviderNotFoundException;
 import com.homa.provider.usecase.port.out.VerifiedPerson;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class ProviderAddTeamMemberTest {
+
+    private static final ProviderId HANA_CLEANING = new ProviderId("provider-hana-cleaning");
 
     private final ProviderWorld world = new ProviderWorld();
 
@@ -211,5 +222,102 @@ class ProviderAddTeamMemberTest {
     void unknownRoleIsRefused() {
         assertThatThrownBy(() -> azmanAdds(SITI, "OWNER", false)).isInstanceOf(IllegalArgumentException.class);
         assertThat(world.members.all()).isEmpty();
+    }
+
+    private void hanaCleaningIsOpenWithHanaVerified() {
+        world.providers.save(Provider.restore(HANA_CLEANING, new Owner(new PersonId(HANA)), ProviderStatus.OPENED, null));
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Siti, a Kemas Home helper, can't join Hana Cleaning until Kemas Home removes her.")
+    void memberOfAnotherProviderCantBeAdded() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        hanaCleaningIsOpenWithHanaVerified();
+
+        assertThatThrownBy(() -> world.addTeamMember.add(
+                new AddTeamMemberRequest(HANA, HANA_CLEANING.value(), SITI, "HELPER", false)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class)
+                .hasMessageContaining(SITI);
+        assertThat(world.members.findByProviderId(HANA_CLEANING)).isEmpty();
+        assertThat(world.publisher.published()).isEmpty();
+
+        world.removeTeamMember.remove(
+                new RemoveTeamMemberRequest(AZMAN, KEMAS_HOME.value(), KemasHomeScenario.SITI_MEMBER));
+        AddTeamMemberResponse response = world.addTeamMember.add(
+                new AddTeamMemberRequest(HANA, HANA_CLEANING.value(), SITI, "HELPER", false));
+
+        assertThat(response.providerId()).isEqualTo(HANA_CLEANING.value());
+        assertThat(response.personId()).isEqualTo(SITI);
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Siti is deactivated for leave at Kemas Home: she still belongs to it, so Hana Cleaning can't add her.")
+    void deactivatedMemberOfAnotherProviderCantBeAdded() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        hanaCleaningIsOpenWithHanaVerified();
+        world.deactivateTeamMember.deactivate(
+                new DeactivateTeamMemberRequest(AZMAN, KEMAS_HOME.value(), KemasHomeScenario.SITI_MEMBER));
+
+        assertThatThrownBy(() -> world.addTeamMember.add(
+                new AddTeamMemberRequest(HANA, HANA_CLEANING.value(), SITI, "HELPER", false)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class);
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Siti is on Kemas Home's team already, so Azman can't add her to it a second time.")
+    void memberCantBeAddedToTheSameTeamTwice() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+
+        assertThatThrownBy(() -> azmanAdds(SITI, "HELPER", false))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class);
+        assertThat(world.members.findByProviderId(KEMAS_HOME)).hasSize(3);
+    }
+
+    @Test
+    @Tag("HLP-10")
+    @DisplayName("Azman owns Kemas Home, so Hana can't add him to Hana Cleaning's team.")
+    void ownerOfAnotherProviderCantBeAdded() {
+        KemasHomeScenario.liveWithSitiNurulAndFarid(world);
+        hanaCleaningIsOpenWithHanaVerified();
+        world.verifiedPeople.save(verifiedLocal(AZMAN, "Azman"));
+
+        assertThatThrownBy(() -> world.addTeamMember.add(
+                new AddTeamMemberRequest(HANA, HANA_CLEANING.value(), AZMAN, "SUPERVISOR", false)))
+                .isInstanceOf(PersonAlreadyBelongsToProviderException.class);
+        assertThat(world.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("PRV-2")
+    @DisplayName("Kemas Home, live with every helper deactivated, can be booked again as soon as a new helper joins.")
+    void addingAHelperToAProviderWithNoActiveHelperMakesItBookable() {
+        world.providers.save(kemasHome(ProviderStatus.LIVE, PayoutAccountHolder.BUSINESS));
+
+        AddTeamMemberResponse response = azmanAdds(SITI, "HELPER", false);
+
+        List<ProviderIE> published = world.publisher.published();
+        assertThat(published).hasSize(2);
+        assertThat(published.get(0)).isInstanceOf(TeamMemberActivatedIE.class);
+        ProviderBookabilityChangedIE bookability = (ProviderBookabilityChangedIE) published.get(1);
+        assertThat(bookability.eventId()).isEqualTo("event-2");
+        assertThat(bookability.providerId()).isEqualTo(KEMAS_HOME.value());
+        assertThat(bookability.bookable()).isTrue();
+        assertThat(bookability.reason()).isNull();
+        assertThat(bookability.occurredAt()).isEqualTo(TEAM_ADDED_AT);
+        assertThat(response.personId()).isEqualTo(SITI);
+    }
+
+    @Test
+    @Tag("PRV-3")
+    @DisplayName("Kemas Home, live with no helper, stays unbookable when only a supervisor joins.")
+    void addingASupervisorDoesNotMakeAProviderBookable() {
+        world.providers.save(kemasHome(ProviderStatus.LIVE, PayoutAccountHolder.BUSINESS));
+
+        azmanAdds(FARID, "SUPERVISOR", false);
+
+        assertThat(world.publisher.published()).hasSize(1).allMatch(TeamMemberActivatedIE.class::isInstance);
     }
 }
