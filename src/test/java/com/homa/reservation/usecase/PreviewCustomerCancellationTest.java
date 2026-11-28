@@ -3,6 +3,7 @@ package com.homa.reservation.usecase;
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
 import static com.homa.fixtures.HomaFixtures.JOB_END;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
+import static com.homa.fixtures.HomaFixtures.at;
 import static com.homa.reservation.usecase.ReservationTestBed.MEI_CUSTOMER_ID;
 import static com.homa.reservation.usecase.ReservationTestBed.friday;
 import static com.homa.reservation.usecase.ReservationTestBed.monday;
@@ -15,6 +16,7 @@ import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationStatus;
 import com.homa.reservation.domain.exception.JobAlreadyEndedException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
+import com.homa.reservation.domain.terms.CancellationTier;
 import com.homa.reservation.usecase.dto.PreviewCustomerCancellationRequest;
 import com.homa.reservation.usecase.dto.PreviewCustomerCancellationResponse;
 import com.homa.reservation.usecase.exception.NotReservationPartyException;
@@ -82,6 +84,63 @@ class PreviewCustomerCancellationTest {
 
         bed.time.set(friday(21, 45));
         assertThat(preview(AISYAH_CUSTOMER_ID).customerFee()).isEqualTo(Money.myr(45));
+    }
+
+    @Test
+    @Tag("CCX-2")
+    @DisplayName("Aisyah cancels on Wednesday, so Kemas Home's Standard tier applies.")
+    void theProvidersStandardTierDecidesOutsideTheGracePeriod() {
+        bed.time.set(at(2026, 12, 2, 10, 0));
+
+        assertThat(preview(AISYAH_CUSTOMER_ID).customerFee()).isEqualTo(Money.myr(0));
+        assertThat(bed.reload(reserved).terms().cancellationTier()).isEqualTo(CancellationTier.STANDARD);
+    }
+
+    @Test
+    @Tag("CCX-3")
+    @DisplayName("Flexible: free until Saturday 5:45.")
+    void flexibleReservationIsFreeUntilFourHoursBeforeTheCheckInPeriod() {
+        ReservationTestBed flexible = ReservationTestBed.withKemasHomeAndAisyah();
+        flexible.kemasRelists(listing -> listing.cancellationTier = "FLEXIBLE");
+        Reservation flexibleReservation = flexible.reserveStandard();
+
+        flexible.time.set(saturday(5, 44));
+        assertThat(previewOf(flexible, flexibleReservation).customerFee()).isEqualTo(Money.myr(0));
+        flexible.time.set(saturday(5, 45));
+        assertThat(previewOf(flexible, flexibleReservation).customerFee()).isEqualTo(Money.myr(45));
+    }
+
+    @Test
+    @Tag("CCX-5")
+    @DisplayName("Firm: free until Friday 9:45.")
+    void firmReservationIsFreeUntilTwentyFourHoursBeforeTheCheckInPeriod() {
+        ReservationTestBed firm = ReservationTestBed.withKemasHomeAndAisyah();
+        firm.kemasRelists(listing -> listing.cancellationTier = "FIRM");
+        Reservation firmReservation = firm.reserveStandard();
+
+        firm.time.set(friday(9, 44));
+        assertThat(previewOf(firm, firmReservation).customerFee()).isEqualTo(Money.myr(0));
+        firm.time.set(friday(9, 45));
+        assertThat(previewOf(firm, firmReservation).customerFee()).isEqualTo(Money.myr(45));
+    }
+
+    @Test
+    @Tag("RES-8")
+    @DisplayName("Kemas Home raises its rate to RM30 and switches to Firm on Wednesday; Aisyah's Saturday booking stays RM200 under Standard.")
+    void aReservationKeepsItsTierWhenTheProviderChangesItsListing() {
+        bed.kemasRelists(listing -> {
+            listing.cancellationTier = "FIRM";
+            listing.rate = Money.myr(30);
+        });
+        bed.time.set(friday(12, 0));
+
+        assertThat(preview(AISYAH_CUSTOMER_ID).customerFee()).isEqualTo(Money.myr(0));
+        assertThat(preview(AISYAH_CUSTOMER_ID).customerRefund()).isEqualTo(Money.myr(200));
+    }
+
+    private static PreviewCustomerCancellationResponse previewOf(ReservationTestBed testBed, Reservation reservation) {
+        return testBed.previewCancellation
+                .preview(new PreviewCustomerCancellationRequest(reservation.id().value(), AISYAH_CUSTOMER_ID));
     }
 
     @Test

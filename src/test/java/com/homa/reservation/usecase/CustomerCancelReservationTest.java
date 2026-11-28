@@ -77,6 +77,17 @@ class CustomerCancelReservationTest {
     }
 
     @Test
+    @Tag("CAN-1")
+    @DisplayName("The Base Cancellation Fee is RM45, not RM50.")
+    void cancellationFeeIsCalculatedAfterDiscount() {
+        bed.time.set(friday(22, 0));
+
+        CustomerCancelReservationResponse cancelled = cancel(AISYAH_CUSTOMER_ID);
+
+        assertThat(cancelled.customerFee()).isEqualTo(Money.myr(45)).isNotEqualTo(Money.myr(50));
+    }
+
+    @Test
     @Tag("CCX-6")
     @DisplayName("The time Aisyah cancelled opens at once: Mei's payment for it, a minute later, makes her request.")
     void aCancelledReservationLeavesTheTimeToTheNextPayment() {

@@ -56,6 +56,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * The Reservation context wired with in-memory fakes, and the §0 setup told to it the way production tells it: by
@@ -200,6 +201,13 @@ public final class ReservationTestBed {
     /** Kemas Home's listing, changeable before it is published. */
     public ListingEvent kemasListing() {
         return new ListingEvent(KEMAS_HOME_PROVIDER_ID);
+    }
+
+    /** Kemas Home changes its listing, as Listing tells it; reservations Requested later are made under it (RES-8). */
+    public void kemasRelists(Consumer<ListingEvent> change) {
+        ListingEvent listing = kemasListing();
+        change.accept(listing);
+        listingTermsChanged.handle(listing.build(nextInboundId()));
     }
 
     public AvailabilityChangedIE kemasHours(String providerId) {

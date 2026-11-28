@@ -2,6 +2,8 @@ package com.homa.reservation.usecase;
 
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
 import static com.homa.fixtures.HomaFixtures.JOB_END;
+import static com.homa.fixtures.HomaFixtures.JOB_START;
+import static com.homa.reservation.usecase.ReservationTestBed.KITCHEN_CLEANING;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.at;
@@ -12,19 +14,24 @@ import static com.homa.reservation.usecase.ReservationTestBed.sunday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.homa.ie.events.PaymentHeldIE;
 import com.homa.ie.events.ReservationCancelledIE;
 import com.homa.kernel.Money;
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationStatus;
 import com.homa.reservation.domain.exception.JobAlreadyEndedException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
+import com.homa.reservation.usecase.dto.AcceptReservationRequest;
 import com.homa.reservation.usecase.dto.CustomerCancelReservationRequest;
 import com.homa.reservation.usecase.dto.ProviderCancelReservationRequest;
 import com.homa.reservation.usecase.dto.ProviderCancelReservationResponse;
+import com.homa.reservation.usecase.dto.StartReservationCheckoutRequest;
 import com.homa.reservation.usecase.exception.NotReservationPartyException;
 import com.homa.reservation.usecase.exception.ReservationNotFoundException;
 import com.homa.reservation.usecase.exception.ScheduleChangedException;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -101,6 +108,50 @@ class ProviderCancelReservationTest {
                 "PROVIDER_LAST_MINUTE", saturday(9, 50), Money.myr(85), Money.myr(200), Money.myr(14)));
         assertThat(bed.publisher.single(ReservationCancelledIE.class))
                 .isEqualTo(cancelledEvent("PROVIDER_LAST_MINUTE", saturday(9, 50), "200", "14", "85"));
+    }
+
+    @Test
+    @Tag("CAN-3")
+    @DisplayName("Percentages in this section are of the Total Reservation Fee, unless stated otherwise. Base + 10% is 45 + 20 = RM65.")
+    void percentagesAreOfTheTotalReservationFeeNotTheHoursFee() {
+        bed.time.set(friday(20, 0));
+
+        ProviderCancelReservationResponse cancelled = cancel(KEMAS_HOME_PROVIDER_ID);
+
+        assertThat(cancelled.providerFine()).isEqualTo(Money.myr(65)).isNotEqualTo(Money.myr(63));
+        assertThat(cancelled.compensation()).isEqualTo(Money.myr(6)).isNotEqualTo(Money.myr("5.40"));
+    }
+
+    @Test
+    @Tag("CAN-2")
+    @DisplayName("For a RM25 job, a fine of 25 + 20% × 25 = RM30 is capped at RM25.")
+    void fineIsCappedAtTheTotalReservationFee() {
+        ReservationTestBed cheap = ReservationTestBed.withKemasHomeAndAisyah();
+        cheap.kemasRelists(listing -> {
+            listing.rate = Money.myr(25);
+            listing.travelFeeKind = "NONE";
+            listing.flatTravelFee = null;
+            listing.discountRate = null;
+            listing.minHours = Duration.ofHours(1);
+        });
+        String checkoutId = cheap.startCheckout.start(new StartReservationCheckoutRequest(AISYAH_CUSTOMER_ID,
+                KEMAS_HOME_PROVIDER_ID, List.of(KITCHEN_CLEANING), JOB_START, 60, 1)).checkoutId();
+        cheap.time.set(REQUESTED_AT);
+        cheap.paymentHeld.handle(new PaymentHeldIE(cheap.nextInboundId(), checkoutId, Money.myr(25), REQUESTED_AT,
+                REQUESTED_AT));
+        String id = cheap.reservations.single().id().value();
+        cheap.time.set(monday(22, 0));
+        cheap.acceptReservation.accept(new AcceptReservationRequest(id, KEMAS_HOME_PROVIDER_ID));
+        cheap.publisher.clear();
+        cheap.time.set(saturday(9, 50));
+
+        ProviderCancelReservationResponse cancelled = cheap.providerCancel
+                .cancel(new ProviderCancelReservationRequest(id, KEMAS_HOME_PROVIDER_ID));
+
+        assertThat(cancelled.providerFine()).isEqualTo(Money.myr(25));
+        assertThat(cancelled.customerRefund()).isEqualTo(Money.myr(25));
+        assertThat(cancelled.compensation()).isEqualTo(Money.myr("1.75"));
+        assertThat(cheap.publisher.single(ReservationCancelledIE.class).providerFine()).isEqualTo(Money.myr(25));
     }
 
     @Test
