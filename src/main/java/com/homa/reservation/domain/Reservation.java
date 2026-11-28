@@ -195,25 +195,20 @@ public final class Reservation {
     /** The statuses the reservation has been through, read from the moments it records. */
     private Set<ReservationStatus> passedThrough() {
         Set<ReservationStatus> passed = EnumSet.noneOf(ReservationStatus.class);
-        if (reservedAt != null) {
-            passed.add(ReservationStatus.RESERVED);
-        }
-        if (withdrawnAt != null) {
-            passed.add(ReservationStatus.WITHDRAWN);
-        }
-        if (declinedAt != null) {
-            passed.add(ReservationStatus.DECLINED);
-        }
-        if (expiredAt != null) {
-            passed.add(ReservationStatus.EXPIRED);
-        }
-        if (completedAt != null) {
-            passed.add(ReservationStatus.COMPLETED);
-        }
-        if (cancellation != null) {
-            passed.add(ReservationStatus.CANCELLED);
-        }
+        addIfReached(passed, ReservationStatus.RESERVED, reservedAt);
+        addIfReached(passed, ReservationStatus.WITHDRAWN, withdrawnAt);
+        addIfReached(passed, ReservationStatus.DECLINED, declinedAt);
+        addIfReached(passed, ReservationStatus.EXPIRED, expiredAt);
+        addIfReached(passed, ReservationStatus.COMPLETED, completedAt);
+        addIfReached(passed, ReservationStatus.CANCELLED, cancellation);
         return passed;
+    }
+
+    /** A status is reached once the moment (or the cancellation) it records is there. */
+    private static void addIfReached(Set<ReservationStatus> passed, ReservationStatus status, Object record) {
+        if (record != null) {
+            passed.add(status);
+        }
     }
 
     private static void requireShape(boolean fits, String what) {
