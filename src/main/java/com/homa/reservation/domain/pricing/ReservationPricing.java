@@ -15,7 +15,14 @@ public final class ReservationPricing {
     }
 
     public static Quote quote(ReservationTerms terms, JobDuration hours, int helpers) {
-        Percentage discount = terms.discount().rateFor(hours, helpers);
+        return quote(terms, hours, helpers, terms.discount().rateFor(hours, helpers));
+    }
+
+    /**
+     * The price of the same job for another number of helpers at a discount rate given, not looked up: a smaller
+     * roster keeps the discount the booking had even when fewer helpers wouldn't earn it (ROS-8).
+     */
+    public static Quote quote(ReservationTerms terms, JobDuration hours, int helpers, Percentage discount) {
         Money discountedHour = discount.complement().of(terms.hourlyRatePerHelper().times(helpers));
         Money hoursFee = discountedHour.times(hours.inHours());
         Money total = hoursFee.plus(terms.travelFee()).roundedToSen();

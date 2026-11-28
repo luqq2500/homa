@@ -46,8 +46,8 @@ public final class ProviderCancelReservation implements ProviderReservationCance
     }
 
     private Reservation cancelled(ProviderCancelReservationRequest request) {
-        Reservation reservation = ReservationParties.requireProvider(
-                ReservationParties.load(reservations, request.reservationId()), request.providerId());
+        Reservation reservation = ReservationParties.requireProviderSide(
+                ReservationParties.load(reservations, request.reservationId()), request.personId());
         reservation.cancelByProvider(time.now());
         calendars.saveReleased(reservation);
         return reservation;

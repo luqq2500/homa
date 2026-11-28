@@ -5,6 +5,7 @@ import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.reservation.usecase.ReservationTestBed.CLEAN_KITCHEN_PHOTO;
 import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.usecase.InMemoryPorts.Reminder;
@@ -52,7 +53,7 @@ class RemindUncompletedJobsTest {
         bed.photoStore.upload(CLEAN_KITCHEN_PHOTO);
         bed.time.set(saturday(15, 0));
         bed.completeReservation.complete(new CompleteReservationRequest(reserved.id().value(),
-                KEMAS_HOME_PROVIDER_ID, List.of(CLEAN_KITCHEN_PHOTO)));
+                AZMAN_PERSON_ID, List.of(CLEAN_KITCHEN_PHOTO)));
 
         assertThat(remindAt(saturday(16, 0))).isZero();
         assertThat(bed.notifier.sent()).hasSize(1);

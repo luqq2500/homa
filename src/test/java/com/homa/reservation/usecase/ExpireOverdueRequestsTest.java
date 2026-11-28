@@ -10,6 +10,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.monday;
 import static com.homa.reservation.usecase.ReservationTestBed.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ReservationExpiredIE;
 import com.homa.ie.events.ReservationWithdrawnIE;
@@ -107,7 +108,7 @@ class ExpireOverdueRequestsTest {
     void aRequestThatWasAcceptedOrWithdrawnIsNotExpired() {
         Reservation meis = meisFridayRequest();
         bed.time.set(monday(22, 0));
-        bed.acceptReservation.accept(new AcceptReservationRequest(aisyahs.id().value(), KEMAS_HOME_PROVIDER_ID));
+        bed.acceptReservation.accept(new AcceptReservationRequest(aisyahs.id().value(), AZMAN_PERSON_ID));
         bed.withdrawReservation.withdraw(new WithdrawReservationRequest(meis.id().value(), MEI_CUSTOMER_ID));
         bed.publisher.clear();
         bed.time.set(tuesday(21, 0));

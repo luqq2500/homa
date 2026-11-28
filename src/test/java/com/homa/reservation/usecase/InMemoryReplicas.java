@@ -38,31 +38,26 @@ public final class InMemoryReplicas {
     }
 
     public static final class Members implements RosterableMemberRepository {
-        private record Stored(String personId, RosterableMember member) {
-        }
-
-        private final Map<String, Stored> stored = new LinkedHashMap<>();
+        private final Map<String, RosterableMember> stored = new LinkedHashMap<>();
 
         @Override
         public Optional<RosterableMember> findById(String memberId) {
-            return Optional.ofNullable(stored.get(memberId)).map(Stored::member);
+            return Optional.ofNullable(stored.get(memberId));
         }
 
         @Override
         public List<RosterableMember> findByProviderId(String providerId) {
-            return stored.values().stream().map(Stored::member)
-                    .filter(member -> member.providerId().equals(providerId)).toList();
+            return stored.values().stream().filter(member -> member.providerId().equals(providerId)).toList();
         }
 
         @Override
         public List<RosterableMember> findByPersonId(String personId) {
-            return stored.values().stream().filter(entry -> entry.personId().equals(personId))
-                    .map(Stored::member).toList();
+            return stored.values().stream().filter(member -> member.personId().equals(personId)).toList();
         }
 
         @Override
-        public void save(String personId, RosterableMember member) {
-            stored.put(member.memberId(), new Stored(personId, member));
+        public void save(RosterableMember member) {
+            stored.put(member.memberId(), member);
         }
 
         public int count() {

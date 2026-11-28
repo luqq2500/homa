@@ -4,6 +4,7 @@ import static com.homa.fixtures.HomaFixtures.at;
 import static com.homa.reservation.domain.ReservationFixtures.friday;
 import static com.homa.reservation.domain.ReservationFixtures.monday;
 import static com.homa.reservation.domain.ReservationFixtures.saturday;
+import static com.homa.reservation.domain.ReservationFixtures.siti;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.homa.kernel.Money;
@@ -12,6 +13,7 @@ import com.homa.reservation.domain.settlement.FreeCancellationPolicy;
 import com.homa.reservation.domain.settlement.Settlement;
 import com.homa.reservation.domain.settlement.SettlementBasis;
 import java.time.Instant;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +68,19 @@ class SettlementOutcomesTest {
         return reserved -> reserved.cancelByProvider(at).settlement();
     }
 
+    /** A reservation whose roster isn't complete when the Check-in Period starts (§12 "No roster"). */
+    private static Function<Reservation, Settlement> noRosterAt(Instant at) {
+        return reserved -> reserved.lockRosterAtCheckIn(at).orElseThrow().settlement();
+    }
+
+    /** The customer accepts Siti alone (§12 "Smaller roster accepted"): the new price and the difference. */
+    private static Function<Reservation, Settlement> smallerRosterAcceptedAt(Instant at) {
+        return reserved -> {
+            reserved.proposeSmallerRoster(List.of(siti()), friday(9, 0));
+            return reserved.acceptProposal(List.of(siti()), at).settlement();
+        };
+    }
+
     static Stream<Arguments> everyCaseOfTheMoneyTable() {
         return Stream.of(
                 row("Customer withdraws a request: full refund, gets RM200", freeOutcomeAt(monday(21, 0)),
@@ -87,7 +102,11 @@ class SettlementOutcomesTest {
                 row("Customer cancels last minute at 11:20: pays RM87.50, gets RM112.50",
                         customerCancelsAt(saturday(11, 20)), new Row("87.50", "0", "112.50", "87.50")),
                 row("Provider cancels last minute: fine RM85, gets RM214", providerCancelsAt(saturday(9, 50)),
-                        new Row("0", "85", "214", "0")));
+                        new Row("0", "85", "214", "0")),
+                row("No roster at 9:45: fine RM69, gets RM208", noRosterAt(saturday(9, 45)),
+                        new Row("0", "69", "208", "0")),
+                row("Smaller roster accepted, 1 helper: pays RM110, gets RM90", smallerRosterAcceptedAt(friday(10, 0)),
+                        new Row("110", "0", "90", "110")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -102,6 +121,11 @@ class SettlementOutcomesTest {
     @Tag("LMC-1")
     @Tag("LMC-2")
     @Tag("LMC-3")
+    @Tag("ROS-7")
+    @Tag("ROS-8")
+    @Tag("NRS-1")
+    @Tag("NRS-2")
+    @Tag("NRS-3")
     @Tag("CAN-1")
     @Tag("CAN-3")
     @DisplayName("§12 Summary of money outcomes: Aisyah's RM200 reservation, with a Base Cancellation Fee of RM45, settles as the table says in every case.")

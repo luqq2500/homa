@@ -33,12 +33,15 @@ import java.util.function.Predicate;
  * booking rules; the provider's own reservations are checked by the {@code ProviderSchedule}. A booking checked at a
  * moment is checked under the reservation values in force then, the ones it would be Requested with (P3).
  *
+ * @param ownerPersonId the owner who runs the provider, as Verification knows them (PRV-1): they can act on every
+ *                    reservation of the provider (PRV-11)
  * @param bookable    false while the provider can't be booked, for example with no active helpers or no verified
  *                    payout account (PRV-2)
  * @param busyTimes   private appointments synced from external calendars (OFR-8)
  */
 public record BookableProvider(
         String providerId,
+        String ownerPersonId,
         boolean bookable,
         Set<String> cities,
         Set<String> jobs,
@@ -52,6 +55,7 @@ public record BookableProvider(
 
     public BookableProvider {
         Objects.requireNonNull(providerId, "providerId");
+        Objects.requireNonNull(ownerPersonId, "ownerPersonId");
         cities = Set.copyOf(cities);
         jobs = Set.copyOf(jobs);
         Objects.requireNonNull(terms, "terms");

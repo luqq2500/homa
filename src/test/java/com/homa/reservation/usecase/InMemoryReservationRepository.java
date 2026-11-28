@@ -2,7 +2,9 @@ package com.homa.reservation.usecase;
 
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationId;
+import com.homa.reservation.domain.ReservationPhase;
 import com.homa.reservation.domain.ReservationStatus;
+import com.homa.reservation.domain.roster.Roster;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
@@ -79,6 +81,27 @@ public final class InMemoryReservationRepository implements ReservationRepositor
     }
 
     @Override
+    public List<Reservation> findReservedToLockRosterBy(Instant now) {
+        return stored.values().stream()
+                .filter(reservation -> reservation.status() == ReservationStatus.RESERVED)
+                .filter(reservation -> reservation.phaseAt(now) == ReservationPhase.CHECK_IN
+                        || reservation.phaseAt(now) == ReservationPhase.IN_JOB)
+                .filter(reservation -> reservation.roster().filter(Roster::isLocked).isEmpty())
+                .map(InMemoryReservationRepository::copy)
+                .toList();
+    }
+
+    @Override
+    public List<Reservation> findReservedRosteredWith(String memberId, Instant now) {
+        return stored.values().stream()
+                .filter(reservation -> reservation.status() == ReservationStatus.RESERVED)
+                .filter(reservation -> reservation.phaseAt(now) == ReservationPhase.BEFORE_CHECK_IN)
+                .filter(reservation -> reservation.roster().filter(roster -> roster.includes(memberId)).isPresent())
+                .map(InMemoryReservationRepository::copy)
+                .toList();
+    }
+
+    @Override
     public void save(Reservation reservation) {
         letCompetingStepCommit();
         requireLoadedVersion(reservation);
@@ -148,11 +171,12 @@ public final class InMemoryReservationRepository implements ReservationRepositor
     }
 
     private static Reservation copy(Reservation original, long version) {
-        return Reservation.restore(original.id(), original.checkoutId(), original.booking(), original.terms(),
-                original.quote(), original.values(), original.requestedAt(),
+        return Reservation.restore(original.id(), original.checkoutId(), original.ownerPersonId(), original.booking(),
+                original.terms(), original.quote(), original.values(), original.requestedAt(),
                 original.acceptanceDeadline().orElse(null), original.status(), original.reservedAt().orElse(null),
                 original.withdrawnAt().orElse(null), original.declinedAt().orElse(null),
                 original.expiredAt().orElse(null), original.cancellation().orElse(null), original.roster().orElse(null),
+                original.proposal().orElse(null), original.adjustment().orElse(null),
                 original.completedAt().orElse(null), original.completionPhotos(), version);
     }
 }

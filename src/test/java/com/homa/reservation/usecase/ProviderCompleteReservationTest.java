@@ -9,6 +9,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.sunday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ReservationCompletedIE;
 import com.homa.kernel.Money;
@@ -61,7 +62,7 @@ class ProviderCompleteReservationTest {
     void providerMarksTheJobCompletedAndTheTimeOpens() {
         bed.time.set(saturday(14, 1));
 
-        CompleteReservationResponse completed = complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO, BATHROOM_PHOTO);
+        CompleteReservationResponse completed = complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO, BATHROOM_PHOTO);
 
         String id = reserved.id().value();
         assertThat(completed).isEqualTo(new CompleteReservationResponse(id, "COMPLETED", saturday(14, 1)));
@@ -82,10 +83,10 @@ class ProviderCompleteReservationTest {
     @DisplayName("The team finishes at 13:30. Aisyah pays for 4 hours.")
     void customerPaysForTheBookedHoursEvenWhenTheTeamFinishesEarly() {
         bed.time.set(saturday(13, 30));
-        assertStillReserved(() -> complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO), JobNotEndedException.class);
+        assertStillReserved(() -> complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO), JobNotEndedException.class);
 
         bed.time.set(JOB_END);
-        complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO);
+        complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO);
 
         assertThat(bed.reload(reserved).quote().hoursFee()).isEqualTo(Money.myr(180));
         assertThat(bed.publisher.single(ReservationCompletedIE.class).payoutGross()).isEqualTo(Money.myr(200));
@@ -97,7 +98,7 @@ class ProviderCompleteReservationTest {
     void customerIsToldWhenTheJobIsCompletedWithTheAfterPhoto() {
         bed.time.set(saturday(14, 1));
 
-        complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO);
+        complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO);
 
         ReservationCompletedIE told = bed.publisher.single(ReservationCompletedIE.class);
         assertThat(told.customerId()).isEqualTo(AISYAH_CUSTOMER_ID);
@@ -111,7 +112,7 @@ class ProviderCompleteReservationTest {
     void jobCannotBeCompletedBeforeItEnds() {
         bed.time.set(saturday(13, 59));
 
-        assertStillReserved(() -> complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO), JobNotEndedException.class);
+        assertStillReserved(() -> complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO), JobNotEndedException.class);
     }
 
     @Test
@@ -120,7 +121,7 @@ class ProviderCompleteReservationTest {
     void photoNotUploadedIsRefused() {
         bed.time.set(JOB_END);
 
-        assertStillReserved(() -> complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO, "photo-never-uploaded"),
+        assertStillReserved(() -> complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO, "photo-never-uploaded"),
                 CompletionPhotoNotFoundException.class);
     }
 
@@ -141,7 +142,7 @@ class ProviderCompleteReservationTest {
         bed.time.set(JOB_END);
         bed.reservations.conflictOnNextSaves(1);
 
-        complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO);
+        complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO);
 
         assertThat(bed.reload(reserved).status()).isEqualTo(ReservationStatus.COMPLETED);
         assertThat(bed.schedules.providerBlocks(KEMAS_HOME_PROVIDER_ID)).isEmpty();
@@ -156,7 +157,7 @@ class ProviderCompleteReservationTest {
         bed.time.set(JOB_END);
         bed.reservations.conflictOnNextSaves(3);
 
-        assertStillReserved(() -> complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO),
+        assertStillReserved(() -> complete(AZMAN_PERSON_ID, CLEAN_KITCHEN_PHOTO),
                 ScheduleChangedException.class);
     }
 }

@@ -82,8 +82,9 @@ class RosterableMemberTest {
         assertThat(siti.photoReference()).contains("photo-siti");
         assertThat(afterNewPhotoVerified.photoReference()).contains("photo-siti-new");
         assertThat(afterNewPhotoVerified.asRosterMember().photoReference()).isEqualTo("photo-siti-new");
-        assertThat(afterNewPhotoVerified).isEqualTo(new RosterableMember(siti.memberId(), siti.providerId(),
-                siti.role(), siti.name(), true, Optional.of("photo-siti-new"), siti.active(), siti.rosterableUntil()));
+        assertThat(afterNewPhotoVerified).isEqualTo(new RosterableMember(siti.memberId(), siti.personId(),
+                siti.providerId(), siti.role(), siti.name(), true, Optional.of("photo-siti-new"), siti.active(),
+                siti.rosterableUntil()));
         assertThat(rina().withVerifiedPhoto("photo-rina-new").rosterableUntil()).isEqualTo(rina().rosterableUntil());
     }
 
@@ -110,10 +111,10 @@ class RosterableMemberTest {
     @DisplayName("A member without a verified photo can't be rostered, because the customer must see each rostered member's photo.")
     void memberWithoutAVerifiedPhotoCannotBeRostered() {
         RosterableMember noPhoto = withoutVerifiedPhoto(siti());
-        RosterableMember unverifiedPhoto = new RosterableMember(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID,
+        RosterableMember unverifiedPhoto = new RosterableMember(SITI_MEMBER_ID, "person-siti", KEMAS_HOME_PROVIDER_ID,
                 MemberRole.HELPER, "Siti", false, Optional.of("photo-siti"), true, Optional.empty());
-        RosterableMember verifiedButUnknown = new RosterableMember(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID,
-                MemberRole.HELPER, "Siti", true, Optional.empty(), true, Optional.empty());
+        RosterableMember verifiedButUnknown = new RosterableMember(SITI_MEMBER_ID, "person-siti",
+                KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti", true, Optional.empty(), true, Optional.empty());
 
         assertThat(noPhoto.hasVerifiedPhoto()).isFalse();
         assertThat(noPhoto.canWorkOn(JOB_END)).isFalse();

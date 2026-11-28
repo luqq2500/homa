@@ -7,6 +7,7 @@ import static com.homa.fixtures.HomaFixtures.SITI_MEMBER_ID;
 import static com.homa.reservation.usecase.ReservationTestBed.TAPPED_PAY_AT;
 import static com.homa.reservation.usecase.ReservationTestBed.friday;
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ProfilePhotoChangedIE;
 import com.homa.reservation.domain.Reservation;
@@ -72,7 +73,7 @@ class HandleProfilePhotoChangedIETest {
     void rosterAlreadySetKeepsItsPhoto() {
         Reservation reserved = bed.reserveStandard();
         bed.time.set(friday(18, 0));
-        bed.assignRoster.assign(new AssignRosterRequest(reserved.id().value(), KEMAS_HOME_PROVIDER_ID,
+        bed.assignRoster.assign(new AssignRosterRequest(reserved.id().value(), AZMAN_PERSON_ID,
                 List.of(SITI_MEMBER_ID, NURUL_MEMBER_ID, FARID_MEMBER_ID)));
 
         bed.profilePhotoChanged.handle(checked("person-farid", true, "photo-farid-new"));

@@ -11,6 +11,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.monday;
 import static com.homa.reservation.usecase.ReservationTestBed.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.PaymentHeldIE;
 import com.homa.ie.events.ReservationRequestedIE;
@@ -125,7 +126,7 @@ class CustomerWithdrawReservationTest {
     @DisplayName("Kemas Home accepts at 21:02:10 and Aisyah withdraws at 21:02:12. The reservation is Reserved, and she can cancel for free within her Grace Period (CCX-1).")
     void withdrawalRecordedTwoSecondsAfterAnAcceptanceIsToldItWasAccepted() {
         bed.time.set(monday(21, 2).plusSeconds(10));
-        bed.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID));
+        bed.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), AZMAN_PERSON_ID));
         bed.time.set(monday(21, 2).plusSeconds(12));
 
         WithdrawReservationResponse response = withdraw(AISYAH_CUSTOMER_ID);
@@ -149,7 +150,7 @@ class CustomerWithdrawReservationTest {
         bed.publisher.clear();
         bed.time.set(monday(21, 2).plusSeconds(10));
         bed.reservations.beforeNextSave(() -> bed.acceptReservation
-                .accept(new AcceptReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID)));
+                .accept(new AcceptReservationRequest(requested.id().value(), AZMAN_PERSON_ID)));
 
         WithdrawReservationResponse response = withdraw(AISYAH_CUSTOMER_ID);
 
@@ -237,7 +238,7 @@ class CustomerWithdrawReservationTest {
     @DisplayName("A request Kemas Home declined first is declined, so Aisyah's withdrawal is refused and nothing more is published.")
     void aDeclinedReservationCannotBeWithdrawn() {
         bed.time.set(monday(21, 0));
-        bed.declineReservation.decline(new DeclineReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID));
+        bed.declineReservation.decline(new DeclineReservationRequest(requested.id().value(), AZMAN_PERSON_ID));
         bed.publisher.clear();
         bed.time.set(monday(21, 5));
 

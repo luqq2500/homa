@@ -49,8 +49,8 @@ public final class ProviderCompleteReservation implements ReservationCompleter {
     }
 
     private Reservation markCompleted(CompleteReservationRequest request, List<CompletionPhoto> afterPhotos) {
-        Reservation reservation = ReservationParties.requireProvider(
-                ReservationParties.load(reservations, request.reservationId()), request.providerId());
+        Reservation reservation = ReservationParties.requireProviderSide(
+                ReservationParties.load(reservations, request.reservationId()), request.personId());
         reservation.markCompleted(afterPhotos, time.now());
         calendars.saveReleased(reservation);
         return reservation;

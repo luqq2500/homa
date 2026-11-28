@@ -11,6 +11,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.friday;
 import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.RosterChangedIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
@@ -53,7 +54,7 @@ class ProviderAssignRosterTest {
         bed.publisher.clear();
         bed.time.set(friday(18, 0));
 
-        AssignRosterResponse rostered = roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID, FARID_MEMBER_ID);
+        AssignRosterResponse rostered = roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID, FARID_MEMBER_ID);
 
         String id = reserved.id().value();
         assertThat(rostered).isEqualTo(new AssignRosterResponse(id, List.of(
@@ -72,17 +73,17 @@ class ProviderAssignRosterTest {
     @DisplayName("Kemas Home swaps Nurul for Rina at 8:00 on Saturday, and the roster locks at 9:45.")
     void rosterCanChangeUntilTheCheckInPeriodAndThenLocks() {
         bed.time.set(friday(18, 0));
-        roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID);
+        roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID);
         bed.publisher.clear();
         bed.time.set(saturday(8, 0));
 
-        roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, RINA_MEMBER_ID);
+        roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, RINA_MEMBER_ID);
 
         assertThat(bed.publisher.single(RosterChangedIE.class).memberIds())
                 .containsExactly(SITI_MEMBER_ID, RINA_MEMBER_ID);
         bed.publisher.clear();
         bed.time.set(saturday(9, 45));
-        assertThatThrownBy(() -> roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID))
+        assertThatThrownBy(() -> roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, NURUL_MEMBER_ID))
                 .isInstanceOf(RosterLockedException.class);
         assertThat(bed.reload(reserved).roster().orElseThrow().members()).extracting(RosterMember::memberId)
                 .containsExactly(SITI_MEMBER_ID, RINA_MEMBER_ID);
@@ -95,7 +96,7 @@ class ProviderAssignRosterTest {
     void rosterNeedsTheBookedNumberOfHelpers() {
         bed.time.set(friday(18, 0));
 
-        assertNothingChanges(() -> roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, FARID_MEMBER_ID),
+        assertNothingChanges(() -> roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, FARID_MEMBER_ID),
                 IncompleteRosterException.class);
     }
 
@@ -105,7 +106,7 @@ class ProviderAssignRosterTest {
     void unknownMemberCannotBeRostered() {
         bed.time.set(friday(18, 0));
 
-        assertNothingChanges(() -> roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, "member-unknown"),
+        assertNothingChanges(() -> roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, "member-unknown"),
                 TeamMemberNotFoundException.class);
     }
 
@@ -117,7 +118,7 @@ class ProviderAssignRosterTest {
                 KEMAS_HOME_PROVIDER_ID, "Aina", "HELPER", "LOCAL", false, null, TAPPED_PAY_AT));
         bed.time.set(friday(18, 0));
 
-        assertNothingChanges(() -> roster(KEMAS_HOME_PROVIDER_ID, SITI_MEMBER_ID, "member-aina"),
+        assertNothingChanges(() -> roster(AZMAN_PERSON_ID, SITI_MEMBER_ID, "member-aina"),
                 MemberNotRosterableException.class);
     }
 

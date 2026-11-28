@@ -19,6 +19,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.friday;
 import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.kernel.Money;
 import com.homa.reservation.domain.Reservation;
@@ -49,7 +50,7 @@ class ViewReservationTest {
     void customerSeesTheRosterByNameAndPhoto() {
         Reservation reserved = bed.reserveStandard();
         bed.time.set(friday(18, 0));
-        bed.assignRoster.assign(new AssignRosterRequest(reserved.id().value(), KEMAS_HOME_PROVIDER_ID,
+        bed.assignRoster.assign(new AssignRosterRequest(reserved.id().value(), AZMAN_PERSON_ID,
                 List.of(SITI_MEMBER_ID, NURUL_MEMBER_ID, FARID_MEMBER_ID)));
 
         ViewReservationResponse seen = view(reserved, AISYAH_CUSTOMER_ID);
@@ -87,7 +88,7 @@ class ViewReservationTest {
         bed.photoStore.upload(CLEAN_KITCHEN_PHOTO);
         bed.time.set(saturday(14, 1));
         bed.completeReservation.complete(new CompleteReservationRequest(reserved.id().value(),
-                KEMAS_HOME_PROVIDER_ID, List.of(CLEAN_KITCHEN_PHOTO)));
+                AZMAN_PERSON_ID, List.of(CLEAN_KITCHEN_PHOTO)));
 
         ViewReservationResponse seen = view(reserved, AISYAH_CUSTOMER_ID);
 

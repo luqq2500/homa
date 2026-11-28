@@ -108,8 +108,8 @@ class ReservationRosterTest {
     @Tag("ROS-3")
     @DisplayName("Only Kemas Home's own team can be rostered on its reservation.")
     void anotherProvidersMemberCannotBeRostered() {
-        RosterableMember stranger = RosterableMember.local("member-stranger", "provider-another", MemberRole.HELPER,
-                "Stranger", "photo-stranger", true);
+        RosterableMember stranger = RosterableMember.local("member-stranger", "person-stranger", "provider-another",
+                MemberRole.HELPER, "Stranger", "photo-stranger", true);
 
         assertThatThrownBy(() -> reservation.assignRoster(List.of(siti(), stranger), friday(19, 0)))
                 .isInstanceOf(MemberNotRosterableException.class);
@@ -122,9 +122,9 @@ class ReservationRosterTest {
         reservation.assignRoster(List.of(siti(), nurul(), farid()), friday(19, 0));
 
         assertThat(reservation.roster().orElseThrow().members()).containsExactly(
-                new RosterMember(SITI_MEMBER_ID, MemberRole.HELPER, "Siti", "photo-siti"),
-                new RosterMember(NURUL_MEMBER_ID, MemberRole.HELPER, "Nurul", "photo-nurul"),
-                new RosterMember(FARID_MEMBER_ID, MemberRole.SUPERVISOR, "Farid", "photo-farid"));
+                new RosterMember(SITI_MEMBER_ID, "person-siti", MemberRole.HELPER, "Siti", "photo-siti"),
+                new RosterMember(NURUL_MEMBER_ID, "person-nurul", MemberRole.HELPER, "Nurul", "photo-nurul"),
+                new RosterMember(FARID_MEMBER_ID, "person-farid", MemberRole.SUPERVISOR, "Farid", "photo-farid"));
     }
 
     @Test

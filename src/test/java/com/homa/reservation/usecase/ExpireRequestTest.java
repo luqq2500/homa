@@ -10,6 +10,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ReservationExpiredIE;
 import com.homa.reservation.domain.Reservation;
@@ -102,7 +103,7 @@ class ExpireRequestTest {
     @DisplayName("A request Kemas Home accepted in time doesn't expire at Tuesday 20:00, and nothing changes.")
     void anAcceptedRequestDoesNotExpire() {
         bed.time.set(ACCEPTED_AT);
-        bed.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID));
+        bed.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), AZMAN_PERSON_ID));
         bed.publisher.clear();
         bed.time.set(ACCEPTANCE_DEADLINE);
 
