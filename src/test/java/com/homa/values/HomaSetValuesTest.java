@@ -7,6 +7,7 @@ import com.homa.kernel.Percentage;
 import com.homa.listing.domain.ListingValues;
 import com.homa.payment.domain.PaymentValues;
 import com.homa.provider.domain.ProviderValues;
+import com.homa.rating.domain.RatingValues;
 import com.homa.reservation.domain.ReservationValues;
 import com.homa.reservation.domain.terms.CancellationTier;
 import com.homa.verification.domain.VerificationValues;
@@ -42,9 +43,6 @@ class HomaSetValuesTest {
     /** §13 rows whose owning context is not built yet; each must move into {@link #checks()} with its slice. */
     private static final Set<String> PENDING = Set.of(
             "Suspension lengths", // Support's SuspensionLength, slice 6 (CUS-4, CUS-6, PRV-12)
-            "Rating Window",      // Rating, slice 7 (RTG-2)
-            "Ratings",            // Rating, slice 7 (RTG-4, RTG-7, RTG-8)
-            "Reliability counts", // Rating, slice 7 (RTG-10)
             // Retention periods (§10) are account values owned by the context that stores each record; their
             // retention types arrive with slice 9 (plan, "Data retention").
             "Retention: payment records and debt",                          // Payment, DAT-2, DAT-6
@@ -132,6 +130,14 @@ class HomaSetValuesTest {
                 () -> assertThat(RESERVATION.protectionAfterJobEnd()).isEqualTo(Duration.ofHours(24)));
         checks.put("Completion reminders", () -> assertThat(RESERVATION.completionRemindersAfterJobEnd())
                 .containsExactly(Duration.ZERO, Duration.ofHours(2)));
+        checks.put("Rating Window",
+                () -> assertThat(RatingValues.current().ratingWindow()).isEqualTo(Duration.ofDays(7)));
+        checks.put("Ratings", () -> {
+            assertThat(RatingValues.MINIMUM_STARS).isEqualTo(1);
+            assertThat(RatingValues.MAXIMUM_STARS).isEqualTo(5);
+            assertThat(RatingValues.CATEGORIES_PER_SIDE).isEqualTo(3);
+        });
+        checks.put("Reliability counts", () -> assertThat(RatingValues.RELIABILITY_PERIOD_MONTHS).isEqualTo(12));
         checks.put("Platform fee", () -> assertThat(PAYMENT.platformFeeRate()).isEqualTo(Percentage.of("15.5")));
         checks.put("Fine deduction cap", () -> assertThat(PAYMENT.fineDeductionCap()).isEqualTo(Percentage.of(20)));
         checks.put("Rounding",

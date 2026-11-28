@@ -18,36 +18,36 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 ## Summary
 
-**91 of 179** rules are cited by at least one test; **23** of those are only partly built.
+**119 of 179** rules are cited by at least one test; **20** of those are only partly built.
 
 ### By slice (the plan's build order)
 
 | Slice | Name | Rules | Domain + usecase | Domain only | Usecase only | Elsewhere only | Not started |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 0 | Skeleton | 1 | 1 | 0 | 0 | 0 | 0 |
-| 1 | Book and get paid | 51 | 47 | 4 | 0 | 0 | 0 |
-| 2 | Requests and withdrawals | 5 | 0 | 3 | 0 | 0 | 2 |
-| 3 | Cancellations | 18 | 2 | 5 | 0 | 1 | 10 |
+| 1 | Book and get paid | 51 | 51 | 0 | 0 | 0 | 0 |
+| 2 | Requests and withdrawals | 5 | 5 | 0 | 0 | 0 | 0 |
+| 3 | Cancellations | 18 | 18 | 0 | 0 | 0 | 0 |
 | 4 | Team and roster | 15 | 1 | 2 | 1 | 1 | 10 |
-| 5 | Reports and no-shows | 18 | 1 | 4 | 0 | 0 | 13 |
-| 6 | Compliance, suspensions and debt | 29 | 4 | 3 | 0 | 0 | 22 |
-| 7 | Ratings and reliability | 11 | 0 | 0 | 0 | 0 | 11 |
-| 8 | Chat and calendar sync | 6 | 1 | 0 | 0 | 0 | 5 |
-| 9 | Data retention | 18 | 2 | 3 | 0 | 1 | 12 |
+| 5 | Reports and no-shows | 18 | 2 | 3 | 0 | 0 | 13 |
+| 6 | Compliance, suspensions and debt | 29 | 5 | 2 | 0 | 0 | 22 |
+| 7 | Ratings and reliability | 11 | 11 | 0 | 0 | 0 | 0 |
+| 8 | Chat and calendar sync | 6 | 5 | 0 | 0 | 0 | 1 |
+| 9 | Data retention | 18 | 2 | 4 | 0 | 1 | 11 |
 | 10 | External service failures | 7 | 0 | 2 | 2 | 0 | 3 |
 
 ### By owning context (the plan's ownership)
 
 | Context | Rules | Domain + usecase | Domain only | Usecase only | Elsewhere only | Not started | Partial |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Conversation | 5 | 0 | 0 | 0 | 0 | 5 | 0 |
-| Customer | 9 | 6 | 1 | 0 | 0 | 2 | 1 |
+| Conversation | 5 | 4 | 0 | 0 | 0 | 1 | 1 |
+| Customer | 9 | 7 | 0 | 0 | 0 | 2 | 1 |
 | Listing | 11 | 10 | 0 | 0 | 0 | 1 | 1 |
-| Payment | 12 | 6 | 2 | 0 | 0 | 4 | 1 |
+| Payment | 12 | 8 | 0 | 0 | 0 | 4 | 0 |
 | Provider | 22 | 9 | 1 | 1 | 0 | 11 | 2 |
-| Rating | 11 | 0 | 0 | 0 | 0 | 11 | 0 |
-| Reservation | 60 | 22 | 13 | 0 | 2 | 23 | 6 |
-| Several | 22 | 0 | 5 | 2 | 1 | 14 | 7 |
+| Rating | 11 | 11 | 0 | 0 | 0 | 0 | 0 |
+| Reservation | 60 | 46 | 2 | 0 | 1 | 11 | 3 |
+| Several | 22 | 0 | 6 | 2 | 1 | 13 | 7 |
 | Support | 16 | 1 | 3 | 0 | 0 | 12 | 3 |
 | Verification | 11 | 5 | 1 | 0 | 0 | 5 | 2 |
 
@@ -60,10 +60,10 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | --- | --- | --- | :-: | --- | --- |
 | CUS-1 | A customer registers with a name, a home address with its city, and an arrival note. | Customer | 1 | Domain + usecase | customer.domain (10), customer.usecase (11), reservation.usecase (2) |
 | CUS-2 | A customer must agree to the Terms of Service to register. | Customer | 1 | Domain + usecase | customer.domain (1), customer.usecase (3) |
-| CUS-3 | Only identity-verified customers can make reservations. A customer verifies at their firs… | Customer | 1 | Domain + usecase | customer.domain (2), customer.usecase (4), provider.usecase (1), reservation.domain (3), reservation.usecase (5), verification.domain (3), verification.usecase (4) |
+| CUS-3 | Only identity-verified customers can make reservations. A customer verifies at their firs… | Customer | 1 | Domain + usecase | conversation.usecase (4), customer.domain (2), customer.usecase (4), provider.usecase (1), reservation.domain (3), reservation.usecase (5), verification.domain (3), verification.usecase (4) |
 | CUS-4 | Support can suspend a customer after a confirmed report or repeated confirmed no-shows: f… | Support | 6 | Domain only | customer.domain (7) |
-| CUS-5 | A suspended customer can't reserve or start enquiries. Their reservations whose Check-in… | Customer | 6 | Domain + usecase **(partial)** A suspended customer can't reserve; cancelling their reservations is slice 6. | customer.domain (2), reservation.domain (3), reservation.usecase (1) |
-| CUS-6 | A 7- or 30-day suspension ends by itself. A suspension until lifted ends when Support lif… | Customer | 6 | Domain only | customer.domain (11) |
+| CUS-5 | A suspended customer can't reserve or start enquiries. Their reservations whose Check-in… | Customer | 6 | Domain + usecase **(partial)** A suspended customer can't reserve; cancelling their reservations is slice 6. | conversation.domain (2), conversation.usecase (3), customer.domain (2), reservation.domain (3), reservation.usecase (1) |
+| CUS-6 | A 7- or 30-day suspension ends by itself. A suspension until lifted ends when Support lif… | Customer | 6 | Domain + usecase | conversation.domain (4), conversation.usecase (1), customer.domain (11) |
 | CUS-7 | A customer signs in through an identity provider, such as Google or Apple. One identity-p… | Customer | 1 | Domain + usecase | customer.domain (5), customer.usecase (5) |
 | CUS-8 | A customer can deactivate their account when they have no Requested or Reserved reservati… | Customer | 6 | Not started | – |
 | CUS-9 | A customer can ask Support to delete their data, under the same conditions as deactivatio… | Customer | 6 | Not started | – |
@@ -148,9 +148,9 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | RES-4 | A reservation's Notice is at least the provider's minimum notice. | Reservation | 1 | Domain + usecase | listing.domain (1), reservation.domain (4), reservation.usecase (1) |
 | RES-5 | A reservation lasts at least 1 hour, in 15-minute steps. | Reservation | 1 | Domain + usecase | listing.domain (5), reservation.domain (6), reservation.usecase (1) |
 | RES-6 | Total Reservation Fee = rate × hours × helpers × (1 − discount) + travel fee. | Reservation | 1 | Domain + usecase | kernel (1), reservation.domain (4), reservation.usecase (3) |
-| RES-7 | When payment is confirmed, the reservation is Requested and the payment is held. | Reservation | 1 | Domain + usecase | reservation.domain (4), reservation.usecase (4) |
-| RES-8 | A reservation keeps the provider's terms, Homa's reservation values and the customer's ad… | Reservation | 1 | Domain + usecase | customer.domain (1), customer.usecase (1), ie (1), listing.domain (3), payment.domain (4), reservation.domain (10), reservation.usecase (6) |
-| RES-9 | A provider has one reservation at a time. A Requested or Reserved reservation blocks the… | Reservation | 1 | Domain + usecase | kernel (3), listing.domain (1), reservation.domain (9), reservation.usecase (4) |
+| RES-7 | When payment is confirmed, the reservation is Requested and the payment is held. | Reservation | 1 | Domain + usecase | payment.domain (7), payment.usecase (6), reservation.domain (4), reservation.usecase (4) |
+| RES-8 | A reservation keeps the provider's terms, Homa's reservation values and the customer's ad… | Reservation | 1 | Domain + usecase | customer.domain (1), customer.usecase (1), ie (1), listing.domain (3), payment.domain (6), rating.domain (3), rating.usecase (1), reservation.domain (13), reservation.usecase (7) |
+| RES-9 | A provider has one reservation at a time. A Requested or Reserved reservation blocks the… | Reservation | 1 | Domain + usecase | kernel (3), listing.domain (1), reservation.domain (9), reservation.usecase (5) |
 | RES-10 | A customer can't have two Requested or Reserved reservations whose job times overlap. | Reservation | 1 | Domain + usecase | reservation.domain (5), reservation.usecase (1) |
 | RES-11 | When several customers pay for the same provider time, the first confirmed payment wins.… | Reservation | 1 | Domain + usecase | payment.domain (3), payment.usecase (6), reservation.domain (9), reservation.usecase (7) |
 | RES-12 | When one checkout is paid twice, the first confirmed payment counts and the other is refu… | Reservation | 1 | Domain + usecase | payment.domain (8), payment.usecase (4) |
@@ -159,11 +159,11 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| REQ-1 | Reservations can't be edited (P2). | Reservation | 2 | Domain only | reservation.domain (1) |
-| REQ-2 | A customer can withdraw a Requested reservation for free. It becomes Withdrawn, the payme… | Reservation | 2 | Domain only | reservation.domain (2) |
-| REQ-3 | A provider can decline a Requested reservation. The customer is refunded in full. | Reservation | 2 | Not started | – |
-| REQ-4 | A request not accepted by its deadline expires, and the customer is refunded in full. | Reservation | 2 | Not started | – |
-| REQ-5 | When a withdrawal and an acceptance happen together, the first one recorded wins. | Reservation | 2 | Domain only | reservation.domain (4) |
+| REQ-1 | Reservations can't be edited (P2). | Reservation | 2 | Domain + usecase | reservation.domain (2), reservation.usecase (3) |
+| REQ-2 | A customer can withdraw a Requested reservation for free. It becomes Withdrawn, the payme… | Reservation | 2 | Domain + usecase | payment.domain (1), payment.usecase (6), reservation.domain (4), reservation.usecase (6) |
+| REQ-3 | A provider can decline a Requested reservation. The customer is refunded in full. | Reservation | 2 | Domain + usecase | payment.domain (1), payment.usecase (5), reservation.domain (4), reservation.usecase (6) |
+| REQ-4 | A request not accepted by its deadline expires, and the customer is refunded in full. | Reservation | 2 | Domain + usecase | payment.domain (1), payment.usecase (5), reservation.domain (6), reservation.usecase (14) |
+| REQ-5 | When a withdrawal and an acceptance happen together, the first one recorded wins. | Reservation | 2 | Domain + usecase | reservation.domain (5), reservation.usecase (8) |
 
 ### 4.3 Acceptance policies
 
@@ -171,7 +171,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | --- | --- | --- | :-: | --- | --- |
 | ACC-1 | Instant: a reservation is Reserved as soon as it's Requested. It must be made before the… | Reservation | 1 | Domain + usecase | reservation.domain (4), reservation.usecase (1) |
 | ACC-2 | Request: a reservation is Reserved when the provider accepts it by the deadline. | Reservation | 1 | Domain + usecase | reservation.domain (3), reservation.usecase (4) |
-| ACC-3 | The acceptance deadline is 24 hours after the request or 1 hour before the Check-in Perio… | Reservation | 1 | Domain only | reservation.domain (6) |
+| ACC-3 | The acceptance deadline is 24 hours after the request or 1 hour before the Check-in Perio… | Reservation | 1 | Domain + usecase | reservation.domain (7), reservation.usecase (3) |
 
 ### 4.4 Roster
 
@@ -192,20 +192,20 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| CHT-1 | Only a customer can start a chat: as an Enquiry, or from a reservation. | Conversation | 8 | Not started | – |
-| CHT-2 | A reservation's chat is open from Requested until the Protection Window ends. | Conversation | 8 | Not started | – |
-| CHT-3 | Every chat shows that payments and arrangements outside Homa aren't protected. | Conversation | 8 | Not started | – |
+| CHT-1 | Only a customer can start a chat: as an Enquiry, or from a reservation. | Conversation | 8 | Domain + usecase | conversation.domain (12), conversation.usecase (20) |
+| CHT-2 | A reservation's chat is open from Requested until the Protection Window ends. | Conversation | 8 | Domain + usecase | conversation.domain (9), conversation.usecase (5) |
+| CHT-3 | Every chat shows that payments and arrangements outside Homa aren't protected. | Conversation | 8 | Domain + usecase **(partial)** UI copy: the apps show the reminder; Conversation only keeps messages exactly as written. | conversation.domain (1), conversation.usecase (2) |
 | CHT-4 | Support can read a reservation's chat as evidence for a report. | Conversation | 5 | Not started | – |
-| CHT-5 | A reservation's chat becomes read-only when its Protection Window ends, or when the reser… | Conversation | 8 | Not started | – |
+| CHT-5 | A reservation's chat becomes read-only when its Protection Window ends, or when the reser… | Conversation | 8 | Domain + usecase | conversation.domain (20), conversation.usecase (34) |
 
 ### 4.6 Arrival and job time
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| JOB-1 | The rostered team arrives during the Check-in Period. Arrival problems are handled throug… | Reservation | 1 | Domain only | reservation.domain (4) |
-| JOB-2 | The customer pays for the booked hours, even if the team finishes early. | Reservation | 1 | Domain only | reservation.domain (1) |
+| JOB-1 | The rostered team arrives during the Check-in Period. Arrival problems are handled throug… | Reservation | 1 | Domain + usecase | reservation.domain (4), reservation.usecase (1) |
+| JOB-2 | The customer pays for the booked hours, even if the team finishes early. | Reservation | 1 | Domain + usecase | reservation.domain (1), reservation.usecase (1) |
 | JOB-3 | The provider marks the job Completed, with at least one after-photo, after the job end. N… | Reservation | 1 | Domain + usecase | payment.domain (1), payment.usecase (2), reservation.domain (3), reservation.usecase (4) |
-| JOB-4 | The customer is told when the job is Completed. | Reservation | 1 | Domain only | reservation.domain (1) |
+| JOB-4 | The customer is told when the job is Completed. | Reservation | 1 | Domain + usecase | reservation.domain (1), reservation.usecase (1) |
 | JOB-5 | A job not yet marked Completed triggers reminders at the job end and 2 hours later. The p… | Reservation | 1 | Domain + usecase | payment.domain (2), reservation.domain (4), reservation.usecase (4) |
 | JOB-6 | Completion photos are evidence for reports. | Reservation | 1 | Domain + usecase | ie (1), reservation.domain (2), reservation.usecase (2) |
 
@@ -213,14 +213,14 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| PAY-1 | The customer's payment is held from the moment the reservation is Requested. | Payment | 1 | Domain + usecase | payment.domain (3), payment.usecase (4) |
+| PAY-1 | The customer's payment is held from the moment the reservation is Requested. | Payment | 1 | Domain + usecase | payment.domain (3), payment.usecase (6) |
 | PAY-2 | A job's payout is released when the job is Completed, the Protection Window has ended and… | Payment | 1 | Domain + usecase | payment.domain (9), payment.usecase (10) |
-| PAY-3 | Homa's platform fee is 15.5% of every payout to a provider, including fee payouts. | Payment | 1 | Domain + usecase | kernel (1), payment.domain (8), payment.usecase (3) |
-| PAY-4 | Refunds come from the held payment. Compensation is paid by Homa and recovered from the p… | Payment | 3 | Domain + usecase | payment.domain (6), payment.usecase (1) |
-| PAY-5 | Fines are deducted from the provider's payouts after the platform fee, at most 20% of eac… | Payment | 3 | Domain only **(partial)** Only the 20% cap value; deducting fines is slice 3. | payment.domain (1) |
-| PAY-6 | Fees owed to the provider (cancellation, last-minute and no-show) are paid out like a job… | Payment | 3 | Domain only | payment.domain (6) |
-| PAY-7 | A refund is paid as soon as it's decided. | Payment | 3 | Domain + usecase | payment.domain (5), payment.usecase (2) |
-| PAY-8 | Each money line is rounded once to the nearest sen, half up, and a refund is the amount p… | Payment | – | Domain + usecase | kernel (4), payment.domain (9), payment.usecase (2) |
+| PAY-3 | Homa's platform fee is 15.5% of every payout to a provider, including fee payouts. | Payment | 1 | Domain + usecase | kernel (1), payment.domain (9), payment.usecase (5) |
+| PAY-4 | Refunds come from the held payment. Compensation is paid by Homa and recovered from the p… | Payment | 3 | Domain + usecase | payment.domain (23), payment.usecase (21) |
+| PAY-5 | Fines are deducted from the provider's payouts after the platform fee, at most 20% of eac… | Payment | 3 | Domain + usecase | payment.domain (19), payment.usecase (7) |
+| PAY-6 | Fees owed to the provider (cancellation, last-minute and no-show) are paid out like a job… | Payment | 3 | Domain + usecase | payment.domain (10), payment.usecase (7) |
+| PAY-7 | A refund is paid as soon as it's decided. | Payment | 3 | Domain + usecase | payment.domain (6), payment.usecase (21) |
+| PAY-8 | Each money line is rounded once to the nearest sen, half up, and a refund is the amount p… | Payment | – | Domain + usecase | kernel (4), payment.domain (15), payment.usecase (3), reservation.domain (3) |
 | PAY-9 | When a provider closes, its pending payouts are released when due and its fines are deduc… | Payment | 6 | Not started | – |
 | PAY-10 | Debt, and fines paid early under PAY-11, are paid by direct payment to Homa. | Payment | 6 | Not started | – |
 | PAY-11 | A closed provider can rejoin only once its final debt is known: when its pending payouts… | Payment | 6 | Not started | – |
@@ -230,27 +230,27 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| CAN-1 | Cancellation fees and fines are calculated after discount. | Reservation | 3 | Domain only **(partial)** Only the Base Cancellation Fee amount (RM45); cancelling is slice 3. | reservation.domain (1) |
-| CAN-2 | No fee or fine is more than the Total Reservation Fee. | Reservation | 3 | Elsewhere only | kernel (1) |
-| CAN-3 | Percentages in this section are of the Total Reservation Fee, unless stated otherwise. | Reservation | 3 | Not started | – |
+| CAN-1 | Cancellation fees and fines are calculated after discount. | Reservation | 3 | Domain + usecase | reservation.domain (3), reservation.usecase (1) |
+| CAN-2 | No fee or fine is more than the Total Reservation Fee. | Reservation | 3 | Domain + usecase | kernel (1), reservation.domain (8), reservation.usecase (1) |
+| CAN-3 | Percentages in this section are of the Total Reservation Fee, unless stated otherwise. | Reservation | 3 | Domain + usecase | reservation.domain (2), reservation.usecase (1) |
 
 ### 6.2 Customer cancels after Reserved, before the Check-in Period
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| CCX-1 | Grace Period: a reservation Reserved at least 24 hours before its Check-in Period can be… | Reservation | 3 | Domain only **(partial)** Only the Grace Period and tier values; the cancellation itself is slice 3. | reservation.domain (1) |
-| CCX-2 | Outside the Grace Period, the provider's cancellation tier sets the free cut-off. | Reservation | 3 | Not started | – |
-| CCX-3 | Flexible: free until 4 hours before the Check-in Period. | Reservation | 3 | Not started | – |
-| CCX-4 | Standard: free until 12 hours before the Check-in Period. | Reservation | 3 | Not started | – |
-| CCX-5 | Firm: free until 24 hours before the Check-in Period. | Reservation | 3 | Not started | – |
-| CCX-6 | After the cut-off, the customer pays the provider the Base Cancellation Fee. | Reservation | 3 | Not started | – |
+| CCX-1 | Grace Period: a reservation Reserved at least 24 hours before its Check-in Period can be… | Reservation | 3 | Domain + usecase | payment.usecase (1), reservation.domain (6), reservation.usecase (2) |
+| CCX-2 | Outside the Grace Period, the provider's cancellation tier sets the free cut-off. | Reservation | 3 | Domain + usecase | reservation.domain (1), reservation.usecase (1) |
+| CCX-3 | Flexible: free until 4 hours before the Check-in Period. | Reservation | 3 | Domain + usecase | reservation.domain (1), reservation.usecase (1) |
+| CCX-4 | Standard: free until 12 hours before the Check-in Period. | Reservation | 3 | Domain + usecase | reservation.domain (1), reservation.usecase (2) |
+| CCX-5 | Firm: free until 24 hours before the Check-in Period. | Reservation | 3 | Domain + usecase | reservation.domain (1), reservation.usecase (1) |
+| CCX-6 | After the cut-off, the customer pays the provider the Base Cancellation Fee. | Reservation | 3 | Domain + usecase | payment.domain (1), payment.usecase (4), reservation.domain (6), reservation.usecase (9) |
 
 ### 6.3 Provider cancels after Reserved, before the Check-in Period
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| PCX-1 | More than 24 hours before the Check-in Period: the provider is fined the Base Cancellatio… | Reservation | 3 | Not started | – |
-| PCX-2 | Within 24 hours of the Check-in Period: the provider is fined Base + 10%, and the custome… | Reservation | 3 | Domain only **(partial)** Only the fine and compensation values; the provider cancellation is slice 3. | reservation.domain (1) |
+| PCX-1 | More than 24 hours before the Check-in Period: the provider is fined the Base Cancellatio… | Reservation | 3 | Domain + usecase | payment.usecase (1), reservation.domain (3), reservation.usecase (4) |
+| PCX-2 | Within 24 hours of the Check-in Period: the provider is fined Base + 10%, and the custome… | Reservation | 3 | Domain + usecase | payment.usecase (1), reservation.domain (6), reservation.usecase (2) |
 
 ### 6.4 No Roster
 
@@ -264,9 +264,9 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| LMC-1 | Customer cancels: the customer pays the provider the Base Cancellation Fee + the hours wo… | Reservation | 3 | Not started | – |
-| LMC-2 | Hours worked after the first hour are charged in 15-minute steps, rounded up. | Reservation | 3 | Not started | – |
-| LMC-3 | Provider cancels: the provider is fined Base + 20%, and the customer gets a full refund +… | Reservation | 3 | Not started | – |
+| LMC-1 | Customer cancels: the customer pays the provider the Base Cancellation Fee + the hours wo… | Reservation | 3 | Domain + usecase | reservation.domain (6), reservation.usecase (4) |
+| LMC-2 | Hours worked after the first hour are charged in 15-minute steps, rounded up. | Reservation | 3 | Domain + usecase | reservation.domain (9), reservation.usecase (1) |
+| LMC-3 | Provider cancels: the provider is fined Base + 20%, and the customer gets a full refund +… | Reservation | 3 | Domain + usecase | reservation.domain (4), reservation.usecase (2) |
 
 ### 6.6 Provider suspended
 
@@ -287,7 +287,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | NSH-3 | For a Provider No Show, the provider is fined Base + 30%, and the customer gets a full re… | Reservation | 5 | Not started | – |
 | NSH-4 | Customer No Show: Support confirms it from the provider's report, made after the Check-in… | Support | 5 | Not started | – |
 | NSH-5 | For a Customer No Show, the customer pays the provider the Base Cancellation Fee + 30% of… | Reservation | 5 | Domain only **(partial)** Only the customer no-show fee values; the no-show is slice 5. | reservation.domain (1) |
-| NSH-6 | A Provider No Show reported in the Protection Window can be confirmed even after the job… | Reservation | 5 | Domain only **(partial)** Only voiding the payout; confirming a no-show is slice 5. | payment.domain (3) |
+| NSH-6 | A Provider No Show reported in the Protection Window can be confirmed even after the job… | Reservation | 5 | Domain + usecase **(partial)** Only voiding the payout; confirming a no-show is slice 5. | payment.domain (5), payment.usecase (3), rating.domain (4), rating.usecase (7) |
 
 ### 8. Reports
 
@@ -309,17 +309,17 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| RTG-1 | The customer rates the provider and the provider rates the customer. | Rating | 7 | Not started | – |
-| RTG-2 | The Rating Window opens when the job is Completed and closes 7 days after the Protection… | Rating | 7 | Not started | – |
-| RTG-3 | Ratings are double-blind: each is revealed when both are in, or when the window closes. | Rating | 7 | Not started | – |
-| RTG-4 | A rating has 1–5 stars. A description and category stars are optional. | Rating | 7 | Not started | – |
-| RTG-5 | A customer's rating can include media. A provider's rating of a customer is text only. | Rating | 7 | Not started | – |
-| RTG-6 | A provider's ratings are seen by it and by customers. A customer's ratings are seen by th… | Rating | 7 | Not started | – |
-| RTG-7 | Customers rate providers on Quality of work, Punctuality and Professionalism. | Rating | 7 | Not started | – |
-| RTG-8 | Providers rate customers on Accurate request, Access and readiness and Respect. | Rating | 7 | Not started | – |
-| RTG-9 | Only Completed reservations get ratings. | Rating | 7 | Not started | – |
-| RTG-10 | Reliability shows counts over the last 12 months. Customers see a provider's cancellation… | Rating | 7 | Not started | – |
-| RTG-11 | Support can remove a rating with abusive content or personal contact or address details. | Rating | 7 | Not started | – |
+| RTG-1 | The customer rates the provider and the provider rates the customer. | Rating | 7 | Domain + usecase | rating.domain (8), rating.usecase (5) |
+| RTG-2 | The Rating Window opens when the job is Completed and closes 7 days after the Protection… | Rating | 7 | Domain + usecase | rating.domain (10), rating.usecase (10) |
+| RTG-3 | Ratings are double-blind: each is revealed when both are in, or when the window closes. | Rating | 7 | Domain + usecase | rating.domain (16), rating.usecase (18) |
+| RTG-4 | A rating has 1–5 stars. A description and category stars are optional. | Rating | 7 | Domain + usecase | rating.domain (6), rating.usecase (2) |
+| RTG-5 | A customer's rating can include media. A provider's rating of a customer is text only. | Rating | 7 | Domain + usecase | rating.domain (4), rating.usecase (2) |
+| RTG-6 | A provider's ratings are seen by it and by customers. A customer's ratings are seen by th… | Rating | 7 | Domain + usecase | rating.domain (7), rating.usecase (5) |
+| RTG-7 | Customers rate providers on Quality of work, Punctuality and Professionalism. | Rating | 7 | Domain + usecase | rating.domain (4), rating.usecase (2) |
+| RTG-8 | Providers rate customers on Accurate request, Access and readiness and Respect. | Rating | 7 | Domain + usecase | rating.domain (4), rating.usecase (2) |
+| RTG-9 | Only Completed reservations get ratings. | Rating | 7 | Domain + usecase | rating.domain (2), rating.usecase (3) |
+| RTG-10 | Reliability shows counts over the last 12 months. Customers see a provider's cancellation… | Rating | 7 | Domain + usecase | rating.domain (29), rating.usecase (20) |
+| RTG-11 | Support can remove a rating with abusive content or personal contact or address details. | Rating | 7 | Domain + usecase | rating.domain (6), rating.usecase (7) |
 
 ### 10. Data protection and retention
 
@@ -328,7 +328,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | DAT-1 | Each record is kept for its period below, then deleted or anonymised, whatever the accoun… | Several | 9 | Not started | – |
 | DAT-2 | Payment records are kept for 7 years from the end of the year of the transaction, with on… | Several | 9 | Elsewhere only **(partial)** Only the end-of-year date helper; purging payment records is slice 9. | kernel (2) |
 | DAT-3 | Property Damage and Safety & Misconduct reports, with their evidence, are kept for 6 year… | Several | 9 | Not started | – |
-| DAT-4 | Records behind reliability counts are kept for 12 months from the event. | Several | 9 | Not started | – |
+| DAT-4 | Records behind reliability counts are kept for 12 months from the event. | Several | 9 | Domain only | rating.domain (2) |
 | DAT-5 | Chats, completion photos and arrival proof not in a report are kept for 12 months after t… | Several | 9 | Not started | – |
 | DAT-6 | A debt record is kept until the debt is paid, and at least as long as payment records. | Several | 9 | Not started | – |
 | DAT-7 | A suspended customer's identity-provider account and identity number stay blocked until t… | Several | 9 | Domain only **(partial)** Only the sign-in block after deletion; the rest is slice 9. | customer.domain (2) |

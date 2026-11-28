@@ -57,9 +57,6 @@ SLICE_TITLES = {
 
 # Rules a test cites but that are only partly built. Keep this honest: edit it when a slice completes a rule.
 NOTES = {
-    "CAN-1": "Only the Base Cancellation Fee amount (RM45); cancelling is slice 3.",
-    "CCX-1": "Only the Grace Period and tier values; the cancellation itself is slice 3.",
-    "PCX-2": "Only the fine and compensation values; the provider cancellation is slice 3.",
     "NSH-5": "Only the customer no-show fee values; the no-show is slice 5.",
     "NSH-6": "Only voiding the payout; confirming a no-show is slice 5.",
     "RPT-1": "Only the Protection Window time; reports are slice 5.",
@@ -72,6 +69,7 @@ NOTES = {
     "IDN-4": "A member's photo fact is carried and checked; the photo check flow is slice 6.",
     "CUS-5": "A suspended customer can't reserve; cancelling their reservations is slice 6.",
     "OFR-8": "Weekly working hours only; calendar sync is slice 8.",
+    "CHT-3": "UI copy: the apps show the reminder; Conversation only keeps messages exactly as written.",
     "DAT-2": "Only the end-of-year date helper; purging payment records is slice 9.",
     "DAT-7": "Only the sign-in block after deletion; the rest is slice 9.",
     "DAT-11": "Only the privacy-notice languages in the country policy; consent is slice 9.",

@@ -59,12 +59,12 @@ Vertical slices from the plan; inside each slice: domain, then usecase, then inf
 | --- | --- | --- | --- |
 | 0. Skeleton | kernel, ie, app | PAY-8 (in `Money`) | Done: outbox, `ProcessedMessageStore`, ECS/Fargate packaging ([ADRs](docs/decisions/)) |
 | 1. Book and get paid | Customer, Verification (minimal), Provider (minimal), Listing (minimal), Reservation, Payment | CUS-1–3, CUS-7, CUS-10, IDN-1, IDN-2, PRV-1–3, HLP-1–4, ROS-1–3, ROS-6, OFR-1–6, OFR-9–11, RES-1–12, ACC-1–3, JOB-1–6, PAY-1–3 | Domain and usecase layers done for rules v1.6 in all six contexts (100% mutation); infra and the end-to-end flow A next |
-| 2. Requests and withdrawals | Reservation, Payment | REQ-1–5 | `WITHDRAWN` and `withdraw()` in the domain; the rest not started |
-| 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Not started |
+| 2. Requests and withdrawals | Reservation, Payment | REQ-1–5 | Domain and usecase done: withdraw, decline, expire, the withdraw-versus-accept race, and the refunds |
+| 3. Cancellations | Reservation, Payment | CAN-1–3, CCX-1–6, PCX-1–2, LMC-1–3, PAY-4–7 | Domain and usecase done: the settlement and its policies, customer and provider cancellation, fines and their deduction, flows B and C |
 | 4. Team and roster | Provider, Reservation | PRV-6, PRV-11, HLP-5–10, ROS-4, ROS-5, ROS-7, ROS-8, NRS-1–3 | Not started |
 | 5. Reports and no-shows | Support, Reservation, Payment | RPT-1–11, NSH-1–6, CHT-4 | Not started |
 | 6. Compliance, suspensions and debt | Provider, Verification, Support, Customer, Reservation, Payment | MON-1–6, PRV-4, PRV-5, PRV-7–10, PRV-12, CUS-4–6, CUS-8, CUS-9, SUS-1–5, ROS-9, ROS-10, PAY-9–12 | Not started (CUS-4 and CUS-6 partly in the domain) |
-| 7. Ratings and reliability | Rating, Listing | RTG-1–11 | Not started |
-| 8. Chat and calendar sync | Conversation, Listing | CHT-1–3, CHT-5, OFR-7, OFR-8 | Not started |
+| 7. Ratings and reliability | Rating, Listing | RTG-1–11 | Rating context: domain and usecase done; Listing's display of ratings is not started |
+| 8. Chat and calendar sync | Conversation, Listing | CHT-1–3, CHT-5, OFR-7, OFR-8 | Conversation context: domain and usecase done (CHT-1–3, CHT-5); proof photos and calendar sync (OFR-7, OFR-8) not started |
 | 9. Data retention | Payment, Support, Rating, Conversation, Reservation, Customer | DAT-1–15, IDN-3–5 | `BusinessCalendar.endOfYear` (DAT-2) in the kernel and the 30-day purge of technical rows; the rest not started |
 | 10. External service failures | Payment, Provider, Listing, sign-in in every context | EXT-1–7 | Not started |
