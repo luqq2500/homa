@@ -87,6 +87,21 @@ class HandleReservationExpiredIETest {
     }
 
     @Test
+    @Tag("REQ-4")
+    @DisplayName("An event this handler already handled is not applied again, whatever state the hold is in.")
+    void alreadyHandledEventIsNotApplied() {
+        PaymentHold hold = aisyahsRequestedHold();
+        holds.given(hold);
+        processed.recordFirstHandling("reservation-event-1", HandleReservationExpiredIE.HANDLER);
+
+        handler.handle(expired("reservation-event-1"));
+
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.HELD);
+        assertThat(gateway.refunds()).isEmpty();
+        assertThat(publisher.published()).isEmpty();
+    }
+
+    @Test
     @Tag("PAY-7")
     @DisplayName("A refund sent again after a failure carries the same idempotency key, so the gateway pays it once.")
     void refundKeyDependsOnlyOnTheReservation() {

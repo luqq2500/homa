@@ -83,6 +83,11 @@ public final class PaymentHold {
         requireShape(countedAttempt().map(confirmedAttempts::contains).orElse(confirmedAttempts.isEmpty()),
                 "its counted attempt among the confirmed ones, and no confirmed attempt without one");
         requireShape(heldFitsStatus(), "an amount held only while " + status + " allows, never more than the total");
+        requireReservationOnlyOnceConfirmed();
+    }
+
+    /** A hold is linked to a reservation only once a payment is confirmed (RES-7). */
+    private void requireReservationOnlyOnceConfirmed() {
         requireShape(reservationId == null || status != PaymentHoldStatus.PENDING,
                 "a reservation only once its payment is confirmed");
     }
