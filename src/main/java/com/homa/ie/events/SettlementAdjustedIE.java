@@ -10,8 +10,9 @@ import java.time.Instant;
  * never re-derives them (plan decision 1). Each money call is keyed by {@code adjustmentId} (idempotency).
  *
  * @param adjustmentId unique per adjustment, assigned by Reservation
- * @param reason SMALLER_ROSTER (ROS-8). Later slices add MEMBER_LEFT (RPT-9), JOB_STOPPED (SUS-3) and
- *               SUPPORT_REFUND (RPT-5)
+ * @param reason SMALLER_ROSTER (ROS-8), MEMBER_LEFT (RPT-9: a helper left during the job), MEMBER_LEFT_CORRECTED
+ *               (RPT-10: Support moved the leave time earlier, so the difference is refunded) or SUPPORT_REFUND
+ *               (RPT-5). A later slice adds JOB_STOPPED (SUS-3)
  * @param customerRefund what goes back to the customer from the held payment, paid at once
  * @param newTotal what the reservation costs after the adjustment: the payout's gross now
  */
