@@ -43,4 +43,16 @@ class VerifiedPersonFactsTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> VerifiedPersonFacts.local(null, true, VERIFIED_UNTIL)).isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    @Tag("HLP-7")
+    @DisplayName("Verification says when a pass falls due for re-verification, so a person is never verified without it.")
+    void verificationAlwaysSaysWhenItFallsDue() {
+        assertThat(sitiVerified().verifiedUntil()).isEqualTo(VERIFIED_UNTIL);
+        assertThat(rinaVerified().verifiedUntil()).isEqualTo(VERIFIED_UNTIL);
+        assertThatThrownBy(() -> VerifiedPersonFacts.local(SITI_PERSON, true, null))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY, null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

@@ -1,12 +1,15 @@
 package com.homa.provider.domain;
 
+import static com.homa.fixtures.HomaFixtures.CHECK_IN_PERIOD;
 import static com.homa.fixtures.HomaFixtures.FARID_MEMBER_ID;
+import static com.homa.fixtures.HomaFixtures.JOB_END;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.fixtures.HomaFixtures.NURUL_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.RINA_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.SITI_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.at;
 
+import com.homa.kernel.TimeInterval;
 import com.homa.provider.domain.Eligibility.ForeignWorker;
 import com.homa.provider.domain.Eligibility.Local;
 import java.time.Instant;
@@ -129,7 +132,18 @@ final class ProviderFixtures {
 
     /** A stored local member of Kemas Home with a verified photo, as the persistence adapter would rebuild it. */
     static TeamMember storedMember(TeamMemberId id, TeamRole role, boolean deactivated, boolean suspended) {
+        return storedMember(id, role, deactivated, suspended, false);
+    }
+
+    /** The same, removed or not (HLP-8). */
+    static TeamMember storedMember(
+            TeamMemberId id, TeamRole role, boolean deactivated, boolean suspended, boolean removed) {
         return TeamMember.restore(id, KEMAS_HOME, SITI_PERSON, role, new Local(), TEAM_ADDED_AT, true, deactivated,
-                suspended, false, VERIFIED_UNTIL);
+                suspended, removed, VERIFIED_UNTIL);
+    }
+
+    /** The standard reservation's window, Saturday 5 December 2026: the Check-in Period from 9:45 to the job end at 14:00. */
+    static RosteredWindows standardJobWindow() {
+        return RosteredWindows.of(List.of(new TimeInterval(CHECK_IN_PERIOD.start(), JOB_END)));
     }
 }

@@ -78,6 +78,17 @@ class TeamMemberActivityTest {
     }
 
     @Test
+    @Tag("HLP-8")
+    @DisplayName("A removed member is never active, however they were stored, so they never count towards a team.")
+    void removedMemberIsNeverActive() {
+        TeamMember removed = storedMember(SITI, TeamRole.HELPER, false, false, true);
+
+        assertThat(removed.isActive()).isFalse();
+        assertThat(removed.isActiveHelper()).isFalse();
+        assertThat(new Team(List.of(removed)).activeHelperCount()).isZero();
+    }
+
+    @Test
     @Tag("HLP-3")
     @DisplayName("A stored team member is rebuilt as it was saved, with their person and permit.")
     void restoredMemberKeepsItsStoredState() {
@@ -93,6 +104,8 @@ class TeamMemberActivityTest {
         assertThat(rina.hasVerifiedPhoto()).isFalse();
         assertThat(rina.isDeactivated()).isTrue();
         assertThat(rina.isSuspended()).isFalse();
+        assertThat(rina.isRemoved()).isFalse();
+        assertThat(rina.verifiedUntil()).isEqualTo(VERIFIED_UNTIL);
         assertThat(storedMember(SITI, TeamRole.HELPER, false, true).hasVerifiedPhoto()).isTrue();
         assertThat(storedMember(SITI, TeamRole.HELPER, false, true).isSuspended()).isTrue();
         assertThat(storedMember(SITI, TeamRole.HELPER, false, true).isDeactivated()).isFalse();
