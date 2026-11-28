@@ -4,6 +4,7 @@ import com.homa.provider.domain.Provider;
 import com.homa.provider.domain.ProviderId;
 import com.homa.provider.usecase.port.out.ProviderRepository;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -28,6 +29,11 @@ public final class InMemoryProviderRepository implements ProviderRepository {
     /** The stored provider, for assertions. */
     public Provider stored(ProviderId id) {
         return findById(id).orElseThrow();
+    }
+
+    /** Every stored provider, in the order first saved. */
+    public List<Provider> all() {
+        return stored.values().stream().map(InMemoryProviderRepository::copyOf).toList();
     }
 
     public int count() {

@@ -6,16 +6,26 @@ import static com.homa.fixtures.HomaFixtures.at;
 import com.homa.ie.events.PayoutAccountVerifiedIE;
 import com.homa.ie.events.PersonVerifiedIE;
 import com.homa.ie.events.ProfilePhotoChangedIE;
+import com.homa.ie.events.ReservationCancelledIE;
+import com.homa.ie.events.ReservationCompletedIE;
+import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.RosterChangedIE;
+import com.homa.kernel.Money;
+import com.homa.provider.domain.Eligibility;
 import com.homa.provider.domain.Owner;
 import com.homa.provider.domain.PayoutAccountHolder;
 import com.homa.provider.domain.PersonId;
 import com.homa.provider.domain.Provider;
 import com.homa.provider.domain.ProviderId;
 import com.homa.provider.domain.ProviderStatus;
+import com.homa.provider.domain.TeamMember;
+import com.homa.provider.domain.TeamMemberId;
+import com.homa.provider.domain.TeamRole;
 import com.homa.provider.domain.VerifiedPersonFacts;
 import com.homa.provider.usecase.port.out.VerifiedPerson;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * The people of the example setup (§0) as Provider's use cases meet them: Azman, who owns Kemas Home; helpers Siti
@@ -75,11 +85,57 @@ public final class ProviderUsecaseFixtures {
     }
 
     public static VerifiedPerson verifiedLocal(String personId, String name) {
-        return new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(personId), true), name);
+        return new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(personId), true, NEXT_DUE_AT), name);
     }
 
     /** Kemas Home as stored, run by Azman. {@code payoutAccount} is null while it has no verified payout account. */
     public static Provider kemasHome(ProviderStatus status, PayoutAccountHolder payoutAccount) {
         return Provider.restore(KEMAS_HOME, new Owner(new PersonId(AZMAN)), status, payoutAccount);
+    }
+
+    public static final String SATURDAY_RESERVATION = "reservation-saturday";
+    public static final Instant SATURDAY_CHECK_IN_START = at(2026, 12, 5, 9, 45);
+    public static final Instant SATURDAY_JOB_START = at(2026, 12, 5, 10, 0);
+    public static final Instant SATURDAY_JOB_END = at(2026, 12, 5, 14, 0);
+
+    /** A member of Kemas Home as stored: a local helper or supervisor, with a verified photo, added on 1 September. */
+    public static TeamMember storedMember(String memberId, String personId, TeamRole role, boolean deactivated,
+            boolean suspended, boolean removed) {
+        return TeamMember.restore(new TeamMemberId(memberId), KEMAS_HOME, new PersonId(personId), role,
+                new Eligibility.Local(), TEAM_ADDED_AT, true, deactivated, suspended, removed, NEXT_DUE_AT);
+    }
+
+    /** The standard reservation, Saturday 5 December 10:00 to 14:00 with its Check-in Period from 9:45, is Reserved. */
+    public static ReservationReservedIE saturdayReserved(String eventId) {
+        return new ReservationReservedIE(eventId, SATURDAY_RESERVATION, "customer-aisyah", KEMAS_HOME.value(),
+                SATURDAY_CHECK_IN_START, SATURDAY_JOB_START, SATURDAY_JOB_END, Money.myr(200),
+                at(2026, 12, 6, 14, 0), at(2026, 11, 30, 20, 0), at(2026, 12, 1, 9, 0));
+    }
+
+    /** Another job on Sunday 6 December, 10:00 to 14:00 with its Check-in Period from 9:45, is Reserved. */
+    public static ReservationReservedIE sundayReserved(String eventId) {
+        return new ReservationReservedIE(eventId, "reservation-sunday", "customer-aisyah", KEMAS_HOME.value(),
+                at(2026, 12, 6, 9, 45), at(2026, 12, 6, 10, 0), at(2026, 12, 6, 14, 0), Money.myr(200),
+                at(2026, 12, 7, 14, 0), at(2026, 12, 1, 20, 0), at(2026, 12, 1, 21, 0));
+    }
+
+    /** Kemas Home sets or changes the roster of a reservation. */
+    public static RosterChangedIE rosterChanged(String eventId, String reservationId, String... memberIds) {
+        return new RosterChangedIE(eventId, reservationId, List.of(memberIds), at(2026, 12, 4, 17, 0));
+    }
+
+    /** The job is marked Completed. */
+    public static ReservationCompletedIE completed(String eventId, String reservationId) {
+        return new ReservationCompletedIE(eventId, reservationId, "customer-aisyah", KEMAS_HOME.value(),
+                Money.myr(200), at(2026, 12, 6, 14, 0), SATURDAY_JOB_END, at(2026, 11, 30, 20, 0),
+                List.of("photo-after"), SATURDAY_JOB_END);
+    }
+
+    /** The reservation is Cancelled, by the provider, before its Check-in Period. */
+    public static ReservationCancelledIE cancelled(String eventId, String reservationId) {
+        return new ReservationCancelledIE(eventId, reservationId, "customer-aisyah", KEMAS_HOME.value(),
+                "PROVIDER_CANCELLED", at(2026, 12, 3, 10, 0), at(2026, 11, 30, 20, 0), SATURDAY_CHECK_IN_START,
+                at(2026, 12, 6, 14, 0), "settlement-1", Money.myr(0), Money.myr(200), Money.myr(0), Money.myr(45),
+                Money.myr(0), at(2026, 12, 3, 10, 0));
     }
 }

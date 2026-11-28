@@ -2,6 +2,7 @@ package com.homa.provider.usecase.ie;
 
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.KEMAS_HOME;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.SITI;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.kemasHome;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.payoutAccountVerified;
@@ -35,7 +36,7 @@ class HandlePayoutAccountVerifiedIETest {
 
     private void sitiIsAHelper(boolean deactivated) {
         world.members.save(TeamMember.restore(new TeamMemberId("member-siti"), KEMAS_HOME, new PersonId(SITI),
-                TeamRole.HELPER, new Local(), TEAM_ADDED_AT, true, deactivated, false));
+                TeamRole.HELPER, new Local(), TEAM_ADDED_AT, true, deactivated, false, false, NEXT_DUE_AT));
     }
 
     @Test

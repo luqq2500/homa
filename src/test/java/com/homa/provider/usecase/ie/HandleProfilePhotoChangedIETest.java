@@ -3,6 +3,7 @@ package com.homa.provider.usecase.ie;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.KEMAS_HOME;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.NURUL;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.SITI;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.photoChanged;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class HandleProfilePhotoChangedIETest {
 
     private void helper(TeamMemberId id, String personId, boolean photoVerified) {
         world.members.save(TeamMember.restore(id, KEMAS_HOME, new PersonId(personId), TeamRole.HELPER, new Local(),
-                TEAM_ADDED_AT, photoVerified, false, false));
+                TEAM_ADDED_AT, photoVerified, false, false, false, NEXT_DUE_AT));
     }
 
     @Test

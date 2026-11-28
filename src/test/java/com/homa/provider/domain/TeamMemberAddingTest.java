@@ -8,6 +8,7 @@ import static com.homa.provider.domain.ProviderFixtures.SITI;
 import static com.homa.provider.domain.ProviderFixtures.SITI_PERSON;
 import static com.homa.provider.domain.ProviderFixtures.TEAM_ADDED_AT;
 import static com.homa.provider.domain.ProviderFixtures.TEAM_ADDED_ON;
+import static com.homa.provider.domain.ProviderFixtures.VERIFIED_UNTIL;
 import static com.homa.provider.domain.ProviderFixtures.openedKemasHome;
 import static com.homa.provider.domain.ProviderFixtures.rina;
 import static com.homa.provider.domain.ProviderFixtures.rinaPermit;
@@ -39,21 +40,21 @@ class TeamMemberAddingTest {
     private final Provider kemasHome = openedKemasHome();
 
     private static VerifiedPersonFacts foreignCandidateWithDaysLeft(int days) {
-        return VerifiedPersonFacts.foreign(CANDIDATE_PERSON, true, TEAM_ADDED_ON.plusDays(days));
+        return VerifiedPersonFacts.foreign(CANDIDATE_PERSON, true, TEAM_ADDED_ON.plusDays(days), VERIFIED_UNTIL);
     }
 
     @Test
     @Tag("HLP-1")
     @DisplayName("Kemas Home can't add a 17-year-old trainee.")
     void traineeUnder18CannotBeAdded() {
-        VerifiedPersonFacts seventeen = VerifiedPersonFacts.local(TRAINEE_PERSON, false);
+        VerifiedPersonFacts seventeen = VerifiedPersonFacts.local(TRAINEE_PERSON, false, VERIFIED_UNTIL);
 
-        assertThatThrownBy(() -> kemasHome.addTeamMember(TRAINEE, TeamRole.HELPER, seventeen, false, TEAM_ADDED_AT))
+        assertThatThrownBy(() -> kemasHome.addTeamMember(TRAINEE, TeamRole.HELPER, seventeen, false, Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(MemberUnderageException.class)
                 .isInstanceOf(ProviderRuleViolationException.class)
                 .hasMessageContaining(TRAINEE.value());
         assertThatThrownBy(() -> kemasHome.addTeamMember(TRAINEE, TeamRole.SUPERVISOR, seventeen, false,
-                TEAM_ADDED_AT))
+                Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(MemberUnderageException.class);
     }
 
@@ -61,10 +62,10 @@ class TeamMemberAddingTest {
     @Tag("HLP-1")
     @DisplayName("A helper who turned 18 last week can be added.")
     void helperWhoPassedTheAgeCheckIsAdded() {
-        VerifiedPersonFacts turned18LastWeek = VerifiedPersonFacts.local(CANDIDATE_PERSON, true);
+        VerifiedPersonFacts turned18LastWeek = VerifiedPersonFacts.local(CANDIDATE_PERSON, true, VERIFIED_UNTIL);
 
         TeamMember helper = kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, turned18LastWeek, false,
-                TEAM_ADDED_AT);
+                Affiliation.none(), TEAM_ADDED_AT);
 
         assertThat(helper.isActive()).isTrue();
         assertThat(helper.personId()).isEqualTo(CANDIDATE_PERSON);
@@ -74,9 +75,9 @@ class TeamMemberAddingTest {
     @Tag("HLP-1")
     @DisplayName("A foreign candidate must be aged 18 or above too, however long their permit runs.")
     void foreignCandidateUnder18CannotBeAdded() {
-        VerifiedPersonFacts underage = VerifiedPersonFacts.foreign(CANDIDATE_PERSON, false, RINA_PERMIT_EXPIRY);
+        VerifiedPersonFacts underage = VerifiedPersonFacts.foreign(CANDIDATE_PERSON, false, RINA_PERMIT_EXPIRY, VERIFIED_UNTIL);
 
-        assertThatThrownBy(() -> kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, underage, true, TEAM_ADDED_AT))
+        assertThatThrownBy(() -> kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, underage, true, Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(MemberUnderageException.class);
     }
 
@@ -101,8 +102,8 @@ class TeamMemberAddingTest {
     @Tag("HLP-2")
     @DisplayName("A local member needs no work permit and no confirmation of lawful work.")
     void localMemberNeedsNoEmploymentConfirmation() {
-        TeamMember withoutTick = kemasHome.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), false, TEAM_ADDED_AT);
-        TeamMember withTick = kemasHome.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), true, TEAM_ADDED_AT);
+        TeamMember withoutTick = kemasHome.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), false, Affiliation.none(), TEAM_ADDED_AT);
+        TeamMember withTick = kemasHome.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), true, Affiliation.none(), TEAM_ADDED_AT);
 
         assertThat(withoutTick.eligibility()).isEqualTo(new Local());
         assertThat(withTick.eligibility()).isEqualTo(new Local());
@@ -127,13 +128,13 @@ class TeamMemberAddingTest {
     @DisplayName("A candidate with 60 days left waits until their permit is renewed.")
     void foreignCandidateWithAPermitExpiringIn60DaysCannotBeAdded() {
         assertThatThrownBy(() -> kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, foreignCandidateWithDaysLeft(60),
-                true, TEAM_ADDED_AT))
+                true, Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(WorkPermitExpiresTooSoonException.class)
                 .isInstanceOf(ProviderRuleViolationException.class)
                 .hasMessageContaining(CANDIDATE.value());
 
         VerifiedPersonFacts renewed = foreignCandidateWithDaysLeft(60 + 365);
-        assertThat(kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, renewed, true, TEAM_ADDED_AT).isActive())
+        assertThat(kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, renewed, true, Affiliation.none(), TEAM_ADDED_AT).isActive())
                 .isTrue();
     }
 
@@ -142,9 +143,9 @@ class TeamMemberAddingTest {
     @DisplayName("A permit with exactly 90 days left when the member is added is enough; 89 days is not.")
     void foreignMemberNeedsAtLeast90DaysOnTheirPermitWhenAdded() {
         assertThat(kemasHome.addTeamMember(CANDIDATE, TeamRole.HELPER, foreignCandidateWithDaysLeft(90), true,
-                TEAM_ADDED_AT).isActive()).isTrue();
+                Affiliation.none(), TEAM_ADDED_AT).isActive()).isTrue();
         assertThatThrownBy(() -> kemasHome.addTeamMember(CANDIDATE, TeamRole.SUPERVISOR,
-                foreignCandidateWithDaysLeft(89), true, TEAM_ADDED_AT))
+                foreignCandidateWithDaysLeft(89), true, Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(WorkPermitExpiresTooSoonException.class);
     }
 
@@ -156,10 +157,10 @@ class TeamMemberAddingTest {
         Instant ninetyDaysLeft = BusinessCalendar.plusDays(TEAM_ADDED_AT, 110);
         Instant eightyNineDaysLeft = BusinessCalendar.plusDays(TEAM_ADDED_AT, 111);
 
-        assertThat(kemasHome.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true, ninetyDaysLeft).addedAt())
+        assertThat(kemasHome.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true, Affiliation.none(), ninetyDaysLeft).addedAt())
                 .isEqualTo(ninetyDaysLeft);
         assertThatThrownBy(() -> kemasHome.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true,
-                eightyNineDaysLeft))
+                Affiliation.none(), eightyNineDaysLeft))
                 .isInstanceOf(WorkPermitExpiresTooSoonException.class);
     }
 
@@ -174,7 +175,7 @@ class TeamMemberAddingTest {
     @Tag("HLP-4")
     @DisplayName("Kemas Home confirms Rina is employed by Kemas Home Sdn Bhd. Without it, Rina can't be added.")
     void foreignHelperCannotBeAddedWithoutTheProvidersConfirmation() {
-        assertThatThrownBy(() -> kemasHome.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), false, TEAM_ADDED_AT))
+        assertThatThrownBy(() -> kemasHome.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), false, Affiliation.none(), TEAM_ADDED_AT))
                 .isInstanceOf(EmploymentNotConfirmedException.class)
                 .isInstanceOf(ProviderRuleViolationException.class)
                 .hasMessageContaining(RINA.value());

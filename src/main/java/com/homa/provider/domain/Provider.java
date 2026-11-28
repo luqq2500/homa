@@ -2,6 +2,7 @@ package com.homa.provider.domain;
 
 import com.homa.provider.domain.exception.NoActiveHelperException;
 import com.homa.provider.domain.exception.NoVerifiedPayoutAccountException;
+import com.homa.provider.domain.exception.PersonAlreadyBelongsToProviderException;
 import com.homa.provider.domain.exception.ProviderAlreadyLiveException;
 import java.time.Instant;
 import java.util.Objects;
@@ -13,11 +14,13 @@ import java.util.Optional;
  * active helper (PRV-2); supervisors are optional (PRV-3). Business verification is not Provider's: it is
  * Verification's {@code BusinessVerification} (PRV-7).
  *
- * <p>Left for later slices:
+ * <p>One provider per person (HLP-10): {@link #open} and {@link #addTeamMember} take an {@link Affiliation}, looked up by
+ * personId the way Customer's {@code SignInStatus} is, and refuse a person who already owns or belongs to a provider.
+ * The owner can also work in their own team (PRV-6), through {@link #addOwnerToTeam}. After a member is deactivated,
+ * reactivated or removed (HLP-5 to HLP-9), {@link #bookabilityFor} is asked again (PRV-2).
+ *
+ * <p>Left for slice 6:
  * <ul>
- *   <li>Slice 4: one provider per person (HLP-10). {@link #open} and {@link #addTeamMember} will take an
- *       {@code Affiliation}, looked up by personId the way Customer's {@code SignInStatus} is, and refuse a person who
- *       already owns or belongs to a provider. The owner can also join their own team (PRV-6).</li>
  *   <li>Slice 6: Business status (PRV-7), derived from {@code BusinessVerificationChangedIE} (business and owner link
  *       verified) and a payout account held by {@link PayoutAccountHolder#BUSINESS}; foreign members only for a
  *       Business provider (PRV-8) and their suspension on its loss (PRV-9); suspension, including the owner's
@@ -42,10 +45,15 @@ public final class Provider {
 
     /**
      * A verified person opens a provider account as its owner (PRV-1). The owner must be verified as local and aged
-     * 18 or above; see {@link Owner#verifiedAs}.
+     * 18 or above; see {@link Owner#verifiedAs}. They must also belong to no provider yet, as its owner or a member
+     * (HLP-10): {@code affiliation} is what the caller found when it looked the person up.
+     *
+     * @throws PersonAlreadyBelongsToProviderException when the person already owns a provider or is on a team
      */
-    public static Provider open(ProviderId id, VerifiedPersonFacts owner) {
-        return new Provider(id, Owner.verifiedAs(owner), ProviderStatus.OPENED, null);
+    public static Provider open(ProviderId id, VerifiedPersonFacts owner, Affiliation affiliation) {
+        Owner verified = Owner.verifiedAs(owner);
+        affiliation.admitOpeningProvider(verified.personId());
+        return new Provider(id, verified, ProviderStatus.OPENED, null);
     }
 
     /**
@@ -61,13 +69,35 @@ public final class Provider {
      * Adds a verified person to the team at {@code addedAt}, before or after going live (PRV-3: a supervisor can join
      * later). The member must have passed the age check (HLP-1); a local member is verified as local (HLP-2); a
      * foreign member needs at least 90 days left on their permit (HLP-3) and the provider's confirmation that they
-     * work lawfully for it (HLP-4), given as {@code employmentConfirmed}, which a local member doesn't need.
+     * work lawfully for it (HLP-4), given as {@code employmentConfirmed}, which a local member doesn't need. The person
+     * must belong to no provider yet (HLP-10), as {@code affiliation} says; the provider's own owner, who isn't on its
+     * team yet, is the one exception (PRV-6).
      *
      * <p>Slice 6 adds PRV-8 here: a foreign member needs a Business provider.
+     *
+     * @throws PersonAlreadyBelongsToProviderException when the person owns another provider or is on a team already
      */
     public TeamMember addTeamMember(TeamMemberId memberId, TeamRole role, VerifiedPersonFacts person,
-            boolean employmentConfirmed, Instant addedAt) {
+            boolean employmentConfirmed, Affiliation affiliation, Instant addedAt) {
+        affiliation.admitJoining(id, person.personId());
         return TeamMember.add(memberId, id, role, person, employmentConfirmed, addedAt);
+    }
+
+    /**
+     * The owner also works in their own team as a helper or supervisor (PRV-6). It is the same person, so HLP-10
+     * allows it, once. They need what any local member needs (HLP-1, HLP-2) and no confirmation of lawful work, as the
+     * owner is local (PRV-1).
+     *
+     * @throws IllegalArgumentException                when {@code owner} isn't this provider's owner
+     * @throws PersonAlreadyBelongsToProviderException when the owner is on its team already
+     */
+    public TeamMember addOwnerToTeam(TeamMemberId memberId, TeamRole role, VerifiedPersonFacts owner,
+            Affiliation affiliation, Instant addedAt) {
+        if (!isRunBy(owner.personId())) {
+            throw new IllegalArgumentException("Person " + owner.personId().value() + " doesn't run provider "
+                    + id.value() + ", so can't join its team as its owner (PRV-6)");
+        }
+        return addTeamMember(memberId, role, owner, false, affiliation, addedAt);
     }
 
     /**

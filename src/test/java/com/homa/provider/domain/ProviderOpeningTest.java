@@ -7,6 +7,7 @@ import static com.homa.provider.domain.ProviderFixtures.KEMAS_HOME;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERSON;
 import static com.homa.provider.domain.ProviderFixtures.SITI_PERSON;
+import static com.homa.provider.domain.ProviderFixtures.VERIFIED_UNTIL;
 import static com.homa.provider.domain.ProviderFixtures.openedHanaCleaning;
 import static com.homa.provider.domain.ProviderFixtures.openedKemasHome;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,9 +44,9 @@ class ProviderOpeningTest {
     @Tag("PRV-1")
     @DisplayName("A person verified as foreign can't own a provider: Malaysia's country policy allows only locals as owners.")
     void personVerifiedAsForeignCannotOpenAProvider() {
-        VerifiedPersonFacts rina = VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY);
+        VerifiedPersonFacts rina = VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY, VERIFIED_UNTIL);
 
-        assertThatThrownBy(() -> Provider.open(new ProviderId("provider-rina"), rina))
+        assertThatThrownBy(() -> Provider.open(new ProviderId("provider-rina"), rina, Affiliation.none()))
                 .isInstanceOf(OwnerNotLocalException.class)
                 .isInstanceOf(ProviderRuleViolationException.class)
                 .hasMessageContaining(RINA_PERSON.value());
@@ -55,9 +56,9 @@ class ProviderOpeningTest {
     @Tag("PRV-1")
     @DisplayName("A person who doesn't pass the age check can't own a provider: every owner is aged 18 or above.")
     void personUnder18CannotOpenAProvider() {
-        VerifiedPersonFacts underage = VerifiedPersonFacts.local(DANIEL, false);
+        VerifiedPersonFacts underage = VerifiedPersonFacts.local(DANIEL, false, VERIFIED_UNTIL);
 
-        assertThatThrownBy(() -> Provider.open(new ProviderId("provider-daniel"), underage))
+        assertThatThrownBy(() -> Provider.open(new ProviderId("provider-daniel"), underage, Affiliation.none()))
                 .isInstanceOf(OwnerUnderageException.class)
                 .isInstanceOf(ProviderRuleViolationException.class)
                 .hasMessageContaining(DANIEL.value());

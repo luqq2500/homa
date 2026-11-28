@@ -5,6 +5,7 @@ import static com.homa.provider.usecase.ProviderUsecaseFixtures.FARID;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.HANA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.KEMAS_HOME;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.SITI;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.kemasHome;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,7 @@ class ProviderGoLiveTest {
 
     private void member(ProviderId provider, String id, String personId, TeamRole role) {
         world.members.save(TeamMember.restore(new TeamMemberId(id), provider, new PersonId(personId), role,
-                new Local(), TEAM_ADDED_AT, true, false, false));
+                new Local(), TEAM_ADDED_AT, true, false, false, false, NEXT_DUE_AT));
     }
 
     private GoLiveResponse azmanGoesLive() {

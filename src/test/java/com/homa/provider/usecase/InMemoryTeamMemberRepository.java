@@ -8,6 +8,7 @@ import com.homa.provider.usecase.port.out.TeamMemberRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Keeps a copy of each saved member, in the order first saved, and hands out fresh copies on every read, as a
@@ -16,6 +17,11 @@ import java.util.Map;
 public final class InMemoryTeamMemberRepository implements TeamMemberRepository {
 
     private final Map<TeamMemberId, TeamMember> stored = new LinkedHashMap<>();
+
+    @Override
+    public Optional<TeamMember> findById(TeamMemberId id) {
+        return Optional.ofNullable(stored.get(id)).map(InMemoryTeamMemberRepository::copyOf);
+    }
 
     @Override
     public List<TeamMember> findByProviderId(ProviderId providerId) {
@@ -51,6 +57,6 @@ public final class InMemoryTeamMemberRepository implements TeamMemberRepository 
     private static TeamMember copyOf(TeamMember member) {
         return TeamMember.restore(member.id(), member.providerId(), member.personId(), member.role(),
                 member.eligibility(), member.addedAt(), member.hasVerifiedPhoto(), member.isDeactivated(),
-                member.isSuspended());
+                member.isSuspended(), member.isRemoved(), member.verifiedUntil());
     }
 }
