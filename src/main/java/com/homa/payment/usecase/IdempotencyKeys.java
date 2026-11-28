@@ -10,7 +10,8 @@ import com.homa.payment.domain.ReservationId;
  * always gets the same key: a retried webhook, a redelivered event or a rerun scheduler never charges, refunds or
  * pays twice. A payment attempt, a payment refunded in full (RES-11, RES-12) and a payout have their own ids; a
  * Requested reservation that ends is refunded once, so its reservation id names the line; a cancellation's refund
- * and compensation use the settlement's id and the name of the line, as the plan says.
+ * and compensation use the settlement's id and the name of the line, as the plan says; so does the refund of a
+ * settlement adjustment, with the adjustment's id.
  */
 public final class IdempotencyKeys {
 
@@ -55,6 +56,14 @@ public final class IdempotencyKeys {
     /** The compensation line of a cancellation settlement, paid by Homa (PAY-4). */
     public static String settlementCompensation(String settlementId) {
         return "settlement:" + settlementId + ":compensation";
+    }
+
+    /**
+     * The refund line of a settlement adjustment: the price came down after the reservation was Reserved (ROS-8,
+     * PAY-7). Each adjustment has its own id, so a second adjustment of the same reservation gets its own key.
+     */
+    public static String adjustmentRefund(String adjustmentId) {
+        return "adjustment:" + adjustmentId + ":refund";
     }
 
     /** Sending a released payout to the provider. */

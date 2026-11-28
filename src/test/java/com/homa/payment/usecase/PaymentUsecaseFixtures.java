@@ -17,6 +17,7 @@ import com.homa.ie.events.ReservationExpiredIE;
 import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
 import com.homa.ie.events.ReservationWithdrawnIE;
+import com.homa.ie.events.SettlementAdjustedIE;
 import com.homa.kernel.Money;
 import com.homa.payment.domain.BankAccount;
 import com.homa.payment.domain.CheckoutId;
@@ -164,6 +165,26 @@ public final class PaymentUsecaseFixtures {
     public static ReservationCancelledIE providerNoShow(String eventId) {
         return cancelled(eventId, "PROVIDER_NO_SHOW", NO_SHOW_CONFIRMED_AT, "settlement-no-show", Money.myr(0),
                 Money.myr(200), Money.myr(20), Money.myr(105), Money.myr(0));
+    }
+
+    /** ROS-8: Aisyah accepts Kemas Home's offer of Siti alone on Friday 18:30, before the Check-in Period. */
+    public static final Instant SMALLER_ROSTER_ACCEPTED_AT = at(2026, 12, 4, 18, 30);
+    public static final String SMALLER_ROSTER_ADJUSTMENT_ID = "adjustment-smaller-roster";
+
+    /**
+     * A settlement adjustment as Reservation publishes it: the price came down after the reservation was Reserved,
+     * with the refund and the new total it worked out. Payment never re-derives either.
+     */
+    public static SettlementAdjustedIE adjusted(String eventId, String adjustmentId, String reason,
+            Money customerRefund, Money newTotal, Instant adjustedAt) {
+        return new SettlementAdjustedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                adjustmentId, reason, customerRefund, newTotal, adjustedAt, adjustedAt);
+    }
+
+    /** ROS-8: Siti alone costs 25 x 4 x 1 x 0.9 + 20 = RM110, so Aisyah gets RM90 back. */
+    public static SettlementAdjustedIE smallerRosterAccepted(String eventId) {
+        return adjusted(eventId, SMALLER_ROSTER_ADJUSTMENT_ID, "SMALLER_ROSTER", Money.myr(90), Money.myr(110),
+                SMALLER_ROSTER_ACCEPTED_AT);
     }
 
     public static ReservationReservedIE reserved(String eventId) {
