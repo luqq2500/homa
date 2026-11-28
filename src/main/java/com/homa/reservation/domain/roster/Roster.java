@@ -34,4 +34,9 @@ public final class Roster {
     public List<RosterMember> helpers() {
         return members.stream().filter(RosterMember::isHelper).toList();
     }
+
+    /** PRV-11: this person is rostered, so they act for the provider on the reservation. */
+    public boolean includesPerson(String personId) {
+        return members.stream().anyMatch(member -> member.personId().equals(personId));
+    }
 }

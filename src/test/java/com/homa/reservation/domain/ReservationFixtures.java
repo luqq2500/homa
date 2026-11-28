@@ -70,6 +70,14 @@ final class ReservationFixtures {
     static final String ANOTHER_CUSTOMER_ID = "customer-another";
     static final String ANOTHER_PROVIDER_ID = "provider-another";
     static final String MEI_CUSTOMER_ID = "customer-mei";
+    /** Azman, Kemas Home's owner; Siti, Nurul, Rina and Farid are the people its members are (PRV-11). */
+    static final String AZMAN_PERSON_ID = "person-azman";
+    static final String SITI_PERSON_ID = "person-siti";
+    static final String NURUL_PERSON_ID = "person-nurul";
+    static final String RINA_PERSON_ID = "person-rina";
+    static final String FARID_PERSON_ID = "person-farid";
+    /** Someone who is neither Kemas Home's owner nor on its Saturday roster. */
+    static final String STRANGER_PERSON_ID = "person-stranger";
     /** Listing's booking step: durations and start times move in 15 minutes (RES-5, OFR-5). */
     static final Duration BOOKING_STEP = Duration.ofMinutes(15);
 
@@ -149,6 +157,7 @@ final class ReservationFixtures {
     /** Kemas Home's settings, changeable one at a time. */
     static final class ProviderBuilder {
         private String providerId = KEMAS_HOME_PROVIDER_ID;
+        private String ownerPersonId = AZMAN_PERSON_ID;
         private boolean bookable = true;
         private Set<String> cities = new HashSet<>(KEMAS_HOME_CITIES);
         private Set<String> jobs = Set.of(KITCHEN_CLEANING, LAUNDRY_FOLDING, BATHROOM_CLEANING);
@@ -238,7 +247,7 @@ final class ReservationFixtures {
         }
 
         BookableProvider build() {
-            return new BookableProvider(providerId, bookable, cities, jobs,
+            return new BookableProvider(providerId, ownerPersonId, bookable, cities, jobs,
                     new OfferedTerms(rate, travelFee, discount, policy, tier), bounds, activeHelpers, notice, buffer,
                     hours, busyTimes);
         }
@@ -270,12 +279,12 @@ final class ReservationFixtures {
     // The team
 
     static RosterableMember siti() {
-        return RosterableMember.local(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti",
+        return RosterableMember.local(SITI_MEMBER_ID, SITI_PERSON_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti",
                 "photo-siti", true);
     }
 
     static RosterableMember nurul() {
-        return RosterableMember.local(NURUL_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Nurul",
+        return RosterableMember.local(NURUL_MEMBER_ID, NURUL_PERSON_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Nurul",
                 "photo-nurul", true);
     }
 
@@ -284,24 +293,24 @@ final class ReservationFixtures {
      * job of hers may end on (its 90-day buffer).
      */
     static RosterableMember rina() {
-        return RosterableMember.foreign(RINA_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Rina",
+        return RosterableMember.foreign(RINA_MEMBER_ID, RINA_PERSON_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Rina",
                 "photo-rina", true, LocalDate.of(2026, 12, 20));
     }
 
     static RosterableMember farid() {
-        return RosterableMember.local(FARID_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.SUPERVISOR, "Farid",
+        return RosterableMember.local(FARID_MEMBER_ID, FARID_PERSON_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.SUPERVISOR, "Farid",
                 "photo-farid", true);
     }
 
     static RosterableMember deactivated(RosterableMember member) {
-        return new RosterableMember(member.memberId(), member.providerId(), member.role(), member.name(),
-                member.photoVerified(), member.photoReference(), false, member.rosterableUntil());
+        return new RosterableMember(member.memberId(), member.personId(), member.providerId(), member.role(),
+                member.name(), member.photoVerified(), member.photoReference(), false, member.rosterableUntil());
     }
 
     /** The member as Provider announced them on joining, before Reservation heard of a verified photo (IDN-4). */
     static RosterableMember withoutVerifiedPhoto(RosterableMember member) {
-        return new RosterableMember(member.memberId(), member.providerId(), member.role(), member.name(), false,
-                Optional.empty(), member.active(), member.rosterableUntil());
+        return new RosterableMember(member.memberId(), member.personId(), member.providerId(), member.role(),
+                member.name(), false, Optional.empty(), member.active(), member.rosterableUntil());
     }
 
     // The marketplace around one provider

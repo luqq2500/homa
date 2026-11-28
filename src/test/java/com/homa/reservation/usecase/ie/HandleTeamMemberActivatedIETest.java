@@ -44,8 +44,9 @@ class HandleTeamMemberActivatedIETest {
 
         bed.teamMemberActivated.handle(activated("join-siti", SITI_MEMBER_ID, "person-siti", "Siti", true, null));
 
-        assertThat(member(SITI_MEMBER_ID)).isEqualTo(new RosterableMember(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID,
-                MemberRole.HELPER, "Siti", true, Optional.of("photo-siti"), true, Optional.empty()));
+        assertThat(member(SITI_MEMBER_ID)).isEqualTo(new RosterableMember(SITI_MEMBER_ID, "person-siti",
+                KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti", true, Optional.of("photo-siti"), true,
+                Optional.empty()));
         assertThat(bed.members.findByPersonId("person-siti")).containsExactly(member(SITI_MEMBER_ID));
     }
 
@@ -95,9 +96,10 @@ class HandleTeamMemberActivatedIETest {
         bed.teamMemberActivated.handle(joined);
         photoChecked("person-siti", true, "photo-siti");
 
-        RosterableMember onLeave = new RosterableMember(SITI_MEMBER_ID, KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER,
-                "Siti", true, Optional.of("photo-siti"), false, Optional.empty());
-        bed.members.save("person-siti", onLeave);
+        RosterableMember onLeave = new RosterableMember(SITI_MEMBER_ID, "person-siti",
+                KEMAS_HOME_PROVIDER_ID, MemberRole.HELPER, "Siti", true, Optional.of("photo-siti"), false,
+                Optional.empty());
+        bed.members.save(onLeave);
 
         bed.teamMemberActivated.handle(joined);
 

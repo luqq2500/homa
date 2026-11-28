@@ -36,8 +36,8 @@ public final class ProviderAssignRoster implements RosterAssigner {
 
     @Override
     public AssignRosterResponse assign(AssignRosterRequest request) {
-        Reservation reservation = ReservationParties.requireProvider(
-                ReservationParties.load(reservations, request.reservationId()), request.providerId());
+        Reservation reservation = ReservationParties.requireProviderSide(
+                ReservationParties.load(reservations, request.reservationId()), request.personId());
         List<RosterableMember> team = request.memberIds().stream()
                 .map(memberId -> members.findById(memberId)
                         .orElseThrow(() -> new TeamMemberNotFoundException(memberId)))

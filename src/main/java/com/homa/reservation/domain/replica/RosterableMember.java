@@ -13,6 +13,9 @@ import java.util.Optional;
  * A provider's helper or supervisor as Reservation sees it, kept up to date from Provider's team member events and
  * the member's verified profile photo.
  *
+ * @param personId        the person the member is, as Verification knows them (HLP-10): the account they sign in
+ *                        with, so a rostered member acts for the provider on the reservations they are rostered on
+ *                        (PRV-11)
  * @param photoVerified   the member's face photo is verified against their identity (IDN-4); only then can they be
  *                        rostered, because the customer sees it on the roster (ROS-6)
  * @param photoReference  the member's verified photo in the photo store; a new photo replaces it only once it is
@@ -24,6 +27,7 @@ import java.util.Optional;
  */
 public record RosterableMember(
         String memberId,
+        String personId,
         String providerId,
         MemberRole role,
         String name,
@@ -34,6 +38,7 @@ public record RosterableMember(
 
     public RosterableMember {
         Objects.requireNonNull(memberId, "memberId");
+        Objects.requireNonNull(personId, "personId");
         Objects.requireNonNull(providerId, "providerId");
         Objects.requireNonNull(role, "role");
         Objects.requireNonNull(name, "name");
@@ -42,23 +47,23 @@ public record RosterableMember(
     }
 
     /** A local member (§1 "Local") with a verified photo. */
-    public static RosterableMember local(String memberId, String providerId, MemberRole role, String name,
-            String verifiedPhotoReference, boolean active) {
-        return new RosterableMember(memberId, providerId, role, name, true, Optional.of(verifiedPhotoReference),
-                active, Optional.empty());
+    public static RosterableMember local(String memberId, String personId, String providerId, MemberRole role,
+            String name, String verifiedPhotoReference, boolean active) {
+        return new RosterableMember(memberId, personId, providerId, role, name, true,
+                Optional.of(verifiedPhotoReference), active, Optional.empty());
     }
 
     /** A foreign member (§1 "Foreign") with a verified photo, rosterable on jobs ending by {@code rosterableUntil}. */
-    public static RosterableMember foreign(String memberId, String providerId, MemberRole role, String name,
-            String verifiedPhotoReference, boolean active, LocalDate rosterableUntil) {
-        return new RosterableMember(memberId, providerId, role, name, true, Optional.of(verifiedPhotoReference),
-                active, Optional.of(rosterableUntil));
+    public static RosterableMember foreign(String memberId, String personId, String providerId, MemberRole role,
+            String name, String verifiedPhotoReference, boolean active, LocalDate rosterableUntil) {
+        return new RosterableMember(memberId, personId, providerId, role, name, true,
+                Optional.of(verifiedPhotoReference), active, Optional.of(rosterableUntil));
     }
 
     /** IDN-4: the member's new photo is verified, and replaces the one shown on the roster. */
     public RosterableMember withVerifiedPhoto(String verifiedPhotoReference) {
-        return new RosterableMember(memberId, providerId, role, name, true, Optional.of(verifiedPhotoReference),
-                active, rosterableUntil);
+        return new RosterableMember(memberId, personId, providerId, role, name, true,
+                Optional.of(verifiedPhotoReference), active, rosterableUntil);
     }
 
     /** IDN-4: the member shows the person's verified photo once Verification has verified one; else nothing changes. */
@@ -90,6 +95,6 @@ public record RosterableMember(
         if (!hasVerifiedPhoto()) {
             throw new MemberNotRosterableException(memberId);
         }
-        return new RosterMember(memberId, role, name, photoReference.orElseThrow());
+        return new RosterMember(memberId, personId, role, name, photoReference.orElseThrow());
     }
 }

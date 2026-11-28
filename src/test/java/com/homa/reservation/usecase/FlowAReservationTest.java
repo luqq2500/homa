@@ -18,6 +18,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.standardCheckout;
 import static com.homa.reservation.usecase.ReservationTestBed.sunday;
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ReservationCheckoutStartedIE;
 import com.homa.ie.events.ReservationCompletedIE;
@@ -72,11 +73,11 @@ class FlowAReservationTest {
 
         // 5. Kemas Home accepts at Monday 22:00.
         bed.time.set(ACCEPTED_AT);
-        bed.acceptReservation.accept(new AcceptReservationRequest(reservationId, KEMAS_HOME_PROVIDER_ID));
+        bed.acceptReservation.accept(new AcceptReservationRequest(reservationId, AZMAN_PERSON_ID));
 
         // 6. On Friday it rosters Siti and Nurul, and Aisyah sees them.
         bed.time.set(friday(18, 0));
-        bed.assignRoster.assign(new AssignRosterRequest(reservationId, KEMAS_HOME_PROVIDER_ID,
+        bed.assignRoster.assign(new AssignRosterRequest(reservationId, AZMAN_PERSON_ID,
                 List.of(SITI_MEMBER_ID, NURUL_MEMBER_ID)));
         assertThat(bed.viewReservation.view(new ViewReservationRequest(reservationId, AISYAH_CUSTOMER_ID)).roster())
                 .extracting(member -> member.name() + " " + member.photoRef())
@@ -90,7 +91,7 @@ class FlowAReservationTest {
         // 9. Siti uploads the kitchen photo and marks the job Completed; both calendars open.
         bed.photoStore.upload(CLEAN_KITCHEN_PHOTO);
         bed.time.set(saturday(14, 1));
-        bed.completeReservation.complete(new CompleteReservationRequest(reservationId, KEMAS_HOME_PROVIDER_ID,
+        bed.completeReservation.complete(new CompleteReservationRequest(reservationId, AZMAN_PERSON_ID,
                 List.of(CLEAN_KITCHEN_PHOTO)));
         assertThat(bed.schedules.providerBlocks(KEMAS_HOME_PROVIDER_ID)).isEmpty();
         assertThat(bed.schedules.customerBlocks(AISYAH_CUSTOMER_ID)).isEmpty();

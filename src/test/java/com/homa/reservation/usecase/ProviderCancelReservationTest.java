@@ -13,6 +13,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.sunday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.PaymentHeldIE;
 import com.homa.ie.events.ReservationCancelledIE;
@@ -68,7 +69,7 @@ class ProviderCancelReservationTest {
         Instant wednesday = at(2026, 12, 2, 10, 0);
         bed.time.set(wednesday);
 
-        ProviderCancelReservationResponse cancelled = cancel(KEMAS_HOME_PROVIDER_ID);
+        ProviderCancelReservationResponse cancelled = cancel(AZMAN_PERSON_ID);
 
         assertThat(cancelled).isEqualTo(new ProviderCancelReservationResponse(reserved.id().value(), "CANCELLED",
                 "PROVIDER_CANCELLED", wednesday, Money.myr(45), Money.myr(200), Money.myr(0)));
@@ -87,7 +88,7 @@ class ProviderCancelReservationTest {
         bed.publisher.clear();
         bed.time.set(friday(20, 0));
 
-        ProviderCancelReservationResponse cancelled = cancel(KEMAS_HOME_PROVIDER_ID);
+        ProviderCancelReservationResponse cancelled = cancel(AZMAN_PERSON_ID);
 
         assertThat(cancelled).isEqualTo(new ProviderCancelReservationResponse(reserved.id().value(), "CANCELLED",
                 "PROVIDER_CANCELLED", friday(20, 0), Money.myr(65), Money.myr(200), Money.myr(6)));
@@ -102,7 +103,7 @@ class ProviderCancelReservationTest {
         bed.publisher.clear();
         bed.time.set(saturday(9, 50));
 
-        ProviderCancelReservationResponse cancelled = cancel(KEMAS_HOME_PROVIDER_ID);
+        ProviderCancelReservationResponse cancelled = cancel(AZMAN_PERSON_ID);
 
         assertThat(cancelled).isEqualTo(new ProviderCancelReservationResponse(reserved.id().value(), "CANCELLED",
                 "PROVIDER_LAST_MINUTE", saturday(9, 50), Money.myr(85), Money.myr(200), Money.myr(14)));
@@ -116,7 +117,7 @@ class ProviderCancelReservationTest {
     void percentagesAreOfTheTotalReservationFeeNotTheHoursFee() {
         bed.time.set(friday(20, 0));
 
-        ProviderCancelReservationResponse cancelled = cancel(KEMAS_HOME_PROVIDER_ID);
+        ProviderCancelReservationResponse cancelled = cancel(AZMAN_PERSON_ID);
 
         assertThat(cancelled.providerFine()).isEqualTo(Money.myr(65)).isNotEqualTo(Money.myr(63));
         assertThat(cancelled.compensation()).isEqualTo(Money.myr(6)).isNotEqualTo(Money.myr("5.40"));
@@ -141,12 +142,12 @@ class ProviderCancelReservationTest {
                 REQUESTED_AT));
         String id = cheap.reservations.single().id().value();
         cheap.time.set(monday(22, 0));
-        cheap.acceptReservation.accept(new AcceptReservationRequest(id, KEMAS_HOME_PROVIDER_ID));
+        cheap.acceptReservation.accept(new AcceptReservationRequest(id, AZMAN_PERSON_ID));
         cheap.publisher.clear();
         cheap.time.set(saturday(9, 50));
 
         ProviderCancelReservationResponse cancelled = cheap.providerCancel
-                .cancel(new ProviderCancelReservationRequest(id, KEMAS_HOME_PROVIDER_ID));
+                .cancel(new ProviderCancelReservationRequest(id, AZMAN_PERSON_ID));
 
         assertThat(cancelled.providerFine()).isEqualTo(Money.myr(25));
         assertThat(cancelled.customerRefund()).isEqualTo(Money.myr(25));
@@ -164,7 +165,7 @@ class ProviderCancelReservationTest {
         assertThatThrownBy(() -> cancel(AISYAH_CUSTOMER_ID)).isInstanceOf(NotReservationPartyException.class);
         assertThatThrownBy(() -> cancel("provider-another")).isInstanceOf(NotReservationPartyException.class);
         assertThatThrownBy(() -> bed.providerCancel
-                .cancel(new ProviderCancelReservationRequest("reservation-unknown", KEMAS_HOME_PROVIDER_ID)))
+                .cancel(new ProviderCancelReservationRequest("reservation-unknown", AZMAN_PERSON_ID)))
                 .isInstanceOf(ReservationNotFoundException.class);
 
         assertStillReserved();
@@ -180,7 +181,7 @@ class ProviderCancelReservationTest {
         other.time.set(monday(21, 0));
 
         assertThatThrownBy(() -> other.providerCancel
-                .cancel(new ProviderCancelReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID)))
+                .cancel(new ProviderCancelReservationRequest(requested.id().value(), AZMAN_PERSON_ID)))
                 .isInstanceOf(ReservationStatusConflictException.class);
 
         assertThat(other.reload(requested).status()).isEqualTo(ReservationStatus.REQUESTED);
@@ -194,7 +195,7 @@ class ProviderCancelReservationTest {
         bed.publisher.clear();
         bed.time.set(JOB_END);
 
-        assertThatThrownBy(() -> cancel(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(JobAlreadyEndedException.class);
+        assertThatThrownBy(() -> cancel(AZMAN_PERSON_ID)).isInstanceOf(JobAlreadyEndedException.class);
 
         assertStillReserved();
     }
@@ -208,7 +209,7 @@ class ProviderCancelReservationTest {
         bed.reservations.beforeNextSave(() -> bed.customerCancel
                 .cancel(new CustomerCancelReservationRequest(reserved.id().value(), AISYAH_CUSTOMER_ID)));
 
-        assertThatThrownBy(() -> cancel(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(ReservationStatusConflictException.class);
+        assertThatThrownBy(() -> cancel(AZMAN_PERSON_ID)).isInstanceOf(ReservationStatusConflictException.class);
 
         assertThat(bed.reload(reserved).cancellation().orElseThrow().cause().name()).isEqualTo("CUSTOMER_CANCELLED");
         ReservationCancelledIE published = bed.publisher.single(ReservationCancelledIE.class);
@@ -224,11 +225,11 @@ class ProviderCancelReservationTest {
         bed.time.set(friday(20, 0));
         bed.reservations.conflictOnNextSaves(3);
 
-        assertThatThrownBy(() -> cancel(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(ScheduleChangedException.class);
+        assertThatThrownBy(() -> cancel(AZMAN_PERSON_ID)).isInstanceOf(ScheduleChangedException.class);
         assertStillReserved();
 
         bed.reservations.conflictOnNextSaves(2);
-        cancel(KEMAS_HOME_PROVIDER_ID);
+        cancel(AZMAN_PERSON_ID);
 
         assertThat(bed.reload(reserved).status()).isEqualTo(ReservationStatus.CANCELLED);
         assertThat(bed.publisher.single(ReservationCancelledIE.class).providerFine()).isEqualTo(Money.myr(65));

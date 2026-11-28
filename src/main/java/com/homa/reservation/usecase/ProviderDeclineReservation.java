@@ -42,8 +42,8 @@ public final class ProviderDeclineReservation implements ReservationDecliner {
     }
 
     private Reservation declined(DeclineReservationRequest request) {
-        Reservation reservation = ReservationParties.requireProvider(
-                ReservationParties.load(reservations, request.reservationId()), request.providerId());
+        Reservation reservation = ReservationParties.requireProviderSide(
+                ReservationParties.load(reservations, request.reservationId()), request.personId());
         reservation.decline(time.now());
         calendars.saveReleased(reservation);
         return reservation;

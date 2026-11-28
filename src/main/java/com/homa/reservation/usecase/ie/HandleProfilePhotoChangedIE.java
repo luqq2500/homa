@@ -36,7 +36,6 @@ public final class HandleProfilePhotoChangedIE implements ProfilePhotoChangedIEH
                 .orElseGet(() -> PersonPhoto.none(event.personId()))
                 .checked(event.verified(), event.photoRef());
         photos.save(photo);
-        members.findByPersonId(event.personId())
-                .forEach(member -> members.save(event.personId(), member.showing(photo)));
+        members.findByPersonId(event.personId()).forEach(member -> members.save(member.showing(photo)));
     }
 }

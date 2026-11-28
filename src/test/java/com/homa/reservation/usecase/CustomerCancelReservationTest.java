@@ -11,6 +11,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.sunday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.ie.events.ReservationCancelledIE;
 import com.homa.kernel.Money;
@@ -126,7 +127,7 @@ class CustomerCancelReservationTest {
         ReservationTestBed other = ReservationTestBed.withKemasHomeAndAisyah();
         Reservation requested = other.requestStandard();
         other.time.set(monday(21, 2).plusSeconds(10));
-        other.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID));
+        other.acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), AZMAN_PERSON_ID));
         other.time.set(monday(21, 2).plusSeconds(12));
 
         WithdrawReservationResponse withdrawn = other.withdrawReservation
@@ -255,7 +256,7 @@ class CustomerCancelReservationTest {
         bed.publisher.clear();
         bed.time.set(friday(20, 0));
         bed.reservations.beforeNextSave(() -> bed.providerCancel
-                .cancel(new ProviderCancelReservationRequest(reserved.id().value(), KEMAS_HOME_PROVIDER_ID)));
+                .cancel(new ProviderCancelReservationRequest(reserved.id().value(), AZMAN_PERSON_ID)));
 
         assertThatThrownBy(() -> cancel(AISYAH_CUSTOMER_ID)).isInstanceOf(ReservationStatusConflictException.class);
 

@@ -10,6 +10,7 @@ import static com.homa.reservation.usecase.ReservationTestBed.KITCHEN_CLEANING;
 import static com.homa.reservation.usecase.ReservationTestBed.MEI_CUSTOMER_ID;
 import static com.homa.reservation.usecase.ReservationTestBed.friday;
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.homa.reservation.usecase.ReservationTestBed.AZMAN_PERSON_ID;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.kernel.Money;
@@ -50,7 +51,7 @@ class ListMyReservationsTest {
         Reservation saturdayJob = bed.reserveStandard();
         Reservation fridayJob = bookFriday();
         bed.time.set(friday(18, 0));
-        bed.assignRoster.assign(new AssignRosterRequest(saturdayJob.id().value(), KEMAS_HOME_PROVIDER_ID,
+        bed.assignRoster.assign(new AssignRosterRequest(saturdayJob.id().value(), AZMAN_PERSON_ID,
                 List.of(SITI_MEMBER_ID, NURUL_MEMBER_ID)));
 
         List<ReservationSummary> aisyahs = listFor(AISYAH_CUSTOMER_ID);

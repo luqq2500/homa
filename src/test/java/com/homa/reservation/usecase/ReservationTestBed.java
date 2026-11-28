@@ -30,6 +30,7 @@ import com.homa.ie.events.ListingTermsChangedIE;
 import com.homa.ie.events.PaymentFailedIE;
 import com.homa.ie.events.PaymentHeldIE;
 import com.homa.ie.events.ProfilePhotoChangedIE;
+import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderBookabilityChangedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
@@ -50,6 +51,7 @@ import com.homa.reservation.usecase.ie.HandlePaymentFailedIE;
 import com.homa.reservation.usecase.ie.HandlePaymentHeldIE;
 import com.homa.reservation.usecase.ie.HandleProfilePhotoChangedIE;
 import com.homa.reservation.usecase.ie.HandleProviderBookabilityChangedIE;
+import com.homa.reservation.usecase.ie.HandleProviderOpenedIE;
 import com.homa.reservation.usecase.ie.HandleProviderWentLiveIE;
 import com.homa.reservation.usecase.ie.HandleTeamMemberActivatedIE;
 import java.time.Duration;
@@ -74,6 +76,13 @@ public final class ReservationTestBed {
     public static final String UNVERIFIED_CUSTOMER_ID = "customer-aisyahs-husband";
     public static final String SHAH_ALAM_CUSTOMER_ID = "customer-aisyahs-sister";
     public static final String STRANGER_ID = "someone-else";
+    /** Azman runs Kemas Home; Siti, Nurul, Rina and Farid are the people its members are (PRV-11). */
+    public static final String AZMAN_PERSON_ID = "person-azman";
+    public static final String SITI_PERSON_ID = "person-siti";
+    public static final String NURUL_PERSON_ID = "person-nurul";
+    public static final String RINA_PERSON_ID = "person-rina";
+    public static final String FARID_PERSON_ID = "person-farid";
+    public static final String HANA_PERSON_ID = "person-hana";
     public static final String INSTANT_PROVIDER_ID = "provider-hana-cleaning";
     public static final String PUTRAJAYA = "PUTRAJAYA";
     public static final Instant TAPPED_PAY_AT = REQUESTED_AT.minus(Duration.ofMinutes(2));
@@ -141,6 +150,7 @@ public final class ReservationTestBed {
             new HandleListingTermsChangedIE(processed, providers);
     public final HandleAvailabilityChangedIE availabilityChanged =
             new HandleAvailabilityChangedIE(processed, providers);
+    public final HandleProviderOpenedIE providerOpened = new HandleProviderOpenedIE(processed, providers);
     public final HandleProviderWentLiveIE providerWentLive = new HandleProviderWentLiveIE(processed, providers);
     public final HandleProviderBookabilityChangedIE bookabilityChanged =
             new HandleProviderBookabilityChangedIE(processed, providers);
@@ -178,14 +188,16 @@ public final class ReservationTestBed {
     /** The §0 world, with nothing published yet. */
     public static ReservationTestBed withKemasHomeAndAisyah() {
         ReservationTestBed bed = new ReservationTestBed();
+        bed.providerOpened.handle(new ProviderOpenedIE(bed.nextInboundId(), KEMAS_HOME_PROVIDER_ID, AZMAN_PERSON_ID,
+                TAPPED_PAY_AT));
         bed.listingTermsChanged.handle(bed.kemasListing().build(bed.nextInboundId()));
         bed.availabilityChanged.handle(bed.kemasHours(KEMAS_HOME_PROVIDER_ID));
         bed.providerWentLive.handle(new ProviderWentLiveIE(bed.nextInboundId(), KEMAS_HOME_PROVIDER_ID,
-                "person-azman", KEMAS_HOME_REGISTRATION_NO, TAPPED_PAY_AT));
-        bed.activateWithVerifiedPhoto(SITI_MEMBER_ID, "person-siti", "Siti", "HELPER", null);
-        bed.activateWithVerifiedPhoto(NURUL_MEMBER_ID, "person-nurul", "Nurul", "HELPER", null);
-        bed.activateWithVerifiedPhoto(RINA_MEMBER_ID, "person-rina", "Rina", "HELPER", "2026-12-20");
-        bed.activateWithVerifiedPhoto(FARID_MEMBER_ID, "person-farid", "Farid", "SUPERVISOR", null);
+                AZMAN_PERSON_ID, KEMAS_HOME_REGISTRATION_NO, TAPPED_PAY_AT));
+        bed.activateWithVerifiedPhoto(SITI_MEMBER_ID, SITI_PERSON_ID, "Siti", "HELPER", null);
+        bed.activateWithVerifiedPhoto(NURUL_MEMBER_ID, NURUL_PERSON_ID, "Nurul", "HELPER", null);
+        bed.activateWithVerifiedPhoto(RINA_MEMBER_ID, RINA_PERSON_ID, "Rina", "HELPER", "2026-12-20");
+        bed.activateWithVerifiedPhoto(FARID_MEMBER_ID, FARID_PERSON_ID, "Farid", "SUPERVISOR", null);
         bed.registerVerified(AISYAH_CUSTOMER_ID, AISYAH_CITY);
         bed.registerVerified(MEI_CUSTOMER_ID, PUTRAJAYA);
         bed.customerRegistered.handle(new CustomerRegisteredIE(bed.nextInboundId(), UNVERIFIED_CUSTOMER_ID,
@@ -218,15 +230,16 @@ public final class ReservationTestBed {
 
     /** A second provider, Hana Cleaning, Instant and otherwise like Kemas Home, with Hana as its one helper. */
     public void listInstantProvider() {
+        providerOpened.handle(new ProviderOpenedIE(nextInboundId(), INSTANT_PROVIDER_ID, HANA_PERSON_ID, TAPPED_PAY_AT));
         ListingEvent hana = new ListingEvent(INSTANT_PROVIDER_ID);
         hana.acceptancePolicy = "INSTANT";
         listingTermsChanged.handle(hana.build(nextInboundId()));
         availabilityChanged.handle(kemasHours(INSTANT_PROVIDER_ID));
-        providerWentLive.handle(new ProviderWentLiveIE(nextInboundId(), INSTANT_PROVIDER_ID, "person-hana", null,
+        providerWentLive.handle(new ProviderWentLiveIE(nextInboundId(), INSTANT_PROVIDER_ID, HANA_PERSON_ID, null,
                 TAPPED_PAY_AT));
-        profilePhotoChanged.handle(new ProfilePhotoChangedIE(nextInboundId(), "person-hana", true, "photo-hana",
+        profilePhotoChanged.handle(new ProfilePhotoChangedIE(nextInboundId(), HANA_PERSON_ID, true, "photo-hana",
                 TAPPED_PAY_AT));
-        teamMemberActivated.handle(new TeamMemberActivatedIE(nextInboundId(), "member-hana", "person-hana",
+        teamMemberActivated.handle(new TeamMemberActivatedIE(nextInboundId(), "member-hana", HANA_PERSON_ID,
                 INSTANT_PROVIDER_ID, "Hana", "HELPER", "LOCAL", true, null, TAPPED_PAY_AT));
         teamMemberActivated.handle(new TeamMemberActivatedIE(nextInboundId(), "member-hana-2", "person-hana-2",
                 INSTANT_PROVIDER_ID, "Hana's cousin", "HELPER", "LOCAL", true, null, TAPPED_PAY_AT));
@@ -301,7 +314,7 @@ public final class ReservationTestBed {
     public Reservation reserveStandard() {
         Reservation requested = requestStandard();
         time.set(ACCEPTED_AT);
-        acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), KEMAS_HOME_PROVIDER_ID));
+        acceptReservation.accept(new AcceptReservationRequest(requested.id().value(), AZMAN_PERSON_ID));
         return reload(requested);
     }
 

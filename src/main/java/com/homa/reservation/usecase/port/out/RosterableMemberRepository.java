@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Providers' team members as Reservation sees them. Each is stored with the person they are, as Verification knows
- * them, so a verified profile photo reaches every member that person is (IDN-4).
+ * Providers' team members as Reservation sees them. Each knows the person they are, as Verification knows them, so a
+ * verified profile photo reaches every member that person is (IDN-4) and a rostered member acts as that person
+ * (PRV-11).
  */
 public interface RosterableMemberRepository {
 
@@ -16,5 +17,5 @@ public interface RosterableMemberRepository {
 
     List<RosterableMember> findByPersonId(String personId);
 
-    void save(String personId, RosterableMember member);
+    void save(RosterableMember member);
 }

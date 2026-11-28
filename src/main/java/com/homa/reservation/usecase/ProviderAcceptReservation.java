@@ -37,8 +37,8 @@ public final class ProviderAcceptReservation implements ReservationAccepter {
     }
 
     private Reservation accepted(AcceptReservationRequest request) {
-        Reservation reservation = ReservationParties.requireProvider(
-                ReservationParties.load(reservations, request.reservationId()), request.providerId());
+        Reservation reservation = ReservationParties.requireProviderSide(
+                ReservationParties.load(reservations, request.reservationId()), request.personId());
         reservation.accept(time.now());
         reservations.save(reservation);
         return reservation;

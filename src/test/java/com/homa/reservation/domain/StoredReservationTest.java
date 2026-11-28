@@ -22,6 +22,7 @@ import com.homa.kernel.Money;
 import com.homa.reservation.domain.roster.Roster;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.AcceptancePolicy;
+import com.homa.reservation.domain.terms.ReservationTerms;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -90,8 +91,8 @@ class StoredReservationTest {
         }
 
         Reservation restore() {
-            return Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(), from.quote(),
-                    from.values(), from.requestedAt(), deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt,
+            return Reservation.restore(from.id(), from.checkoutId(), from.ownerPersonId(), from.booking(), from.terms(),
+                    from.quote(), from.values(), from.requestedAt(), deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt,
                     cancellation, roster, completedAt, photos, version);
         }
     }
@@ -371,35 +372,42 @@ class StoredReservationTest {
 
     @Test
     @Tag("RES-7")
-    @DisplayName("Persistence: a stored reservation needs its id, checkout, booking, terms, price, values, request time, status and photos.")
+    @DisplayName("Persistence: a stored reservation needs its id, checkout, owner, booking, terms, price, values, request time, status and photos.")
     void aStoredReservationMissingAPartIsRefused() {
         Reservation from = Marketplace.withKemasHome().requestStandard();
         AcceptanceDeadline deadline = from.acceptanceDeadline().orElseThrow();
 
-        assertThatThrownBy(() -> Reservation.restore(null, from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(), 0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), null, from.booking(), from.terms(), from.quote(),
-                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(),
-                0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), null, from.terms(), from.quote(),
-                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(),
-                0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), null,
-                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(), 0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                null, from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(), 0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), null, REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(), 0)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), from.values(), null, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
-                List.of(), 0)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, null, from.checkoutId(), from.ownerPersonId(),
+                from.booking(), from.terms(), from.quote(), from.values(), REQUESTED_AT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), null, from.ownerPersonId(), from.booking(),
+                from.terms(), from.quote(), from.values(), REQUESTED_AT)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), null, from.booking(),
+                from.terms(), from.quote(), from.values(), REQUESTED_AT)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), from.ownerPersonId(),
+                null, from.terms(), from.quote(), from.values(), REQUESTED_AT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), from.ownerPersonId(),
+                from.booking(), null, from.quote(), from.values(), REQUESTED_AT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), from.ownerPersonId(),
+                from.booking(), from.terms(), null, from.values(), REQUESTED_AT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), from.ownerPersonId(),
+                from.booking(), from.terms(), from.quote(), null, REQUESTED_AT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> requestedWith(from, deadline, from.id(), from.checkoutId(), from.ownerPersonId(),
+                from.booking(), from.terms(), from.quote(), from.values(), null))
+                .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).status(null).restore()).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).photos(null).restore()).isInstanceOf(NullPointerException.class);
+    }
+
+    /** A Requested reservation restored with only the parts under test, and nothing else stored. */
+    private static Reservation requestedWith(Reservation from, AcceptanceDeadline deadline, ReservationId id,
+            CheckoutId checkoutId, String ownerPersonId, Booking booking, ReservationTerms terms,
+            com.homa.reservation.domain.pricing.Quote quote, ReservationValues.Version values, Instant requestedAt) {
+        return Reservation.restore(id, checkoutId, ownerPersonId, booking, terms, quote, values, requestedAt,
+                deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null, List.of(), 0);
     }
 }

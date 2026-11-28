@@ -64,6 +64,7 @@ public final class Reservation {
 
     private final ReservationId id;
     private final CheckoutId checkoutId;
+    private final String ownerPersonId;
     private final Booking booking;
     private final ReservationTerms terms;
     private final Quote quote;
@@ -81,12 +82,14 @@ public final class Reservation {
     private List<CompletionPhoto> completionPhotos;
     private final long version;
 
-    private Reservation(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms, Quote quote,
-            Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline, ReservationStatus status,
-            Instant reservedAt, Instant withdrawnAt, Instant declinedAt, Instant expiredAt, Cancellation cancellation,
-            Roster roster, Instant completedAt, List<CompletionPhoto> completionPhotos, long version) {
+    private Reservation(ReservationId id, CheckoutId checkoutId, String ownerPersonId, Booking booking,
+            ReservationTerms terms, Quote quote, Version values, Instant requestedAt,
+            AcceptanceDeadline acceptanceDeadline, ReservationStatus status, Instant reservedAt, Instant withdrawnAt,
+            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, Instant completedAt,
+            List<CompletionPhoto> completionPhotos, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.checkoutId = Objects.requireNonNull(checkoutId, "checkoutId");
+        this.ownerPersonId = Objects.requireNonNull(ownerPersonId, "ownerPersonId");
         this.booking = Objects.requireNonNull(booking, "booking");
         this.terms = Objects.requireNonNull(terms, "terms");
         this.quote = Objects.requireNonNull(quote, "quote");
@@ -132,14 +135,14 @@ public final class Reservation {
         Version values = ReservationValues.asOf(paidAt);
         providerSchedule.block(id, provider.calendarBlockFor(booking.jobTime(), values));
         customerSchedule.block(id, booking.jobTime().interval());
-        return requested(id, checkout.id(), booking, terms, quote, values, paidAt);
+        return requested(id, checkout.id(), provider.ownerPersonId(), booking, terms, quote, values, paidAt);
     }
 
     /** A new reservation: Requested, or Reserved at once under Instant, which never waits for acceptance (ACC-1). */
-    private static Reservation requested(ReservationId id, CheckoutId checkoutId, Booking booking,
-            ReservationTerms terms, Quote quote, Version values, Instant requestedAt) {
+    private static Reservation requested(ReservationId id, CheckoutId checkoutId, String ownerPersonId,
+            Booking booking, ReservationTerms terms, Quote quote, Version values, Instant requestedAt) {
         boolean instant = terms.acceptancePolicy().reservesAtOnce();
-        return new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
+        return new Reservation(id, checkoutId, ownerPersonId, booking, terms, quote, values, requestedAt,
                 instant ? null : AcceptanceDeadline.from(requestedAt, booking.jobTime(), values),
                 instant ? ReservationStatus.RESERVED : ReservationStatus.REQUESTED, instant ? requestedAt : null,
                 null, null, null, null, null, null, List.of(), 0);
@@ -158,14 +161,14 @@ public final class Reservation {
      * deadline is checked again: they held when the payment was confirmed, and the reservation keeps what it was
      * Requested with (RES-8).
      */
-    public static Reservation restore(ReservationId id, CheckoutId checkoutId, Booking booking, ReservationTerms terms,
-            Quote quote, Version values, Instant requestedAt, AcceptanceDeadline acceptanceDeadline,
-            ReservationStatus status, Instant reservedAt, Instant withdrawnAt, Instant declinedAt, Instant expiredAt,
-            Cancellation cancellation, Roster roster, Instant completedAt, List<CompletionPhoto> completionPhotos,
-            long version) {
-        Reservation reservation = new Reservation(id, checkoutId, booking, terms, quote, values, requestedAt,
-                acceptanceDeadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster,
-                completedAt, completionPhotos, version);
+    public static Reservation restore(ReservationId id, CheckoutId checkoutId, String ownerPersonId, Booking booking,
+            ReservationTerms terms, Quote quote, Version values, Instant requestedAt,
+            AcceptanceDeadline acceptanceDeadline, ReservationStatus status, Instant reservedAt, Instant withdrawnAt,
+            Instant declinedAt, Instant expiredAt, Cancellation cancellation, Roster roster, Instant completedAt,
+            List<CompletionPhoto> completionPhotos, long version) {
+        Reservation reservation = new Reservation(id, checkoutId, ownerPersonId, booking, terms, quote, values,
+                requestedAt, acceptanceDeadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation,
+                roster, completedAt, completionPhotos, version);
         reservation.requireStoredShape();
         return reservation;
     }
@@ -394,6 +397,17 @@ public final class Reservation {
         return jobTime().protectionWindow(values).end();
     }
 
+    /**
+     * PRV-11: everyone signs in with their own account, and a provider-side action on this reservation comes from
+     * the provider's owner or from a member rostered on it, whichever of them is signed in. The owner acts on every
+     * reservation of their provider; a member only on the ones they are rostered on, and not once someone else has
+     * replaced them. Security only maps the token to a personId; this decides.
+     */
+    public boolean canBeActedOnBy(String personId) {
+        return ownerPersonId.equals(personId)
+                || roster().map(rostered -> rostered.includesPerson(personId)).orElse(false);
+    }
+
     private boolean isRosterable(RosterableMember member) {
         return member.worksFor(booking.providerId()) && member.canWorkOn(jobTime().end());
     }
@@ -411,6 +425,11 @@ public final class Reservation {
     /** The checkout whose confirmed payment made this reservation. */
     public CheckoutId checkoutId() {
         return checkoutId;
+    }
+
+    /** The owner who runs the provider, as they were when the reservation was Requested (PRV-1, PRV-11). */
+    public String ownerPersonId() {
+        return ownerPersonId;
     }
 
     /** What was booked, at the customer's home address as it was when Requested (RES-8). */

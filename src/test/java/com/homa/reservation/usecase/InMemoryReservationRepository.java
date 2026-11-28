@@ -148,8 +148,8 @@ public final class InMemoryReservationRepository implements ReservationRepositor
     }
 
     private static Reservation copy(Reservation original, long version) {
-        return Reservation.restore(original.id(), original.checkoutId(), original.booking(), original.terms(),
-                original.quote(), original.values(), original.requestedAt(),
+        return Reservation.restore(original.id(), original.checkoutId(), original.ownerPersonId(), original.booking(),
+                original.terms(), original.quote(), original.values(), original.requestedAt(),
                 original.acceptanceDeadline().orElse(null), original.status(), original.reservedAt().orElse(null),
                 original.withdrawnAt().orElse(null), original.declinedAt().orElse(null),
                 original.expiredAt().orElse(null), original.cancellation().orElse(null), original.roster().orElse(null),

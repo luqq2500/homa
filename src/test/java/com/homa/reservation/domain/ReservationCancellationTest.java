@@ -214,7 +214,7 @@ class ReservationCancellationTest {
                 VALUES.completionRemindersAfterJobEnd());
         Reservation current = reservation;
         Reservation requestedUnderOldValues = Reservation.restore(current.id(), current.checkoutId(),
-                current.booking(), current.terms(), current.quote(), old, current.requestedAt(),
+                current.ownerPersonId(), current.booking(), current.terms(), current.quote(), old, current.requestedAt(),
                 current.acceptanceDeadline().orElseThrow(), current.status(), current.reservedAt().orElse(null), null,
                 null, null, null, null, null, List.of(), 0);
 
@@ -525,8 +525,8 @@ class ReservationCancellationTest {
     }
 
     private static Reservation restoredWith(Reservation from, Version values) {
-        return Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(), from.quote(), values,
-                from.requestedAt(), from.acceptanceDeadline().orElseThrow(), from.status(),
+        return Reservation.restore(from.id(), from.checkoutId(), from.ownerPersonId(), from.booking(), from.terms(),
+                from.quote(), values, from.requestedAt(), from.acceptanceDeadline().orElseThrow(), from.status(),
                 from.reservedAt().orElse(null), null, null, null, null, null, null, List.of(), 0);
     }
 }

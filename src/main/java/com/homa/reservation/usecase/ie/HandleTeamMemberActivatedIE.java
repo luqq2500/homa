@@ -40,8 +40,9 @@ public final class HandleTeamMemberActivatedIE implements TeamMemberActivatedIEH
         }
         PersonPhoto photo = photos.findByPersonId(event.personId())
                 .orElseGet(() -> PersonPhoto.none(event.personId()));
-        members.save(event.personId(), new RosterableMember(
+        members.save(new RosterableMember(
                 event.memberId(),
+                event.personId(),
                 event.providerId(),
                 MemberRole.valueOf(event.role()),
                 event.displayName(),

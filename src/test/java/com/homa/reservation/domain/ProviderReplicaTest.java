@@ -9,6 +9,7 @@ import static com.homa.fixtures.HomaFixtures.JOB_BUFFER;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_CITIES;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
 import static com.homa.fixtures.HomaFixtures.MINIMUM_NOTICE;
+import static com.homa.reservation.domain.ReservationFixtures.AZMAN_PERSON_ID;
 import static com.homa.reservation.domain.ReservationFixtures.BATHROOM_CLEANING;
 import static com.homa.reservation.domain.ReservationFixtures.BOOKING_STEP;
 import static com.homa.reservation.domain.ReservationFixtures.KITCHEN_CLEANING;
@@ -64,20 +65,21 @@ class ProviderReplicaTest {
     void providerHeardOfOnlyByNameCannotBeBooked() {
         ProviderReplica unheard = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID);
 
-        assertThat(unheard).isEqualTo(new ProviderReplica(KEMAS_HOME_PROVIDER_ID, false, Optional.empty(),
-                new WorkingHours(Map.of())));
+        assertThat(unheard).isEqualTo(new ProviderReplica(KEMAS_HOME_PROVIDER_ID, Optional.empty(), false,
+                Optional.empty(), new WorkingHours(Map.of())));
         assertThat(unheard.asBookable(KEMAS_TEAM)).isEmpty();
-        assertThat(unheard.withBookability(true).working(kemasWorkingHours()).asBookable(KEMAS_TEAM)).isEmpty();
+        assertThat(unheard.ownedBy(AZMAN_PERSON_ID).withBookability(true).working(kemasWorkingHours())
+                .asBookable(KEMAS_TEAM)).isEmpty();
     }
 
     @Test
     @Tag("PRV-2")
     @DisplayName("Kemas Home went live and Listing published its terms and hours, in any order: it can be booked.")
     void listedLiveProviderIsBookableWhicheverEventCameFirst() {
-        ProviderReplica listedFirst = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID)
+        ProviderReplica listedFirst = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownedBy(AZMAN_PERSON_ID)
                 .listedAs(KEMAS_LISTING).working(kemasWorkingHours()).withBookability(true);
         ProviderReplica liveFirst = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID)
-                .withBookability(true).working(kemasWorkingHours()).listedAs(KEMAS_LISTING);
+                .withBookability(true).working(kemasWorkingHours()).listedAs(KEMAS_LISTING).ownedBy(AZMAN_PERSON_ID);
 
         assertThat(listedFirst).isEqualTo(liveFirst);
         assertThat(listedFirst.asBookable(KEMAS_TEAM)).contains(kemasHome());
@@ -87,13 +89,28 @@ class ProviderReplicaTest {
     @Tag("PRV-2")
     @DisplayName("Kemas Home stops being bookable and keeps its terms and hours for when it is bookable again.")
     void providerThatStopsBeingBookableKeepsItsListing() {
-        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID)
+        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownedBy(AZMAN_PERSON_ID)
                 .listedAs(KEMAS_LISTING).working(kemasWorkingHours()).withBookability(true);
 
         ProviderReplica stopped = live.withBookability(false);
 
         assertThat(stopped.asBookable(KEMAS_TEAM)).contains(kemasHomeProvider().notBookable().build());
         assertThat(stopped.withBookability(true)).isEqualTo(live);
+    }
+
+    @Test
+    @Tag("PRV-11")
+    @DisplayName("Azman opened Kemas Home: the replica holds its owner, so the owner can act on its reservations, whichever event came first.")
+    void providerKeepsItsOwnerWhicheverEventCameFirst() {
+        ProviderReplica opened = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownedBy(AZMAN_PERSON_ID);
+
+        assertThat(opened.ownerPersonId()).contains(AZMAN_PERSON_ID);
+        assertThat(ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownerPersonId()).isEmpty();
+        assertThat(opened.listedAs(KEMAS_LISTING).working(kemasWorkingHours()).withBookability(true)
+                .asBookable(KEMAS_TEAM).orElseThrow().ownerPersonId()).isEqualTo(AZMAN_PERSON_ID);
+        assertThat(opened.bookable()).isFalse();
+        assertThat(opened.listing()).isEmpty();
+        assertThat(opened.workingHours()).isEqualTo(new WorkingHours(Map.of()));
     }
 
     @Test
@@ -104,13 +121,13 @@ class ProviderReplicaTest {
                 new OfferedTerms(com.homa.kernel.Money.myr(30), TravelFeeRule.flat(FLAT_TRAVEL_FEE),
                         KEMAS_LISTING.terms().discount(), AcceptancePolicy.REQUEST, CancellationTier.FIRM),
                 KEMAS_LISTING.bounds(), KEMAS_LISTING.minimumNotice(), KEMAS_LISTING.buffer());
-        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID)
+        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownedBy(AZMAN_PERSON_ID)
                 .listedAs(KEMAS_LISTING).working(kemasWorkingHours()).withBookability(true);
 
         ProviderReplica changed = live.listedAs(raised);
 
-        assertThat(changed).isEqualTo(new ProviderReplica(KEMAS_HOME_PROVIDER_ID, true, Optional.of(raised),
-                kemasWorkingHours()));
+        assertThat(changed).isEqualTo(new ProviderReplica(KEMAS_HOME_PROVIDER_ID,
+                Optional.of(AZMAN_PERSON_ID), true, Optional.of(raised), kemasWorkingHours()));
         assertThat(changed.working(new WorkingHours(Map.of())).workingHours()).isEqualTo(new WorkingHours(Map.of()));
         assertThat(changed.working(new WorkingHours(Map.of())).listing()).contains(raised);
     }
@@ -119,10 +136,10 @@ class ProviderReplicaTest {
     @Tag("OFR-5")
     @DisplayName("Only the provider's own active helpers count: not a supervisor, a deactivated helper or another provider's.")
     void activeHelpersAreCountedFromTheProvidersOwnActiveHelpers() {
-        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID)
+        ProviderReplica live = ProviderReplica.unheardOf(KEMAS_HOME_PROVIDER_ID).ownedBy(AZMAN_PERSON_ID)
                 .listedAs(KEMAS_LISTING).working(kemasWorkingHours()).withBookability(true);
-        RosterableMember elsewhere = RosterableMember.local("member-elsewhere", "provider-another",
-                MemberRole.HELPER, "Hana", "photo-hana", true);
+        RosterableMember elsewhere = RosterableMember.local("member-elsewhere", "person-hana",
+                "provider-another", MemberRole.HELPER, "Hana", "photo-hana", true);
 
         assertThat(live.asBookable(List.of(siti(), deactivated(nurul()), farid(), elsewhere)))
                 .contains(kemasHomeProvider().activeHelpers(1).build());
