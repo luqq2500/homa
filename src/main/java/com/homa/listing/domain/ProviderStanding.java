@@ -82,6 +82,19 @@ public final class ProviderStanding {
         return role == MemberRole.HELPER && activeHelperIds.add(memberId);
     }
 
+    /**
+     * A member stopped being active: the provider deactivated them (HLP-5) or removed them (HLP-8). A helper leaves
+     * the active helpers; anyone Listing never counted, such as a supervisor (ROS-2) or a member it never heard
+     * activated, changes nothing. A deactivated member who is reactivated arrives as an activation again and counts
+     * once more.
+     *
+     * @return true when the number of active helpers changed, so the default maximum of helpers did too (OFR-5)
+     */
+    public boolean memberDeactivated(String memberId) {
+        Objects.requireNonNull(memberId, "memberId");
+        return activeHelperIds.remove(memberId);
+    }
+
     /** The number of active helpers: the default maximum of helpers a customer can book (OFR-5). */
     public int activeHelperCount() {
         return activeHelperIds.size();
