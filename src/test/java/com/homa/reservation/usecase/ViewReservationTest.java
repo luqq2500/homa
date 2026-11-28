@@ -29,6 +29,7 @@ import com.homa.reservation.usecase.dto.ViewReservationResponse;
 import com.homa.reservation.usecase.dto.ViewReservationResponse.RosteredMember;
 import com.homa.reservation.usecase.exception.NotReservationPartyException;
 import com.homa.reservation.usecase.exception.ReservationNotFoundException;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -93,6 +94,22 @@ class ViewReservationTest {
         assertThat(seen.status()).isEqualTo("COMPLETED");
         assertThat(seen.completedAt()).isEqualTo(saturday(14, 1));
         assertThat(seen.completionPhotoRefs()).containsExactly(CLEAN_KITCHEN_PHOTO);
+    }
+
+    @Test
+    @Tag("JOB-1")
+    @DisplayName("The team arrives at 9:52 and starts at 10:00.")
+    void bothPartiesSeeTheCheckInPeriodInWhichTheRosteredTeamArrives() {
+        Reservation reserved = bed.reserveStandard();
+
+        for (String viewer : List.of(AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID)) {
+            ViewReservationResponse seen = view(reserved, viewer);
+
+            assertThat(seen.checkInStart()).isEqualTo(saturday(9, 45));
+            assertThat(seen.jobStart()).isEqualTo(JOB_START);
+            assertThat(Duration.between(seen.checkInStart(), seen.jobStart())).isEqualTo(Duration.ofMinutes(15));
+            assertThat(saturday(9, 52)).isAfterOrEqualTo(seen.checkInStart()).isBefore(seen.jobStart());
+        }
     }
 
     @Test

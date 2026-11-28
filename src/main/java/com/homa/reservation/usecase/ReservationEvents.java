@@ -1,16 +1,22 @@
 package com.homa.reservation.usecase;
 
+import com.homa.ie.events.ReservationCancelledIE;
 import com.homa.ie.events.ReservationCheckoutRejectedIE;
 import com.homa.ie.events.ReservationCheckoutStartedIE;
 import com.homa.ie.events.ReservationCompletedIE;
+import com.homa.ie.events.ReservationDeclinedIE;
+import com.homa.ie.events.ReservationExpiredIE;
 import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.ie.events.RosterChangedIE;
+import com.homa.reservation.domain.Cancellation;
 import com.homa.reservation.domain.Checkout;
 import com.homa.reservation.domain.CheckoutRejection;
 import com.homa.reservation.domain.CompletionPhoto;
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.roster.RosterMember;
+import com.homa.reservation.domain.settlement.Settlement;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.usecase.port.out.EventIds;
 import com.homa.reservation.usecase.port.out.TimeSource;
@@ -59,6 +65,43 @@ public final class ReservationEvents {
                 reservation.booking().customerId(), reservation.booking().providerId(), reservation.checkInStart(),
                 reservation.jobTime().start(), reservation.jobTime().end(), reservation.quote().total(),
                 reservation.protectionWindowEnd(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-2: withdrawn; Payment refunds in full at once, and it never counts in reliability (RTG-10). */
+    public ReservationWithdrawnIE withdrawn(Reservation reservation) {
+        return new ReservationWithdrawnIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.withdrawnAt().orElseThrow(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-3: declined; Payment refunds in full at once. */
+    public ReservationDeclinedIE declined(Reservation reservation) {
+        return new ReservationDeclinedIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.declinedAt().orElseThrow(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-4: expired, the acceptance deadline reached; Payment refunds in full at once. */
+    public ReservationExpiredIE expired(Reservation reservation) {
+        return new ReservationExpiredIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.expiredAt().orElseThrow(), reservation.requestedAt(), time.now());
+    }
+
+    /**
+     * CCX, PCX, LMC: cancelled, with the settlement Reservation worked out, which Payment executes and never
+     * re-derives. The settlement id is unique to the reservation, which is cancelled at most once, so a replay of the
+     * event repeats the same id and Payment's idempotency keys hold.
+     */
+    public ReservationCancelledIE cancelled(Reservation reservation) {
+        Cancellation cancellation = reservation.cancellation().orElseThrow();
+        Settlement settlement = cancellation.settlement();
+        return new ReservationCancelledIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(), cancellation.cause().name(),
+                cancellation.at(), reservation.requestedAt(), reservation.checkInStart(),
+                reservation.protectionWindowEnd(), "settlement-" + reservation.id().value(),
+                settlement.customerFee(), settlement.customerRefund(), settlement.compensation(),
+                settlement.providerFine(), settlement.providerPayoutGross(), time.now());
     }
 
     /** ROS-1: the roster was set or changed, and the customer is told. */

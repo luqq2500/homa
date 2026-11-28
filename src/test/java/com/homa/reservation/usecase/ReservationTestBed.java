@@ -56,6 +56,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * The Reservation context wired with in-memory fakes, and the §0 setup told to it the way production tells it: by
@@ -110,6 +111,20 @@ public final class ReservationTestBed {
             bookableProviders, schedules, schedules, checkouts, publisher, events, time);
     public final ProviderAcceptReservation acceptReservation =
             new ProviderAcceptReservation(reservations, publisher, events, time);
+    public final CustomerWithdrawReservation withdrawReservation =
+            new CustomerWithdrawReservation(reservations, schedules, schedules, publisher, events, time);
+    public final ProviderDeclineReservation declineReservation =
+            new ProviderDeclineReservation(reservations, schedules, schedules, publisher, events, time);
+    public final ExpireRequest expireRequest =
+            new ExpireRequest(reservations, schedules, schedules, publisher, events, time);
+    public final ExpireOverdueRequests expireOverdueRequests =
+            new ExpireOverdueRequests(reservations, expireRequest, time);
+    public final PreviewCustomerCancellation previewCancellation =
+            new PreviewCustomerCancellation(reservations, time);
+    public final CustomerCancelReservation customerCancel =
+            new CustomerCancelReservation(reservations, schedules, schedules, publisher, events, time);
+    public final ProviderCancelReservation providerCancel =
+            new ProviderCancelReservation(reservations, schedules, schedules, publisher, events, time);
     public final ProviderAssignRoster assignRoster =
             new ProviderAssignRoster(reservations, members, publisher, events, time);
     public final ProviderCompleteReservation completeReservation = new ProviderCompleteReservation(reservations,
@@ -142,6 +157,10 @@ public final class ReservationTestBed {
 
     public static Instant monday(int hour, int minute) {
         return HomaFixtures.at(2026, 11, 30, hour, minute);
+    }
+
+    public static Instant tuesday(int hour, int minute) {
+        return HomaFixtures.at(2026, 12, 1, hour, minute);
     }
 
     public static Instant friday(int hour, int minute) {
@@ -182,6 +201,13 @@ public final class ReservationTestBed {
     /** Kemas Home's listing, changeable before it is published. */
     public ListingEvent kemasListing() {
         return new ListingEvent(KEMAS_HOME_PROVIDER_ID);
+    }
+
+    /** Kemas Home changes its listing, as Listing tells it; reservations Requested later are made under it (RES-8). */
+    public void kemasRelists(Consumer<ListingEvent> change) {
+        ListingEvent listing = kemasListing();
+        change.accept(listing);
+        listingTermsChanged.handle(listing.build(nextInboundId()));
     }
 
     public AvailabilityChangedIE kemasHours(String providerId) {

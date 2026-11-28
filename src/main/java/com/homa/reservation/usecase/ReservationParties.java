@@ -20,6 +20,14 @@ final class ReservationParties {
                 .orElseThrow(() -> new ReservationNotFoundException(reservationId));
     }
 
+    /** Only the reservation's customer may do this. */
+    static Reservation requireCustomer(Reservation reservation, String actorId) {
+        if (!reservation.booking().customerId().equals(actorId)) {
+            throw new NotReservationPartyException(actorId, reservation.id().value());
+        }
+        return reservation;
+    }
+
     /** Only the reservation's provider may do this. */
     static Reservation requireProvider(Reservation reservation, String actorId) {
         if (!reservation.booking().providerId().equals(actorId)) {

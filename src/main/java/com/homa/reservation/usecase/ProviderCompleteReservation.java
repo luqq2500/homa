@@ -2,8 +2,6 @@ package com.homa.reservation.usecase;
 
 import com.homa.reservation.domain.CompletionPhoto;
 import com.homa.reservation.domain.Reservation;
-import com.homa.reservation.domain.schedule.CustomerSchedule;
-import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.usecase.dto.CompleteReservationRequest;
 import com.homa.reservation.usecase.dto.CompleteReservationResponse;
 import com.homa.reservation.usecase.exception.CompletionPhotoNotFoundException;
@@ -23,8 +21,7 @@ import java.util.List;
 public final class ProviderCompleteReservation implements ReservationCompleter {
 
     private final ReservationRepository reservations;
-    private final ProviderScheduleRepository providerSchedules;
-    private final CustomerScheduleRepository customerSchedules;
+    private final CalendarRelease calendars;
     private final CompletionPhotoStore photos;
     private final ReservationIEPublisher publisher;
     private final ReservationEvents events;
@@ -35,8 +32,7 @@ public final class ProviderCompleteReservation implements ReservationCompleter {
             CompletionPhotoStore photos, ReservationIEPublisher publisher, ReservationEvents events,
             TimeSource time) {
         this.reservations = reservations;
-        this.providerSchedules = providerSchedules;
-        this.customerSchedules = customerSchedules;
+        this.calendars = new CalendarRelease(reservations, providerSchedules, customerSchedules);
         this.photos = photos;
         this.publisher = publisher;
         this.events = events;
@@ -55,15 +51,8 @@ public final class ProviderCompleteReservation implements ReservationCompleter {
     private Reservation markCompleted(CompleteReservationRequest request, List<CompletionPhoto> afterPhotos) {
         Reservation reservation = ReservationParties.requireProvider(
                 ReservationParties.load(reservations, request.reservationId()), request.providerId());
-        // Both schedules were saved with the reservation when its payment was confirmed (RES-9, RES-10).
-        ProviderSchedule providerSchedule =
-                providerSchedules.findByProviderId(reservation.booking().providerId()).orElseThrow();
-        CustomerSchedule customerSchedule =
-                customerSchedules.findByCustomerId(reservation.booking().customerId()).orElseThrow();
         reservation.markCompleted(afterPhotos, time.now());
-        providerSchedule.release(reservation);
-        customerSchedule.release(reservation);
-        reservations.saveWithSchedules(reservation, providerSchedule, customerSchedule);
+        calendars.saveReleased(reservation);
         return reservation;
     }
 

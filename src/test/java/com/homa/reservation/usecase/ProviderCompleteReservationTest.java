@@ -78,6 +78,34 @@ class ProviderCompleteReservationTest {
     }
 
     @Test
+    @Tag("JOB-2")
+    @DisplayName("The team finishes at 13:30. Aisyah pays for 4 hours.")
+    void customerPaysForTheBookedHoursEvenWhenTheTeamFinishesEarly() {
+        bed.time.set(saturday(13, 30));
+        assertStillReserved(() -> complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO), JobNotEndedException.class);
+
+        bed.time.set(JOB_END);
+        complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO);
+
+        assertThat(bed.reload(reserved).quote().hoursFee()).isEqualTo(Money.myr(180));
+        assertThat(bed.publisher.single(ReservationCompletedIE.class).payoutGross()).isEqualTo(Money.myr(200));
+    }
+
+    @Test
+    @Tag("JOB-4")
+    @DisplayName("Aisyah gets a notification at 14:01 with the after-photo.")
+    void customerIsToldWhenTheJobIsCompletedWithTheAfterPhoto() {
+        bed.time.set(saturday(14, 1));
+
+        complete(KEMAS_HOME_PROVIDER_ID, CLEAN_KITCHEN_PHOTO);
+
+        ReservationCompletedIE told = bed.publisher.single(ReservationCompletedIE.class);
+        assertThat(told.customerId()).isEqualTo(AISYAH_CUSTOMER_ID);
+        assertThat(told.completedAt()).isEqualTo(saturday(14, 1));
+        assertThat(told.completionPhotoRefs()).containsExactly(CLEAN_KITCHEN_PHOTO);
+    }
+
+    @Test
     @Tag("JOB-3")
     @DisplayName("At 13:59 the job hasn't ended, so it can't be marked Completed and the time stays blocked.")
     void jobCannotBeCompletedBeforeItEnds() {
