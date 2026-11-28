@@ -42,17 +42,21 @@ class HandleCustomerRegisteredIETest {
 
     @Test
     @Tag("CHT-1")
-    @DisplayName("The relay delivers the registration again: nothing changes.")
+    @DisplayName("The relay delivers the registration again: nothing changes, and a registration Conversation has "
+            + "already handled adds no one.")
     void aRedeliveredRegistrationChangesNothing() {
         CustomerRegisteredIE event = customerRegisteredEvent("registered-1", HUSBAND_ID);
         bed.customerRegistered.handle(event);
         int saves = bed.customers.saves();
-        bed.customers.given(bed.customers.findById(HUSBAND).orElseThrow().verified());
-
         bed.customerRegistered.handle(event);
-
         assertThat(bed.customers.saves()).isEqualTo(saves);
-        assertThat(bed.customers.findById(HUSBAND).orElseThrow().identityVerified()).isTrue();
+        assertThat(bed.customers.count()).isEqualTo(2);
+
+        bed.processedMessages.recordFirstHandling("registered-2", HandleCustomerRegisteredIE.HANDLER);
+        bed.customerRegistered.handle(customerRegisteredEvent("registered-2", "customer-sister"));
+
+        assertThat(bed.customers.count()).isEqualTo(2);
+        assertThat(bed.customers.findById(new CustomerId("customer-sister"))).isEmpty();
         assertThat(bed.processedMessages.hasHandled("registered-1", HandleCustomerRegisteredIE.HANDLER)).isTrue();
         assertThat(HandleCustomerRegisteredIE.HANDLER).isEqualTo("conversation.CustomerRegistered");
     }
