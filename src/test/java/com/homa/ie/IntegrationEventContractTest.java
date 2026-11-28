@@ -61,7 +61,8 @@ class IntegrationEventContractTest {
         List<String> photos = new ArrayList<>(List.of("photo-1"));
         ReservationCompletedIE event = new ReservationCompletedIE("event-3", "reservation-1",
                 HomaFixtures.AISYAH_CUSTOMER_ID, HomaFixtures.KEMAS_HOME_PROVIDER_ID, HomaFixtures.TOTAL_RESERVATION_FEE,
-                HomaFixtures.PROTECTION_WINDOW.end(), HomaFixtures.JOB_END, photos, HomaFixtures.JOB_END);
+                HomaFixtures.PROTECTION_WINDOW.end(), HomaFixtures.JOB_END, HomaFixtures.REQUESTED_AT, photos,
+                HomaFixtures.JOB_END);
 
         photos.add("photo-2");
 

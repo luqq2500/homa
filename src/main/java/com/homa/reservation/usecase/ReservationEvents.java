@@ -72,7 +72,7 @@ public final class ReservationEvents {
     public ReservationCompletedIE completed(Reservation reservation) {
         return new ReservationCompletedIE(eventIds.next(), reservation.id().value(),
                 reservation.booking().customerId(), reservation.booking().providerId(), reservation.quote().total(),
-                reservation.protectionWindowEnd(), reservation.completedAt().orElseThrow(),
+                reservation.protectionWindowEnd(), reservation.completedAt().orElseThrow(), reservation.requestedAt(),
                 reservation.completionPhotos().stream().map(CompletionPhoto::reference).toList(), time.now());
     }
 }

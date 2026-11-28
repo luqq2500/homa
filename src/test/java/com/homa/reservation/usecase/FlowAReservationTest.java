@@ -109,7 +109,7 @@ class FlowAReservationTest {
                 new RosterChangedIE("reservation-event-4", reservationId, List.of(SITI_MEMBER_ID, NURUL_MEMBER_ID),
                         friday(18, 0)),
                 new ReservationCompletedIE("reservation-event-5", reservationId, AISYAH_CUSTOMER_ID,
-                        KEMAS_HOME_PROVIDER_ID, Money.myr(200), sunday(14, 0), saturday(14, 1),
+                        KEMAS_HOME_PROVIDER_ID, Money.myr(200), sunday(14, 0), saturday(14, 1), REQUESTED_AT,
                         List.of(CLEAN_KITCHEN_PHOTO), saturday(14, 1)));
     }
 }

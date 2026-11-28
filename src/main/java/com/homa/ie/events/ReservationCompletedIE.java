@@ -9,7 +9,8 @@ import java.util.List;
  * The provider marked the job Completed (JOB-3). Payment marks the JOB payout it opened at Reserved as completed,
  * releasable when the protection window ends and no report is open (PAY-2, RPT-6); Rating opens its window
  * (RTG-2); Support keeps the completion photo refs as evidence (JOB-6, NSH-6). {@code payoutGross} is informational:
- * Payment tracks the gross itself, reduced by every partial refund.
+ * Payment tracks the gross itself, reduced by every partial refund. {@code requestedAt} lets each consumer read Homa's reservation values as of the request time (P3), for example
+ * Rating's window.
  */
 public record ReservationCompletedIE(
         String eventId,
@@ -19,6 +20,7 @@ public record ReservationCompletedIE(
         Money payoutGross,
         Instant protectionWindowEnd,
         Instant completedAt,
+        Instant requestedAt,
         List<String> completionPhotoRefs,
         Instant occurredAt) implements ReservationIE {
 

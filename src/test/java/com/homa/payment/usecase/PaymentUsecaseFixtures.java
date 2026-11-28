@@ -110,7 +110,8 @@ public final class PaymentUsecaseFixtures {
 
     public static ReservationCompletedIE completed(String eventId) {
         return new ReservationCompletedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
-                TOTAL_RESERVATION_FEE, PROTECTION_WINDOW_END, COMPLETED_AT, List.of("photo-after"), COMPLETED_AT);
+                TOTAL_RESERVATION_FEE, PROTECTION_WINDOW_END, COMPLETED_AT, HomaFixtures.REQUESTED_AT,
+                List.of("photo-after"), COMPLETED_AT);
     }
 
     public static ConfirmGatewayPaymentRequest confirmed(String gatewayEventId, PaymentAttemptId attempt,

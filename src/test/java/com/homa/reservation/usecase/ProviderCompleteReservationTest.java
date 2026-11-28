@@ -1,5 +1,6 @@
 package com.homa.reservation.usecase;
 
+import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.fixtures.HomaFixtures.AISYAH_CUSTOMER_ID;
 import static com.homa.fixtures.HomaFixtures.JOB_END;
 import static com.homa.fixtures.HomaFixtures.KEMAS_HOME_PROVIDER_ID;
@@ -72,7 +73,8 @@ class ProviderCompleteReservationTest {
         assertThat(bed.schedules.customerBlocks(AISYAH_CUSTOMER_ID)).isEmpty();
         assertThat(bed.publisher.single(ReservationCompletedIE.class)).isEqualTo(new ReservationCompletedIE(
                 "reservation-event-4", id, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID, Money.myr(200),
-                sunday(14, 0), saturday(14, 1), List.of(CLEAN_KITCHEN_PHOTO, BATHROOM_PHOTO), saturday(14, 1)));
+                sunday(14, 0), saturday(14, 1), REQUESTED_AT, List.of(CLEAN_KITCHEN_PHOTO, BATHROOM_PHOTO),
+                saturday(14, 1)));
     }
 
     @Test
