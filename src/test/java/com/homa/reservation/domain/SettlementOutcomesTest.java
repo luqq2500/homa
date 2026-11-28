@@ -66,6 +66,11 @@ class SettlementOutcomesTest {
         return reserved -> reserved.cancelByProvider(at).settlement();
     }
 
+    /** A reservation whose roster isn't complete when the Check-in Period starts (§12 "No roster"). */
+    private static Function<Reservation, Settlement> noRosterAt(Instant at) {
+        return reserved -> reserved.lockRosterAtCheckIn(at).orElseThrow().settlement();
+    }
+
     static Stream<Arguments> everyCaseOfTheMoneyTable() {
         return Stream.of(
                 row("Customer withdraws a request: full refund, gets RM200", freeOutcomeAt(monday(21, 0)),
@@ -87,7 +92,9 @@ class SettlementOutcomesTest {
                 row("Customer cancels last minute at 11:20: pays RM87.50, gets RM112.50",
                         customerCancelsAt(saturday(11, 20)), new Row("87.50", "0", "112.50", "87.50")),
                 row("Provider cancels last minute: fine RM85, gets RM214", providerCancelsAt(saturday(9, 50)),
-                        new Row("0", "85", "214", "0")));
+                        new Row("0", "85", "214", "0")),
+                row("No roster at 9:45: fine RM69, gets RM208", noRosterAt(saturday(9, 45)),
+                        new Row("0", "69", "208", "0")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -102,6 +109,10 @@ class SettlementOutcomesTest {
     @Tag("LMC-1")
     @Tag("LMC-2")
     @Tag("LMC-3")
+    @Tag("ROS-7")
+    @Tag("NRS-1")
+    @Tag("NRS-2")
+    @Tag("NRS-3")
     @Tag("CAN-1")
     @Tag("CAN-3")
     @DisplayName("§12 Summary of money outcomes: Aisyah's RM200 reservation, with a Base Cancellation Fee of RM45, settles as the table says in every case.")

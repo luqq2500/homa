@@ -4,6 +4,7 @@ import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationId;
 import com.homa.reservation.domain.ReservationPhase;
 import com.homa.reservation.domain.ReservationStatus;
+import com.homa.reservation.domain.roster.Roster;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
@@ -75,6 +76,17 @@ public final class InMemoryReservationRepository implements ReservationRepositor
                 .filter(reservation -> reservation.status() == ReservationStatus.REQUESTED)
                 .filter(reservation -> reservation.acceptanceDeadline().map(AcceptanceDeadline::at)
                         .filter(deadline -> !deadline.isAfter(now)).isPresent())
+                .map(InMemoryReservationRepository::copy)
+                .toList();
+    }
+
+    @Override
+    public List<Reservation> findReservedToLockRosterBy(Instant now) {
+        return stored.values().stream()
+                .filter(reservation -> reservation.status() == ReservationStatus.RESERVED)
+                .filter(reservation -> reservation.phaseAt(now) == ReservationPhase.CHECK_IN
+                        || reservation.phaseAt(now) == ReservationPhase.IN_JOB)
+                .filter(reservation -> reservation.roster().filter(Roster::isLocked).isEmpty())
                 .map(InMemoryReservationRepository::copy)
                 .toList();
     }

@@ -14,6 +14,7 @@ import com.homa.reservation.domain.pricing.Quote;
 import com.homa.reservation.domain.settlement.CustomerLastMinutePolicy;
 import com.homa.reservation.domain.settlement.FreeCancellationPolicy;
 import com.homa.reservation.domain.settlement.LateCustomerCancellationPolicy;
+import com.homa.reservation.domain.settlement.NoRosterPolicy;
 import com.homa.reservation.domain.settlement.ProviderCancellationPolicy;
 import com.homa.reservation.domain.settlement.ProviderLastMinutePolicy;
 import com.homa.reservation.domain.settlement.Settlement;
@@ -46,6 +47,8 @@ class SettlementPoliciesTest {
 
     private static final Quote STANDARD_QUOTE = new Quote(Money.myr(180), Money.myr(20), Money.myr(200),
             Money.myr(45), Percentage.of(10));
+    private static final Quote CHEAP_QUOTE = new Quote(Money.myr(25), Money.myr(0), Money.myr(25), Money.myr(25),
+            Percentage.ZERO);
     private static final JobTime JOB = JobTime.of(JOB_START, Duration.ofHours(4));
 
     private static SettlementBasis basis(Version values) {
@@ -118,6 +121,17 @@ class SettlementPoliciesTest {
     }
 
     @Test
+    @Tag("NRS-2")
+    @Tag("NRS-3")
+    @DisplayName("At 9:45 only Siti is rostered for 2 helpers: Kemas Home is fined RM69 and Aisyah gets RM208.")
+    void noRosterReadsItsOwnFineAndCompensation() {
+        NoRosterPolicy policy = new NoRosterPolicy();
+
+        assertThat(policy.settle(basis(TODAY), saturday(9, 45))).isEqualTo(settlement("0", "200", "8", "69"));
+        assertThat(policy.settle(basis(OTHER), saturday(9, 45))).isEqualTo(settlement("0", "200", "12", "79"));
+    }
+
+    @Test
     @Tag("LMC-2")
     @DisplayName("Aisyah stops the job at 11:20: 30 minutes are charged (RM22.50), so she pays RM87.50 and gets RM112.50 back.")
     void customerLastMinuteReadsItsOwnPartialTimeStep() {
@@ -141,5 +155,8 @@ class SettlementPoliciesTest {
                 .isEqualTo(settlement("80", "120", "0", "0"));
         assertThat(new LateCustomerCancellationPolicy().settle(cappedAtForty, friday(22, 0)).customerFee())
                 .isEqualTo(Money.myr(45));
+        assertThat(new NoRosterPolicy().settle(new SettlementBasis(CHEAP_QUOTE, JOB, TODAY), saturday(9, 45)))
+                .as("a RM25 job: 25 + 12% of 25 is RM28, capped at RM25")
+                .isEqualTo(new Settlement(Money.myr(0), Money.myr(25), Money.myr(1), Money.myr(25), Money.myr(0)));
     }
 }

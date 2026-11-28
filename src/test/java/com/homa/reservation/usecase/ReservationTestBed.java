@@ -142,6 +142,8 @@ public final class ReservationTestBed {
             schedules, schedules, photoStore, publisher, events, time);
     public final RemindUncompletedJobs remindUncompletedJobs =
             new RemindUncompletedJobs(reservations, reminderLog, notifier, time);
+    public final LockRoster lockRoster = new LockRoster(reservations, schedules, schedules, publisher, events, time);
+    public final LockRostersAtCheckIn lockRostersAtCheckIn = new LockRostersAtCheckIn(reservations, lockRoster, time);
     public final RosterReplacements rosterReplacements =
             new RosterReplacements(reservations, publisher, events, time);
     public final ViewReservation viewReservation = new ViewReservation(reservations);

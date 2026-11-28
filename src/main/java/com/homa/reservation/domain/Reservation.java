@@ -5,6 +5,7 @@ import com.homa.reservation.domain.ReservationValues.Version;
 import com.homa.reservation.domain.exception.AcceptanceDeadlineNotReachedException;
 import com.homa.reservation.domain.exception.AcceptanceDeadlinePassedException;
 import com.homa.reservation.domain.exception.BookingRefusedException;
+import com.homa.reservation.domain.exception.CheckInPeriodNotStartedException;
 import com.homa.reservation.domain.exception.CompletionPhotoRequiredException;
 import com.homa.reservation.domain.exception.JobAlreadyEndedException;
 import com.homa.reservation.domain.exception.JobNotEndedException;
@@ -22,6 +23,7 @@ import com.homa.reservation.domain.schedule.ProviderSchedule;
 import com.homa.reservation.domain.settlement.CustomerLastMinutePolicy;
 import com.homa.reservation.domain.settlement.FreeCancellationPolicy;
 import com.homa.reservation.domain.settlement.LateCustomerCancellationPolicy;
+import com.homa.reservation.domain.settlement.NoRosterPolicy;
 import com.homa.reservation.domain.settlement.ProviderCancellationPolicy;
 import com.homa.reservation.domain.settlement.ProviderLastMinutePolicy;
 import com.homa.reservation.domain.settlement.Settlement;
@@ -61,6 +63,7 @@ public final class Reservation {
     private static final SettlementPolicy CUSTOMER_LAST_MINUTE = new CustomerLastMinutePolicy();
     private static final SettlementPolicy PROVIDER_CANCELLATION = new ProviderCancellationPolicy();
     private static final SettlementPolicy PROVIDER_LAST_MINUTE = new ProviderLastMinutePolicy();
+    private static final SettlementPolicy NO_ROSTER = new NoRosterPolicy();
 
     private final ReservationId id;
     private final CheckoutId checkoutId;
@@ -343,6 +346,44 @@ public final class Reservation {
             throw new MemberNotRosterableException(member.memberId());
         });
         roster = Roster.of(members.stream().map(RosterableMember::asRosterMember).toList(), booking.helpers());
+    }
+
+    /**
+     * ROS-1, ROS-7, NRS-1 to NRS-3: the Check-in Period has started, so the roster locks as it is. A complete roster
+     * is locked and the reservation goes on. A roster that isn't complete, because none was set or a member who
+     * stopped being active wasn't replaced (ROS-5), triggers the No Roster Policy: the reservation is Cancelled with
+     * cause NO_ROSTER, the provider is fined the Base Cancellation Fee + 12% and the customer gets a full refund + 4%.
+     * It is refused before the Check-in Period starts, once the job has ended, and for a roster already locked, so a
+     * repeat changes nothing. Returns the cancellation when there was no complete roster.
+     */
+    public Optional<Cancellation> lockRosterAtCheckIn(Instant now) {
+        requireRosterToLockAt(now);
+        if (hasCompleteRoster()) {
+            roster = roster.locked(now);
+            return Optional.empty();
+        }
+        return Optional.of(cancelled(settled(now, CancellationCause.NO_ROSTER, NO_ROSTER)));
+    }
+
+    private void requireRosterToLockAt(Instant now) {
+        requireStatus(ReservationStatus.RESERVED, "lock the roster of");
+        if (phaseAt(now) == ReservationPhase.BEFORE_CHECK_IN) {
+            throw new CheckInPeriodNotStartedException(checkInStart());
+        }
+        if (!now.isBefore(jobTime().end())) {
+            throw new JobAlreadyEndedException(jobTime().end());
+        }
+        if (isRosterLocked()) {
+            throw new RosterLockedException(checkInStart());
+        }
+    }
+
+    private boolean hasCompleteRoster() {
+        return roster != null && roster.isComplete();
+    }
+
+    private boolean isRosterLocked() {
+        return roster != null && roster.isLocked();
     }
 
     /**

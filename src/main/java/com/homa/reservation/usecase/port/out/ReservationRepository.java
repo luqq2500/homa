@@ -35,6 +35,14 @@ public interface ReservationRepository {
     List<Reservation> findRequestedPastDeadline(Instant now);
 
     /**
+     * Reserved reservations whose Check-in Period has started by this moment and whose job hasn't ended, with a
+     * roster that isn't locked yet (ROS-1, ROS-7): each is due to lock, or to be cancelled for having no complete
+     * roster. Several scheduler tasks can ask at once; each reservation is then saved on its own and the loser of a
+     * race gets {@link ReservationChangedException}.
+     */
+    List<Reservation> findReservedToLockRosterBy(Instant now);
+
+    /**
      * Reserved reservations whose roster has this member and whose Check-in Period hasn't started by this moment, so
      * the member can still be replaced (ROS-5). Several handlers can ask at once; each reservation is then saved on
      * its own and the loser of a race gets {@link ReservationChangedException}.
