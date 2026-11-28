@@ -2,6 +2,7 @@ package com.homa.payment.usecase;
 
 import com.homa.payment.domain.CheckoutId;
 import com.homa.payment.domain.PaymentHold;
+import com.homa.payment.domain.ReservationId;
 import com.homa.payment.usecase.port.out.PaymentHoldRepository;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,6 +24,13 @@ public class InMemoryPaymentHoldRepository implements PaymentHoldRepository {
     @Override
     public Optional<PaymentHold> findByCheckoutId(CheckoutId checkoutId) {
         return Optional.ofNullable(holds.get(checkoutId));
+    }
+
+    @Override
+    public Optional<PaymentHold> findByReservationId(ReservationId reservationId) {
+        return holds.values().stream()
+                .filter(hold -> hold.reservationId().filter(reservationId::equals).isPresent())
+                .findFirst();
     }
 
     @Override

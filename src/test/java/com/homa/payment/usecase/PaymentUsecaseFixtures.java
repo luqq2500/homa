@@ -11,7 +11,11 @@ import com.homa.ie.events.PayoutAccountHolderMatchedIE;
 import com.homa.ie.events.ReservationCheckoutRejectedIE;
 import com.homa.ie.events.ReservationCheckoutStartedIE;
 import com.homa.ie.events.ReservationCompletedIE;
+import com.homa.ie.events.ReservationDeclinedIE;
+import com.homa.ie.events.ReservationExpiredIE;
+import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.payment.domain.BankAccount;
 import com.homa.payment.domain.CheckoutId;
 import com.homa.payment.domain.CustomerId;
@@ -66,6 +70,12 @@ public final class PaymentUsecaseFixtures {
     public static final Instant CHECKOUT_STARTED_AT = at(2026, 11, 30, 19, 58);
     public static final Instant PAID_AT = HomaFixtures.REQUESTED_AT;
     public static final Instant SECOND_PAYMENT_AT = at(2026, 11, 30, 20, 2);
+    /** REQ-2: Aisyah withdraws on Monday 21:00. */
+    public static final Instant WITHDRAWN_AT = at(2026, 11, 30, 21, 0);
+    /** REQ-3: Kemas Home declines on Monday 21:30. */
+    public static final Instant DECLINED_AT = at(2026, 11, 30, 21, 30);
+    /** REQ-4: Kemas Home doesn't respond by Tuesday 20:00. */
+    public static final Instant EXPIRED_AT = HomaFixtures.ACCEPTANCE_DEADLINE;
     public static final Instant RESERVED_AT = at(2026, 11, 30, 22, 0);
     public static final Instant COMPLETED_AT = HomaFixtures.JOB_END;
     /** The Protection Window ends Sunday 14:00. */
@@ -102,6 +112,28 @@ public final class PaymentUsecaseFixtures {
         return new ReservationCheckoutRejectedIE(eventId, CHECKOUT_ID, AISYAH_CUSTOMER_ID, "TIME_TAKEN", PAID_AT);
     }
 
+    public static ReservationRequestedIE requested(String eventId) {
+        return new ReservationRequestedIE(eventId, RESERVATION_ID, CHECKOUT_ID, AISYAH_CUSTOMER_ID,
+                KEMAS_HOME_PROVIDER_ID, HomaFixtures.CHECK_IN_PERIOD.start(), HomaFixtures.JOB_START,
+                HomaFixtures.JOB_END, TOTAL_RESERVATION_FEE, HomaFixtures.ACCEPTANCE_DEADLINE,
+                PROTECTION_WINDOW_END, HomaFixtures.REQUESTED_AT, HomaFixtures.REQUESTED_AT);
+    }
+
+    public static ReservationWithdrawnIE withdrawn(String eventId) {
+        return new ReservationWithdrawnIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                WITHDRAWN_AT, HomaFixtures.REQUESTED_AT, WITHDRAWN_AT);
+    }
+
+    public static ReservationDeclinedIE declined(String eventId) {
+        return new ReservationDeclinedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                DECLINED_AT, HomaFixtures.REQUESTED_AT, DECLINED_AT);
+    }
+
+    public static ReservationExpiredIE expired(String eventId) {
+        return new ReservationExpiredIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                EXPIRED_AT, HomaFixtures.REQUESTED_AT, EXPIRED_AT);
+    }
+
     public static ReservationReservedIE reserved(String eventId) {
         return new ReservationReservedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
                 HomaFixtures.CHECK_IN_PERIOD.start(), HomaFixtures.JOB_START, HomaFixtures.JOB_END,
@@ -133,6 +165,13 @@ public final class PaymentUsecaseFixtures {
     public static PaymentHold aisyahsHeldPayment() {
         PaymentHold hold = aisyahsPendingHold();
         hold.recordConfirmation(ONLINE_BANKING, PAID_AT);
+        return hold;
+    }
+
+    /** Aisyah's RM200, held and linked to her Requested reservation (RES-7). */
+    public static PaymentHold aisyahsRequestedHold() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.linkToReservation(RESERVATION);
         return hold;
     }
 
