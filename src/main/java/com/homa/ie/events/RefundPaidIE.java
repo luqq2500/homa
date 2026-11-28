@@ -13,8 +13,9 @@ import java.time.Instant;
  * @param customerId    who it was sent to
  * @param amount        what was sent
  * @param reason        WITHDRAWN, DECLINED or EXPIRED (a Requested reservation that ended, REQ-2 to REQ-4);
- *                      CANCELLED (the refund line of a cancellation settlement); COMPENSATION (what Homa pays on top
- *                      of a full refund, PAY-4)
+ *                      CANCELLED (the refund line of a cancellation settlement); SMALLER_ROSTER (the difference when
+ *                      the customer accepted a smaller roster, ROS-8); COMPENSATION (what Homa pays on top of a full
+ *                      refund, PAY-4)
  * @param sentAt        when Payment sent it; this is also {@link #occurredAt()}
  */
 public record RefundPaidIE(

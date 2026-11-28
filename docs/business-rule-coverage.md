@@ -18,7 +18,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 ## Summary
 
-**119 of 179** rules are cited by at least one test; **20** of those are only partly built.
+**129 of 179** rules are cited by at least one test; **19** of those are only partly built.
 
 ### By slice (the plan's build order)
 
@@ -28,7 +28,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | 1 | Book and get paid | 51 | 51 | 0 | 0 | 0 | 0 |
 | 2 | Requests and withdrawals | 5 | 5 | 0 | 0 | 0 | 0 |
 | 3 | Cancellations | 18 | 18 | 0 | 0 | 0 | 0 |
-| 4 | Team and roster | 15 | 1 | 2 | 1 | 1 | 10 |
+| 4 | Team and roster | 15 | 15 | 0 | 0 | 0 | 0 |
 | 5 | Reports and no-shows | 18 | 2 | 3 | 0 | 0 | 13 |
 | 6 | Compliance, suspensions and debt | 29 | 5 | 2 | 0 | 0 | 22 |
 | 7 | Ratings and reliability | 11 | 11 | 0 | 0 | 0 | 0 |
@@ -44,9 +44,9 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | Customer | 9 | 7 | 0 | 0 | 0 | 2 | 1 |
 | Listing | 11 | 10 | 0 | 0 | 0 | 1 | 1 |
 | Payment | 12 | 8 | 0 | 0 | 0 | 4 | 0 |
-| Provider | 22 | 9 | 1 | 1 | 0 | 11 | 2 |
+| Provider | 22 | 17 | 0 | 0 | 0 | 5 | 2 |
 | Rating | 11 | 11 | 0 | 0 | 0 | 0 | 0 |
-| Reservation | 60 | 46 | 2 | 0 | 1 | 11 | 3 |
+| Reservation | 60 | 52 | 1 | 0 | 0 | 7 | 2 |
 | Several | 22 | 0 | 6 | 2 | 1 | 13 | 7 |
 | Support | 16 | 1 | 3 | 0 | 0 | 12 | 3 |
 | Verification | 11 | 5 | 1 | 0 | 0 | 5 | 2 |
@@ -73,33 +73,33 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| PRV-1 | Every provider has one owner: an identity-verified person aged 18 or above, with a status… | Provider | 1 | Domain + usecase | customer.usecase (1), listing.usecase (5), payment.usecase (4), provider.domain (8), provider.usecase (9), verification.domain (8), verification.usecase (8) |
-| PRV-2 | A provider can be booked only when it has a verified payout account in its name and at le… | Provider | 1 | Domain + usecase | listing.domain (4), listing.usecase (2), payment.domain (12), payment.usecase (12), provider.domain (17), provider.usecase (11), reservation.domain (4), reservation.usecase (8), verification.usecase (3) |
-| PRV-3 | Supervisors are optional. | Provider | 1 | Domain + usecase | provider.domain (2), provider.usecase (2) |
+| PRV-1 | Every provider has one owner: an identity-verified person aged 18 or above, with a status… | Provider | 1 | Domain + usecase | customer.usecase (1), listing.usecase (5), payment.usecase (4), provider.domain (8), provider.usecase (13), verification.domain (8), verification.usecase (8) |
+| PRV-2 | A provider can be booked only when it has a verified payout account in its name and at le… | Provider | 1 | Domain + usecase | listing.domain (4), listing.usecase (3), payment.domain (12), payment.usecase (12), provider.domain (18), provider.usecase (18), reservation.domain (4), reservation.usecase (8), verification.usecase (3) |
+| PRV-3 | Supervisors are optional. | Provider | 1 | Domain + usecase | provider.domain (2), provider.usecase (5) |
 | PRV-4 | A provider is tagged Insurance Covered while Support has confirmed a valid public liabili… | Provider | 6 | Not started | – |
 | PRV-5 | A provider can't close its account while it has Requested or Reserved reservations. | Provider | 6 | Not started | – |
-| PRV-6 | The owner can also work as a helper or supervisor in their own team. | Provider | 4 | Not started | – |
+| PRV-6 | The owner can also work as a helper or supervisor in their own team. | Provider | 4 | Domain + usecase | provider.domain (6), provider.usecase (8) |
 | PRV-7 | A provider is a Business provider while Homa has verified all three: its registered busin… | Provider | 6 | Domain + usecase **(partial)** Business-held payout accounts are not matched yet; business verification is slice 6. | provider.usecase (1), verification.domain (1), verification.usecase (1) |
 | PRV-8 | Only Business providers can have foreign members. | Provider | 6 | Not started | – |
 | PRV-9 | When a provider stops being a Business provider, its foreign members are suspended. Every… | Provider | 6 | Not started | – |
 | PRV-10 | A provider can change its payout account. Payouts wait until the new account is verified,… | Provider | 6 | Domain + usecase **(partial)** A changed payout account is checked afresh; payouts waiting for it are slice 6. | payment.domain (1), payment.usecase (2), provider.usecase (2), verification.usecase (2) |
-| PRV-11 | Everyone signs in with their own account. A rostered member acts for the provider on the… | Provider | 4 | Usecase only | provider.usecase (1) |
+| PRV-11 | Everyone signs in with their own account. A rostered member acts for the provider on the… | Provider | 4 | Domain + usecase | provider.usecase (1), reservation.domain (7), reservation.usecase (11) |
 | PRV-12 | Support can suspend a provider or a member after a confirmed report: for 7 days, 30 days,… | Support | 6 | Not started | – |
 
 ### 3.2 Members
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| HLP-1 | Every member must be aged 18 or above. | Provider | 1 | Domain + usecase | provider.domain (3), provider.usecase (3), verification.domain (6) |
+| HLP-1 | Every member must be aged 18 or above. | Provider | 1 | Domain + usecase | provider.domain (4), provider.usecase (3), verification.domain (6) |
 | HLP-2 | A local member is verified as local (IDN-1). | Provider | 1 | Domain + usecase | provider.domain (3), provider.usecase (2), verification.domain (3), verification.usecase (2) |
 | HLP-3 | A foreign member must be allowed to work in the country, with at least 90 days left on th… | Provider | 1 | Domain + usecase | provider.domain (10), provider.usecase (2), verification.domain (7), verification.usecase (3) |
 | HLP-4 | The provider confirms that each foreign member works lawfully for its business. | Provider | 1 | Domain + usecase | provider.domain (1), provider.usecase (2) |
-| HLP-5 | A provider can deactivate a member and reactivate them. | Provider | 4 | Not started | – |
-| HLP-6 | A deactivated member can't be rostered. | Provider | 4 | Not started | – |
-| HLP-7 | A member can be reactivated only with a valid verification. | Provider | 4 | Not started | – |
-| HLP-8 | A provider can remove a member, and must remove one who no longer works for it. A removed… | Provider | 4 | Not started | – |
-| HLP-9 | A member can't be removed while they're in the Check-in Period or job time of a reservati… | Provider | 4 | Not started | – |
-| HLP-10 | A person belongs to only one provider at a time, as its owner or a member, active or deac… | Provider | 4 | Domain only | verification.domain (1) |
+| HLP-5 | A provider can deactivate a member and reactivate them. | Provider | 4 | Domain + usecase | listing.domain (2), listing.usecase (5), provider.domain (4), provider.usecase (5) |
+| HLP-6 | A deactivated member can't be rostered. | Provider | 4 | Domain + usecase | listing.usecase (1), provider.domain (1), provider.usecase (1), reservation.domain (2), reservation.usecase (1) |
+| HLP-7 | A member can be reactivated only with a valid verification. | Provider | 4 | Domain + usecase | provider.domain (6), provider.usecase (5) |
+| HLP-8 | A provider can remove a member, and must remove one who no longer works for it. A removed… | Provider | 4 | Domain + usecase | listing.domain (1), listing.usecase (2), provider.domain (7), provider.usecase (6) |
+| HLP-9 | A member can't be removed while they're in the Check-in Period or job time of a reservati… | Provider | 4 | Domain + usecase | provider.domain (16), provider.usecase (22), reservation.usecase (1) |
+| HLP-10 | A person belongs to only one provider at a time, as its owner or a member, active or deac… | Provider | 4 | Domain + usecase | provider.domain (11), provider.usecase (10), verification.domain (1) |
 
 ### 3.3 Verification monitoring
 
@@ -116,7 +116,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| IDN-1 | Every customer, owner and member is verified with the identity document the country polic… | Verification | 1 | Domain + usecase | customer.usecase (1), provider.domain (2), provider.usecase (3), verification.domain (15), verification.usecase (6) |
+| IDN-1 | Every customer, owner and member is verified with the identity document the country polic… | Verification | 1 | Domain + usecase | customer.usecase (1), provider.domain (2), provider.usecase (5), verification.domain (15), verification.usecase (6) |
 | IDN-2 | For each customer, owner and member, Homa stores their name, profile photo (if they have… | Verification | 1 | Domain + usecase | verification.domain (11), verification.usecase (3) |
 | IDN-3 | The identity document number is used only to recognise a person and to check payout accou… | Verification | 9 | Domain + usecase | customer.domain (1), customer.usecase (1), payment.domain (2), payment.usecase (1), provider.domain (1), verification.domain (6), verification.usecase (8) |
 | IDN-4 | Every owner and member has a verified profile photo: a photo of their face, checked by th… | Verification | 9 | Domain + usecase **(partial)** A member's photo fact is carried and checked; the photo check flow is slice 6. | provider.domain (1), provider.usecase (5), reservation.domain (3), reservation.usecase (6) |
@@ -130,7 +130,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | OFR-2 | A provider sets one hourly rate per helper. | Listing | 1 | Domain + usecase | listing.domain (2), listing.usecase (1) |
 | OFR-3 | A provider sets a travel fee: none, flat, or by city. | Listing | 1 | Domain + usecase | listing.domain (4), listing.usecase (4), reservation.domain (1), reservation.usecase (1) |
 | OFR-4 | A provider can set a discount of up to 99% for reservations of at least a set number of h… | Listing | 1 | Domain + usecase | kernel (1), listing.domain (5), listing.usecase (2), reservation.domain (1), reservation.usecase (2) |
-| OFR-5 | A provider sets minimum and maximum hours and helpers. By default: 1 to 8 hours, and 1 he… | Listing | 1 | Domain + usecase | listing.domain (6), listing.usecase (5), reservation.domain (2) |
+| OFR-5 | A provider sets minimum and maximum hours and helpers. By default: 1 to 8 hours, and 1 he… | Listing | 1 | Domain + usecase | listing.domain (11), listing.usecase (10), reservation.domain (2) |
 | OFR-6 | A provider sets a minimum notice: by default 2 hours, and at least 1 hour for Instant or… | Listing | 1 | Domain + usecase | listing.domain (4), listing.usecase (3) |
 | OFR-7 | A provider can show proof-of-work photos from past jobs. | Listing | 8 | Not started | – |
 | OFR-8 | A provider sets its working days and hours, and can sync external calendars. | Listing | 8 | Domain + usecase **(partial)** Weekly working hours only; calendar sync is slice 8. | listing.domain (1), listing.usecase (1) |
@@ -177,14 +177,14 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| ROS-1 | The provider sets the roster before the Check-in Period and can change it until then. The… | Reservation | 1 | Domain + usecase | reservation.domain (5), reservation.usecase (4) |
-| ROS-2 | The roster has the booked number of helpers. Supervisors are extra and not billed. | Reservation | 1 | Domain + usecase | reservation.domain (2), reservation.usecase (1) |
+| ROS-1 | The provider sets the roster before the Check-in Period and can change it until then. The… | Reservation | 1 | Domain + usecase | provider.domain (2), provider.usecase (3), reservation.domain (13), reservation.usecase (10) |
+| ROS-2 | The roster has the booked number of helpers. Supervisors are extra and not billed. | Reservation | 1 | Domain + usecase | reservation.domain (4), reservation.usecase (1) |
 | ROS-3 | Only active members can be rostered. | Reservation | 1 | Domain + usecase | reservation.domain (3), reservation.usecase (2) |
 | ROS-4 | A foreign member can be rostered only on jobs ending at least 90 days before their work p… | Reservation | 4 | Domain + usecase | provider.domain (3), provider.usecase (1), reservation.domain (2), reservation.usecase (1) |
-| ROS-5 | When a rostered member stops being active before the Check-in Period, the provider replac… | Reservation | 4 | Not started | – |
+| ROS-5 | When a rostered member stops being active before the Check-in Period, the provider replac… | Reservation | 4 | Domain + usecase | provider.domain (1), provider.usecase (1), reservation.domain (10), reservation.usecase (9) |
 | ROS-6 | The customer sees each rostered member's name and photo. | Reservation | 1 | Domain + usecase | provider.domain (1), provider.usecase (2), reservation.domain (4), reservation.usecase (8) |
-| ROS-7 | A roster that isn't complete when the Check-in Period starts triggers the No Roster Polic… | Reservation | 4 | Not started | – |
-| ROS-8 | A provider short of helpers can offer a smaller roster before the Check-in Period. If the… | Reservation | 4 | Domain only **(partial)** Only the payout drop; the smaller-roster offer is slice 4. | payment.domain (1) |
+| ROS-7 | A roster that isn't complete when the Check-in Period starts triggers the No Roster Polic… | Reservation | 4 | Domain + usecase | reservation.domain (5), reservation.usecase (9) |
+| ROS-8 | A provider short of helpers can offer a smaller roster before the Check-in Period. If the… | Reservation | 4 | Domain + usecase | payment.domain (1), payment.usecase (9), reservation.domain (30), reservation.usecase (16) |
 | ROS-9 | A rostered member suspended during a job for missed re-verification or loss of Business s… | Reservation | 6 | Not started | – |
 | ROS-10 | A rostered member suspended during a job by a monitoring flag or by Support stops at once… | Reservation | 6 | Not started | – |
 
@@ -216,11 +216,11 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | PAY-1 | The customer's payment is held from the moment the reservation is Requested. | Payment | 1 | Domain + usecase | payment.domain (3), payment.usecase (6) |
 | PAY-2 | A job's payout is released when the job is Completed, the Protection Window has ended and… | Payment | 1 | Domain + usecase | payment.domain (9), payment.usecase (10) |
 | PAY-3 | Homa's platform fee is 15.5% of every payout to a provider, including fee payouts. | Payment | 1 | Domain + usecase | kernel (1), payment.domain (9), payment.usecase (5) |
-| PAY-4 | Refunds come from the held payment. Compensation is paid by Homa and recovered from the p… | Payment | 3 | Domain + usecase | payment.domain (23), payment.usecase (21) |
+| PAY-4 | Refunds come from the held payment. Compensation is paid by Homa and recovered from the p… | Payment | 3 | Domain + usecase | payment.domain (23), payment.usecase (22) |
 | PAY-5 | Fines are deducted from the provider's payouts after the platform fee, at most 20% of eac… | Payment | 3 | Domain + usecase | payment.domain (19), payment.usecase (7) |
 | PAY-6 | Fees owed to the provider (cancellation, last-minute and no-show) are paid out like a job… | Payment | 3 | Domain + usecase | payment.domain (10), payment.usecase (7) |
-| PAY-7 | A refund is paid as soon as it's decided. | Payment | 3 | Domain + usecase | payment.domain (6), payment.usecase (21) |
-| PAY-8 | Each money line is rounded once to the nearest sen, half up, and a refund is the amount p… | Payment | – | Domain + usecase | kernel (4), payment.domain (15), payment.usecase (3), reservation.domain (3) |
+| PAY-7 | A refund is paid as soon as it's decided. | Payment | 3 | Domain + usecase | payment.domain (6), payment.usecase (35) |
+| PAY-8 | Each money line is rounded once to the nearest sen, half up, and a refund is the amount p… | Payment | – | Domain + usecase | kernel (4), payment.domain (15), payment.usecase (5), reservation.domain (3) |
 | PAY-9 | When a provider closes, its pending payouts are released when due and its fines are deduc… | Payment | 6 | Not started | – |
 | PAY-10 | Debt, and fines paid early under PAY-11, are paid by direct payment to Homa. | Payment | 6 | Not started | – |
 | PAY-11 | A closed provider can rejoin only once its final debt is known: when its pending payouts… | Payment | 6 | Not started | – |
@@ -231,7 +231,7 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
 | CAN-1 | Cancellation fees and fines are calculated after discount. | Reservation | 3 | Domain + usecase | reservation.domain (3), reservation.usecase (1) |
-| CAN-2 | No fee or fine is more than the Total Reservation Fee. | Reservation | 3 | Domain + usecase | kernel (1), reservation.domain (8), reservation.usecase (1) |
+| CAN-2 | No fee or fine is more than the Total Reservation Fee. | Reservation | 3 | Domain + usecase | kernel (1), reservation.domain (9), reservation.usecase (1) |
 | CAN-3 | Percentages in this section are of the Total Reservation Fee, unless stated otherwise. | Reservation | 3 | Domain + usecase | reservation.domain (2), reservation.usecase (1) |
 
 ### 6.2 Customer cancels after Reserved, before the Check-in Period
@@ -256,9 +256,9 @@ A rule marked **partial** is cited, but only part of it is built; the note says 
 
 | Rule | What it says | Owner | Slice | Status | Cited by (tests) |
 | --- | --- | --- | :-: | --- | --- |
-| NRS-1 | A reservation without a complete roster when its Check-in Period starts is cancelled. | Reservation | 4 | Not started | – |
-| NRS-2 | The provider is fined Base + 12%. | Reservation | 4 | Elsewhere only | kernel (1) |
-| NRS-3 | The customer gets a full refund + 4%. | Reservation | 4 | Not started | – |
+| NRS-1 | A reservation without a complete roster when its Check-in Period starts is cancelled. | Reservation | 4 | Domain + usecase | reservation.domain (3), reservation.usecase (2) |
+| NRS-2 | The provider is fined Base + 12%. | Reservation | 4 | Domain + usecase | kernel (1), reservation.domain (5), reservation.usecase (1) |
+| NRS-3 | The customer gets a full refund + 4%. | Reservation | 4 | Domain + usecase | reservation.domain (4), reservation.usecase (1) |
 
 ### 6.5 Last-minute cancellation (from the Check-in Period to the job end)
 
