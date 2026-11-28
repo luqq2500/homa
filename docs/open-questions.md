@@ -12,6 +12,7 @@ one place. Move an item to `docs/decisions/` when it is answered.
 | OQ-4 | Which payment provider? | None: `Unconfigured` adapters fail as "provider unavailable" (EXT-2). Webhooks use Homa's own neutral envelope. | `payment.infra` (not built yet) |
 | OQ-5 | Which verification service, and which account-holder check? | None: `Unconfigured` adapters fail as "service unavailable" (EXT-5). | `verification.infra` (not built yet) |
 | OQ-6 | Where do completion photos live? | Nowhere: a completion is refused with "photo store unavailable". S3 is the natural fit on ECS/Fargate but needs an SDK dependency. | `reservation.infra` (not built yet) |
+| OQ-7 | When the customer declines a smaller roster, is the reservation cancelled at once, or may the provider still complete the roster before the Check-in Period (ROS-7, ROS-8)? ROS-8 says "had she declined, ROS-7 would apply", and ROS-7 is timed to the start of the Check-in Period. | The provider can still complete the roster until the Check-in Period starts; the No Roster Policy applies then. A customer who never answers is treated the same way. | `reservation.domain`: `Reservation.declineProposal`, `lockRosterAtCheckIn` |
 
 Answered and moved: eKYB retry, the 30-day purge of technical rows, AC (one retry then Support), AD (outages recorded
 automatically, Support can correct) and AG (21 days), and Google as the sign-in provider. See `docs/decisions/`.

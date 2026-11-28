@@ -62,7 +62,6 @@ NOTES = {
     "RPT-1": "Only the Protection Window time; reports are slice 5.",
     "RPT-6": "Only the payout side: it waits while a report is open; reports are slice 5.",
     "RPT-9": "Only the payout drop for a member leaving; the report and refund are slice 5.",
-    "ROS-8": "Only the payout drop; the smaller-roster offer is slice 4.",
     "MON-1": "Only the next due date; reminders and lapses are slice 6.",
     "PRV-7": "Business-held payout accounts are not matched yet; business verification is slice 6.",
     "PRV-10": "A changed payout account is checked afresh; payouts waiting for it are slice 6.",
