@@ -81,7 +81,8 @@ class FlowAPaymentWalkTest {
         time.set(COMPLETED_AT);
         new HandleReservationCompletedIE(payouts, processed).handle(completed("reservation-3"));
         time.set(PROTECTION_WINDOW_END);
-        new ReleaseDuePayouts(payouts, accounts, payoutGateway, publisher, time, eventIds)
+        new ReleaseDuePayouts(payouts, accounts, new InMemoryFineAccountRepository(), payoutGateway,
+                new InMemoryLedgerRepository(), publisher, time, eventIds)
                 .releaseDue(new ReleaseDuePayoutsRequest());
 
         String payoutId = payouts.findByReservationId(RESERVATION).orElseThrow().id().value();
@@ -92,7 +93,7 @@ class FlowAPaymentWalkTest {
                         "BUSINESS", true, ACCOUNT_SUBMITTED_AT),
                 new PaymentHeldIE("event-3", CHECKOUT_ID, Money.myr(200), PAID_AT, PAID_AT),
                 new PayoutReleasedIE("event-4", payoutId, RESERVATION_ID, KEMAS_HOME_PROVIDER_ID, "JOB",
-                        Money.myr(200), Money.myr(31), Money.myr(169), PROTECTION_WINDOW_END));
+                        Money.myr(200), Money.myr(31), Money.myr(0), Money.myr(169), PROTECTION_WINDOW_END));
         assertThat(paymentGateway.refunds()).isEmpty();
         assertThat(payoutGateway.transfers()).containsExactly(new PayoutGateway.Transfer("payout:" + payoutId,
                 account.payoutAccountId(), BANK, ACCOUNT_NUMBER, KEMAS_HOME_NAME, Money.myr(169)));

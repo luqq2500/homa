@@ -6,10 +6,13 @@ import com.homa.payment.domain.BankAccount;
 import com.homa.payment.domain.Payout;
 import com.homa.payment.domain.PayoutAccount;
 import com.homa.payment.domain.PayoutRelease;
+import com.homa.payment.domain.ProviderFineAccount;
 import com.homa.payment.usecase.dto.ReleaseDuePayoutsRequest;
 import com.homa.payment.usecase.dto.ReleaseDuePayoutsResponse;
 import com.homa.payment.usecase.port.in.DuePayoutReleaser;
 import com.homa.payment.usecase.port.out.EventIds;
+import com.homa.payment.usecase.port.out.FineAccountRepository;
+import com.homa.payment.usecase.port.out.LedgerRepository;
 import com.homa.payment.usecase.port.out.PaymentIEPublisher;
 import com.homa.payment.usecase.port.out.PayoutAccountRepository;
 import com.homa.payment.usecase.port.out.PayoutGateway;
@@ -22,25 +25,31 @@ import java.util.Optional;
 
 /**
  * The scheduler's run: every payout the domain finds releasable now (PAY-2, PAY-6, RPT-6) is released, with the
- * platform fee in force when its reservation was Requested taken off and rounded once (PAY-3, PAY-8), and sent to the
- * provider's verified payout account. A payout whose provider has no verified account waits, still pending, and is
- * released on a later run once the account is verified (PRV-2, PRV-10). Nothing is sent when nothing is left after
- * the platform fee. Publishes {@link PayoutReleasedIE} for each release.
+ * platform fee in force when its reservation was Requested taken off and rounded once (PAY-3, PAY-8), then the
+ * provider's fines deducted after the platform fee, at most the deduction cap of the payout (PAY-5), and the rest sent
+ * to the provider's verified payout account. A payout whose provider has no verified account waits, still pending, and
+ * is released on a later run once the account is verified (PRV-2, PRV-10). Nothing is sent when nothing is left after
+ * the platform fee and the fine. Posts each release to the ledger (PAY-4) and publishes {@link PayoutReleasedIE}.
  */
 public class ReleaseDuePayouts implements DuePayoutReleaser {
 
     private final PayoutRepository payouts;
     private final PayoutAccountRepository accounts;
+    private final FineAccountRepository fineAccounts;
     private final PayoutGateway gateway;
+    private final LedgerRepository ledger;
     private final PaymentIEPublisher publisher;
     private final TimeSource time;
     private final EventIds eventIds;
 
-    public ReleaseDuePayouts(PayoutRepository payouts, PayoutAccountRepository accounts, PayoutGateway gateway,
+    public ReleaseDuePayouts(PayoutRepository payouts, PayoutAccountRepository accounts,
+            FineAccountRepository fineAccounts, PayoutGateway gateway, LedgerRepository ledger,
             PaymentIEPublisher publisher, TimeSource time, EventIds eventIds) {
         this.payouts = payouts;
         this.accounts = accounts;
+        this.fineAccounts = fineAccounts;
         this.gateway = gateway;
+        this.ledger = ledger;
         this.publisher = publisher;
         this.time = time;
         this.eventIds = eventIds;
@@ -69,16 +78,26 @@ public class ReleaseDuePayouts implements DuePayoutReleaser {
     }
 
     private void release(Payout payout, PayoutAccount account, Instant now) {
-        PayoutRelease release = payout.release(now);
+        ProviderFineAccount fines = fineAccounts.findByProviderId(payout.providerId())
+                .orElseGet(() -> ProviderFineAccount.openFor(payout.providerId()));
+        PayoutRelease release = payout.release(now, fines);
         payouts.save(payout);
+        saveWhenAFineWasDeducted(fines, release);
         send(release, account);
+        release.ledgerEntries().forEach(ledger::post);
         publisher.publish(new PayoutReleasedIE(eventIds.next(), release.payoutId().value(),
                 payout.reservationId().value(), release.providerId().value(), release.kind().name(), release.gross(),
-                release.platformFee(), release.afterPlatformFee(), release.releasedAt()));
+                release.platformFee(), release.fineDeduction(), release.net(), release.releasedAt()));
+    }
+
+    private void saveWhenAFineWasDeducted(ProviderFineAccount fines, PayoutRelease release) {
+        if (release.fineDeduction().isPositive()) {
+            fineAccounts.save(fines);
+        }
     }
 
     private void send(PayoutRelease release, PayoutAccount account) {
-        Money net = release.afterPlatformFee();
+        Money net = release.net();
         if (net.isPositive()) {
             BankAccount bankAccount = account.verifiedBankAccount();
             gateway.send(new PayoutGateway.Transfer(IdempotencyKeys.payout(release.payoutId()),

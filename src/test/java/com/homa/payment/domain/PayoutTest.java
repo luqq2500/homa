@@ -63,7 +63,7 @@ class PayoutTest {
         assertThat(payout.completedAt()).contains(MARKED_COMPLETED_AT);
         assertThat(payout.releasableAt(MARKED_COMPLETED_AT)).isFalse();
 
-        PayoutRelease release = payout.release(at(2026, 12, 6, 14, 0));
+        PayoutRelease release = payout.release(at(2026, 12, 6, 14, 0), PaymentFixtures.owingNothing());
 
         assertThat(release.payoutId()).isEqualTo(KEMAS_HOMES_PAYOUT);
         assertThat(release.providerId()).isEqualTo(KEMAS_HOME);
@@ -80,7 +80,7 @@ class PayoutTest {
         Payout payout = kemasHomesPayoutAtReserved();
 
         assertThat(payout.releasableAt(PROTECTION_WINDOW_END)).isFalse();
-        assertThatThrownBy(() -> payout.release(PROTECTION_WINDOW_END))
+        assertThatThrownBy(() -> payout.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing()))
                 .isInstanceOf(PayoutNotReleasableException.class)
                 .hasMessageContaining(KEMAS_HOMES_PAYOUT.value());
         assertThat(payout.status()).isEqualTo(PayoutStatus.PENDING);
@@ -93,7 +93,7 @@ class PayoutTest {
         Payout payout = kemasHomesJobPayout();
 
         assertThat(payout.releasableAt(ONE_MINUTE_BEFORE_WINDOW_ENDS)).isFalse();
-        assertThatThrownBy(() -> payout.release(ONE_MINUTE_BEFORE_WINDOW_ENDS))
+        assertThatThrownBy(() -> payout.release(ONE_MINUTE_BEFORE_WINDOW_ENDS, PaymentFixtures.owingNothing()))
                 .isInstanceOf(PayoutNotReleasableException.class)
                 .hasMessageContaining(KEMAS_HOMES_PAYOUT.value());
         assertThat(payout.status()).isEqualTo(PayoutStatus.PENDING);
@@ -183,7 +183,7 @@ class PayoutTest {
         payout.markCompleted(markedCompletedOnMonday);
 
         assertThat(payout.releasableAt(markedCompletedOnMonday)).isTrue();
-        assertThat(payout.release(markedCompletedOnMonday).afterPlatformFee()).isEqualTo(Money.myr(169));
+        assertThat(payout.release(markedCompletedOnMonday, PaymentFixtures.owingNothing()).afterPlatformFee()).isEqualTo(Money.myr(169));
     }
 
     @Test
@@ -294,7 +294,7 @@ class PayoutTest {
         Payout payout = jobPayoutAfterRefunds();
 
         assertThat(payout.gross()).isEqualTo(Money.myr(0));
-        PayoutRelease release = payout.release(PROTECTION_WINDOW_END);
+        PayoutRelease release = payout.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
         assertThat(release.platformFee()).isEqualTo(Money.myr(0));
         assertThat(release.afterPlatformFee()).isEqualTo(Money.myr(0));
     }
@@ -326,10 +326,10 @@ class PayoutTest {
             + "refund can't reduce it.")
     void payoutIsReleasedOnlyOnce() {
         Payout payout = kemasHomesJobPayout();
-        payout.release(PROTECTION_WINDOW_END);
+        payout.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
 
         assertThat(payout.releasableAt(PROTECTION_WINDOW_END.plusSeconds(60))).isFalse();
-        assertThatThrownBy(() -> payout.release(PROTECTION_WINDOW_END.plusSeconds(60)))
+        assertThatThrownBy(() -> payout.release(PROTECTION_WINDOW_END.plusSeconds(60), PaymentFixtures.owingNothing()))
                 .isInstanceOf(PayoutNotReleasableException.class);
         assertThatThrownBy(() -> payout.reduceByRefund(Money.myr(45)))
                 .isInstanceOf(PayoutNotPendingException.class)
@@ -342,7 +342,7 @@ class PayoutTest {
     @DisplayName("Kemas Home's payout was released on Sunday 14:00: a report opened after that can't hold it.")
     void releasedPayoutCannotBeHeldByAReport() {
         Payout payout = kemasHomesJobPayout();
-        payout.release(PROTECTION_WINDOW_END);
+        payout.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
 
         assertThatThrownBy(() -> payout.reportOpened(VASE_REPORT))
                 .isInstanceOf(PayoutNotPendingException.class)
@@ -385,10 +385,100 @@ class PayoutTest {
     @DisplayName("Kemas Home's payout was already released on Sunday 14:00: it can no longer be voided.")
     void releasedPayoutCannotBeVoided() {
         Payout payout = kemasHomesJobPayout();
-        payout.release(PROTECTION_WINDOW_END);
+        payout.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
 
         assertThatThrownBy(payout::makeVoid).isInstanceOf(PayoutNotPendingException.class);
         assertThat(payout.status()).isEqualTo(PayoutStatus.RELEASED);
+    }
+
+    @Test
+    @Tag("CCX-6")
+    @Tag("PAY-6")
+    @DisplayName("Aisyah cancels on Friday 22:00 and pays the RM45 fee: Kemas Home's payout becomes a RM45 fee payout, "
+            + "held until Sunday 14:00.")
+    void cancellationWithAFeeTurnsThePayoutIntoAFeePayout() {
+        Payout payout = kemasHomesPayoutAtReserved();
+
+        payout.settleCancellation(Money.myr(45));
+
+        assertThat(payout.kind()).isEqualTo(PayoutKind.FEE);
+        assertThat(payout.gross()).isEqualTo(Money.myr(45));
+        assertThat(payout.status()).isEqualTo(PayoutStatus.PENDING);
+        assertThat(payout.protectionWindowEnd()).isEqualTo(PROTECTION_WINDOW_END);
+        assertThat(payout.releasableAt(CANCELLED_AT)).isFalse();
+        assertThat(payout.releasableAt(ONE_MINUTE_BEFORE_WINDOW_ENDS)).isFalse();
+        assertThat(payout.releasableAt(PROTECTION_WINDOW_END)).isTrue();
+    }
+
+    @Test
+    @Tag("PAY-4")
+    @DisplayName("Aisyah cancels in her Grace Period for free: nothing is owed to Kemas Home, and its payout is void.")
+    void cancellationWithNothingOwedVoidsThePayout() {
+        Payout payout = kemasHomesPayoutAtReserved();
+
+        payout.settleCancellation(Money.myr(0));
+
+        assertThat(payout.status()).isEqualTo(PayoutStatus.VOID);
+        assertThat(payout.releasableAt(PROTECTION_WINDOW_END)).isFalse();
+    }
+
+    @Test
+    @Tag("NSH-6")
+    @DisplayName("Kemas Home never came but marked the job Completed with an old photo. Aisyah reports on Sunday and "
+            + "Support confirms: the completed job's payout is void.")
+    void providerNoShowConfirmedAfterCompletedVoidsTheCompletedJobPayout() {
+        Payout payout = kemasHomesJobPayout();
+
+        payout.settleCancellation(Money.myr(0));
+
+        assertThat(payout.status()).isEqualTo(PayoutStatus.VOID);
+        assertThat(payout.releasableAt(PROTECTION_WINDOW_END)).isFalse();
+    }
+
+    @Test
+    @Tag("NSH-6")
+    @DisplayName("A job already marked Completed never turns into a fee payout.")
+    void completedJobCannotBeSettledWithAFee() {
+        Payout payout = kemasHomesJobPayout();
+
+        assertThatThrownBy(() -> payout.settleCancellation(Money.myr(45)))
+                .isInstanceOf(PayoutNotAwaitingCompletionException.class);
+        assertThat(payout.status()).isEqualTo(PayoutStatus.PENDING);
+        assertThat(payout.kind()).isEqualTo(PayoutKind.JOB);
+    }
+
+    @Test
+    @Tag("PAY-4")
+    @DisplayName("A reservation is settled once: a fee payout, a void one or a released one is not settled again.")
+    void settledOrReleasedPayoutIsNotSettledAgain() {
+        Payout fee = kemasHomesCancellationFeePayout();
+        Payout voided = kemasHomesPayoutAtReserved();
+        voided.makeVoid();
+        Payout released = kemasHomesJobPayout();
+        released.release(PROTECTION_WINDOW_END, PaymentFixtures.owingNothing());
+
+        assertThatThrownBy(() -> fee.settleCancellation(Money.myr(45)))
+                .isInstanceOf(PayoutNotAwaitingCompletionException.class);
+        assertThatThrownBy(() -> voided.settleCancellation(Money.myr(0)))
+                .isInstanceOf(PayoutNotPendingException.class);
+        assertThatThrownBy(() -> voided.settleCancellation(Money.myr(45)))
+                .isInstanceOf(PayoutNotPendingException.class);
+        assertThatThrownBy(() -> released.settleCancellation(Money.myr(0)))
+                .isInstanceOf(PayoutNotPendingException.class);
+    }
+
+    @Test
+    @Tag("PAY-8")
+    @DisplayName("What a cancellation leaves Kemas Home is a fee in whole sen or nothing, and is always given.")
+    void settledFeeIsPayableAndRequired() {
+        Payout payout = kemasHomesPayoutAtReserved();
+
+        assertThatThrownBy(() -> payout.settleCancellation(Money.myr("45.005")))
+                .isInstanceOf(AmountNotPayableException.class);
+        assertThatThrownBy(() -> payout.settleCancellation(Money.myr(-1)))
+                .isInstanceOf(AmountNotPayableException.class);
+        assertThatThrownBy(() -> payout.settleCancellation(null)).isInstanceOf(NullPointerException.class);
+        assertThat(payout.status()).isEqualTo(PayoutStatus.PENDING);
     }
 
     @Test

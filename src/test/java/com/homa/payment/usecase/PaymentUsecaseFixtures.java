@@ -10,8 +10,14 @@ import com.homa.fixtures.HomaFixtures;
 import com.homa.ie.events.PayoutAccountHolderMatchedIE;
 import com.homa.ie.events.ReservationCheckoutRejectedIE;
 import com.homa.ie.events.ReservationCheckoutStartedIE;
+import com.homa.ie.events.ReservationCancelledIE;
 import com.homa.ie.events.ReservationCompletedIE;
+import com.homa.ie.events.ReservationDeclinedIE;
+import com.homa.ie.events.ReservationExpiredIE;
+import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.ReservationWithdrawnIE;
+import com.homa.kernel.Money;
 import com.homa.payment.domain.BankAccount;
 import com.homa.payment.domain.CheckoutId;
 import com.homa.payment.domain.CustomerId;
@@ -66,6 +72,12 @@ public final class PaymentUsecaseFixtures {
     public static final Instant CHECKOUT_STARTED_AT = at(2026, 11, 30, 19, 58);
     public static final Instant PAID_AT = HomaFixtures.REQUESTED_AT;
     public static final Instant SECOND_PAYMENT_AT = at(2026, 11, 30, 20, 2);
+    /** REQ-2: Aisyah withdraws on Monday 21:00. */
+    public static final Instant WITHDRAWN_AT = at(2026, 11, 30, 21, 0);
+    /** REQ-3: Kemas Home declines on Monday 21:30. */
+    public static final Instant DECLINED_AT = at(2026, 11, 30, 21, 30);
+    /** REQ-4: Kemas Home doesn't respond by Tuesday 20:00. */
+    public static final Instant EXPIRED_AT = HomaFixtures.ACCEPTANCE_DEADLINE;
     public static final Instant RESERVED_AT = at(2026, 11, 30, 22, 0);
     public static final Instant COMPLETED_AT = HomaFixtures.JOB_END;
     /** The Protection Window ends Sunday 14:00. */
@@ -102,6 +114,58 @@ public final class PaymentUsecaseFixtures {
         return new ReservationCheckoutRejectedIE(eventId, CHECKOUT_ID, AISYAH_CUSTOMER_ID, "TIME_TAKEN", PAID_AT);
     }
 
+    public static ReservationRequestedIE requested(String eventId) {
+        return new ReservationRequestedIE(eventId, RESERVATION_ID, CHECKOUT_ID, AISYAH_CUSTOMER_ID,
+                KEMAS_HOME_PROVIDER_ID, HomaFixtures.CHECK_IN_PERIOD.start(), HomaFixtures.JOB_START,
+                HomaFixtures.JOB_END, TOTAL_RESERVATION_FEE, HomaFixtures.ACCEPTANCE_DEADLINE,
+                PROTECTION_WINDOW_END, HomaFixtures.REQUESTED_AT, HomaFixtures.REQUESTED_AT);
+    }
+
+    public static ReservationWithdrawnIE withdrawn(String eventId) {
+        return new ReservationWithdrawnIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                WITHDRAWN_AT, HomaFixtures.REQUESTED_AT, WITHDRAWN_AT);
+    }
+
+    public static ReservationDeclinedIE declined(String eventId) {
+        return new ReservationDeclinedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                DECLINED_AT, HomaFixtures.REQUESTED_AT, DECLINED_AT);
+    }
+
+    public static ReservationExpiredIE expired(String eventId) {
+        return new ReservationExpiredIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
+                EXPIRED_AT, HomaFixtures.REQUESTED_AT, EXPIRED_AT);
+    }
+
+    /** CCX-6: Aisyah cancels on Friday 22:00, after Standard's 21:45 cut-off. */
+    public static final Instant LATE_CANCELLATION_AT = at(2026, 12, 4, 22, 0);
+    /** NSH-3: Support confirms the Provider No Show at 10:30 on Saturday. */
+    public static final Instant NO_SHOW_CONFIRMED_AT = at(2026, 12, 5, 10, 30);
+
+    /**
+     * A settlement as Reservation publishes it: the cancellation, with the lines Payment executes (§12). The cause
+     * is Reservation's; Payment never reads it.
+     */
+    public static ReservationCancelledIE cancelled(String eventId, String cause, Instant cancelledAt,
+            String settlementId, Money customerFee, Money customerRefund, Money compensation, Money providerFine,
+            Money providerPayoutGross) {
+        return new ReservationCancelledIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID, cause,
+                cancelledAt, HomaFixtures.REQUESTED_AT, HomaFixtures.CHECK_IN_PERIOD.start(), PROTECTION_WINDOW_END,
+                settlementId, customerFee, customerRefund, compensation, providerFine, providerPayoutGross,
+                cancelledAt);
+    }
+
+    /** CCX-6: Aisyah pays the RM45 Base Cancellation Fee and gets RM155 back. */
+    public static ReservationCancelledIE lateCustomerCancellation(String eventId) {
+        return cancelled(eventId, "CUSTOMER_CANCELLED", LATE_CANCELLATION_AT, "settlement-late-cancellation",
+                Money.myr(45), Money.myr(155), Money.myr(0), Money.myr(0), Money.myr(45));
+    }
+
+    /** NSH-3: Kemas Home is fined RM105, and Aisyah gets her RM200 back plus RM20 from Homa. */
+    public static ReservationCancelledIE providerNoShow(String eventId) {
+        return cancelled(eventId, "PROVIDER_NO_SHOW", NO_SHOW_CONFIRMED_AT, "settlement-no-show", Money.myr(0),
+                Money.myr(200), Money.myr(20), Money.myr(105), Money.myr(0));
+    }
+
     public static ReservationReservedIE reserved(String eventId) {
         return new ReservationReservedIE(eventId, RESERVATION_ID, AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID,
                 HomaFixtures.CHECK_IN_PERIOD.start(), HomaFixtures.JOB_START, HomaFixtures.JOB_END,
@@ -133,6 +197,13 @@ public final class PaymentUsecaseFixtures {
     public static PaymentHold aisyahsHeldPayment() {
         PaymentHold hold = aisyahsPendingHold();
         hold.recordConfirmation(ONLINE_BANKING, PAID_AT);
+        return hold;
+    }
+
+    /** Aisyah's RM200, held and linked to her Requested reservation (RES-7). */
+    public static PaymentHold aisyahsRequestedHold() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.linkToReservation(RESERVATION);
         return hold;
     }
 

@@ -1,0 +1,46 @@
+package com.homa.payment.usecase.ie;
+
+import com.homa.ie.events.ReservationDeclinedIE;
+import com.homa.payment.domain.ReservationId;
+import com.homa.payment.usecase.CustomerRefunds;
+import com.homa.payment.usecase.IdempotencyKeys;
+import com.homa.payment.usecase.RefundReason;
+import com.homa.payment.usecase.port.in.ReservationDeclinedIEHandler;
+import com.homa.payment.usecase.port.out.EventIds;
+import com.homa.payment.usecase.port.out.LedgerRepository;
+import com.homa.payment.usecase.port.out.PaymentGateway;
+import com.homa.payment.usecase.port.out.PaymentHoldRepository;
+import com.homa.payment.usecase.port.out.PaymentIEPublisher;
+import com.homa.payment.usecase.port.out.ProcessedMessageStore;
+import com.homa.payment.usecase.port.out.TimeSource;
+
+/**
+ * The provider declined a Requested reservation (REQ-3): everything held is refunded in full through the gateway at
+ * once (PAY-7), and {@code RefundPaidIE} tells the customer it was sent. No payout exists yet, because a decline only
+ * happens while Requested.
+ */
+public class HandleReservationDeclinedIE implements ReservationDeclinedIEHandler {
+
+    static final String HANDLER = "payment.ReservationDeclined";
+
+    private final RefundOfEndedRequest endedRequests;
+    private final ProcessedMessageStore processedMessages;
+
+    public HandleReservationDeclinedIE(PaymentHoldRepository holds, PaymentGateway gateway, LedgerRepository ledger,
+            PaymentIEPublisher publisher, ProcessedMessageStore processedMessages, TimeSource time,
+            EventIds eventIds) {
+        this.endedRequests = new RefundOfEndedRequest(holds,
+                new CustomerRefunds(gateway, ledger, publisher, time, eventIds));
+        this.processedMessages = processedMessages;
+    }
+
+    @Override
+    public void handle(ReservationDeclinedIE event) {
+        if (!processedMessages.recordFirstHandling(event.eventId(), HANDLER)) {
+            return;
+        }
+        ReservationId reservationId = new ReservationId(event.reservationId());
+        endedRequests.refundInFull(reservationId, RefundReason.DECLINED,
+                IdempotencyKeys.declineRefund(reservationId));
+    }
+}

@@ -9,6 +9,7 @@ import static com.homa.payment.domain.PaymentFixtures.CARD_RETRY_CONFIRMED_AT;
 import static com.homa.payment.domain.PaymentFixtures.PAID_AT;
 import static com.homa.payment.domain.PaymentFixtures.SLOW_ONLINE_BANKING_CONFIRMED_AT;
 import static com.homa.payment.domain.PaymentFixtures.STANDARD_CHECKOUT;
+import static com.homa.payment.domain.PaymentFixtures.STANDARD_RESERVATION;
 import static com.homa.payment.domain.PaymentFixtures.aisyahsCheckoutAwaitingPayment;
 import static com.homa.payment.domain.PaymentFixtures.aisyahsHeldPayment;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +19,8 @@ import com.homa.fixtures.HomaFixtures;
 import com.homa.kernel.Money;
 import com.homa.payment.domain.exception.AmountNotPayableException;
 import com.homa.payment.domain.exception.CheckoutNotAwaitingPaymentException;
+import com.homa.payment.domain.exception.NoPaymentToCompensateException;
+import com.homa.payment.domain.exception.PaymentHoldAlreadyLinkedException;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import org.junit.jupiter.api.DisplayName;
@@ -283,5 +286,157 @@ class PaymentHoldTest {
         assertThatThrownBy(refunded::refundRejectedCheckout).isInstanceOf(PaymentNotHeldException.class);
         assertThatThrownBy(aisyahsCheckoutAwaitingPayment()::refundRejectedCheckout)
                 .isInstanceOf(PaymentNotHeldException.class);
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("Aisyah pays RM200 on Monday 20:00 and her reservation is Requested: the payment is held for that "
+            + "reservation.")
+    void heldPaymentIsLinkedToTheRequestedReservation() {
+        PaymentHold hold = aisyahsHeldPayment();
+        assertThat(hold.reservationId()).isEmpty();
+
+        hold.linkToReservation(STANDARD_RESERVATION);
+
+        assertThat(hold.reservationId()).contains(STANDARD_RESERVATION);
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("The Requested event reaches Payment twice: the payment stays linked to the same reservation, even "
+            + "after it was refunded.")
+    void linkingTheSameReservationAgainChangesNothing() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.linkToReservation(STANDARD_RESERVATION);
+        hold.refundInFull();
+
+        hold.linkToReservation(STANDARD_RESERVATION);
+
+        assertThat(hold.reservationId()).contains(STANDARD_RESERVATION);
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("Aisyah's payment belongs to her Saturday reservation: it is never linked to another one.")
+    void paymentBelongsToOneReservationOnly() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.linkToReservation(STANDARD_RESERVATION);
+
+        assertThatThrownBy(() -> hold.linkToReservation(new ReservationId("reservation-sunday")))
+                .isInstanceOf(PaymentHoldAlreadyLinkedException.class)
+                .hasMessageContaining(AISYAHS_HOLD.value())
+                .hasMessageContaining(STANDARD_RESERVATION.value());
+        assertThat(hold.reservationId()).contains(STANDARD_RESERVATION);
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("A reservation is Requested only once the payment is held: a checkout with no confirmed payment, "
+            + "or one already refunded, is not linked.")
+    void onlyAHeldPaymentIsLinkedToAReservation() {
+        PaymentHold awaiting = aisyahsCheckoutAwaitingPayment();
+        PaymentHold refunded = aisyahsHeldPayment();
+        refunded.refundInFull();
+
+        assertThatThrownBy(() -> awaiting.linkToReservation(STANDARD_RESERVATION))
+                .isInstanceOf(PaymentNotHeldException.class);
+        assertThatThrownBy(() -> refunded.linkToReservation(STANDARD_RESERVATION))
+                .isInstanceOf(PaymentNotHeldException.class);
+        assertThat(awaiting.reservationId()).isEmpty();
+        assertThat(refunded.reservationId()).isEmpty();
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("A reservation to link is required.")
+    void linkingNoReservationIsRefused() {
+        assertThatThrownBy(() -> aisyahsHeldPayment().linkToReservation(null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @Tag("REQ-2")
+    @Tag("PAY-7")
+    @DisplayName("Aisyah withdraws on Monday 21:00 and gets RM200 back.")
+    void withdrawnRequestIsRefundedInFullAtOnce() {
+        PaymentHold hold = aisyahsHeldPayment();
+
+        Refund refund = hold.refundInFull();
+
+        assertThat(refund).isEqualTo(new Refund(AISYAHS_HOLD, AISYAH, AISYAHS_ONLINE_BANKING, Money.myr(200)));
+        assertThat(hold.held()).isEqualTo(Money.myr(0));
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.REFUNDED);
+    }
+
+    @Test
+    @Tag("REQ-3")
+    @Tag("PAY-4")
+    @DisplayName("Everything still held goes back: after RM45 was refunded, RM155 is.")
+    void refundInFullReturnsWhatIsStillHeld() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.refund(Money.myr(45));
+
+        Refund refund = hold.refundInFull();
+
+        assertThat(refund.amount()).isEqualTo(Money.myr(155));
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.REFUNDED);
+    }
+
+    @Test
+    @Tag("REQ-4")
+    @DisplayName("A request is refunded in full once; a checkout with no confirmed payment has nothing to refund.")
+    void refundInFullNeedsAHeldPayment() {
+        PaymentHold refunded = aisyahsHeldPayment();
+        refunded.refundInFull();
+
+        assertThatThrownBy(refunded::refundInFull).isInstanceOf(PaymentNotHeldException.class);
+        assertThatThrownBy(aisyahsCheckoutAwaitingPayment()::refundInFull)
+                .isInstanceOf(PaymentNotHeldException.class);
+    }
+
+    @Test
+    @Tag("PAY-4")
+    @DisplayName("After a provider no-show, Aisyah gets RM200 back plus RM20 from Homa: the compensation does not come "
+            + "out of what is held.")
+    void compensationIsPaidByHomaAndLeavesTheHeldPaymentAlone() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.refundInFull();
+
+        Compensation compensation = hold.compensate(Money.myr(20));
+
+        assertThat(compensation)
+                .isEqualTo(new Compensation(AISYAHS_HOLD, AISYAH, AISYAHS_ONLINE_BANKING, Money.myr(20)));
+        assertThat(hold.held()).isEqualTo(Money.myr(0));
+        assertThat(hold.status()).isEqualTo(PaymentHoldStatus.REFUNDED);
+    }
+
+    @Test
+    @Tag("PAY-4")
+    @DisplayName("Compensation can be paid while the payment is still held too, and goes back to the payment that "
+            + "counted, not to a later one refunded in full.")
+    void compensationGoesToThePaymentThatCounted() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.recordConfirmation(AISYAHS_CARD_RETRY, CARD_RETRY_CONFIRMED_AT);
+
+        Compensation compensation = hold.compensate(Money.myr(20));
+
+        assertThat(compensation.attemptId()).isEqualTo(AISYAHS_ONLINE_BANKING);
+        assertThat(hold.held()).isEqualTo(Money.myr(200));
+    }
+
+    @Test
+    @Tag("PAY-4")
+    @Tag("PAY-8")
+    @DisplayName("Compensation is a positive amount in whole sen, and needs a confirmed payment to be paid to.")
+    void compensationNeedsAPayableAmountAndAConfirmedPayment() {
+        PaymentHold hold = aisyahsHeldPayment();
+
+        assertThatThrownBy(() -> hold.compensate(Money.myr(0)))
+                .isInstanceOf(AmountNotPayableException.class)
+                .hasMessageContaining("compensation");
+        assertThatThrownBy(() -> hold.compensate(Money.myr("20.005"))).isInstanceOf(AmountNotPayableException.class);
+        assertThatThrownBy(() -> aisyahsCheckoutAwaitingPayment().compensate(Money.myr(20)))
+                .isInstanceOf(NoPaymentToCompensateException.class)
+                .hasMessageContaining(AISYAHS_HOLD.value());
     }
 }

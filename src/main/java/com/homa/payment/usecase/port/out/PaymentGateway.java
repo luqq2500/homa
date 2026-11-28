@@ -19,6 +19,13 @@ public interface PaymentGateway {
     void refund(RefundRequest request);
 
     /**
+     * Sends the compensation Homa pays a customer on top of a full refund (PAY-4, PAY-7), from Homa's own money, to the
+     * customer's payment method that paid. It is not a refund of the payment, so it may be sent after the payment is
+     * refunded in full.
+     */
+    void payCompensation(CompensationRequest request);
+
+    /**
      * One payment attempt for a checkout.
      *
      * @param paymentReference Payment's id for the attempt; the gateway hands it back in its webhook
@@ -46,6 +53,20 @@ public interface PaymentGateway {
     record RefundRequest(String idempotencyKey, String paymentReference, Money amount) {
 
         public RefundRequest {
+            Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+            Objects.requireNonNull(paymentReference, "paymentReference");
+            Objects.requireNonNull(amount, "amount");
+        }
+    }
+
+    /**
+     * Compensation paid to the customer who made one payment.
+     *
+     * @param paymentReference the payment attempt that counted, which tells the gateway who and where to pay
+     */
+    record CompensationRequest(String idempotencyKey, String paymentReference, Money amount) {
+
+        public CompensationRequest {
             Objects.requireNonNull(idempotencyKey, "idempotencyKey");
             Objects.requireNonNull(paymentReference, "paymentReference");
             Objects.requireNonNull(amount, "amount");

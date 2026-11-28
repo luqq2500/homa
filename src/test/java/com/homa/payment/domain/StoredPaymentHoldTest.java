@@ -8,6 +8,7 @@ import static com.homa.payment.domain.PaymentFixtures.AISYAHS_ONLINE_BANKING;
 import static com.homa.payment.domain.PaymentFixtures.CARD_RETRY_CONFIRMED_AT;
 import static com.homa.payment.domain.PaymentFixtures.PAID_AT;
 import static com.homa.payment.domain.PaymentFixtures.STANDARD_CHECKOUT;
+import static com.homa.payment.domain.PaymentFixtures.STANDARD_RESERVATION;
 import static com.homa.payment.domain.PaymentFixtures.aisyahsCheckoutAwaitingPayment;
 import static com.homa.payment.domain.PaymentFixtures.aisyahsHeldPayment;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.kernel.Money;
 import com.homa.payment.domain.exception.AmountNotPayableException;
+import com.homa.payment.domain.exception.PaymentHoldAlreadyLinkedException;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import java.time.Instant;
@@ -29,13 +31,18 @@ class StoredPaymentHoldTest {
 
     private static PaymentHold restored(PaymentHold stored) {
         return stored(stored.status(), stored.confirmedAttempts(), stored.countedAttempt().orElse(null),
-                stored.heldSince().orElse(null), stored.held());
+                stored.heldSince().orElse(null), stored.held(), stored.reservationId().orElse(null));
     }
 
     private static PaymentHold stored(PaymentHoldStatus status, Set<PaymentAttemptId> confirmed,
             PaymentAttemptId counted, Instant heldSince, Money held) {
+        return stored(status, confirmed, counted, heldSince, held, null);
+    }
+
+    private static PaymentHold stored(PaymentHoldStatus status, Set<PaymentAttemptId> confirmed,
+            PaymentAttemptId counted, Instant heldSince, Money held, ReservationId reservationId) {
         return PaymentHold.restore(AISYAHS_HOLD, STANDARD_CHECKOUT, AISYAH, TOTAL_RESERVATION_FEE, status, confirmed,
-                counted, heldSince, held);
+                counted, heldSince, held, reservationId);
     }
 
     private static void assertRefused(PaymentHoldStatus status, Set<PaymentAttemptId> confirmed,
@@ -134,7 +141,40 @@ class StoredPaymentHoldTest {
         assertThatThrownBy(() -> stored(PaymentHoldStatus.PENDING, Set.of(), null, null, null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> PaymentHold.restore(AISYAHS_HOLD, STANDARD_CHECKOUT, AISYAH, NOTHING,
-                PaymentHoldStatus.PENDING, Set.of(), null, null, NOTHING))
+                PaymentHoldStatus.PENDING, Set.of(), null, null, NOTHING, null))
                 .isInstanceOf(AmountNotPayableException.class);
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("Persistence: Aisyah's held RM200 comes back linked to her Requested reservation, so a withdrawal "
+            + "finds it and a second reservation cannot take it.")
+    void aStoredPaymentKeepsTheReservationItIsLinkedTo() {
+        PaymentHold hold = aisyahsHeldPayment();
+        hold.linkToReservation(STANDARD_RESERVATION);
+
+        PaymentHold stored = restored(hold);
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(hold);
+        assertThat(stored.reservationId()).contains(STANDARD_RESERVATION);
+        assertThatThrownBy(() -> stored.linkToReservation(new ReservationId("reservation-other")))
+                .isInstanceOf(PaymentHoldAlreadyLinkedException.class);
+        assertThat(restored(aisyahsHeldPayment()).reservationId()).isEmpty();
+    }
+
+    @Test
+    @Tag("RES-7")
+    @DisplayName("Persistence: a stored payment hold is linked to a reservation only once its payment is confirmed.")
+    void aStoredReservationLinkNeedsAConfirmedPayment() {
+        assertRefusedWithReservation(PaymentHoldStatus.PENDING, Set.of(), null, null, NOTHING);
+        assertThat(stored(PaymentHoldStatus.REFUNDED, Set.of(AISYAHS_ONLINE_BANKING), AISYAHS_ONLINE_BANKING, PAID_AT,
+                NOTHING, STANDARD_RESERVATION).reservationId()).contains(STANDARD_RESERVATION);
+    }
+
+    private static void assertRefusedWithReservation(PaymentHoldStatus status, Set<PaymentAttemptId> confirmed,
+            PaymentAttemptId counted, Instant heldSince, Money held) {
+        assertThatThrownBy(() -> stored(status, confirmed, counted, heldSince, held, STANDARD_RESERVATION))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("A stored payment hold needs ");
     }
 }

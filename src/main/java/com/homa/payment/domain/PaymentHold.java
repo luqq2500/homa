@@ -2,6 +2,8 @@ package com.homa.payment.domain;
 
 import com.homa.kernel.Money;
 import com.homa.payment.domain.exception.CheckoutNotAwaitingPaymentException;
+import com.homa.payment.domain.exception.NoPaymentToCompensateException;
+import com.homa.payment.domain.exception.PaymentHoldAlreadyLinkedException;
 import com.homa.payment.domain.exception.PaymentNotHeldException;
 import com.homa.payment.domain.exception.RefundExceedsHeldAmountException;
 import java.time.Instant;
@@ -19,6 +21,9 @@ import java.util.Set;
  * <p>Every refund comes out of what is held, never more than is still held (PAY-4), and is a value returned at once
  * for the gateway to pay now (PAY-7). Payment never decides an amount: the total comes from the checkout and refunds
  * from a Settlement.
+ *
+ * <p>The hold is keyed by the checkout, but later events name the reservation. Once the reservation is Requested the
+ * hold is linked to it, so a withdrawal, a decline, an expiry or a cancellation finds the payment to refund.
  */
 public final class PaymentHold {
 
@@ -31,6 +36,7 @@ public final class PaymentHold {
     private PaymentAttemptId countedAttempt;
     private Instant heldSince;
     private Money held;
+    private ReservationId reservationId;
 
     private PaymentHold(PaymentHoldId id, CheckoutId checkoutId, CustomerId customerId, Money total) {
         this.id = Objects.requireNonNull(id, "id");
@@ -49,19 +55,22 @@ public final class PaymentHold {
 
     /**
      * Rebuilds a payment hold from what was stored: every attempt confirmed so far, the one that counts and when it
-     * was confirmed ({@code null} until one is), and what is still held. Only the shape is checked: a counted attempt
-     * and its time exactly once the payment is no longer pending, the counted attempt among the confirmed ones and
-     * none confirmed without it, and the amount held fitting the status, never more than the total.
+     * was confirmed ({@code null} until one is), what is still held, and the reservation it is linked to
+     * ({@code null} until the reservation is Requested). Only the shape is checked: a counted attempt and its time
+     * exactly once the payment is no longer pending, the counted attempt among the confirmed ones and none confirmed
+     * without it, the amount held fitting the status, never more than the total, and a reservation only once a
+     * payment is confirmed.
      */
     public static PaymentHold restore(PaymentHoldId id, CheckoutId checkoutId, CustomerId customerId, Money total,
             PaymentHoldStatus status, Set<PaymentAttemptId> confirmedAttempts, PaymentAttemptId countedAttempt,
-            Instant heldSince, Money held) {
+            Instant heldSince, Money held, ReservationId reservationId) {
         PaymentHold hold = new PaymentHold(id, checkoutId, customerId, total);
         hold.status = Objects.requireNonNull(status, "status");
         hold.confirmedAttempts.addAll(confirmedAttempts);
         hold.countedAttempt = countedAttempt;
         hold.heldSince = heldSince;
         hold.held = Objects.requireNonNull(held, "held");
+        hold.reservationId = reservationId;
         hold.requireStoredShape();
         return hold;
     }
@@ -74,6 +83,13 @@ public final class PaymentHold {
         requireShape(countedAttempt().map(confirmedAttempts::contains).orElse(confirmedAttempts.isEmpty()),
                 "its counted attempt among the confirmed ones, and no confirmed attempt without one");
         requireShape(heldFitsStatus(), "an amount held only while " + status + " allows, never more than the total");
+        requireReservationOnlyOnceConfirmed();
+    }
+
+    /** A hold is linked to a reservation only once a payment is confirmed (RES-7). */
+    private void requireReservationOnlyOnceConfirmed() {
+        requireShape(reservationId == null || status != PaymentHoldStatus.PENDING,
+                "a reservation only once its payment is confirmed");
     }
 
     /** Something, up to the total, is held while HELD; nothing before a payment is confirmed or once refunded. */
@@ -120,6 +136,23 @@ public final class PaymentHold {
         return new PaymentConfirmation.Counted(attemptId, total, confirmedAt);
     }
 
+    /**
+     * The reservation is Requested from this checkout's payment (RES-7): the hold now belongs to it, so later events
+     * about the reservation find it. Linking the same reservation again changes nothing; a hold belongs to one
+     * reservation only, and only a payment that is held can be linked.
+     */
+    public void linkToReservation(ReservationId requestedReservation) {
+        Objects.requireNonNull(requestedReservation, "requestedReservation");
+        if (requestedReservation.equals(reservationId)) {
+            return;
+        }
+        if (reservationId != null) {
+            throw new PaymentHoldAlreadyLinkedException(id, reservationId);
+        }
+        requireHeld();
+        reservationId = requestedReservation;
+    }
+
     /** Returns part or all of what is held to the customer, at once (PAY-7); never more than is still held (PAY-4). */
     public Refund refund(Money amount) {
         Amounts.requirePayable(amount, "A refund");
@@ -139,8 +172,29 @@ public final class PaymentHold {
      * booking rule no longer passes. Everything held is refunded in full at once (RES-11).
      */
     public Refund refundRejectedCheckout() {
+        return refundInFull();
+    }
+
+    /**
+     * Everything still held goes back to the customer at once (PAY-7): a Requested reservation the customer withdrew
+     * (REQ-2), the provider declined (REQ-3) or nobody accepted in time (REQ-4).
+     */
+    public Refund refundInFull() {
         requireHeld();
         return refund(held);
+    }
+
+    /**
+     * Homa pays the customer compensation on top of a full refund (PAY-4). It comes from Homa, not from what is held,
+     * so the amount held does not change; it goes back to the payment that counted, so only once a payment is
+     * confirmed.
+     */
+    public Compensation compensate(Money amount) {
+        Amounts.requirePayable(amount, "A compensation");
+        if (countedAttempt == null) {
+            throw new NoPaymentToCompensateException(id);
+        }
+        return new Compensation(id, customerId, countedAttempt, amount);
     }
 
     private void requireHeld() {
@@ -191,5 +245,10 @@ public final class PaymentHold {
     /** When the payment that counts was confirmed, once one has been. */
     public Optional<Instant> heldSince() {
         return Optional.ofNullable(heldSince);
+    }
+
+    /** The reservation this payment is held for, once it is Requested (RES-7). */
+    public Optional<ReservationId> reservationId() {
+        return Optional.ofNullable(reservationId);
     }
 }
