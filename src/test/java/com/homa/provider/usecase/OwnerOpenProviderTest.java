@@ -2,6 +2,7 @@ package com.homa.provider.usecase;
 
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.HANA;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.TEAM_ADDED_AT;
@@ -85,7 +86,7 @@ class OwnerOpenProviderTest {
     @DisplayName("Rina, verified as foreign, can't own a provider under Malaysia's country policy.")
     void foreignPersonCannotOpenAProvider() {
         world.verifiedPeople.save(new VerifiedPerson(
-                VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY), "Rina"));
+                VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY, NEXT_DUE_AT), "Rina"));
 
         assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(RINA)))
                 .isInstanceOf(OwnerNotLocalException.class);
@@ -97,7 +98,7 @@ class OwnerOpenProviderTest {
     @Tag("PRV-1")
     @DisplayName("A person who didn't pass the age check can't own a provider.")
     void underagePersonCannotOpenAProvider() {
-        world.verifiedPeople.save(new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(HANA), false), "Hana"));
+        world.verifiedPeople.save(new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(HANA), false, NEXT_DUE_AT), "Hana"));
 
         assertThatThrownBy(() -> world.openProvider.open(new OpenProviderRequest(HANA)))
                 .isInstanceOf(OwnerUnderageException.class);

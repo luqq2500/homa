@@ -41,6 +41,9 @@ final class ProviderFixtures {
     static final TeamMemberId FARID = new TeamMemberId(FARID_MEMBER_ID);
 
     static final Instant TEAM_ADDED_AT = at(2026, 9, 1, 14, 0);
+
+    /** Everyone passed their verification on Tuesday 25 August 2026; it falls due for re-verification in six months. */
+    static final Instant VERIFIED_UNTIL = at(2027, 2, 25, 9, 0);
     static final LocalDate TEAM_ADDED_ON = LocalDate.of(2026, 9, 1);
 
     /** Rina's permit, the date on her i-Kad, has 200 days left when she is added (HLP-3). */
@@ -48,39 +51,39 @@ final class ProviderFixtures {
 
     /** Azman, verified with his MyKad: local and aged 18 or above. */
     static VerifiedPersonFacts azman() {
-        return VerifiedPersonFacts.local(AZMAN, true);
+        return VerifiedPersonFacts.local(AZMAN, true, VERIFIED_UNTIL);
     }
 
     /** Hana, verified with her MyKad: local and aged 18 or above. */
     static VerifiedPersonFacts hana() {
-        return VerifiedPersonFacts.local(HANA, true);
+        return VerifiedPersonFacts.local(HANA, true, VERIFIED_UNTIL);
     }
 
     static VerifiedPersonFacts sitiVerified() {
-        return VerifiedPersonFacts.local(SITI_PERSON, true);
+        return VerifiedPersonFacts.local(SITI_PERSON, true, VERIFIED_UNTIL);
     }
 
     static VerifiedPersonFacts nurulVerified() {
-        return VerifiedPersonFacts.local(NURUL_PERSON, true);
+        return VerifiedPersonFacts.local(NURUL_PERSON, true, VERIFIED_UNTIL);
     }
 
     /** Rina, verified with her i-Kad: foreign, aged 18 or above, permit until 20 March 2027. */
     static VerifiedPersonFacts rinaVerified() {
-        return VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY);
+        return VerifiedPersonFacts.foreign(RINA_PERSON, true, RINA_PERMIT_EXPIRY, VERIFIED_UNTIL);
     }
 
     static VerifiedPersonFacts faridVerified() {
-        return VerifiedPersonFacts.local(FARID_PERSON, true);
+        return VerifiedPersonFacts.local(FARID_PERSON, true, VERIFIED_UNTIL);
     }
 
     /** Azman has opened Kemas Home; it has no team and no payout account yet. */
     static Provider openedKemasHome() {
-        return Provider.open(KEMAS_HOME, azman());
+        return Provider.open(KEMAS_HOME, azman(), Affiliation.none());
     }
 
     /** Hana has opened Hana Cleaning; it has no team and no payout account yet. */
     static Provider openedHanaCleaning() {
-        return Provider.open(HANA_CLEANING, hana());
+        return Provider.open(HANA_CLEANING, hana(), Affiliation.none());
     }
 
     /** Kemas Home's payout account, in the company's name, is verified; it has not gone live. */
@@ -98,20 +101,20 @@ final class ProviderFixtures {
     }
 
     static TeamMember siti(Provider provider) {
-        return provider.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), false, TEAM_ADDED_AT);
+        return provider.addTeamMember(SITI, TeamRole.HELPER, sitiVerified(), false, Affiliation.none(), TEAM_ADDED_AT);
     }
 
     static TeamMember nurul(Provider provider) {
-        return provider.addTeamMember(NURUL, TeamRole.HELPER, nurulVerified(), false, TEAM_ADDED_AT);
+        return provider.addTeamMember(NURUL, TeamRole.HELPER, nurulVerified(), false, Affiliation.none(), TEAM_ADDED_AT);
     }
 
     /** Rina, with Kemas Home's confirmation that she works lawfully for it (HLP-4). */
     static TeamMember rina(Provider provider) {
-        return provider.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true, TEAM_ADDED_AT);
+        return provider.addTeamMember(RINA, TeamRole.HELPER, rinaVerified(), true, Affiliation.none(), TEAM_ADDED_AT);
     }
 
     static TeamMember farid(Provider provider) {
-        return provider.addTeamMember(FARID, TeamRole.SUPERVISOR, faridVerified(), false, TEAM_ADDED_AT);
+        return provider.addTeamMember(FARID, TeamRole.SUPERVISOR, faridVerified(), false, Affiliation.none(), TEAM_ADDED_AT);
     }
 
     /** Siti, Nurul and Rina, all active. */
@@ -127,6 +130,6 @@ final class ProviderFixtures {
     /** A stored local member of Kemas Home with a verified photo, as the persistence adapter would rebuild it. */
     static TeamMember storedMember(TeamMemberId id, TeamRole role, boolean deactivated, boolean suspended) {
         return TeamMember.restore(id, KEMAS_HOME, SITI_PERSON, role, new Local(), TEAM_ADDED_AT, true, deactivated,
-                suspended);
+                suspended, false, VERIFIED_UNTIL);
     }
 }

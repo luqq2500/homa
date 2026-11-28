@@ -9,9 +9,9 @@ import java.util.Objects;
  * Malaysia's country policy allows for an owner (§14). Verification decides those facts; an owner is made only from
  * them, through {@link #verifiedAs}.
  *
- * <p>Left for slice 4: the owner can also work as a helper or supervisor in their own team (PRV-6), as a
- * {@link TeamMember} with the owner's personId. Left for slice 6: the owner's suspension suspends the provider with
- * the same cause (SUS-5).
+ * <p>The owner can also work as a helper or supervisor in their own team (PRV-6), as a {@link TeamMember} with the
+ * owner's personId, added through {@link Provider#addOwnerToTeam}. Left for slice 6: the owner's suspension suspends the
+ * provider with the same cause (SUS-5).
  */
 public record Owner(PersonId personId) {
 

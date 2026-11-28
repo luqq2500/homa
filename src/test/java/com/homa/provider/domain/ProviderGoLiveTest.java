@@ -123,7 +123,7 @@ class ProviderGoLiveTest {
         assertThat(kemasHome.isLive()).isTrue();
 
         Instant aMonthLater = BusinessCalendar.plusMonths(TEAM_ADDED_AT, 1);
-        TeamMember farid = kemasHome.addTeamMember(FARID, TeamRole.SUPERVISOR, faridVerified(), false, aMonthLater);
+        TeamMember farid = kemasHome.addTeamMember(FARID, TeamRole.SUPERVISOR, faridVerified(), false, Affiliation.none(), aMonthLater);
 
         assertThat(farid.role()).isEqualTo(TeamRole.SUPERVISOR);
         assertThat(farid.providerId()).isEqualTo(KEMAS_HOME);

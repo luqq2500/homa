@@ -3,6 +3,7 @@ package com.homa.provider.domain;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERSON;
 import static com.homa.provider.domain.ProviderFixtures.SITI_PERSON;
+import static com.homa.provider.domain.ProviderFixtures.VERIFIED_UNTIL;
 import static com.homa.provider.domain.ProviderFixtures.rinaVerified;
 import static com.homa.provider.domain.ProviderFixtures.sitiVerified;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,17 +30,17 @@ class VerifiedPersonFactsTest {
         assertThat(rina.local()).isFalse();
         assertThat(rina.ageCheckPassed()).isTrue();
         assertThat(rina.permitExpiry()).isEqualTo(RINA_PERMIT_EXPIRY);
-        assertThat(VerifiedPersonFacts.local(SITI_PERSON, false).ageCheckPassed()).isFalse();
+        assertThat(VerifiedPersonFacts.local(SITI_PERSON, false, VERIFIED_UNTIL).ageCheckPassed()).isFalse();
     }
 
     @Test
     @Tag("IDN-1")
     @DisplayName("A local person has no work permit, and a foreign candidate without an i-Kad can't be verified.")
     void localPersonHasNoPermitAndForeignPersonAlwaysHasOne() {
-        assertThatThrownBy(() -> new VerifiedPersonFacts(SITI_PERSON, true, true, RINA_PERMIT_EXPIRY))
+        assertThatThrownBy(() -> new VerifiedPersonFacts(SITI_PERSON, true, true, RINA_PERMIT_EXPIRY, VERIFIED_UNTIL))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> VerifiedPersonFacts.foreign(RINA_PERSON, true, null))
+        assertThatThrownBy(() -> VerifiedPersonFacts.foreign(RINA_PERSON, true, null, VERIFIED_UNTIL))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> VerifiedPersonFacts.local(null, true)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> VerifiedPersonFacts.local(null, true, VERIFIED_UNTIL)).isInstanceOf(NullPointerException.class);
     }
 }

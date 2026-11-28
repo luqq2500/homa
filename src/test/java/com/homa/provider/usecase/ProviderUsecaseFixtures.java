@@ -75,7 +75,7 @@ public final class ProviderUsecaseFixtures {
     }
 
     public static VerifiedPerson verifiedLocal(String personId, String name) {
-        return new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(personId), true), name);
+        return new VerifiedPerson(VerifiedPersonFacts.local(new PersonId(personId), true, NEXT_DUE_AT), name);
     }
 
     /** Kemas Home as stored, run by Azman. {@code payoutAccount} is null while it has no verified payout account. */

@@ -4,6 +4,7 @@ import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.FARID;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.HANA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.KEMAS_HOME;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_ROSTERABLE_UNTIL;
@@ -47,7 +48,7 @@ class ProviderAddTeamMemberTest {
         world.verifiedPeople.save(verifiedLocal(SITI, "Siti"));
         world.verifiedPeople.save(verifiedLocal(FARID, "Farid"));
         world.verifiedPeople.save(new VerifiedPerson(
-                VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY), "Rina"));
+                VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY, NEXT_DUE_AT), "Rina"));
     }
 
     private AddTeamMemberResponse azmanAdds(String personId, String role, boolean employmentConfirmed) {
@@ -133,7 +134,7 @@ class ProviderAddTeamMemberTest {
     @DisplayName("Kemas Home can't add a 17-year-old trainee.")
     void underageTraineeIsRefused() {
         world.verifiedPeople.save(new VerifiedPerson(
-                VerifiedPersonFacts.local(new PersonId("person-trainee"), false), "Trainee"));
+                VerifiedPersonFacts.local(new PersonId("person-trainee"), false, NEXT_DUE_AT), "Trainee"));
 
         assertThatThrownBy(() -> azmanAdds("person-trainee", "HELPER", false))
                 .isInstanceOf(MemberUnderageException.class);

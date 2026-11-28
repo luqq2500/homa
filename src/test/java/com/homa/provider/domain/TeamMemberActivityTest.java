@@ -7,6 +7,7 @@ import static com.homa.provider.domain.ProviderFixtures.RINA;
 import static com.homa.provider.domain.ProviderFixtures.RINA_PERSON;
 import static com.homa.provider.domain.ProviderFixtures.SITI;
 import static com.homa.provider.domain.ProviderFixtures.TEAM_ADDED_AT;
+import static com.homa.provider.domain.ProviderFixtures.VERIFIED_UNTIL;
 import static com.homa.provider.domain.ProviderFixtures.farid;
 import static com.homa.provider.domain.ProviderFixtures.openedKemasHome;
 import static com.homa.provider.domain.ProviderFixtures.rinaPermit;
@@ -81,7 +82,7 @@ class TeamMemberActivityTest {
     @DisplayName("A stored team member is rebuilt as it was saved, with their person and permit.")
     void restoredMemberKeepsItsStoredState() {
         TeamMember rina = TeamMember.restore(RINA, KEMAS_HOME, RINA_PERSON, TeamRole.HELPER, rinaPermit(),
-                TEAM_ADDED_AT, false, true, false);
+                TEAM_ADDED_AT, false, true, false, false, VERIFIED_UNTIL);
 
         assertThat(rina.id()).isEqualTo(RINA);
         assertThat(rina.providerId()).isEqualTo(KEMAS_HOME);

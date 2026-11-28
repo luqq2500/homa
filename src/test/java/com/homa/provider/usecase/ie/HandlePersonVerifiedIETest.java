@@ -1,6 +1,7 @@
 package com.homa.provider.usecase.ie;
 
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.AZMAN;
+import static com.homa.provider.usecase.ProviderUsecaseFixtures.NEXT_DUE_AT;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.RINA_PERMIT_EXPIRY;
 import static com.homa.provider.usecase.ProviderUsecaseFixtures.SITI;
@@ -35,7 +36,7 @@ class HandlePersonVerifiedIETest {
         world.personVerified.handle(azmanVerified("verification-1"));
 
         VerifiedPerson azman = kept(AZMAN);
-        assertThat(azman.facts()).isEqualTo(VerifiedPersonFacts.local(new PersonId(AZMAN), true));
+        assertThat(azman.facts()).isEqualTo(VerifiedPersonFacts.local(new PersonId(AZMAN), true, NEXT_DUE_AT));
         assertThat(azman.name()).isEqualTo("Azman");
         assertThat(azman.personId()).isEqualTo(new PersonId(AZMAN));
         assertThat(world.processedMessages.hasHandled("verification-1", "provider.PersonVerified")).isTrue();
@@ -50,7 +51,7 @@ class HandlePersonVerifiedIETest {
         world.personVerified.handle(rinaVerified("verification-2"));
 
         VerifiedPerson rina = kept(RINA);
-        assertThat(rina.facts()).isEqualTo(VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY));
+        assertThat(rina.facts()).isEqualTo(VerifiedPersonFacts.foreign(new PersonId(RINA), true, RINA_PERMIT_EXPIRY, NEXT_DUE_AT));
         assertThat(rina.name()).isEqualTo("Rina");
     }
 
