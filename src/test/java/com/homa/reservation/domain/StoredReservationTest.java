@@ -1,6 +1,7 @@
 package com.homa.reservation.domain;
 
 import static com.homa.fixtures.HomaFixtures.JOB_END;
+import static com.homa.fixtures.HomaFixtures.NURUL_MEMBER_ID;
 import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.reservation.domain.ReservationFixtures.ACCEPTED_AT;
 import static com.homa.reservation.domain.ReservationFixtures.farid;
@@ -10,6 +11,7 @@ import static com.homa.reservation.domain.ReservationFixtures.monday;
 import static com.homa.reservation.domain.ReservationFixtures.nurul;
 import static com.homa.reservation.domain.ReservationFixtures.saturday;
 import static com.homa.reservation.domain.ReservationFixtures.siti;
+import static com.homa.reservation.domain.ReservationFixtures.thursday;
 import static com.homa.reservation.domain.ReservationFixtures.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +20,8 @@ import com.homa.reservation.domain.ReservationFixtures.Marketplace;
 import com.homa.reservation.domain.exception.AcceptanceDeadlinePassedException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
 import com.homa.reservation.domain.settlement.Settlement;
+import com.homa.reservation.domain.pricing.Quote;
+import com.homa.kernel.Percentage;
 import com.homa.kernel.Money;
 import com.homa.reservation.domain.roster.Roster;
 import com.homa.reservation.domain.roster.RosterAdjustment;
@@ -81,6 +85,16 @@ class StoredReservationTest {
 
         Stored roster(Roster changed) {
             return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, changed, proposal, adjustment, completedAt, photos, version);
+        }
+
+        Stored proposal(RosterProposal changed) {
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation,
+                    roster, changed, adjustment, completedAt, photos, version);
+        }
+
+        Stored adjustment(RosterAdjustment changed) {
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation,
+                    roster, proposal, changed, completedAt, photos, version);
         }
 
         Stored completedAt(Instant changed) {
@@ -406,6 +420,118 @@ class StoredReservationTest {
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).status(null).restore()).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).photos(null).restore()).isInstanceOf(NullPointerException.class);
+    }
+
+    private static Reservation withSitiOffered() {
+        Reservation reservation = Marketplace.withKemasHome().reserveStandard();
+        reservation.proposeSmallerRoster(List.of(siti()), thursday(9, 0));
+        return reservation;
+    }
+
+    private static Reservation withSitiAccepted() {
+        Reservation reservation = withSitiOffered();
+        reservation.acceptProposal(List.of(siti()), thursday(10, 0));
+        return reservation;
+    }
+
+    @Test
+    @Tag("ROS-5")
+    @DisplayName("Persistence: a roster with Nurul still to be replaced, and a roster locked at 9:45, come back as they were stored.")
+    void aStoredRosterKeepsWhoIsToBeReplacedAndWhenItLocked() {
+        Reservation flagged = rosteredStandard();
+        flagged.rosterMemberStoppedBeingActive(NURUL_MEMBER_ID, friday(10, 0));
+        Reservation locked = rosteredStandard();
+        locked.lockRosterAtCheckIn(saturday(9, 45));
+
+        Reservation restoredFlagged = Stored.of(flagged).restore();
+        Reservation restoredLocked = Stored.of(locked).restore();
+
+        assertThat(restoredFlagged).usingRecursiveComparison().isEqualTo(flagged);
+        assertThat(restoredFlagged.roster().orElseThrow().membersToReplace()).containsExactly(NURUL_MEMBER_ID);
+        assertThat(restoredFlagged.lockRosterAtCheckIn(saturday(9, 45))).isPresent();
+        assertThat(restoredLocked).usingRecursiveComparison().isEqualTo(locked);
+        assertThat(restoredLocked.roster().orElseThrow().lockedAt()).contains(saturday(9, 45));
+    }
+
+    @Test
+    @Tag("ROS-8")
+    @DisplayName("Persistence: Kemas Home's offer of Siti alone comes back waiting for Aisyah, who can still accept it for RM110.")
+    void aStoredOfferStillWaitsForTheCustomer() {
+        Reservation offered = withSitiOffered();
+
+        Reservation stored = Stored.of(offered).restore();
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(offered);
+        assertThat(stored.proposal()).isPresent();
+        assertThat(stored.acceptProposal(List.of(siti()), friday(10, 0)).quote().total()).isEqualTo(Money.myr(110));
+    }
+
+    @Test
+    @Tag("ROS-8")
+    @DisplayName("Persistence: Aisyah's accepted smaller roster comes back with 1 helper at RM110, and a later cancellation settles from that price.")
+    void aStoredAcceptedSmallerRosterKeepsTheNewPriceAndHelpers() {
+        Reservation accepted = withSitiAccepted();
+
+        Reservation stored = Stored.of(accepted).restore();
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(accepted);
+        assertThat(stored.helpers()).isEqualTo(1);
+        assertThat(stored.currentQuote().total()).isEqualTo(Money.myr(110));
+        assertThat(stored.quote().total()).isEqualTo(Money.myr(200));
+        assertThat(stored.cancelByCustomer(friday(22, 0)).settlement().customerRefund()).isEqualTo(Money.myr("87.5"));
+        Reservation cancelled = Stored.of(stored).restore();
+        assertThat(cancelled.status()).isEqualTo(ReservationStatus.CANCELLED);
+    }
+
+    @Test
+    @Tag("ROS-8")
+    @DisplayName("Persistence: a stored settlement after a smaller roster must add up to the RM110 now held, not the RM200 booked.")
+    void aStoredSettlementAfterASmallerRosterAddsUpToThePriceNow() {
+        Reservation accepted = withSitiAccepted();
+        accepted.cancelByCustomer(friday(22, 0));
+        Stored cancelled = Stored.of(accepted);
+
+        assertThat(cancelled.restore().cancellation().orElseThrow().settlement().customerFee())
+                .isEqualTo(Money.myr("22.5"));
+        assertRefused(cancelled.cancellation(withSettlement("45", "155", "0", "0")));
+        assertRefused(cancelled.cancellation(withSettlement("22.5", "177.5", "0", "0")));
+    }
+
+    @Test
+    @Tag("ROS-8")
+    @DisplayName("Persistence: an offer or an accepted smaller roster needs a Reserved reservation, and the roster needs the helpers it has.")
+    void aStoredSmallerRosterThatDoesNotFitIsRefused() {
+        Reservation offered = withSitiOffered();
+        Reservation accepted = withSitiAccepted();
+        Reservation requested = Marketplace.withKemasHome().requestStandard();
+        Quote cheaper = offered.proposal().orElseThrow().quote();
+        Settlement refund = offered.proposal().orElseThrow().settlement();
+        RosterProposal bothHelpers = new RosterProposal(sitiAndNurul(), cheaper, refund, thursday(9, 0));
+
+        assertRefused(Stored.of(requested).proposal(offered.proposal().orElseThrow()));
+        assertRefused(Stored.of(requested).adjustment(accepted.adjustment().orElseThrow()));
+        assertRefused(Stored.of(offered).proposal(bothHelpers));
+        assertRefused(Stored.of(accepted).proposal(bothHelpers));
+        assertRefused(Stored.of(accepted).roster(sitiAndNurul()));
+        assertRefused(Stored.of(rosteredStandard()).roster(Roster.of(List.of(siti().asRosterMember()), 1)));
+        assertThat(Stored.of(accepted).roster(Roster.of(List.of(nurul().asRosterMember()), 1)).restore().roster())
+                .isPresent();
+    }
+
+    @Test
+    @Tag("ROS-8")
+    @DisplayName("Persistence: an accepted smaller roster must have fewer helpers than were booked, at a lower price.")
+    void aStoredAdjustmentMustComeDownInHelpersAndPrice() {
+        Reservation accepted = withSitiAccepted();
+        RosterAdjustment adjustment = accepted.adjustment().orElseThrow();
+        Stored stored = Stored.of(accepted);
+        Quote dearer = new Quote(Money.myr(180), Money.myr(20), Money.myr(200), Money.myr(45), Percentage.of(10));
+
+        assertRefused(stored.adjustment(new RosterAdjustment(2, adjustment.quote(), adjustment.settlement(),
+                adjustment.adjustedAt())).roster(sitiAndNurul()));
+        assertRefused(stored.adjustment(new RosterAdjustment(1, dearer, adjustment.settlement(),
+                adjustment.adjustedAt())));
+        assertThat(stored.adjustment(adjustment).restore().helpers()).isEqualTo(1);
     }
 
     /** A Requested reservation restored with only the parts under test, and nothing else stored. */

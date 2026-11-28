@@ -34,6 +34,20 @@ class ReservationPricingTest {
             CancellationTier.STANDARD);
 
     @Test
+    @Tag("ROS-8")
+    @DisplayName("Siti alone at the booking's 10% discount, though one helper alone earns none: 25 × 4 × 1 × 0.9 + 20 = RM110.")
+    void aQuoteCanKeepTheDiscountItIsGiven() {
+        Quote kept = ReservationPricing.quote(KEMAS_TERMS, JobDuration.of(java.time.Duration.ofHours(4)), 1,
+                Percentage.of(10));
+        Quote looked = ReservationPricing.quote(KEMAS_TERMS, JobDuration.of(java.time.Duration.ofHours(4)), 1);
+
+        assertThat(kept).isEqualTo(
+                new Quote(Money.myr(90), FLAT_TRAVEL_FEE, Money.myr(110), Money.myr("22.5"), Percentage.of(10)));
+        assertThat(looked.total()).as("looked up, one helper earns no discount").isEqualTo(Money.myr(120));
+        assertThat(looked.discountRate()).isEqualTo(Percentage.ZERO);
+    }
+
+    @Test
     @Tag("RES-6")
     @DisplayName("Standard reservation: 25 × 4 × 2 × 0.9 + 20 = RM200.")
     void totalReservationFeeIsHoursFeePlusTravelFee() {
