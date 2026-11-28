@@ -16,6 +16,7 @@ import com.homa.ie.events.ProviderBookabilityChangedIE;
 import com.homa.ie.events.ProviderOpenedIE;
 import com.homa.ie.events.ProviderWentLiveIE;
 import com.homa.ie.events.TeamMemberActivatedIE;
+import com.homa.ie.events.TeamMemberDeactivatedIE;
 import com.homa.kernel.Money;
 import com.homa.listing.domain.City;
 import com.homa.listing.domain.JobType;
@@ -27,6 +28,7 @@ import com.homa.listing.usecase.ie.HandleProviderBookabilityChangedIE;
 import com.homa.listing.usecase.ie.HandleProviderOpenedIE;
 import com.homa.listing.usecase.ie.HandleProviderWentLiveIE;
 import com.homa.listing.usecase.ie.HandleTeamMemberActivatedIE;
+import com.homa.listing.usecase.ie.HandleTeamMemberDeactivatedIE;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -89,6 +91,8 @@ final class ListingTestBed {
             new HandleProviderBookabilityChangedIE(processed, standings);
     final HandleTeamMemberActivatedIE memberActivated =
             new HandleTeamMemberActivatedIE(processed, standings, listings, publisher, events);
+    final HandleTeamMemberDeactivatedIE memberDeactivated =
+            new HandleTeamMemberDeactivatedIE(processed, standings, listings, publisher, events);
 
     /** Homa's presets: everything Kemas Home picks, plus a job, a tool and a city it doesn't. */
     ListingTestBed withHomaPresets() {
@@ -156,6 +160,20 @@ final class ListingTestBed {
 
     static TeamMemberActivatedIE supervisorActivated(String eventId, String memberId) {
         return memberActivated(eventId, memberId, "SUPERVISOR");
+    }
+
+    /** Provider deactivated the member (HLP-5). */
+    static TeamMemberDeactivatedIE memberDeactivated(String eventId, String memberId) {
+        return memberLeft(eventId, memberId, "DEACTIVATED");
+    }
+
+    /** Provider removed the member (HLP-8). */
+    static TeamMemberDeactivatedIE memberRemoved(String eventId, String memberId) {
+        return memberLeft(eventId, memberId, "REMOVED");
+    }
+
+    private static TeamMemberDeactivatedIE memberLeft(String eventId, String memberId, String reason) {
+        return new TeamMemberDeactivatedIE(eventId, memberId, "person-" + memberId, KEMAS_HOME, reason, NOW);
     }
 
     private static TeamMemberActivatedIE memberActivated(String eventId, String memberId, String role) {
