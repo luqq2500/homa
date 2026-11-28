@@ -14,12 +14,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.homa.fixtures.HomaFixtures;
 import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.kernel.Money;
 import com.homa.reservation.domain.Reservation;
 import com.homa.reservation.domain.ReservationStatus;
 import com.homa.reservation.domain.exception.AcceptanceDeadlinePassedException;
+import com.homa.reservation.domain.exception.ReservationStatusConflictException;
 import com.homa.reservation.usecase.dto.AcceptReservationRequest;
 import com.homa.reservation.usecase.dto.AcceptReservationResponse;
+import com.homa.reservation.usecase.dto.DeclineReservationRequest;
+import com.homa.reservation.usecase.dto.ExpireRequestRequest;
+import com.homa.reservation.usecase.dto.WithdrawReservationRequest;
 import com.homa.reservation.usecase.exception.NotReservationPartyException;
 import com.homa.reservation.usecase.exception.ReservationNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -113,5 +118,65 @@ class ProviderAcceptReservationTest {
                 .isInstanceOf(ReservationNotFoundException.class);
         assertThat(bed.reload(requested).status()).isEqualTo(ReservationStatus.REQUESTED);
         assertThat(bed.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("REQ-5")
+    @DisplayName("Had Aisyah's withdrawal committed first, Kemas Home's acceptance would be refused: it reloads, finds the reservation Withdrawn, and only the withdrawal is published.")
+    void acceptanceThatLosesTheRaceToAWithdrawalIsRefused() {
+        bed.publisher.clear();
+        bed.time.set(monday21Oh2());
+        bed.reservations.beforeNextSave(() -> bed.withdrawReservation
+                .withdraw(new WithdrawReservationRequest(requested.id().value(), AISYAH_CUSTOMER_ID)));
+
+        assertThatThrownBy(() -> accept(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(ReservationStatusConflictException.class);
+
+        Reservation saved = bed.reload(requested);
+        assertThat(saved.status()).isEqualTo(ReservationStatus.WITHDRAWN);
+        assertThat(saved.reservedAt()).isEmpty();
+        assertThat(bed.schedules.providerBlocks(KEMAS_HOME_PROVIDER_ID)).isEmpty();
+        assertThat(bed.publisher.published()).hasSize(1).first().isInstanceOf(ReservationWithdrawnIE.class);
+    }
+
+    @Test
+    @Tag("REQ-5")
+    @DisplayName("Aisyah's withdrawal recorded first at 21:02:10 beats Kemas Home's acceptance at 21:02:12, which is refused.")
+    void acceptanceRecordedTwoSecondsAfterAWithdrawalIsRefused() {
+        bed.time.set(monday21Oh2().plusSeconds(10));
+        bed.withdrawReservation.withdraw(new WithdrawReservationRequest(requested.id().value(), AISYAH_CUSTOMER_ID));
+        bed.publisher.clear();
+        bed.time.set(monday21Oh2().plusSeconds(12));
+
+        assertThatThrownBy(() -> accept(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(ReservationStatusConflictException.class);
+
+        assertThat(bed.reload(requested).status()).isEqualTo(ReservationStatus.WITHDRAWN);
+        assertThat(bed.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("REQ-3")
+    @DisplayName("A request Kemas Home declined, or that expired at Tuesday 20:00, can't be accepted afterwards.")
+    void aDeclinedOrExpiredRequestCannotBeAccepted() {
+        ReservationTestBed other = ReservationTestBed.withKemasHomeAndAisyah();
+        Reservation declined = other.requestStandard();
+        other.time.set(ACCEPTED_AT);
+        other.declineReservation.decline(new DeclineReservationRequest(declined.id().value(), KEMAS_HOME_PROVIDER_ID));
+        other.publisher.clear();
+
+        assertThatThrownBy(() -> other.acceptReservation
+                .accept(new AcceptReservationRequest(declined.id().value(), KEMAS_HOME_PROVIDER_ID)))
+                .isInstanceOf(ReservationStatusConflictException.class);
+
+        bed.time.set(HomaFixtures.ACCEPTANCE_DEADLINE);
+        bed.expireRequest.expire(new ExpireRequestRequest(requested.id().value()));
+        bed.time.set(ReservationTestBed.tuesday(20, 1));
+        assertThatThrownBy(() -> accept(KEMAS_HOME_PROVIDER_ID)).isInstanceOf(ReservationStatusConflictException.class);
+
+        assertThat(other.reload(declined).status()).isEqualTo(ReservationStatus.DECLINED);
+        assertThat(bed.reload(requested).status()).isEqualTo(ReservationStatus.EXPIRED);
+    }
+
+    private static java.time.Instant monday21Oh2() {
+        return ReservationTestBed.monday(21, 2);
     }
 }

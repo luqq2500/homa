@@ -110,6 +110,14 @@ public final class ReservationTestBed {
             bookableProviders, schedules, schedules, checkouts, publisher, events, time);
     public final ProviderAcceptReservation acceptReservation =
             new ProviderAcceptReservation(reservations, publisher, events, time);
+    public final CustomerWithdrawReservation withdrawReservation =
+            new CustomerWithdrawReservation(reservations, schedules, schedules, publisher, events, time);
+    public final ProviderDeclineReservation declineReservation =
+            new ProviderDeclineReservation(reservations, schedules, schedules, publisher, events, time);
+    public final ExpireRequest expireRequest =
+            new ExpireRequest(reservations, schedules, schedules, publisher, events, time);
+    public final ExpireOverdueRequests expireOverdueRequests =
+            new ExpireOverdueRequests(reservations, expireRequest, time);
     public final ProviderAssignRoster assignRoster =
             new ProviderAssignRoster(reservations, members, publisher, events, time);
     public final ProviderCompleteReservation completeReservation = new ProviderCompleteReservation(reservations,

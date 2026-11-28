@@ -5,7 +5,9 @@ import com.homa.reservation.domain.ReservationId;
 import com.homa.reservation.domain.ReservationStatus;
 import com.homa.reservation.domain.schedule.CustomerSchedule;
 import com.homa.reservation.domain.schedule.ProviderSchedule;
+import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.usecase.exception.ScheduleChangedException;
+import com.homa.reservation.usecase.port.out.ReservationChangedException;
 import com.homa.reservation.usecase.port.out.ReservationRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -17,8 +19,9 @@ import java.util.Optional;
 /**
  * Reservations as a store keeps them. Every load and save is a copy, as a database round trip would be, so a use
  * case that changes a reservation and then fails to save leaves the stored one as it was. The schedules' optimistic
- * lock compares the version each schedule was loaded at with the stored one. A test can make the next saves
- * conflict, or let a competing save land just before the next one.
+ * lock compares the version each schedule and each reservation was loaded at with the stored one. A test can make
+ * the next saves with schedules conflict, or let a competing save land just before the next save, which then
+ * conflicts on the version it moved on (REQ-5).
  */
 public final class InMemoryReservationRepository implements ReservationRepository {
 
@@ -36,7 +39,7 @@ public final class InMemoryReservationRepository implements ReservationRepositor
         this.conflictsToRaise = count;
     }
 
-    /** Runs a competing step just before the next save with schedules, as another transaction committing first. */
+    /** Runs a competing step just before the next save, as another transaction committing first. */
     public void beforeNextSave(Runnable competing) {
         this.beforeNextSave = competing;
     }
@@ -66,18 +69,26 @@ public final class InMemoryReservationRepository implements ReservationRepositor
     }
 
     @Override
+    public List<Reservation> findRequestedPastDeadline(Instant now) {
+        return stored.values().stream()
+                .filter(reservation -> reservation.status() == ReservationStatus.REQUESTED)
+                .filter(reservation -> reservation.acceptanceDeadline().map(AcceptanceDeadline::at)
+                        .filter(deadline -> !deadline.isAfter(now)).isPresent())
+                .map(InMemoryReservationRepository::copy)
+                .toList();
+    }
+
+    @Override
     public void save(Reservation reservation) {
-        stored.put(reservation.id(), saved(reservation));
+        letCompetingStepCommit();
+        requireLoadedVersion(reservation);
+        keep(reservation);
     }
 
     @Override
     public void saveWithSchedules(Reservation reservation, ProviderSchedule providerSchedule,
             CustomerSchedule customerSchedule) {
-        Runnable competing = beforeNextSave;
-        beforeNextSave = null;
-        if (competing != null) {
-            competing.run();
-        }
+        letCompetingStepCommit();
         if (conflictsToRaise > 0) {
             conflictsToRaise--;
             throw new ScheduleChangedException(providerSchedule.providerId());
@@ -88,8 +99,30 @@ public final class InMemoryReservationRepository implements ReservationRepositor
         if (schedules.customerVersion(customerSchedule.customerId()) != customerSchedule.version()) {
             throw new ScheduleChangedException(customerSchedule.customerId());
         }
+        requireLoadedVersion(reservation);
         schedules.store(providerSchedule, customerSchedule);
-        save(reservation);
+        keep(reservation);
+    }
+
+    private void letCompetingStepCommit() {
+        Runnable competing = beforeNextSave;
+        beforeNextSave = null;
+        if (competing != null) {
+            competing.run();
+        }
+    }
+
+    /** The optimistic lock: the stored version must still be the one the reservation was loaded at (new: 0). */
+    private void requireLoadedVersion(Reservation reservation) {
+        Reservation current = stored.get(reservation.id());
+        long storedVersion = current == null ? 0 : current.version();
+        if (storedVersion != reservation.version()) {
+            throw new ReservationChangedException(reservation.id().value());
+        }
+    }
+
+    private void keep(Reservation reservation) {
+        stored.put(reservation.id(), saved(reservation));
     }
 
     public int count() {

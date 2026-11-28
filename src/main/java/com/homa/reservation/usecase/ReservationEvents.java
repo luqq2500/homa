@@ -3,8 +3,11 @@ package com.homa.reservation.usecase;
 import com.homa.ie.events.ReservationCheckoutRejectedIE;
 import com.homa.ie.events.ReservationCheckoutStartedIE;
 import com.homa.ie.events.ReservationCompletedIE;
+import com.homa.ie.events.ReservationDeclinedIE;
+import com.homa.ie.events.ReservationExpiredIE;
 import com.homa.ie.events.ReservationRequestedIE;
 import com.homa.ie.events.ReservationReservedIE;
+import com.homa.ie.events.ReservationWithdrawnIE;
 import com.homa.ie.events.RosterChangedIE;
 import com.homa.reservation.domain.Checkout;
 import com.homa.reservation.domain.CheckoutRejection;
@@ -59,6 +62,27 @@ public final class ReservationEvents {
                 reservation.booking().customerId(), reservation.booking().providerId(), reservation.checkInStart(),
                 reservation.jobTime().start(), reservation.jobTime().end(), reservation.quote().total(),
                 reservation.protectionWindowEnd(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-2: withdrawn; Payment refunds in full at once, and it never counts in reliability (RTG-10). */
+    public ReservationWithdrawnIE withdrawn(Reservation reservation) {
+        return new ReservationWithdrawnIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.withdrawnAt().orElseThrow(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-3: declined; Payment refunds in full at once. */
+    public ReservationDeclinedIE declined(Reservation reservation) {
+        return new ReservationDeclinedIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.declinedAt().orElseThrow(), reservation.requestedAt(), time.now());
+    }
+
+    /** REQ-4: expired, the acceptance deadline reached; Payment refunds in full at once. */
+    public ReservationExpiredIE expired(Reservation reservation) {
+        return new ReservationExpiredIE(eventIds.next(), reservation.id().value(),
+                reservation.booking().customerId(), reservation.booking().providerId(),
+                reservation.expiredAt().orElseThrow(), reservation.requestedAt(), time.now());
     }
 
     /** ROS-1: the roster was set or changed, and the customer is told. */

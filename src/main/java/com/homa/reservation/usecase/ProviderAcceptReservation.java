@@ -8,7 +8,11 @@ import com.homa.reservation.usecase.port.out.ReservationIEPublisher;
 import com.homa.reservation.usecase.port.out.ReservationRepository;
 import com.homa.reservation.usecase.port.out.TimeSource;
 
-/** ACC-2: the provider accepts a Requested reservation before its acceptance deadline, and it is Reserved. */
+/**
+ * ACC-2: the provider accepts a Requested reservation before its acceptance deadline, and it is Reserved. A
+ * withdrawal, a decline or an expiry saved first wins (REQ-5): the acceptance's save then conflicts, it reloads, and
+ * the reservation is no longer Requested, so the acceptance is refused.
+ */
 public final class ProviderAcceptReservation implements ReservationAccepter {
 
     private final ReservationRepository reservations;
@@ -26,12 +30,17 @@ public final class ProviderAcceptReservation implements ReservationAccepter {
 
     @Override
     public AcceptReservationResponse accept(AcceptReservationRequest request) {
+        Reservation reservation = ScheduleRetry.retried(() -> accepted(request));
+        publisher.publish(events.reserved(reservation));
+        return new AcceptReservationResponse(reservation.id().value(), reservation.status().name(),
+                reservation.reservedAt().orElseThrow());
+    }
+
+    private Reservation accepted(AcceptReservationRequest request) {
         Reservation reservation = ReservationParties.requireProvider(
                 ReservationParties.load(reservations, request.reservationId()), request.providerId());
         reservation.accept(time.now());
         reservations.save(reservation);
-        publisher.publish(events.reserved(reservation));
-        return new AcceptReservationResponse(reservation.id().value(), reservation.status().name(),
-                reservation.reservedAt().orElseThrow());
+        return reservation;
     }
 }
