@@ -1,4 +1,12 @@
 {
+  "conversation.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "conversation.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
   "customer.domain": {
     "score": 100.0,
     "strength": 100.0
@@ -32,6 +40,14 @@
     "strength": 100.0
   },
   "provider.usecase": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "rating.domain": {
+    "score": 100.0,
+    "strength": 100.0
+  },
+  "rating.usecase": {
     "score": 100.0,
     "strength": 100.0
   },
