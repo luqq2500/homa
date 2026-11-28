@@ -8,6 +8,7 @@ import static com.homa.fixtures.HomaFixtures.REQUESTED_AT;
 import static com.homa.reservation.usecase.ReservationTestBed.ACCEPTED_AT;
 import static com.homa.reservation.usecase.ReservationTestBed.saturday;
 import static com.homa.reservation.usecase.ReservationTestBed.sunday;
+import static com.homa.reservation.usecase.ReservationTestBed.tuesday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -64,6 +65,38 @@ class ProviderAcceptReservationTest {
                 .isInstanceOf(AcceptanceDeadlinePassedException.class);
         assertThat(bed.reload(requested).status()).isEqualTo(ReservationStatus.REQUESTED);
         assertThat(bed.publisher.published()).isEmpty();
+    }
+
+    @Test
+    @Tag("ACC-3")
+    @DisplayName("A Monday 20:00 request has until Tuesday 20:00.")
+    void aRequestHasTwentyFourHoursToBeAccepted() {
+        bed.time.set(tuesday(19, 59));
+
+        assertThat(accept(KEMAS_HOME_PROVIDER_ID).status()).isEqualTo("RESERVED");
+        assertThat(bed.reload(requested).reservedAt()).contains(tuesday(19, 59));
+    }
+
+    @Test
+    @Tag("ACC-3")
+    @DisplayName("A Saturday 7:00 request for 10:00 has until 8:45.")
+    void aLateRequestHasUntilAnHourBeforeTheCheckInPeriod() {
+        ReservationTestBed lateBed = ReservationTestBed.withKemasHomeAndAisyah();
+        lateBed.time.set(saturday(6, 58));
+        String checkoutId = lateBed.startCheckout
+                .start(ReservationTestBed.standardCheckout(AISYAH_CUSTOMER_ID, KEMAS_HOME_PROVIDER_ID)).checkoutId();
+        lateBed.time.set(saturday(7, 0));
+        lateBed.paymentHeld.handle(lateBed.paymentHeld(checkoutId, saturday(7, 0)));
+        String id = lateBed.reservations.single().id().value();
+        AcceptReservationRequest accepting = new AcceptReservationRequest(id, KEMAS_HOME_PROVIDER_ID);
+
+        lateBed.time.set(saturday(8, 45));
+        assertThatThrownBy(() -> lateBed.acceptReservation.accept(accepting))
+                .isInstanceOf(AcceptanceDeadlinePassedException.class);
+        lateBed.time.set(saturday(8, 44));
+        lateBed.acceptReservation.accept(accepting);
+
+        assertThat(lateBed.reload(id).status()).isEqualTo(ReservationStatus.RESERVED);
     }
 
     @Test

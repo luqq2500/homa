@@ -144,6 +144,10 @@ public final class ReservationTestBed {
         return HomaFixtures.at(2026, 11, 30, hour, minute);
     }
 
+    public static Instant tuesday(int hour, int minute) {
+        return HomaFixtures.at(2026, 12, 1, hour, minute);
+    }
+
     public static Instant friday(int hour, int minute) {
         return HomaFixtures.at(2026, 12, 4, hour, minute);
     }
