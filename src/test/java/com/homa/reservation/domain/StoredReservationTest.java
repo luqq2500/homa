@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.homa.reservation.domain.ReservationFixtures.Marketplace;
 import com.homa.reservation.domain.exception.AcceptanceDeadlinePassedException;
 import com.homa.reservation.domain.exception.ReservationStatusConflictException;
+import com.homa.reservation.domain.settlement.Settlement;
+import com.homa.kernel.Money;
 import com.homa.reservation.domain.roster.Roster;
 import com.homa.reservation.domain.terms.AcceptanceDeadline;
 import com.homa.reservation.domain.terms.AcceptancePolicy;
@@ -32,61 +34,65 @@ class StoredReservationTest {
 
     /** What a store keeps of a reservation, changeable one part at a time to make it inconsistent. */
     private record Stored(Reservation from, AcceptanceDeadline deadline, ReservationStatus status, Instant reservedAt,
-            Instant withdrawnAt, Instant declinedAt, Instant expiredAt, Roster roster, Instant completedAt,
-            List<CompletionPhoto> photos, long version) {
+            Instant withdrawnAt, Instant declinedAt, Instant expiredAt, Cancellation cancellation,
+            Roster roster, Instant completedAt, List<CompletionPhoto> photos, long version) {
 
         static Stored of(Reservation reservation) {
             return new Stored(reservation, reservation.acceptanceDeadline().orElse(null), reservation.status(),
                     reservation.reservedAt().orElse(null), reservation.withdrawnAt().orElse(null),
                     reservation.declinedAt().orElse(null), reservation.expiredAt().orElse(null),
-                    reservation.roster().orElse(null), reservation.completedAt().orElse(null),
+                    reservation.cancellation().orElse(null), reservation.roster().orElse(null), reservation.completedAt().orElse(null),
                     reservation.completionPhotos(), reservation.version());
         }
 
         Stored status(ReservationStatus changed) {
-            return new Stored(from, deadline, changed, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, completedAt, photos, version);
+            return new Stored(from, deadline, changed, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
         }
 
         Stored deadline(AcceptanceDeadline changed) {
-            return new Stored(from, changed, status, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, completedAt, photos, version);
+            return new Stored(from, changed, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
         }
 
         Stored reservedAt(Instant changed) {
-            return new Stored(from, deadline, status, changed, withdrawnAt, declinedAt, expiredAt, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, changed, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
         }
 
         Stored declinedAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, changed, expiredAt, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, changed, expiredAt, cancellation, roster, completedAt, photos, version);
         }
 
         Stored expiredAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, changed, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, changed, cancellation, roster, completedAt, photos, version);
         }
 
         Stored withdrawnAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, changed, declinedAt, expiredAt, roster, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, changed, declinedAt, expiredAt, cancellation, roster, completedAt, photos, version);
+        }
+
+        Stored cancellation(Cancellation changed) {
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, changed, roster, completedAt, photos, version);
         }
 
         Stored roster(Roster changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, changed, completedAt, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, changed, completedAt, photos, version);
         }
 
         Stored completedAt(Instant changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, changed, photos, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, changed, photos, version);
         }
 
         Stored photos(List<CompletionPhoto> changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, completedAt, changed, version);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, changed, version);
         }
 
         Stored version(long changed) {
-            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, roster, completedAt, photos, changed);
+            return new Stored(from, deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt, cancellation, roster, completedAt, photos, changed);
         }
 
         Reservation restore() {
             return Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(), from.quote(),
                     from.values(), from.requestedAt(), deadline, status, reservedAt, withdrawnAt, declinedAt, expiredAt,
-                    roster, completedAt, photos, version);
+                    cancellation, roster, completedAt, photos, version);
         }
     }
 
@@ -106,6 +112,17 @@ class StoredReservationTest {
         Reservation reservation = Marketplace.withKemasHome().requestStandard();
         reservation.withdraw(monday(21, 0));
         return reservation;
+    }
+
+    private Reservation cancelledStandard() {
+        Reservation reservation = rosteredStandard();
+        reservation.cancelByCustomer(friday(22, 0));
+        return reservation;
+    }
+
+    private static Cancellation withSettlement(String fee, String refund, String compensation, String fine) {
+        return new Cancellation(friday(22, 0), CancellationCause.CUSTOMER_CANCELLED, new Settlement(Money.myr(fee),
+                Money.myr(refund), Money.myr(compensation), Money.myr(fine), Money.myr(fee)));
     }
 
     private static Roster sitiAndNurul() {
@@ -245,6 +262,69 @@ class StoredReservationTest {
     }
 
     @Test
+    @Tag("CCX-6")
+    @DisplayName("Persistence: Aisyah's late cancellation comes back Cancelled with its cause, moment and settlement, keeps its roster, and can't be cancelled again.")
+    void aStoredCancelledReservationKeepsItsCauseAndSettlement() {
+        Reservation cancelled = cancelledStandard();
+
+        Reservation stored = Stored.of(cancelled).restore();
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(cancelled);
+        assertThat(stored.cancellation().orElseThrow().cause()).isEqualTo(CancellationCause.CUSTOMER_CANCELLED);
+        assertThat(stored.cancellation().orElseThrow().at()).isEqualTo(friday(22, 0));
+        assertThat(stored.cancellation().orElseThrow().settlement().customerFee()).isEqualTo(Money.myr(45));
+        assertThat(stored.roster()).isPresent();
+        assertThatThrownBy(() -> stored.cancelByProvider(friday(22, 1)))
+                .isInstanceOf(ReservationStatusConflictException.class);
+    }
+
+    @Test
+    @Tag("PCX-2")
+    @DisplayName("Persistence: Kemas Home's late cancellation comes back Cancelled, with its fine and Aisyah's compensation.")
+    void aStoredProviderCancellationKeepsItsFineAndCompensation() {
+        Reservation cancelled = Marketplace.withKemasHome().reserveStandard();
+        cancelled.cancelByProvider(friday(20, 0));
+
+        Reservation stored = Stored.of(cancelled).restore();
+
+        assertThat(stored).usingRecursiveComparison().isEqualTo(cancelled);
+        assertThat(stored.cancellation().orElseThrow().settlement().providerFine()).isEqualTo(Money.myr(65));
+        assertThat(stored.cancellation().orElseThrow().settlement().compensation()).isEqualTo(Money.myr(6));
+    }
+
+    @Test
+    @Tag("CCX-6")
+    @DisplayName("Persistence: a stored status must fit whether the reservation was cancelled, and a cancelled one was Reserved.")
+    void aStoredCancelledStatusThatDoesNotFitIsRefused() {
+        Stored cancelled = Stored.of(cancelledStandard());
+        Stored reserved = Stored.of(Marketplace.withKemasHome().reserveStandard());
+
+        assertRefused(cancelled.cancellation(null));
+        assertRefused(cancelled.reservedAt(null).roster(null));
+        assertRefused(cancelled.completedAt(JOB_END).photos(List.of(CLEAN_KITCHEN)));
+        assertRefused(reserved.cancellation(withSettlement("45", "155", "0", "0")));
+        assertRefused(Stored.of(withdrawnStandard()).cancellation(withSettlement("45", "155", "0", "0")));
+    }
+
+    @Test
+    @Tag("CAN-2")
+    @DisplayName("Persistence: a stored settlement must add up to the price held, and its fee and fine can't be more than the Total Reservation Fee.")
+    void aStoredSettlementThatDoesNotAddUpIsRefused() {
+        Stored cancelled = Stored.of(cancelledStandard());
+
+        assertThat(cancelled.cancellation(withSettlement("45", "155", "0", "0")).restore().status())
+                .isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(cancelled.cancellation(withSettlement("0", "200", "6", "200")).restore().status())
+                .isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(cancelled.cancellation(withSettlement("200", "0", "0", "0")).restore().status())
+                .isEqualTo(ReservationStatus.CANCELLED);
+        assertRefused(cancelled.cancellation(withSettlement("45", "150", "0", "0")));
+        assertRefused(cancelled.cancellation(withSettlement("45", "156", "0", "0")));
+        assertRefused(cancelled.cancellation(withSettlement("0", "200", "0", "201")));
+        assertRefused(cancelled.cancellation(withSettlement("201", "-1", "0", "0")));
+    }
+
+    @Test
     @Tag("REQ-4")
     @DisplayName("Persistence: a stored status must fit when the reservation was declined and expired.")
     void aStoredDeclinedOrExpiredStatusThatDoesNotFitItsMomentsIsRefused() {
@@ -297,27 +377,27 @@ class StoredReservationTest {
         AcceptanceDeadline deadline = from.acceptanceDeadline().orElseThrow();
 
         assertThatThrownBy(() -> Reservation.restore(null, from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(), 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), null, from.booking(), from.terms(), from.quote(),
-                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(),
                 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), null, from.terms(), from.quote(),
-                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(),
                 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), null,
-                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.quote(), from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(), 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                null, from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                null, from.values(), REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(), 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), null, REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.quote(), null, REQUESTED_AT, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(), 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reservation.restore(from.id(), from.checkoutId(), from.booking(), from.terms(),
-                from.quote(), from.values(), null, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null,
+                from.quote(), from.values(), null, deadline, ReservationStatus.REQUESTED, null, null, null, null, null, null, null,
                 List.of(), 0)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).status(null).restore()).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Stored.of(from).photos(null).restore()).isInstanceOf(NullPointerException.class);
