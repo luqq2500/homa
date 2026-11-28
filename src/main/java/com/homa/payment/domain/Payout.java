@@ -114,6 +114,23 @@ public final class Payout {
     }
 
     /**
+     * The reservation was cancelled, and Reservation worked out what the customer pays the provider from it: a
+     * cancellation, last-minute or no-show fee, or nothing. A fee turns the payout into a FEE payout (PAY-6); nothing
+     * voids it. Only the payout's own state decides which jobs this reaches: a job still waiting to be marked Completed
+     * can turn into a fee payout or be voided, and a job already marked Completed can only be voided, because a Provider
+     * No Show confirmed after Completed means the job was never done (NSH-6). A payout already released, voided or
+     * turned into a fee payout is refused: a reservation is settled once.
+     */
+    public void settleCancellation(Money providerPayoutGross) {
+        Objects.requireNonNull(providerPayoutGross, "providerPayoutGross");
+        if (providerPayoutGross.isZero()) {
+            makeVoid();
+        } else {
+            payFeeInstead(providerPayoutGross);
+        }
+    }
+
+    /**
      * Part of the customer's payment was refunded (ROS-8, RPT-9, SUS-3, or a refund Support decided): the provider is
      * owed that much less, never below zero.
      */
